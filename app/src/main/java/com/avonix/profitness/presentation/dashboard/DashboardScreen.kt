@@ -26,6 +26,7 @@ import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.news.NewsScreen
+import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
 import com.avonix.profitness.presentation.workout.WorkoutScreen
@@ -45,7 +46,8 @@ private val ALL_TABS = listOf(
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
-    var selectedTab by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    var selectedTab           by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    var showPerformanceDetail by remember { mutableStateOf(false) }
 
     val navBarHeight = 72.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -62,7 +64,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
                 DashboardTab.Program -> ProgramBuilderScreen()
                 DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPad)
                 DashboardTab.News    -> NewsScreen()
-                DashboardTab.Profile -> ProfileScreen(onThemeChange = onThemeChange)
+                DashboardTab.Profile -> ProfileScreen(
+                    onThemeChange           = onThemeChange,
+                    onNavigateToPerformance = { showPerformanceDetail = true }
+                )
             }
         }
 
@@ -73,6 +78,22 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
             onSelect = { selectedTab = it },
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
+
+        // ── Performance Detail Overlay ────────────────────────────────────
+        AnimatedVisibility(
+            visible = showPerformanceDetail,
+            enter   = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec  = tween(380, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(380)),
+            exit    = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(320, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(320)),
+            modifier = Modifier.zIndex(200f)
+        ) {
+            PerformanceDetailScreen(onBack = { showPerformanceDetail = false })
+        }
     }
 }
 
