@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Build Debug APK",
+      "runtimeExecutable": "gradlew",
+      "runtimeArgs": ["assembleDebug"],
+      "port": 5037
+    },
+    {
+      "name": "Build Release APK",
+      "runtimeExecutable": "gradlew",
+      "runtimeArgs": ["assembleRelease"],
+      "port": 5037
+    },
+    {
+      "name": "Install & Run on Device",
+      "runtimeExecutable": "gradlew",
+      "runtimeArgs": ["installDebug"],
+      "port": 5037
+    }
+  ]
+}
