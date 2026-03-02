@@ -3,10 +3,6 @@ name: Android CI/CD Build & Release
 on:
   push:
     branches: [ main, master ]
-    paths:
-      - 'app/**'
-      - '**.gradle*'
-      - 'gradle/**'
   workflow_dispatch:
 
 jobs:
