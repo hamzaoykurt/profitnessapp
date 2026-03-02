@@ -1,52 +1,52 @@
-name: APK Build & Release
+name: Android CI/CD Build & Release
 
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'app/**'
+      - '**.gradle*'
+      - 'gradle/**'
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Debug APK
+  build-and-deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Setup Gradle
+      - name: Validate Gradle Wrapper
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Build Debug Artifact
+        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Upload APK as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: profitness-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: Create Release
+      - name: Update Continuous Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: "Profitness v1.0 (Build ${{ github.run_number }})"
+          tag_name: latest
+          name: "Development Build (Latest)"
           body: |
-            Debug APK otomatik olarak derlendi.
-            Telefonunuza indirmek için aşağıdaki `app-debug.apk` dosyasına tıklayın.
+            ### Automated Build Information
+            - **Commit:** ${{ github.sha }}
+            - **Branch:** ${{ github.ref_name }}
+            - **Timestamp:** ${{ github.event.head_commit.timestamp }}
+            
+            This release is automatically updated on every push.
           files: app/build/outputs/apk/debug/app-debug.apk
-          draft: false
-          prerelease: false
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
