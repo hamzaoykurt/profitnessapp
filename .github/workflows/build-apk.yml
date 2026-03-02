@@ -1,4 +1,4 @@
-name: Android CI/CD Build & Release
+name: Android CI-CD
 
 on:
   push:
@@ -6,10 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    name: Build & Deploy
+  build:
+    name: Build & Release
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -24,25 +23,18 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/setup-gradle@v3
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
 
-      - name: Build Debug Artifact
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Update Continuous Release
+      - name: Update Latest Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Development Build (Latest)"
-          body: |
-            ### Automated Build Information
-            - **Commit:** ${{ github.sha }}
-            - **Branch:** ${{ github.ref_name }}
-            - **Timestamp:** ${{ github.event.head_commit.timestamp }}
-            
-            This release is automatically updated on every push.
+          name: "Development Build"
+          body: "Last update: ${{ github.event.head_commit.message }}"
           files: app/build/outputs/apk/debug/app-debug.apk
-          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
