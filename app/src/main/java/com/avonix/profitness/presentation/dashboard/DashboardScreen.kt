@@ -6,6 +6,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -13,15 +14,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
@@ -33,9 +36,9 @@ import com.avonix.profitness.presentation.workout.WorkoutScreen
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
     object Program : DashboardTab("program",  Icons.Rounded.CalendarMonth, "PLAN")
-    object AICoach : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome, "ORACLE")
-    object News    : DashboardTab("news",     Icons.Rounded.Newspaper, "MUSE")
-    object Profile : DashboardTab("profile",  Icons.Rounded.Person, "USER")
+    object AICoach : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "ORACLE")
+    object News    : DashboardTab("news",     Icons.Rounded.Newspaper,     "MUSE")
+    object Profile : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
 }
 
 private val ALL_TABS = listOf(
@@ -47,15 +50,13 @@ private val ALL_TABS = listOf(
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
     var selectedTab by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
 
-    val navBarHeight = 72.dp
+    val navBarHeight = 80.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // ── Vibrant dark background ───────────────────────────────────────
         AppBackground(modifier = Modifier.fillMaxSize())
 
-        // ── Screen content ────────────────────────────────────────────────
         Crossfade(targetState = selectedTab, label = "tab_fade") { tab ->
             when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(bottomPadding = contentPad)
@@ -66,7 +67,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
             }
         }
 
-        // ── Bottom Navigation ─────────────────────────────────────────────
         AppNavBar(
             tabs     = ALL_TABS,
             selected = selectedTab,
@@ -113,7 +113,7 @@ fun AppBackground(modifier: Modifier = Modifier) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR — Full-width, top-rounded, sliding pill indicator
+//  APP NAV BAR — Compact side tabs + prominent center AI FAB
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppNavBar(
@@ -122,59 +122,80 @@ fun AppNavBar(
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val theme       = LocalAppTheme.current
-    val accent      = MaterialTheme.colorScheme.primary
-    val selectedIdx = tabs.indexOf(selected)
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape  = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
 
-    val indicatorPos by animateFloatAsState(
-        targetValue = selectedIdx.toFloat(),
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label = "nav_slide"
+    val leftTabs   = tabs.filter { it != DashboardTab.AICoach }.take(2)
+    val rightTabs  = tabs.filter { it != DashboardTab.AICoach }.drop(2)
+    val aiSelected = selected == DashboardTab.AICoach
+
+    // Pulsing glow animation for the center AI button when active
+    val infiniteTransition = rememberInfiniteTransition(label = "ai_pulse")
+    val aiGlowPulse by infiniteTransition.animateFloat(
+        initialValue  = 0.28f,
+        targetValue   = 0.60f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ai_glow"
     )
-
-    val shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    val aiGlowAlpha = if (aiSelected) aiGlowPulse else 0.22f
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation    = 24.dp,
+                elevation    = 28.dp,
                 shape        = shape,
-                spotColor    = accent.copy(alpha = 0.25f),
-                ambientColor = Color.Black.copy(alpha = 0.6f)
+                spotColor    = accent.copy(alpha = 0.30f),
+                ambientColor = Color.Black.copy(alpha = 0.65f)
             )
             .background(theme.bg2, shape)
             .navigationBarsPadding()
-            .height(72.dp)
+            .height(80.dp)
             .drawWithCache {
-                val itemW  = size.width / tabs.size
-                val pillW  = itemW * 0.62f
-                val pillH  = size.height * 0.60f
                 val rimBrush = Brush.horizontalGradient(
-                    listOf(Color.Transparent, Color.White.copy(0.12f), Color.Transparent)
-                )
-                val gradBrush = Brush.verticalGradient(
-                    listOf(Color.White.copy(0.03f), Color.Transparent)
+                    listOf(Color.Transparent, Color.White.copy(0.15f), Color.Transparent)
                 )
                 onDrawBehind {
-                    // Top rim line
+                    // Subtle top rim shimmer
                     drawRect(rimBrush, size = Size(size.width, 1.5.dp.toPx()))
-                    // Subtle inner gradient
-                    drawRect(gradBrush)
-                    // Sliding active pill
-                    val pillX = indicatorPos * itemW + (itemW - pillW) / 2f
-                    val pillY = (size.height - pillH) / 2f
-                    drawRoundRect(
-                        color      = accent.copy(alpha = 0.18f),
-                        topLeft    = Offset(pillX, pillY),
-                        size       = Size(pillW, pillH),
-                        cornerRadius = CornerRadius(14.dp.toPx())
-                    )
                 }
             }
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            tabs.forEach { tab ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leftTabs.forEach { tab ->
+                NavBarItem(
+                    tab        = tab,
+                    isSelected = tab == selected,
+                    accent     = accent,
+                    theme      = theme,
+                    modifier   = Modifier.weight(1f),
+                    onClick    = { onSelect(tab) }
+                )
+            }
+
+            // Center AI FAB slot — gets extra width weight for visual prominence
+            Box(
+                modifier         = Modifier.weight(1.4f),
+                contentAlignment = Alignment.Center
+            ) {
+                AiCenterButton(
+                    isSelected = aiSelected,
+                    accent     = accent,
+                    glowAlpha  = aiGlowAlpha,
+                    onClick    = { onSelect(DashboardTab.AICoach) }
+                )
+            }
+
+            rightTabs.forEach { tab ->
                 NavBarItem(
                     tab        = tab,
                     isSelected = tab == selected,
@@ -188,6 +209,58 @@ fun AppNavBar(
     }
 }
 
+// ─── Center AI Floating Action Button ───────────────────────────────────────
+@Composable
+private fun AiCenterButton(
+    isSelected: Boolean,
+    accent    : Color,
+    glowAlpha : Float,
+    onClick   : () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue   = when {
+            isPressed  -> 0.87f
+            isSelected -> 1.08f
+            else       -> 1f
+        },
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
+        label         = "ai_scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .scale(scale)
+            .size(56.dp)
+            .shadow(
+                elevation    = if (isSelected) 20.dp else 8.dp,
+                shape        = CircleShape,
+                spotColor    = accent.copy(alpha = glowAlpha),
+                ambientColor = accent.copy(alpha = 0.12f)
+            )
+            .background(
+                brush = Brush.verticalGradient(listOf(LimeBright, Lime, LimeDim)),
+                shape = CircleShape
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null,
+                onClick           = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector        = Icons.Rounded.AutoAwesome,
+            contentDescription = null,
+            tint               = Color(0xFF0A0A0F),
+            modifier           = Modifier.size(26.dp)
+        )
+    }
+}
+
+// ─── Side Nav Item — icon + label with animated glow ────────────────────────
 @Composable
 private fun NavBarItem(
     tab       : DashboardTab,
@@ -200,19 +273,25 @@ private fun NavBarItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.82f else if (isSelected) 1.08f else 1f,
+    val iconScale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.83f else if (isSelected) 1.12f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "nav_scale"
     )
 
-    val tint by animateColorAsState(
+    val itemTint by animateColorAsState(
         targetValue   = if (isSelected) accent else theme.text2,
         animationSpec = tween(200),
         label         = "nav_tint"
     )
 
-    Box(
+    val glowAlpha by animateFloatAsState(
+        targetValue   = if (isSelected) 0.15f else 0f,
+        animationSpec = tween(260),
+        label         = "nav_glow"
+    )
+
+    Column(
         modifier = modifier
             .fillMaxHeight()
             .clickable(
@@ -220,13 +299,41 @@ private fun NavBarItem(
                 indication        = null,
                 onClick           = onClick
             ),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector        = tab.icon,
-            contentDescription = null,
-            tint               = tint,
-            modifier           = Modifier.size(24.dp).scale(scale)
+        // Icon inside a glow-circle container
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .drawBehind {
+                    drawCircle(
+                        color  = accent.copy(alpha = glowAlpha),
+                        radius = 19.dp.toPx()
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = tab.icon,
+                contentDescription = null,
+                tint               = itemTint,
+                modifier           = Modifier
+                    .size(22.dp)
+                    .scale(iconScale)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text  = tab.label,
+            color = itemTint,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize      = 9.sp,
+                fontWeight    = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                letterSpacing = 0.6.sp
+            )
         )
     }
 }
