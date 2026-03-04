@@ -58,7 +58,14 @@ fun AppNavigation(
         }
 
         composable(Routes.DASHBOARD) {
-            DashboardScreen(onThemeChange = onThemeChange)
+            DashboardScreen(
+                onThemeChange = onThemeChange,
+                onLogout = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

@@ -29,7 +29,8 @@ import com.avonix.profitness.presentation.components.glassCard
 @Composable
 fun ProfileScreen(
     onThemeChange: (AppThemeState) -> Unit,
-    onNavigateToPerformance: () -> Unit = {}
+    onNavigateToPerformance: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -60,7 +61,7 @@ fun ProfileScreen(
             }
             item { WeeklyActivitySection(accent = accent, theme = theme) }
             item { TrophyGallery(accent = accent, theme = theme) }
-            item { SettingsSection(theme = theme, accent = accent) }
+            item { SettingsSection(theme = theme, accent = accent, onLogout = onLogout) }
         }
     }
 
@@ -603,7 +604,7 @@ private fun TrophyCard(trophy: TrophyData, theme: AppThemeState) {
 // ── Settings Section ──────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(theme: AppThemeState, accent: Color) {
+private fun SettingsSection(theme: AppThemeState, accent: Color, onLogout: () -> Unit = {}) {
     Column(modifier = Modifier.padding(20.dp, 40.dp, 20.dp, 0.dp)) {
         Text(
             "HESAP VE AYARLAR",
@@ -621,6 +622,7 @@ private fun SettingsSection(theme: AppThemeState, accent: Color) {
                 .clip(RoundedCornerShape(16.dp))
                 .background(accent.copy(0.08f))
                 .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
+                .clickable {}
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -656,11 +658,11 @@ private fun SettingsSection(theme: AppThemeState, accent: Color) {
                 .background(theme.bg1)
                 .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
         ) {
-            SettingsRow(Icons.Rounded.Notifications, "Bildirimler", "Aktif",   theme)
+            SettingsRow(Icons.Rounded.Notifications, "Bildirimler", "Aktif",   theme, onClick = {})
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(Icons.Rounded.Language,      "Dil",         "Türkçe",  theme)
+            SettingsRow(Icons.Rounded.Language,      "Dil",         "Türkçe",  theme, onClick = {})
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(Icons.Rounded.Security,      "Güvenlik",    "Yüksek",  theme)
+            SettingsRow(Icons.Rounded.Security,      "Güvenlik",    "Yüksek",  theme, onClick = {})
         }
 
         Spacer(Modifier.height(12.dp))
@@ -672,6 +674,7 @@ private fun SettingsSection(theme: AppThemeState, accent: Color) {
                 .clip(RoundedCornerShape(16.dp))
                 .background(CardCoral.copy(0.07f))
                 .border(1.dp, CardCoral.copy(0.2f), RoundedCornerShape(16.dp))
+                .clickable(onClick = onLogout)
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -704,14 +707,16 @@ private fun SettingsSection(theme: AppThemeState, accent: Color) {
 
 @Composable
 private fun SettingsRow(
-    icon  : ImageVector,
-    label : String,
-    sub   : String,
-    theme : AppThemeState
+    icon   : ImageVector,
+    label  : String,
+    sub    : String,
+    theme  : AppThemeState,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
