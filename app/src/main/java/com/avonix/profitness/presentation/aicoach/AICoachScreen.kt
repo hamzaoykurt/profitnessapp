@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,7 +49,7 @@ data class ChatMessage(
     val timestamp: String = LocalTime.now().format(MESSAGE_TIME_FORMATTER)
 )
 
-// ── Responses Logic (Preserved but UI simplified) ───────────────────────────
+// ── Responses Logic ──────────────────────────────────────────────────────────
 
 private val CANNED_RESPONSES: Map<String, List<String>> = mapOf(
     "beslenme" to listOf(
@@ -104,6 +105,9 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
     val scope = rememberCoroutineScope()
     val responseCounters = remember { mutableStateMapOf<String, Int>() }
 
+    // Track keyboard height to push input above it
+    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+
     fun sendMessage(text: String) {
         if (text.isBlank()) return
         messages.add(ChatMessage(id = System.currentTimeMillis().toString(), text = text, isUser = true))
@@ -138,10 +142,12 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
         }
 
         // ── Message Feed ─────────────────────────────────────────────────────
+        // Bottom content padding expands when keyboard is open so messages stay visible
+        val inputAreaHeight = 160.dp
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(0.dp, 120.dp, 0.dp, bottomPadding + 200.dp),
+            contentPadding = PaddingValues(0.dp, 120.dp, 0.dp, bottomPadding + inputAreaHeight + imeBottom),
             verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
             items(messages, key = { it.id }) { msg ->
@@ -153,17 +159,18 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
         }
 
         // ── Bottom Section: Floating Input ───────────────────────────────────
+        // imePadding + bottomPadding pushes input above keyboard and navbar
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(0.dp, 0.dp, 0.dp, bottomPadding + 24.dp)
+                .padding(bottom = bottomPadding + 16.dp + imeBottom)
                 .fillMaxWidth()
         ) {
-            // Quick Suggestion Chips (Minimalist)
+            // Quick Suggestion Chips
             LazyRow(
-                contentPadding = PaddingValues(24.dp, 0.dp, 24.dp, 0.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 16.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 items(QUICK_CHIPS) { chip ->
                     Box(
@@ -179,21 +186,18 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
                 }
             }
 
-            // Input Field (Floating Glass)
-            Box(modifier = Modifier.padding(24.dp, 0.dp)) {
-                SanctuaryInput(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    onSend = { sendMessage(inputText) },
-                    isTyping = isTyping
-                )
-            }
+            // Input Field — styled like bottom navbar
+            SanctuaryInput(
+                value = inputText,
+                onValueChange = { inputText = it },
+                onSend = { sendMessage(inputText) },
+                isTyping = isTyping
+            )
         }
     }
 }
 
 // ── Sub-Components: Sanctuary Aesthetic ──────────────────────────────────────
-
 
 @Composable
 private fun SanctuaryMessage(msg: ChatMessage) {
@@ -237,7 +241,7 @@ private fun SanctuaryMessage(msg: ChatMessage) {
                     letterSpacing = if (msg.isUser) 0.sp else 0.5.sp
                 )
             }
-            
+
             Spacer(Modifier.height(6.dp))
             Text(
                 text = msg.timestamp,
@@ -257,50 +261,114 @@ private fun SanctuaryInput(
     onSend: () -> Unit,
     isTyping: Boolean
 ) {
-    Box(
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(28.dp)
+
+    // Gradient border matching the navbar style
+    val borderBrush = Brush.horizontalGradient(
+        listOf(
+            accent.copy(alpha = 0.55f),
+            Color.White.copy(alpha = 0.10f),
+            accent.copy(alpha = 0.35f)
+        )
+    )
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(Surface1.copy(0.4f))
-            .border(1.dp, GlassBorder, RoundedCornerShape(32.dp))
-            .padding(20.dp, 0.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextField(
-                value = value,
-                onValueChange = onValueChange,
-                placeholder = { Text("Sanctuary'ye sor...", color = Mist, fontSize = 14.sp, fontWeight = FontWeight.Light) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedTextColor = Snow,
-                    unfocusedTextColor = Snow,
-                    selectionColors = TextSelectionColors(handleColor = MaterialTheme.colorScheme.primary, backgroundColor = MaterialTheme.colorScheme.primary.copy(0.2f)),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() })
+            .padding(horizontal = 12.dp)
+            .shadow(
+                elevation    = 24.dp,
+                shape        = shape,
+                clip         = false,
+                spotColor    = accent.copy(alpha = 0.30f),
+                ambientColor = Color.Black.copy(alpha = 0.60f)
             )
+            .clip(shape)
+            .drawWithCache {
+                // Same layered background as the navbar
+                val bgBase = theme.bg0.copy(alpha = 0.82f)
 
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(if (value.isNotBlank() && !isTyping) MaterialTheme.colorScheme.primary.copy(0.1f) else Color.Transparent)
-                    .clickable(enabled = value.isNotBlank() && !isTyping) { onSend() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.Send,
-                    null,
-                    tint = if (value.isNotBlank() && !isTyping) MaterialTheme.colorScheme.primary else TextMuted,
-                    modifier = Modifier.size(20.dp)
+                val topMirror = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.00f to Color.White.copy(alpha = 0.09f),
+                        0.30f to Color.White.copy(alpha = 0.02f),
+                        0.55f to Color.Transparent
+                    )
                 )
+
+                val accentBleed = Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0.00f to accent.copy(alpha = 0.18f),
+                        0.28f to accent.copy(alpha = 0.09f),
+                        0.58f to accent.copy(alpha = 0.03f),
+                        1.00f to Color.Transparent
+                    ),
+                    start = Offset(0f, size.height * 0.5f),
+                    end   = Offset(size.width, size.height * 0.5f)
+                )
+
+                val depthShadow = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.42f to Color.Transparent,
+                        1.00f to Color.Black.copy(alpha = 0.38f)
+                    )
+                )
+
+                onDrawBehind {
+                    drawRect(bgBase)
+                    drawRect(accentBleed)
+                    drawRect(depthShadow)
+                    drawRect(topMirror)
+                }
             }
+            .border(1.dp, borderBrush, shape)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text("Sanctuary'ye sor...", color = Mist.copy(0.7f), fontSize = 14.sp, fontWeight = FontWeight.Light) },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = Snow,
+                unfocusedTextColor = Snow,
+                selectionColors = TextSelectionColors(handleColor = accent, backgroundColor = accent.copy(0.2f)),
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { onSend() }),
+            singleLine = false,
+            maxLines = 4
+        )
+
+        // Send button with accent circle when active
+        val sendActive = value.isNotBlank() && !isTyping
+        Box(
+            modifier = Modifier
+                .padding(end = 4.dp)
+                .size(44.dp)
+                .clip(CircleShape)
+                .then(
+                    if (sendActive) Modifier
+                        .background(Brush.radialGradient(listOf(accent.copy(0.25f), accent.copy(0.08f))))
+                        .border(1.dp, accent.copy(0.45f), CircleShape)
+                    else Modifier.background(Color.Transparent)
+                )
+                .clickable(enabled = sendActive) { onSend() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.Send,
+                contentDescription = null,
+                tint = if (sendActive) accent else TextMuted.copy(0.5f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
