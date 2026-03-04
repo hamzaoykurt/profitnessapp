@@ -225,12 +225,12 @@ private fun NewsFeed(
 private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) -> Unit) {
     val pagerState = rememberPagerState { articles.size }
 
-    // Auto-scroll every 4 seconds
-    LaunchedEffect(pagerState.currentPage) {
-        if (articles.size > 1) {
+    // Auto-scroll: stable loop — LaunchedEffect(Unit) prevents restart on each page change
+    LaunchedEffect(Unit) {
+        while (articles.size > 1) {
             delay(4_000L)
             val next = (pagerState.currentPage + 1) % articles.size
-            pagerState.animateScrollToPage(next, animationSpec = tween(800, easing = FastOutSlowInEasing))
+            pagerState.animateScrollToPage(next)
         }
     }
 
@@ -239,7 +239,7 @@ private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) 
             state = pagerState,
             modifier = Modifier.fillMaxWidth().height(440.dp),
             contentPadding = PaddingValues(horizontal = 20.dp),
-            pageSpacing = 12.dp
+            pageSpacing = 16.dp
         ) { page ->
             MuseHeroCard(article = articles[page], onClick = { onArticleClick(articles[page]) })
         }
@@ -250,8 +250,8 @@ private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) 
 
 @Composable
 private fun MuseHeroCard(article: Article, onClick: () -> Unit) {
-    val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -302,7 +302,7 @@ private fun MuseHeroCard(article: Article, onClick: () -> Unit) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(24.dp)
+                .padding(start = 24.dp, end = 100.dp, bottom = 24.dp)
         ) {
             Text(
                 article.title.uppercase(),
@@ -326,17 +326,60 @@ private fun MuseHeroCard(article: Article, onClick: () -> Unit) {
                 }
             }
         }
-        // Read indicator
-        Box(
+        // Bottom-right action buttons
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(accent),
-            contentAlignment = Alignment.Center
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            // Share button
+            if (article.sourceUrl.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(0.55f))
+                        .clickable(onClick = {
+                            try {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "${article.title}\n${article.sourceUrl}")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, null))
+                            } catch (_: Exception) {}
+                        }),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(16.dp))
+                }
+                // Open source URL button
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(0.55f))
+                        .clickable(onClick = {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(article.sourceUrl)))
+                            } catch (_: Exception) {}
+                        }),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.OpenInNew, null, tint = Snow, modifier = Modifier.size(16.dp))
+                }
+            }
+            // Read article button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }
