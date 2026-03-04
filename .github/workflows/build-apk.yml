@@ -27,7 +27,9 @@ jobs:
       - name: Cache Gradle Configuration
         uses: actions/cache@v4
         with:
-          path: .gradle
+          path: |
+            .gradle
+            !.gradle/configuration-cache
           key: ${{ runner.os }}-gradle-conf-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
           restore-keys: |
             ${{ runner.os }}-gradle-conf-
