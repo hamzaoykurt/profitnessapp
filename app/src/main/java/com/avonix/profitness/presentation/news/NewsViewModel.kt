@@ -1,6 +1,8 @@
 package com.avonix.profitness.presentation.news
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +28,9 @@ data class ArticleDetailState(
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
-class NewsViewModel : ViewModel() {
+class NewsViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("news_prefs", Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow(NewsUiState())
     val uiState: StateFlow<NewsUiState> = _uiState.asStateFlow()
@@ -34,11 +38,16 @@ class NewsViewModel : ViewModel() {
     private val _detailState = MutableStateFlow<ArticleDetailState?>(null)
     val detailState: StateFlow<ArticleDetailState?> = _detailState.asStateFlow()
 
+    private val _savedIds = MutableStateFlow<Set<String>>(
+        prefs.getStringSet("saved_ids", emptySet()) ?: emptySet()
+    )
+    val savedIds: StateFlow<Set<String>> = _savedIds.asStateFlow()
+
     init { loadNews() }
 
     fun loadNews() {
         viewModelScope.launch {
-            _uiState.value = NewsUiState(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val articles = NewsRepository.fetchAllNews()
                 _uiState.value = NewsUiState(
@@ -54,6 +63,13 @@ class NewsViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    fun toggleSave(articleId: String) {
+        val updated = _savedIds.value.toMutableSet()
+        if (articleId in updated) updated.remove(articleId) else updated.add(articleId)
+        _savedIds.value = updated.toSet()
+        prefs.edit().putStringSet("saved_ids", updated).apply()
     }
 
     /** Open article and auto-translate if the app language is Turkish (articles fetched in EN). */

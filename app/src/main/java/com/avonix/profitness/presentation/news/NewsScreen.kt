@@ -6,11 +6,14 @@ import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -23,6 +26,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -41,8 +48,10 @@ import kotlinx.coroutines.delay
 // ── Categories ────────────────────────────────────────────────────────────────
 
 private val CATEGORIES = listOf(
-    "TÜMÜ", "BİLİM", "BESLENME", "ANTRENMAN", "SPOR", "ZİHİN", "YAŞAM", "TOPARLANMA", "TEKNOLOJİ"
+    "TÜMÜ", "KAYDEDILENLER", "BİLİM", "BESLENME", "ANTRENMAN", "SPOR", "ZİHİN", "YAŞAM", "TOPARLANMA", "TEKNOLOJİ"
 )
+
+private const val PAGE_SIZE = 20
 
 // ── Screen Entry ─────────────────────────────────────────────────────────────
 
@@ -50,6 +59,7 @@ private val CATEGORIES = listOf(
 fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
     val uiState by newsViewModel.uiState.collectAsState()
     val detailState by newsViewModel.detailState.collectAsState()
+    val savedIds by newsViewModel.savedIds.collectAsState()
     val theme = LocalAppTheme.current
     val appLang = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
 
@@ -71,13 +81,17 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
             if (detail != null) {
                 MuseReader(
                     detailState = detail,
-                    onBack = { newsViewModel.closeArticle() }
+                    isSaved = detail.article.id in savedIds,
+                    onBack = { newsViewModel.closeArticle() },
+                    onSave = { newsViewModel.toggleSave(detail.article.id) }
                 )
             } else {
                 NewsFeed(
                     uiState = uiState,
+                    savedIds = savedIds,
                     onArticleClick = { newsViewModel.openArticle(it, appLang) },
-                    onRefresh = { newsViewModel.refresh() }
+                    onRefresh = { newsViewModel.refresh() },
+                    onSave = { newsViewModel.toggleSave(it) }
                 )
             }
         }
@@ -89,14 +103,50 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
 @Composable
 private fun NewsFeed(
     uiState: NewsUiState,
+    savedIds: Set<String>,
     onArticleClick: (Article) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onSave: (String) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("TÜMÜ") }
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val listState = rememberLazyListState()
+
+    // Filtered article list based on category
+    val filteredArticles = remember(selectedCategory, uiState.articles, savedIds) {
+        when (selectedCategory) {
+            "TÜMÜ"          -> uiState.articles
+            "KAYDEDILENLER" -> uiState.articles.filter { it.id in savedIds }
+            else            -> uiState.articles.filter { it.category == selectedCategory }
+        }
+    }
+
+    // Pagination: reset visible count when category or article list changes
+    var visibleCount by remember(selectedCategory, uiState.lastUpdated) {
+        mutableIntStateOf(PAGE_SIZE)
+    }
+    val displayArticles = remember(filteredArticles, visibleCount) {
+        filteredArticles.take(visibleCount)
+    }
+    val hasMore = filteredArticles.size > visibleCount
+
+    // Infinite scroll trigger: load more when near the bottom
+    val isNearBottom by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val total = listState.layoutInfo.totalItemsCount
+            total > 0 && lastVisible >= total - 4
+        }
+    }
+    LaunchedEffect(isNearBottom) {
+        if (isNearBottom && !uiState.isLoading && hasMore) {
+            visibleCount += PAGE_SIZE
+        }
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 140.dp)
     ) {
@@ -149,7 +199,12 @@ private fun NewsFeed(
             if (uiState.isLoading) {
                 CarouselSkeleton()
             } else if (featured.isNotEmpty()) {
-                MuseAutoCarousel(articles = featured, onArticleClick = onArticleClick)
+                MuseAutoCarousel(
+                    articles = featured,
+                    savedIds = savedIds,
+                    onArticleClick = onArticleClick,
+                    onSave = onSave
+                )
             }
         }
 
@@ -190,31 +245,58 @@ private fun NewsFeed(
             )
         }
 
-        // ── Article feed ───────────────────────────────────────────────────────
-        val feed = if (selectedCategory == "TÜMÜ") uiState.articles
-                   else uiState.articles.filter { it.category == selectedCategory }
-
-        if (!uiState.isLoading && feed.isEmpty() && uiState.articles.isNotEmpty()) {
+        // ── Empty states ───────────────────────────────────────────────────────
+        if (!uiState.isLoading && filteredArticles.isEmpty()) {
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth().height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Rounded.SearchOff, null, tint = Snow.copy(0.3f), modifier = Modifier.size(40.dp))
+                        Icon(
+                            if (selectedCategory == "KAYDEDILENLER") Icons.Rounded.BookmarkBorder
+                            else Icons.Rounded.SearchOff,
+                            null,
+                            tint = Snow.copy(0.3f),
+                            modifier = Modifier.size(40.dp)
+                        )
                         Spacer(Modifier.height(12.dp))
-                        Text("Bu kategoride haber bulunamadı", color = Snow.copy(0.4f), fontSize = 13.sp)
+                        Text(
+                            if (selectedCategory == "KAYDEDILENLER") "Henüz kaydedilen haber yok"
+                            else "Bu kategoride haber bulunamadı",
+                            color = Snow.copy(0.4f),
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }
         }
 
-        itemsIndexed(feed) { index, article ->
+        // ── Article feed ───────────────────────────────────────────────────────
+        itemsIndexed(displayArticles) { index, article ->
             MuseArticleCard(
                 article = article,
                 isReversed = index % 2 != 0,
-                onClick = { onArticleClick(article) }
+                isSaved = article.id in savedIds,
+                onClick = { onArticleClick(article) },
+                onSave = { onSave(article.id) }
             )
+        }
+
+        // ── Load more indicator ────────────────────────────────────────────────
+        if (!uiState.isLoading && hasMore) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = accent,
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
         }
     }
 }
@@ -222,7 +304,12 @@ private fun NewsFeed(
 // ── Auto-Scrolling Carousel ───────────────────────────────────────────────────
 
 @Composable
-private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) -> Unit) {
+private fun MuseAutoCarousel(
+    articles: List<Article>,
+    savedIds: Set<String>,
+    onArticleClick: (Article) -> Unit,
+    onSave: (String) -> Unit
+) {
     val pagerState = rememberPagerState { articles.size }
 
     // Auto-scroll: stable loop — LaunchedEffect(Unit) prevents restart on each page change
@@ -241,7 +328,12 @@ private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) 
             contentPadding = PaddingValues(horizontal = 20.dp),
             pageSpacing = 16.dp
         ) { page ->
-            MuseHeroCard(article = articles[page], onClick = { onArticleClick(articles[page]) })
+            MuseHeroCard(
+                article = articles[page],
+                isSaved = articles[page].id in savedIds,
+                onClick = { onArticleClick(articles[page]) },
+                onSave = { onSave(articles[page].id) }
+            )
         }
         Spacer(Modifier.height(14.dp))
         PagerDotIndicator(pagerState = pagerState, count = articles.size)
@@ -249,7 +341,12 @@ private fun MuseAutoCarousel(articles: List<Article>, onArticleClick: (Article) 
 }
 
 @Composable
-private fun MuseHeroCard(article: Article, onClick: () -> Unit) {
+private fun MuseHeroCard(
+    article: Article,
+    isSaved: Boolean,
+    onClick: () -> Unit,
+    onSave: () -> Unit
+) {
     val accent = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     Box(
@@ -354,7 +451,25 @@ private fun MuseHeroCard(article: Article, onClick: () -> Unit) {
                 ) {
                     Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(16.dp))
                 }
-                // Open source URL button
+            }
+            // Bookmark button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (isSaved) accent.copy(0.25f) else Color.Black.copy(0.55f))
+                    .clickable(onClick = onSave),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                    null,
+                    tint = if (isSaved) accent else Snow,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            // Open source URL button
+            if (article.sourceUrl.isNotBlank()) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -412,81 +527,175 @@ private fun PagerDotIndicator(pagerState: PagerState, count: Int) {
     }
 }
 
-// ── Category Bar ──────────────────────────────────────────────────────────────
+// ── Category Bar — Nav-bar pill style ─────────────────────────────────────────
 
 @Composable
 private fun MuseCategoryBar(selected: String, onSelect: (String) -> Unit) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+
     LazyRow(
-        modifier = Modifier.padding(vertical = 24.dp),
+        modifier = Modifier.padding(vertical = 20.dp),
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(CATEGORIES) { cat ->
             val isSelected = cat == selected
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val chipScale by animateFloatAsState(
+                targetValue = if (isPressed) 0.90f else 1f,
+                animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+                label = "cat_scale"
+            )
             val bgColor by animateColorAsState(
-                if (isSelected) accent else theme.bg2,
+                if (isSelected) accent else theme.bg2.copy(alpha = 0.80f),
                 label = "cat_bg"
             )
             val textColor by animateColorAsState(
-                if (isSelected) Color.Black else Snow.copy(0.6f),
+                if (isSelected) Color.Black else theme.text2,
                 label = "cat_text"
             )
-            Box(
+
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .scale(chipScale)
+                    .clip(RoundedCornerShape(50))
                     .background(bgColor)
-                    .clickable { onSelect(cat) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .then(
+                        if (!isSelected) Modifier.border(0.5.dp, theme.stroke.copy(alpha = 0.55f), RoundedCornerShape(50))
+                        else Modifier
+                    )
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) { onSelect(cat) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
+                if (cat == "KAYDEDILENLER") {
+                    Icon(
+                        if (isSelected) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
                 Text(
                     cat,
                     color = textColor,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    letterSpacing = 1.5.sp
+                    letterSpacing = 1.sp
                 )
             }
         }
     }
 }
 
-// ── Article Card ──────────────────────────────────────────────────────────────
+// ── Article Card — Glass effect matching nav-bar theme ────────────────────────
 
 @Composable
-private fun MuseArticleCard(article: Article, isReversed: Boolean, onClick: () -> Unit) {
+private fun MuseArticleCard(
+    article: Article,
+    isReversed: Boolean,
+    isSaved: Boolean,
+    onClick: () -> Unit,
+    onSave: () -> Unit
+) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val borderBrush = Brush.horizontalGradient(
+        listOf(accent.copy(alpha = 0.28f), theme.stroke.copy(alpha = 0.06f), accent.copy(alpha = 0.12f))
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                clip = false,
+                spotColor = accent.copy(alpha = 0.18f),
+                ambientColor = Color.Black.copy(alpha = 0.40f)
+            )
             .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg1)
+            .drawWithCache {
+                val bgBase = theme.bg1
+                val accentBleed = Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0.00f to accent.copy(alpha = 0.10f),
+                        0.40f to accent.copy(alpha = 0.03f),
+                        1.00f to Color.Transparent
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width * 0.75f, size.height)
+                )
+                val depthShadow = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.55f to Color.Transparent,
+                        1.00f to Color.Black.copy(alpha = 0.20f)
+                    )
+                )
+                onDrawBehind {
+                    drawRect(bgBase)
+                    drawRect(accentBleed)
+                    drawRect(depthShadow)
+                }
+            }
+            .border(0.5.dp, borderBrush, RoundedCornerShape(20.dp))
             .clickable { onClick() }
     ) {
         Row(
-            modifier = Modifier.height(140.dp),
+            modifier = Modifier.height(130.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!isReversed) {
                 AsyncImage(
                     model = article.image,
                     contentDescription = null,
-                    modifier = Modifier.width(110.dp).fillMaxHeight().clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)),
+                    modifier = Modifier.width(110.dp).fillMaxHeight()
+                        .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)),
                     contentScale = ContentScale.Crop
                 )
-                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(16.dp), TextAlign.Start)
+                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(start = 14.dp, end = 36.dp, top = 14.dp, bottom = 14.dp), TextAlign.Start)
             } else {
-                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(16.dp), TextAlign.End)
+                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(start = 36.dp, end = 14.dp, top = 14.dp, bottom = 14.dp), TextAlign.End)
                 AsyncImage(
                     model = article.image,
                     contentDescription = null,
-                    modifier = Modifier.width(110.dp).fillMaxHeight().clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)),
+                    modifier = Modifier.width(110.dp).fillMaxHeight()
+                        .clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
+        }
+
+        // Bookmark button overlaid top corner
+        val saveInteractionSource = remember { MutableInteractionSource() }
+        Box(
+            modifier = Modifier
+                .align(if (!isReversed) Alignment.TopEnd else Alignment.TopStart)
+                .padding(8.dp)
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.48f))
+                .clickable(
+                    interactionSource = saveInteractionSource,
+                    indication = null,
+                    onClick = onSave
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                contentDescription = if (isSaved) "Kaydı kaldır" else "Kaydet",
+                tint = if (isSaved) accent else Snow.copy(0.70f),
+                modifier = Modifier.size(13.dp)
+            )
         }
     }
 }
@@ -580,7 +789,12 @@ private fun LiveDot() {
 // ── Article Reader ────────────────────────────────────────────────────────────
 
 @Composable
-private fun MuseReader(detailState: ArticleDetailState, onBack: () -> Unit) {
+private fun MuseReader(
+    detailState: ArticleDetailState,
+    isSaved: Boolean,
+    onBack: () -> Unit,
+    onSave: () -> Unit
+) {
     val article = detailState.article
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -781,23 +995,42 @@ private fun MuseReader(detailState: ArticleDetailState, onBack: () -> Unit) {
             ) {
                 Icon(Icons.Rounded.ArrowBack, null, tint = Snow, modifier = Modifier.size(20.dp))
             }
-            if (article.sourceUrl.isNotBlank()) {
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Bookmark button
                 IconButton(
-                    onClick = {
-                        try {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "${article.title}\n${article.sourceUrl}")
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, null))
-                        } catch (_: Exception) {}
-                    },
+                    onClick = onSave,
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(0.55f))
+                        .background(if (isSaved) accent.copy(0.25f) else Color.Black.copy(0.55f))
                 ) {
-                    Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(20.dp))
+                    Icon(
+                        if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                        null,
+                        tint = if (isSaved) accent else Snow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                // Share button
+                if (article.sourceUrl.isNotBlank()) {
+                    IconButton(
+                        onClick = {
+                            try {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "${article.title}\n${article.sourceUrl}")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, null))
+                            } catch (_: Exception) {}
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(0.55f))
+                    ) {
+                        Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
