@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
@@ -39,6 +41,7 @@ fun PremiumButton(
     isEnabled: Boolean = true,
     isLoading: Boolean = false
 ) {
+    val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -116,7 +119,10 @@ fun PremiumButton(
                 enabled           = isEnabled && !isLoading,
                 indication        = null,
                 interactionSource = interactionSource,
-                onClick           = onClick
+                onClick           = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
             )
             .padding(24.dp, 18.dp),
         contentAlignment = Alignment.Center
@@ -147,6 +153,7 @@ fun GhostButton(
     modifier: Modifier = Modifier,
     isEnabled: Boolean = true
 ) {
+    val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -160,7 +167,10 @@ fun GhostButton(
             .clip(RoundedCornerShape(18.dp))
             .background(Depth2)
             .border(1.dp, BorderSoft, RoundedCornerShape(18.dp))
-            .clickable(enabled = isEnabled, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .clickable(enabled = isEnabled, interactionSource = interactionSource, indication = null, onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            })
             .padding(24.dp, 16.dp),
         contentAlignment = Alignment.Center
     ) {

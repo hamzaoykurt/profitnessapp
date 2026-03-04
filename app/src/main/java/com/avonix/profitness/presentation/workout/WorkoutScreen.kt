@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
@@ -153,7 +155,25 @@ fun WorkoutScreen(
 
         // ── Header: Greeting + Progress Ring ─────────────────────────────
         item {
-            WorkoutDashboardHeader(currentDay, currentState.progress)
+            AnimatedContent(
+                targetState = selectedDayIdx,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally(tween(280, easing = FastOutSlowInEasing)) { it / 3 } +
+                            fadeIn(tween(220))) togetherWith
+                        (slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { -it / 4 } +
+                            fadeOut(tween(180)))
+                    } else {
+                        (slideInHorizontally(tween(280, easing = FastOutSlowInEasing)) { -it / 3 } +
+                            fadeIn(tween(220))) togetherWith
+                        (slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 4 } +
+                            fadeOut(tween(180)))
+                    }
+                },
+                label = "day_header"
+            ) { dayIdx ->
+                WorkoutDashboardHeader(dayStates[dayIdx].day, dayStates[dayIdx].progress)
+            }
         }
 
         // ── Day Selector Strip ────────────────────────────────────────────
@@ -420,6 +440,7 @@ private fun DaySelector(
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val theme    = LocalAppTheme.current
+    val haptic   = LocalHapticFeedback.current
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -450,7 +471,10 @@ private fun DaySelector(
                         else
                             Modifier.glassCard(accent, theme, RoundedCornerShape(16.dp))
                     )
-                    .clickable(iSource, null) { onSelect(idx) },
+                    .clickable(iSource, null) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSelect(idx)
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

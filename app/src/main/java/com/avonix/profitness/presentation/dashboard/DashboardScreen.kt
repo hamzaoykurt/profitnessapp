@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
@@ -59,7 +61,25 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
-        Crossfade(targetState = selectedTab, label = "tab_fade") { tab ->
+        AnimatedContent(
+            targetState  = selectedTab,
+            transitionSpec = {
+                val fromIdx = ALL_TABS.indexOf(initialState)
+                val toIdx   = ALL_TABS.indexOf(targetState)
+                if (toIdx > fromIdx) {
+                    (slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { it / 4 } +
+                        fadeIn(tween(260))) togetherWith
+                    (slideOutHorizontally(tween(280, easing = FastOutSlowInEasing)) { -it / 5 } +
+                        fadeOut(tween(200)))
+                } else {
+                    (slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { -it / 4 } +
+                        fadeIn(tween(260))) togetherWith
+                    (slideOutHorizontally(tween(280, easing = FastOutSlowInEasing)) { it / 5 } +
+                        fadeOut(tween(200)))
+                }
+            },
+            label = "tab_slide"
+        ) { tab ->
             when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(bottomPadding = contentPad)
                 DashboardTab.Program -> ProgramBuilderScreen()
@@ -240,6 +260,7 @@ private fun ExpandingNavItem(
     theme     : AppThemeState,
     onClick   : () -> Unit
 ) {
+    val haptic             = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed         by interactionSource.collectIsPressedAsState()
 
@@ -268,7 +289,10 @@ private fun ExpandingNavItem(
             .clickable(
                 interactionSource = interactionSource,
                 indication        = null,
-                onClick           = onClick
+                onClick           = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
             )
             .padding(4.dp),
         verticalAlignment     = Alignment.CenterVertically,
@@ -277,7 +301,7 @@ private fun ExpandingNavItem(
         // ── Icon circle ──────────────────────────────────────────────────────
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(46.dp)
                 .background(
                     color = if (isSelected) accent else theme.bg2.copy(alpha = 0.80f),
                     shape = CircleShape
@@ -292,7 +316,7 @@ private fun ExpandingNavItem(
                 imageVector        = tab.icon,
                 contentDescription = tab.label,
                 tint               = if (isSelected) theme.accent.onColor else theme.text2,
-                modifier           = Modifier.size(22.dp)
+                modifier           = Modifier.size(26.dp)
             )
         }
 
