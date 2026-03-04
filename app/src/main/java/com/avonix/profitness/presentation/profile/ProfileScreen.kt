@@ -28,9 +28,11 @@ import com.avonix.profitness.presentation.components.glassCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onThemeChange: (AppThemeState) -> Unit,
+    onThemeChange          : (AppThemeState) -> Unit,
     onNavigateToPerformance: () -> Unit = {},
-    onLogout: () -> Unit = {}
+    onLogout               : () -> Unit = {},
+    onEditProfile          : () -> Unit = {},
+    profile                : ProfileData = ProfileData()
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -45,11 +47,12 @@ fun ProfileScreen(
         ) {
             item {
                 ProfileHeroBanner(
-                    name            = "Hamza Oykurt",
-                    avatar          = "🏋️",
+                    name            = profile.name,
+                    avatar          = profile.avatar,
                     accent          = accent,
                     theme           = theme,
-                    onSettingsClick = { showSettings = true }
+                    onSettingsClick = { showSettings = true },
+                    onEditAvatar    = onEditProfile
                 )
             }
             item {
@@ -61,7 +64,15 @@ fun ProfileScreen(
             }
             item { WeeklyActivitySection(accent = accent, theme = theme) }
             item { TrophyGallery(accent = accent, theme = theme) }
-            item { SettingsSection(theme = theme, accent = accent, onLogout = onLogout) }
+            item {
+                SettingsSection(
+                    theme         = theme,
+                    accent        = accent,
+                    onLogout      = onLogout,
+                    onEditProfile = onEditProfile,
+                    profile       = profile
+                )
+            }
         }
     }
 
@@ -90,7 +101,8 @@ private fun ProfileHeroBanner(
     avatar         : String,
     accent         : Color,
     theme          : AppThemeState,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onEditAvatar   : () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         // Accent gradient wash at top
@@ -179,7 +191,8 @@ private fun ProfileHeroBanner(
                         .background(theme.bg0)
                         .padding(3.dp)
                         .clip(CircleShape)
-                        .background(accent),
+                        .background(accent)
+                        .clickable(onClick = onEditAvatar),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -604,7 +617,13 @@ private fun TrophyCard(trophy: TrophyData, theme: AppThemeState) {
 // ── Settings Section ──────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(theme: AppThemeState, accent: Color, onLogout: () -> Unit = {}) {
+private fun SettingsSection(
+    theme        : AppThemeState,
+    accent       : Color,
+    onLogout     : () -> Unit = {},
+    onEditProfile: () -> Unit = {},
+    profile      : ProfileData = ProfileData()
+) {
     Column(modifier = Modifier.padding(20.dp, 40.dp, 20.dp, 0.dp)) {
         Text(
             "HESAP VE AYARLAR",
@@ -615,37 +634,58 @@ private fun SettingsSection(theme: AppThemeState, accent: Color, onLogout: () ->
 
         Spacer(Modifier.height(16.dp))
 
-        // Edit profile card
+        // Profile summary card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(accent.copy(0.08f))
                 .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
-                .clickable {}
+                .clickable(onClick = onEditProfile)
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Mini avatar
             Box(
                 Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(0.15f)),
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.18f))
+                    .border(1.5.dp, accent.copy(0.45f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(20.dp))
+                Text(profile.avatar, fontSize = 22.sp)
             }
             Column(Modifier.weight(1f)) {
-                Text("PROFİLİ DÜZENLE", color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text("Ad, avatar ve hedeflerini güncelle", color = theme.text2, fontSize = 11.sp)
+                Text(
+                    profile.name.uppercase(),
+                    color      = accent,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    if (profile.goal.isNotEmpty()) profile.goal else "Profili düzenlemek için dokun",
+                    color    = theme.text2,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
             }
-            Icon(
-                Icons.Rounded.ChevronRight,
-                null,
-                tint     = accent.copy(0.5f),
-                modifier = Modifier.size(16.dp)
-            )
+            Box(
+                Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Edit,
+                    null,
+                    tint     = accent,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

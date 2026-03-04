@@ -31,7 +31,9 @@ import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.news.NewsScreen
+import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
+import com.avonix.profitness.presentation.profile.ProfileData
 import com.avonix.profitness.presentation.profile.ProfileScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
 import com.avonix.profitness.presentation.workout.WorkoutScreen
@@ -53,6 +55,8 @@ private val ALL_TABS = listOf(
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab           by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var showPerformanceDetail by remember { mutableStateOf(false) }
+    var showEditProfile       by remember { mutableStateOf(false) }
+    var profileData           by remember { mutableStateOf(ProfileData()) }
 
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -88,7 +92,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange           = onThemeChange,
                     onNavigateToPerformance = { showPerformanceDetail = true },
-                    onLogout                = onLogout
+                    onLogout                = onLogout,
+                    onEditProfile           = { showEditProfile = true },
+                    profile                 = profileData
                 )
             }
         }
@@ -114,6 +120,26 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             PerformanceDetailScreen(onBack = { showPerformanceDetail = false })
+        }
+
+        // ── Edit Profile Overlay ──────────────────────────────────────────
+        AnimatedVisibility(
+            visible = showEditProfile,
+            enter   = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec  = tween(360, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(300)),
+            exit    = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(300, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(250)),
+            modifier = Modifier.zIndex(200f)
+        ) {
+            EditProfileScreen(
+                profile = profileData,
+                onSave  = { profileData = it },
+                onBack  = { showEditProfile = false }
+            )
         }
     }
 }
