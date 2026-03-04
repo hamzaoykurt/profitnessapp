@@ -13,9 +13,13 @@ enum class AccentPreset(val color: Color, val label: String, val onColor: Color)
     BLUE  (Color(0xFF3B82F6), "BLUE",   Color.White),
 }
 
+enum class AppLanguage { TURKISH, ENGLISH }
+
 data class AppThemeState(
-    val isDark: Boolean = true,
-    val accent: AccentPreset = AccentPreset.LIME
+    val isDark              : Boolean      = true,
+    val accent              : AccentPreset = AccentPreset.LIME,
+    val language            : AppLanguage  = AppLanguage.TURKISH,
+    val notificationsEnabled: Boolean      = true
 )
 
 // Surface helpers — dark/light
@@ -30,7 +34,22 @@ val AppThemeState.text2:  Color get() = if (isDark) Color(0xFF5A5A72) else Color
 
 val LocalAppTheme = compositionLocalOf { AppThemeState() }
 
-val AppThemeStateSaver = Saver<AppThemeState, Pair<Boolean, Int>>(
-    save    = { Pair(it.isDark, it.accent.ordinal) },
-    restore = { AppThemeState(it.first, AccentPreset.entries[it.second]) }
+// Pack all settings into a Long to ensure Bundle compatibility
+val AppThemeStateSaver = Saver<AppThemeState, Long>(
+    save = { s ->
+        var v = 0L
+        if (s.isDark) v = v or 1L
+        v = v or (s.accent.ordinal.toLong() shl 1)
+        v = v or (s.language.ordinal.toLong() shl 5)
+        if (s.notificationsEnabled) v = v or (1L shl 8)
+        v
+    },
+    restore = { v ->
+        AppThemeState(
+            isDark               = (v and 1L) != 0L,
+            accent               = AccentPreset.entries[((v shr 1) and 0xF).toInt()],
+            language             = AppLanguage.entries[((v shr 5) and 0x7).toInt()],
+            notificationsEnabled = (v and (1L shl 8)) != 0L
+        )
+    }
 )
