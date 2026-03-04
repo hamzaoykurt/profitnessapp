@@ -25,6 +25,7 @@ data class Article(
     val sourceUrl: String = "",
     val sourceName: String = "",
     val publishedAt: String = "",
+    val publishedAtMs: Long = 0L,
     val isFeatured: Boolean = false
 )
 
@@ -33,17 +34,17 @@ data class Article(
 private data class FeedSource(val category: String, val url: String, val sourceName: String)
 
 private val RSS_FEEDS = listOf(
-    FeedSource("BİLİM",       "https://feeds.sciencedaily.com/sciencedaily/health_medicine/fitness",   "Science Daily"),
-    FeedSource("BİLİM",       "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml",  "Science Daily"),
-    FeedSource("BESLENME",    "https://www.healthline.com/rss/nutrition",                              "Healthline"),
-    FeedSource("BESLENME",    "https://examine.com/feed/",                                             "Examine"),
-    FeedSource("ANTRENMAN",   "https://www.self.com/feed/rss",                                         "SELF"),
-    FeedSource("SPOR",        "https://feeds.bbci.co.uk/sport/rss.xml",                               "BBC Sport"),
-    FeedSource("SPOR",        "https://www.menshealth.com/rss/all.xml",                               "Men's Health"),
-    FeedSource("ZİHİN",       "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",           "Science Daily"),
-    FeedSource("YAŞAM",       "https://www.healthline.com/rss/wellness",                               "Healthline"),
-    FeedSource("YAŞAM",       "https://www.medicalnewstoday.com/rss",                                  "Medical News Today"),
-    FeedSource("TOPARLANMA",  "https://www.healthline.com/rss/health-news",                            "Healthline"),
+    FeedSource("BİLİM",       "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml",      "Science Daily"),
+    FeedSource("BİLİM",       "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",             "Science Daily"),
+    FeedSource("BESLENME",    "https://www.healthline.com/rss/nutrition",                                  "Healthline"),
+    FeedSource("BESLENME",    "https://www.medicalnewstoday.com/rss",                                      "Medical News Today"),
+    FeedSource("ANTRENMAN",   "https://www.runnersworld.com/rss/all.xml",                                  "Runner's World"),
+    FeedSource("ANTRENMAN",   "https://www.self.com/feed/rss",                                             "SELF"),
+    FeedSource("SPOR",        "https://feeds.bbci.co.uk/sport/rss.xml",                                   "BBC Sport"),
+    FeedSource("SPOR",        "https://www.sportingnews.com/rss",                                         "Sporting News"),
+    FeedSource("ZİHİN",       "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",               "Science Daily"),
+    FeedSource("YAŞAM",       "https://www.healthline.com/rss/wellness",                                   "Healthline"),
+    FeedSource("TOPARLANMA",  "https://www.healthline.com/rss/health-news",                                "Healthline"),
     FeedSource("TEKNOLOJİ",   "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
 )
 
@@ -150,7 +151,7 @@ object NewsRepository {
             val deferreds = RSS_FEEDS.mapIndexed { idx, source ->
                 async {
                     try {
-                        fetchFeed(source, idx * 5)
+                        fetchFeed(source, idx * 15)
                     } catch (_: Exception) {
                         emptyList()
                     }
@@ -159,8 +160,10 @@ object NewsRepository {
             val results = deferreds.map { it.await() }.flatten()
             val unique = results.distinctBy { it.title.take(40) }
             if (unique.isEmpty()) return@coroutineScope DEMO_FALLBACK
-            // Mark first 5 featured
-            unique.mapIndexed { i, art -> if (i < 5) art.copy(isFeatured = true) else art }
+            // Sort newest first, then mark first 5 as featured
+            unique
+                .sortedByDescending { it.publishedAtMs }
+                .mapIndexed { i, art -> if (i < 5) art.copy(isFeatured = true) else art }
         }
     }
 
@@ -199,7 +202,7 @@ object NewsRepository {
         var itemIdx = 0
         var event = parser.eventType
 
-        while (event != XmlPullParser.END_DOCUMENT && itemIdx < 5) {
+        while (event != XmlPullParser.END_DOCUMENT && itemIdx < 15) {
             val rawTag = parser.name?.lowercase() ?: ""
             val localTag = rawTag.substringAfterLast(":")
 
@@ -248,6 +251,7 @@ object NewsRepository {
                             val cleanDesc = stripHtml(desc.toString()).trim()
                             val img = imageUrl.ifBlank { getFallback(category, idOffset + itemIdx) }
                             val wc = cleanDesc.split("\\s+".toRegex()).size
+                            val rawPubDate = pubDate.toString().trim()
                             items.add(Article(
                                 id = "${idOffset + itemIdx}",
                                 title = t.take(140),
@@ -258,7 +262,8 @@ object NewsRepository {
                                 content = cleanDesc,
                                 sourceUrl = link.toString().trim(),
                                 sourceName = sourceName,
-                                publishedAt = pubDate.toString().trim()
+                                publishedAt = rawPubDate,
+                                publishedAtMs = parseDateToMs(rawPubDate)
                             ))
                             itemIdx++
                         }
@@ -269,6 +274,27 @@ object NewsRepository {
             try { event = parser.next() } catch (_: Exception) { break }
         }
         return items
+    }
+
+    private fun parseDateToMs(dateStr: String): Long {
+        if (dateStr.isBlank()) return 0L
+        return try {
+            when {
+                dateStr.contains("T") -> {
+                    // ISO 8601: 2025-03-04T12:00:00Z
+                    val clean = dateStr.take(19).replace("T", " ")
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).also {
+                        it.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.parse(clean)?.time ?: 0L
+                }
+                else -> {
+                    // RFC 822: Tue, 04 Mar 2025 12:00:00 +0000 or GMT
+                    val normalized = dateStr.trim().replace("GMT", "+0000").replace("UTC", "+0000")
+                    java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", java.util.Locale.US)
+                        .parse(normalized)?.time ?: 0L
+                }
+            }
+        } catch (_: Exception) { 0L }
     }
 
     private fun getFallback(category: String, index: Int): String {
