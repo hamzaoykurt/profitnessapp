@@ -76,6 +76,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Grant Gradlew Permission
+        run: chmod +x gradlew
+
       - name: Build Debug Artifact
         run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true
 
