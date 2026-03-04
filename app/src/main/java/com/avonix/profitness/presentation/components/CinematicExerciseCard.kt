@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,7 @@ fun CinematicExerciseCard(
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
+    val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
     // Per-set completion state
     val setsDone = remember(exercise.id) { mutableStateListOf(*Array(exercise.sets) { false }) }
@@ -87,7 +90,10 @@ fun CinematicExerciseCard(
                 .fillMaxWidth()
                 .height(cardHeight)
                 .clip(RoundedCornerShape(24.dp))
-                .clickable { isExpanded = !isExpanded },
+                .clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    isExpanded = !isExpanded
+                },
             glowColor = if (isCompleted) accent else Color.Transparent
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -238,6 +244,7 @@ fun CinematicExerciseCard(
                                 // Complete button
                                 Button(
                                     onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         onComplete()
                                         isExpanded = false
                                     },
@@ -279,6 +286,7 @@ private fun SetRow(
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
     val bgAlpha by animateFloatAsState(
         if (isDone) 0.15f else 0.08f,
         tween(300),
@@ -290,7 +298,10 @@ private fun SetRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.5f))
-            .clickable { onToggle() }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onToggle()
+            }
             .padding(12.dp, 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -339,6 +350,7 @@ private fun RestTimerChip(
     }
 
     val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
     val chipColor = when {
         isDone    -> Amber
         isRunning -> accent
@@ -350,7 +362,10 @@ private fun RestTimerChip(
             .clip(RoundedCornerShape(10.dp))
             .background(chipColor.copy(0.15f))
             .border(1.dp, chipColor.copy(0.3f), RoundedCornerShape(10.dp))
-            .clickable { if (isRunning) onStop() else onStart() }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (isRunning) onStop() else onStart()
+            }
             .padding(12.dp, 8.dp)
             .then(if (isRunning) Modifier.scale(pulseScale.value) else Modifier),
         verticalAlignment = Alignment.CenterVertically
