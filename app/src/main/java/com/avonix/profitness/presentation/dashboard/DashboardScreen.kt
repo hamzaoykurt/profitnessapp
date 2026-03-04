@@ -14,12 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +52,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
     var selectedTab           by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var showPerformanceDetail by remember { mutableStateOf(false) }
 
-    val navBarHeight = 80.dp
+    val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
@@ -134,7 +134,7 @@ fun AppBackground(modifier: Modifier = Modifier) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR — Compact side tabs + prominent center AI FAB
+//  APP NAV BAR — Floating pill container with expanding selected item
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppNavBar(
@@ -145,84 +145,84 @@ fun AppNavBar(
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape  = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val shape  = RoundedCornerShape(50)
 
-    val leftTabs   = tabs.filter { it != DashboardTab.AICoach }.take(2)
-    val rightTabs  = tabs.filter { it != DashboardTab.AICoach }.drop(2)
-    val aiSelected = selected == DashboardTab.AICoach
-
-    // Pulsing glow animation for the center AI button when active
-    val infiniteTransition = rememberInfiniteTransition(label = "ai_pulse")
-    val aiGlowPulse by infiniteTransition.animateFloat(
-        initialValue  = 0.28f,
-        targetValue   = 0.60f,
-        animationSpec = infiniteRepeatable(
-            animation  = tween(1100, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ai_glow"
+    val borderBrush = Brush.horizontalGradient(
+        listOf(
+            accent.copy(alpha = 0.50f),
+            Color.White.copy(alpha = 0.10f),
+            accent.copy(alpha = 0.32f)
+        )
     )
-    val aiGlowAlpha = if (aiSelected) aiGlowPulse else 0.22f
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation    = 28.dp,
-                shape        = shape,
-                spotColor    = accent.copy(alpha = 0.30f),
-                ambientColor = Color.Black.copy(alpha = 0.65f)
-            )
-            .background(theme.bg2, shape)
             .navigationBarsPadding()
-            .height(80.dp)
-            .drawWithCache {
-                val rimBrush = Brush.horizontalGradient(
-                    listOf(Color.Transparent, Color.White.copy(0.15f), Color.Transparent)
-                )
-                onDrawBehind {
-                    // Subtle top rim shimmer
-                    drawRect(rimBrush, size = Size(size.width, 1.5.dp.toPx()))
-                }
-            }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .shadow(
+                    elevation    = 30.dp,
+                    shape        = shape,
+                    clip         = false,
+                    spotColor    = accent.copy(alpha = 0.35f),
+                    ambientColor = Color.Black.copy(alpha = 0.65f)
+                )
+                .clip(shape)
+                .drawWithCache {
+                    // ① Dense semi-transparent base — more opaque = "blurrier" feel
+                    val bgBase = theme.bg0.copy(alpha = 0.76f)
+
+                    // ② Top glass reflection — restrained highlight, preserves dark feel
+                    val topMirror = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.00f to Color.White.copy(alpha = 0.09f),
+                            0.30f to Color.White.copy(alpha = 0.02f),
+                            0.55f to Color.Transparent
+                        )
+                    )
+
+                    // ③ Accent bleed: linear left→right, spreads across full pill width
+                    val accentBleed = Brush.linearGradient(
+                        colorStops = arrayOf(
+                            0.00f to accent.copy(alpha = 0.18f),
+                            0.28f to accent.copy(alpha = 0.09f),
+                            0.58f to accent.copy(alpha = 0.03f),
+                            1.00f to Color.Transparent
+                        ),
+                        start = Offset(0f, size.height * 0.5f),
+                        end   = Offset(size.width, size.height * 0.5f)
+                    )
+
+                    // ④ Bottom inner shadow — adds weight/3D grounding
+                    val depthShadow = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.42f to Color.Transparent,
+                            1.00f to Color.Black.copy(alpha = 0.38f)
+                        )
+                    )
+
+                    onDrawBehind {
+                        drawRect(bgBase)
+                        drawRect(accentBleed)
+                        drawRect(depthShadow)
+                        drawRect(topMirror)
+                    }
+                }
+                .border(1.dp, borderBrush, shape)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
         ) {
-            leftTabs.forEach { tab ->
-                NavBarItem(
+            tabs.forEach { tab ->
+                ExpandingNavItem(
                     tab        = tab,
                     isSelected = tab == selected,
                     accent     = accent,
                     theme      = theme,
-                    modifier   = Modifier.weight(1f),
-                    onClick    = { onSelect(tab) }
-                )
-            }
-
-            // Center AI FAB slot — gets extra width weight for visual prominence
-            Box(
-                modifier         = Modifier.weight(1.4f),
-                contentAlignment = Alignment.Center
-            ) {
-                AiCenterButton(
-                    isSelected = aiSelected,
-                    accent     = accent,
-                    glowAlpha  = aiGlowAlpha,
-                    onClick    = { onSelect(DashboardTab.AICoach) }
-                )
-            }
-
-            rightTabs.forEach { tab ->
-                NavBarItem(
-                    tab        = tab,
-                    isSelected = tab == selected,
-                    accent     = accent,
-                    theme      = theme,
-                    modifier   = Modifier.weight(1f),
                     onClick    = { onSelect(tab) }
                 )
             }
@@ -230,131 +230,94 @@ fun AppNavBar(
     }
 }
 
-// ─── Center AI Floating Action Button ───────────────────────────────────────
+// ─── Expanding pill nav item ─────────────────────────────────────────────────
 @Composable
-private fun AiCenterButton(
-    isSelected: Boolean,
-    accent    : Color,
-    glowAlpha : Float,
-    onClick   : () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue   = when {
-            isPressed  -> 0.87f
-            isSelected -> 1.08f
-            else       -> 1f
-        },
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
-        label         = "ai_scale"
-    )
-
-    Box(
-        modifier = Modifier
-            .scale(scale)
-            .size(56.dp)
-            .shadow(
-                elevation    = if (isSelected) 20.dp else 8.dp,
-                shape        = CircleShape,
-                spotColor    = accent.copy(alpha = glowAlpha),
-                ambientColor = accent.copy(alpha = 0.12f)
-            )
-            .background(
-                brush = Brush.verticalGradient(listOf(LimeBright, Lime, LimeDim)),
-                shape = CircleShape
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication        = null,
-                onClick           = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector        = Icons.Rounded.AutoAwesome,
-            contentDescription = null,
-            tint               = Color(0xFF0A0A0F),
-            modifier           = Modifier.size(26.dp)
-        )
-    }
-}
-
-// ─── Side Nav Item — icon + label with animated glow ────────────────────────
-@Composable
-private fun NavBarItem(
+private fun ExpandingNavItem(
     tab       : DashboardTab,
     isSelected: Boolean,
     accent    : Color,
     theme     : AppThemeState,
-    modifier  : Modifier = Modifier,
     onClick   : () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed         by interactionSource.collectIsPressedAsState()
 
-    val iconScale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.83f else if (isSelected) 1.12f else 1f,
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.88f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "nav_scale"
+        label         = "nav_item_scale"
     )
 
-    val itemTint by animateColorAsState(
-        targetValue   = if (isSelected) accent else theme.text2,
-        animationSpec = tween(200),
-        label         = "nav_tint"
-    )
-
-    val glowAlpha by animateFloatAsState(
-        targetValue   = if (isSelected) 0.15f else 0f,
-        animationSpec = tween(260),
-        label         = "nav_glow"
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
+    Row(
+        modifier = Modifier
+            .scale(scale)
+            .clip(RoundedCornerShape(50))
+            .then(
+                if (isSelected) Modifier.background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to theme.bg3.copy(alpha = 0.72f),
+                            1.0f to theme.bg2.copy(alpha = 0.82f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(50)
+                )
+                else Modifier
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication        = null,
                 onClick           = onClick
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            )
+            .padding(4.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        // Icon inside a glow-circle container
+        // ── Icon circle ──────────────────────────────────────────────────────
         Box(
             modifier = Modifier
-                .size(38.dp)
-                .drawBehind {
-                    drawCircle(
-                        color  = accent.copy(alpha = glowAlpha),
-                        radius = 19.dp.toPx()
-                    )
-                },
+                .size(42.dp)
+                .background(
+                    color = if (isSelected) accent else theme.bg2.copy(alpha = 0.80f),
+                    shape = CircleShape
+                )
+                .then(
+                    if (!isSelected) Modifier.border(0.5.dp, theme.stroke.copy(alpha = 0.55f), CircleShape)
+                    else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = tab.icon,
-                contentDescription = null,
-                tint               = itemTint,
-                modifier           = Modifier
-                    .size(22.dp)
-                    .scale(iconScale)
+                contentDescription = tab.label,
+                tint               = if (isSelected) theme.accent.onColor else theme.text2,
+                modifier           = Modifier.size(22.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text  = tab.label,
-            color = itemTint,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize      = 9.sp,
-                fontWeight    = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                letterSpacing = 0.6.sp
+        // ── Animated label ───────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible = isSelected,
+            enter   = fadeIn(tween(200, delayMillis = 80)) +
+                      expandHorizontally(
+                          animationSpec = tween(280, easing = FastOutSlowInEasing),
+                          expandFrom    = Alignment.Start
+                      ),
+            exit    = fadeOut(tween(80)) +
+                      shrinkHorizontally(
+                          animationSpec = tween(220, easing = FastOutSlowInEasing),
+                          shrinkTowards = Alignment.Start
+                      )
+        ) {
+            Text(
+                text     = tab.label,
+                color    = theme.text0,
+                modifier = Modifier.padding(start = 8.dp, end = 10.dp),
+                style    = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight    = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
             )
-        )
+        }
     }
 }

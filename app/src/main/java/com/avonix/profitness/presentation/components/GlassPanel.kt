@@ -93,3 +93,57 @@ fun ForgeCardSmall(
     content: @Composable () -> Unit
 ) = ForgeCard(modifier, RoundedCornerShape(16.dp), glowColor, 10.dp, content)
 
+/**
+ * glassCard — Frosted-glass Modifier extension.
+ * Semi-transparent layered background (shimmer + accent bleed + depth shadow)
+ * with an accent-tinted border — matches the Bottom Navigation Bar's visual language.
+ */
+fun Modifier.glassCard(
+    accent: Color,
+    theme : AppThemeState,
+    shape : Shape = RoundedCornerShape(20.dp)
+): Modifier = this
+    .clip(shape)
+    .drawWithCache {
+        val base = theme.bg1.copy(alpha = 0.75f)
+        val shimmer = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0.00f to Color.White.copy(alpha = 0.09f),
+                0.32f to Color.White.copy(alpha = 0.02f),
+                0.55f to Color.Transparent
+            )
+        )
+        val accentBleed = Brush.linearGradient(
+            colorStops = arrayOf(
+                0.00f to accent.copy(alpha = 0.14f),
+                0.45f to accent.copy(alpha = 0.05f),
+                1.00f to Color.Transparent
+            ),
+            start = Offset(0f, size.height * 0.5f),
+            end   = Offset(size.width, size.height * 0.5f)
+        )
+        val depth = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0.48f to Color.Transparent,
+                1.00f to Color.Black.copy(alpha = 0.30f)
+            )
+        )
+        onDrawBehind {
+            drawRect(base)
+            drawRect(accentBleed)
+            drawRect(depth)
+            drawRect(shimmer)
+        }
+    }
+    .border(
+        width = 1.dp,
+        brush = Brush.linearGradient(
+            listOf(
+                accent.copy(alpha = 0.28f),
+                theme.stroke.copy(alpha = 0.45f),
+                accent.copy(alpha = 0.16f)
+            )
+        ),
+        shape = shape
+    )
+

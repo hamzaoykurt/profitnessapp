@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.ForgeCard
+import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -345,13 +346,13 @@ private fun TemplateBlueprintTile(template: TemplateProgram, onClick: () -> Unit
 
 @Composable
 private fun TemplateDetailDialog(template: TemplateProgram, onDismiss: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .background(Surface1)
-                .border(1.dp, SurfaceStroke, RoundedCornerShape(32.dp))
+                .glassCard(accent, theme, RoundedCornerShape(32.dp))
                 .padding(32.dp)
         ) {
             Column {

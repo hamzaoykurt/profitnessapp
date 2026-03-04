@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.glassCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -361,9 +362,7 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
         modifier = Modifier
             .width(130.dp)
             .height(160.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(theme.bg1)
-            .border(1.dp, metric.color.copy(0.2f), RoundedCornerShape(22.dp))
+            .glassCard(metric.color, theme, RoundedCornerShape(22.dp))
             .padding(16.dp)
     ) {
         Column(
@@ -453,9 +452,7 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .glassCard(accent, theme, RoundedCornerShape(20.dp))
                 .padding(20.dp, 20.dp, 20.dp, 14.dp)
         ) {
             Row(

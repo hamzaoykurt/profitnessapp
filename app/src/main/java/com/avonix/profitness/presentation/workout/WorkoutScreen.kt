@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
+import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
@@ -411,8 +412,9 @@ private fun DaySelector(
     selectedIndex: Int,
     onSelect: (Int) -> Unit
 ) {
-    val accent  = MaterialTheme.colorScheme.primary
+    val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
+    val theme    = LocalAppTheme.current
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -437,12 +439,11 @@ private fun DaySelector(
                     .scale(scale)
                     .width(52.dp)
                     .height(68.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) accent else Surface2)
                     .then(
-                        if (hasProgress && !isSelected)
-                            Modifier.border(1.dp, accent.copy(0.4f), RoundedCornerShape(16.dp))
-                        else Modifier
+                        if (isSelected)
+                            Modifier.clip(RoundedCornerShape(16.dp)).background(accent)
+                        else
+                            Modifier.glassCard(accent, theme, RoundedCornerShape(16.dp))
                     )
                     .clickable(iSource, null) { onSelect(idx) },
                 contentAlignment = Alignment.Center

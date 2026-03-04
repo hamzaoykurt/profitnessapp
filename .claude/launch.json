@@ -3,21 +3,21 @@
   "configurations": [
     {
       "name": "Build Debug APK",
-      "runtimeExecutable": "gradlew",
-      "runtimeArgs": ["assembleDebug"],
-      "port": 5037
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "gradlew.bat assembleDebug"],
+      "autoPort": true
     },
     {
       "name": "Build Release APK",
-      "runtimeExecutable": "gradlew",
-      "runtimeArgs": ["assembleRelease"],
-      "port": 5037
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "gradlew.bat assembleRelease"],
+      "autoPort": true
     },
     {
       "name": "Install & Run on Device",
-      "runtimeExecutable": "gradlew",
-      "runtimeArgs": ["installDebug"],
-      "port": 5037
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "gradlew.bat installDebug"],
+      "autoPort": true
     }
   ]
 }
