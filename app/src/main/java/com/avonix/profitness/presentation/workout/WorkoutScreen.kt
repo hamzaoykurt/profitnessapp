@@ -148,7 +148,7 @@ fun WorkoutScreen(
     ) {
         // ── Streak Banner ─────────────────────────────────────────────────
         item {
-            StreakBanner()
+            StreakBanner(dayStates = dayStates)
         }
 
         // ── Header: Greeting + Progress Ring ─────────────────────────────
@@ -213,9 +213,23 @@ fun WorkoutScreen(
 }
 
 // ── Streak Banner ─────────────────────────────────────────────────────────────
+// Seri hesaplama: listenin sonundan geriye doğru, o gün en az 1 egzersiz
+// tamamlandıysa veya dinlenme günüyse seri devam eder.
+private fun calculateStreak(dayStates: List<WorkoutDayState>): Int {
+    var streak = 0
+    for (ds in dayStates.reversed()) {
+        if (ds.day.isRestDay || ds.completedIds.isNotEmpty()) {
+            streak++
+        } else {
+            break
+        }
+    }
+    return streak
+}
+
 @Composable
-private fun StreakBanner() {
-    var streakDays by remember { mutableStateOf(5) }
+private fun StreakBanner(dayStates: List<WorkoutDayState>) {
+    val streakDays = remember(dayStates) { calculateStreak(dayStates) }
     val accent = MaterialTheme.colorScheme.primary
 
     Box(
@@ -237,27 +251,18 @@ private fun StreakBanner() {
         ) {
             Text("🔥", fontSize = 24.sp)
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column {
                 Text(
-                    "$streakDays Günlük Seri!",
+                    if (streakDays > 0) "$streakDays Günlük Seri!" else "Seri başlat!",
                     color = TextPrimary,
                     fontWeight = FontWeight.Black,
                     fontSize = 15.sp
                 )
                 Text(
-                    "Devam et, yavaşlama.",
+                    if (streakDays > 0) "Devam et, yavaşlama." else "Bugün bir hareket yap, serin başlasın.",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent)
-                    .padding(12.dp, 6.dp)
-                    .clickable { streakDays++ }
-            ) {
-                Text("DEVAM ›", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, fontSize = 11.sp)
             }
         }
     }
