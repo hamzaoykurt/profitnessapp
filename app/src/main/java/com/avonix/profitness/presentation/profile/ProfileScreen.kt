@@ -34,10 +34,13 @@ fun ProfileScreen(
     onEditProfile          : () -> Unit = {},
     profile                : ProfileData = ProfileData()
 ) {
-    val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val theme   = LocalAppTheme.current
+    val accent  = MaterialTheme.colorScheme.primary
+    val strings = theme.strings
 
-    var showSettings by remember { mutableStateOf(false) }
+    var showAppearance      by remember { mutableStateOf(false) }
+    var showNotifications   by remember { mutableStateOf(false) }
+    var showLanguagePicker  by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -51,7 +54,7 @@ fun ProfileScreen(
                     avatar          = profile.avatar,
                     accent          = accent,
                     theme           = theme,
-                    onSettingsClick = { showSettings = true },
+                    onSettingsClick = { showAppearance = true },
                     onEditAvatar    = onEditProfile
                 )
             }
@@ -59,34 +62,80 @@ fun ProfileScreen(
                 PerformanceMetricsSection(
                     accent             = accent,
                     theme              = theme,
+                    strings            = strings,
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
-            item { WeeklyActivitySection(accent = accent, theme = theme) }
-            item { TrophyGallery(accent = accent, theme = theme) }
+            item { WeeklyActivitySection(accent = accent, theme = theme, strings = strings) }
+            item { TrophyGallery(accent = accent, theme = theme, strings = strings) }
             item {
                 SettingsSection(
-                    theme         = theme,
-                    accent        = accent,
-                    onLogout      = onLogout,
-                    onEditProfile = onEditProfile,
-                    profile       = profile
+                    theme                = theme,
+                    accent               = accent,
+                    strings              = strings,
+                    onLogout             = onLogout,
+                    onEditProfile        = onEditProfile,
+                    onNotificationsClick = { showNotifications = true },
+                    onLanguageClick      = { showLanguagePicker = true },
+                    profile              = profile
                 )
             }
         }
     }
 
-    if (showSettings) {
+    // ── Appearance bottom sheet ───────────────────────────────────────────────
+    if (showAppearance) {
         ModalBottomSheet(
-            onDismissRequest = { showSettings = false },
+            onDismissRequest = { showAppearance = false },
             containerColor   = theme.bg1,
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             ThemeSettingsSheet(
                 current = theme,
+                strings = strings,
                 onApply = { newTheme ->
                     onThemeChange(newTheme)
-                    showSettings = false
+                    showAppearance = false
+                }
+            )
+        }
+    }
+
+    // ── Notifications bottom sheet ────────────────────────────────────────────
+    if (showNotifications) {
+        ModalBottomSheet(
+            onDismissRequest = { showNotifications = false },
+            containerColor   = theme.bg1,
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            NotificationsSettingsSheet(
+                currentEnabled = theme.notificationsEnabled,
+                strings        = strings,
+                accent         = accent,
+                theme          = theme,
+                onApply        = { enabled ->
+                    onThemeChange(theme.copy(notificationsEnabled = enabled))
+                    showNotifications = false
+                }
+            )
+        }
+    }
+
+    // ── Language picker bottom sheet ──────────────────────────────────────────
+    if (showLanguagePicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showLanguagePicker = false },
+            containerColor   = theme.bg1,
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            LanguageSettingsSheet(
+                current = theme.language,
+                strings = strings,
+                accent  = accent,
+                theme   = theme,
+                onApply = { lang ->
+                    onThemeChange(theme.copy(language = lang))
+                    showLanguagePicker = false
                 }
             )
         }
@@ -105,7 +154,6 @@ private fun ProfileHeroBanner(
     onEditAvatar   : () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        // Accent gradient wash at top
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -123,7 +171,6 @@ private fun ProfileHeroBanner(
                 .padding(top = 52.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top row: member ID + settings
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -161,9 +208,7 @@ private fun ProfileHeroBanner(
 
             Spacer(Modifier.height(24.dp))
 
-            // Avatar with accent ring + edit button
             Box(modifier = Modifier.size(110.dp)) {
-                // Accent ring (outer)
                 Box(
                     modifier = Modifier
                         .size(106.dp)
@@ -171,7 +216,6 @@ private fun ProfileHeroBanner(
                         .clip(CircleShape)
                         .background(accent)
                 )
-                // Inner bg circle (creates ring effect)
                 Box(
                     modifier = Modifier
                         .size(98.dp)
@@ -182,7 +226,6 @@ private fun ProfileHeroBanner(
                 ) {
                     Text(avatar, fontSize = 40.sp)
                 }
-                // Edit button (bottom-end)
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -206,7 +249,6 @@ private fun ProfileHeroBanner(
 
             Spacer(Modifier.height(14.dp))
 
-            // Name
             Text(
                 name.uppercase(),
                 color         = theme.text0,
@@ -217,18 +259,16 @@ private fun ProfileHeroBanner(
 
             Spacer(Modifier.height(8.dp))
 
-            // Badge chips
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 BadgeChip("★ GOLD", Color(0xFFFFD700))
-                BadgeChip("LVL 12 ELİTE", accent)
+                BadgeChip("LVL 12 ELITE", accent)
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // XP Progress bar
             Column(
                 modifier              = Modifier.width(220.dp),
                 horizontalAlignment   = Alignment.CenterHorizontally
@@ -304,20 +344,20 @@ private data class PerformanceMetric(
 private fun PerformanceMetricsSection(
     accent            : Color,
     theme             : AppThemeState,
+    strings           : AppStrings,
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = listOf(
-        PerformanceMetric("14",    "%",    "YAĞ ORANI",        Icons.Rounded.Speed,         CardCyan),
-        PerformanceMetric("72",    "kg",   "KAS KÜTLESİ",      Icons.Rounded.FitnessCenter, accent),
-        PerformanceMetric("127",   "gün",  "AKTİF GÜN",        Icons.Rounded.CalendarToday, CardPurple),
-        PerformanceMetric("12",    "seri", "GÜNLÜK SERİ",       Icons.Rounded.Whatshot,      CardCoral),
-        PerformanceMetric("48",    "ml",   "VO2 MAX",           Icons.Rounded.Air,           CardGreen),
-        PerformanceMetric("22.4",  "BMI",  "VÜCUT KİTLE İND.", Icons.Rounded.Star,          Color(0xFFFFD700)),
-        PerformanceMetric("8.420", "kcal", "HAFTALIK KALORİ",  Icons.Rounded.Favorite,      CardCoral),
+        PerformanceMetric("14",    "%",             strings.fatRatioLabel,       Icons.Rounded.Speed,         CardCyan),
+        PerformanceMetric("72",    "kg",            strings.muscleMassLabel,     Icons.Rounded.FitnessCenter, accent),
+        PerformanceMetric("127",   strings.unitDays,strings.activeDaysLabel,     Icons.Rounded.CalendarToday, CardPurple),
+        PerformanceMetric("12",    strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral),
+        PerformanceMetric("48",    "ml",            "VO2 MAX",                   Icons.Rounded.Air,           CardGreen),
+        PerformanceMetric("22.4",  "BMI",           strings.bmiLabel,            Icons.Rounded.Star,          Color(0xFFFFD700)),
+        PerformanceMetric("8.420", "kcal",          strings.weeklyCaloriesLabel, Icons.Rounded.Favorite,      CardCoral),
     )
 
     Column(modifier = Modifier.padding(top = 32.dp)) {
-        // Section header with "see all" arrow
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
@@ -326,12 +366,11 @@ private fun PerformanceMetricsSection(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                "PERFORMANS ÖLÇÜTLERİ",
+                strings.performanceMetrics,
                 style         = MaterialTheme.typography.labelSmall,
                 color         = accent,
                 letterSpacing = 2.sp
             )
-            // Navigate to detail arrow
             Row(
                 modifier          = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -342,7 +381,7 @@ private fun PerformanceMetricsSection(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    "Tümünü Gör",
+                    strings.seeAll,
                     color         = accent,
                     fontSize      = 10.sp,
                     fontWeight    = FontWeight.Bold
@@ -358,7 +397,6 @@ private fun PerformanceMetricsSection(
 
         Spacer(Modifier.height(14.dp))
 
-        // Horizontal scrollable cards
         LazyRow(
             contentPadding        = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -383,7 +421,6 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
             modifier            = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Icon
             Box(
                 modifier         = Modifier
                     .size(38.dp)
@@ -394,7 +431,6 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
                 Icon(metric.icon, null, tint = metric.color, modifier = Modifier.size(20.dp))
             }
 
-            // Value + unit
             Column {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
@@ -422,7 +458,6 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
                 )
             }
 
-            // Bottom accent bar
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -441,8 +476,7 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
 // ── Weekly Activity ───────────────────────────────────────────────────────────
 
 @Composable
-private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
-    val days       = listOf("Pzt", "Sal", "Çrş", "Per", "Cum", "Cmt", "Paz")
+private fun WeeklyActivitySection(accent: Color, theme: AppThemeState, strings: AppStrings) {
     val levels     = listOf(0.85f, 0.6f, 0.9f, 0.4f, 1.0f, 0.7f, 0f)
     val todayIndex = 4
 
@@ -453,12 +487,12 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                "HAFTALIK AKTİVİTE",
+                strings.weeklyActivity,
                 style         = MaterialTheme.typography.labelSmall,
                 color         = accent,
                 letterSpacing = 2.sp
             )
-            Text("Bu hafta 5 antrenman", color = theme.text2, fontSize = 10.sp)
+            Text(strings.thisWeekSummary, color = theme.text2, fontSize = 10.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -474,7 +508,7 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.Bottom
             ) {
-                days.forEachIndexed { i, day ->
+                strings.dayAbbreviations.forEachIndexed { i, day ->
                     val level   = levels[i]
                     val isToday = i == todayIndex
                     Column(
@@ -487,7 +521,6 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
                                 .height(72.dp),
                             contentAlignment = Alignment.BottomCenter
                         ) {
-                            // Background bar
                             Box(
                                 Modifier
                                     .fillMaxWidth()
@@ -495,7 +528,6 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState) {
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(theme.bg3)
                             )
-                            // Fill bar
                             if (level > 0f) {
                                 Box(
                                     Modifier
@@ -532,18 +564,18 @@ private data class TrophyData(
 )
 
 @Composable
-private fun TrophyGallery(accent: Color, theme: AppThemeState) {
+private fun TrophyGallery(accent: Color, theme: AppThemeState, strings: AppStrings) {
     val trophies = listOf(
-        TrophyData("🏆", "CHAMP",   "İlk Zafer",   Color(0xFFFFD700), Color(0xFFFF8C00)),
-        TrophyData("🎖️", "STREAK",  "7 Günlük",    Color(0xFF9B59FF), Color(0xFF6C35DE)),
-        TrophyData("🔥", "ELİTE",   "50 Antrenman", Color(0xFFF97316), Color(0xFFEF4444)),
-        TrophyData("💎", "LEGEND",  "Süper Üye",    Color(0xFF00E5D3), Color(0xFF3B82F6)),
-        TrophyData("🌟", "MASTER",  "Mükemmellik",  Color(0xFFEC4899), Color(0xFFA855F7)),
+        TrophyData("🏆", "CHAMP",          strings.trophyFirstWin,      Color(0xFFFFD700), Color(0xFFFF8C00)),
+        TrophyData("🎖️", "STREAK",         strings.trophySevenDay,      Color(0xFF9B59FF), Color(0xFF6C35DE)),
+        TrophyData("🔥", strings.trophyEliteLabel, strings.trophyFiftyWorkouts, Color(0xFFF97316), Color(0xFFEF4444)),
+        TrophyData("💎", "LEGEND",         strings.trophySuperMember,   Color(0xFF00E5D3), Color(0xFF3B82F6)),
+        TrophyData("🌟", "MASTER",         strings.trophyExcellence,    Color(0xFFEC4899), Color(0xFFA855F7)),
     )
 
     Column(modifier = Modifier.padding(top = 36.dp)) {
         Text(
-            "BAŞARILAR",
+            strings.achievements,
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp,
@@ -618,15 +650,18 @@ private fun TrophyCard(trophy: TrophyData, theme: AppThemeState) {
 
 @Composable
 private fun SettingsSection(
-    theme        : AppThemeState,
-    accent       : Color,
-    onLogout     : () -> Unit = {},
-    onEditProfile: () -> Unit = {},
-    profile      : ProfileData = ProfileData()
+    theme               : AppThemeState,
+    accent              : Color,
+    strings             : AppStrings,
+    onLogout            : () -> Unit = {},
+    onEditProfile       : () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    onLanguageClick     : () -> Unit = {},
+    profile             : ProfileData = ProfileData()
 ) {
     Column(modifier = Modifier.padding(20.dp, 40.dp, 20.dp, 0.dp)) {
         Text(
-            "HESAP VE AYARLAR",
+            strings.accountSettings,
             style         = MaterialTheme.typography.labelSmall,
             color         = theme.text1,
             letterSpacing = 2.sp
@@ -634,7 +669,6 @@ private fun SettingsSection(
 
         Spacer(Modifier.height(16.dp))
 
-        // Profile summary card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -646,7 +680,6 @@ private fun SettingsSection(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Mini avatar
             Box(
                 Modifier
                     .size(46.dp)
@@ -666,7 +699,7 @@ private fun SettingsSection(
                     letterSpacing = 0.5.sp
                 )
                 Text(
-                    if (profile.goal.isNotEmpty()) profile.goal else "Profili düzenlemek için dokun",
+                    if (profile.goal.isNotEmpty()) profile.goal else strings.editProfileHint,
                     color    = theme.text2,
                     fontSize = 11.sp,
                     maxLines = 1
@@ -690,7 +723,6 @@ private fun SettingsSection(
 
         Spacer(Modifier.height(12.dp))
 
-        // Grouped settings rows
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -698,16 +730,35 @@ private fun SettingsSection(
                 .background(theme.bg1)
                 .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
         ) {
-            SettingsRow(Icons.Rounded.Notifications, "Bildirimler", "Aktif",   theme, onClick = {})
+            val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive
+                              else strings.notificationsOff
+            SettingsRow(
+                icon    = Icons.Rounded.Notifications,
+                label   = strings.notificationsLabel,
+                sub     = notifStatus,
+                theme   = theme,
+                onClick = onNotificationsClick
+            )
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(Icons.Rounded.Language,      "Dil",         "Türkçe",  theme, onClick = {})
+            SettingsRow(
+                icon    = Icons.Rounded.Language,
+                label   = strings.languageLabel,
+                sub     = strings.currentLanguageName,
+                theme   = theme,
+                onClick = onLanguageClick
+            )
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(Icons.Rounded.Security,      "Güvenlik",    "Yüksek",  theme, onClick = {})
+            SettingsRow(
+                icon    = Icons.Rounded.Security,
+                label   = strings.securityLabel,
+                sub     = strings.securityValue,
+                theme   = theme,
+                onClick = {}
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Logout row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -729,7 +780,7 @@ private fun SettingsSection(
                 Icon(Icons.Rounded.Logout, null, tint = CardCoral, modifier = Modifier.size(20.dp))
             }
             Text(
-                "Çıkış Yap",
+                strings.logoutLabel,
                 color      = CardCoral,
                 fontSize   = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -778,11 +829,12 @@ private fun SettingsRow(
     }
 }
 
-// ── Theme Settings Sheet ──────────────────────────────────────────────────────
+// ── Appearance / Theme Settings Sheet ────────────────────────────────────────
 
 @Composable
 private fun ThemeSettingsSheet(
     current: AppThemeState,
+    strings: AppStrings,
     onApply: (AppThemeState) -> Unit
 ) {
     var isDark  by remember { mutableStateOf(current.isDark) }
@@ -796,16 +848,10 @@ private fun ThemeSettingsSheet(
             .padding(24.dp, 8.dp, 24.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Box(
-            Modifier
-                .width(40.dp).height(4.dp)
-                .clip(CircleShape)
-                .background(theme.text2.copy(0.4f))
-                .align(Alignment.CenterHorizontally)
-        )
+        SheetHandle(theme)
 
         Text(
-            "GÖRÜNÜM AYARLARI",
+            strings.appearanceTitle,
             style         = MaterialTheme.typography.labelSmall,
             color         = primary,
             letterSpacing = 3.sp,
@@ -813,7 +859,7 @@ private fun ThemeSettingsSheet(
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("MOD", color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text(strings.modeLabel, color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -822,7 +868,7 @@ private fun ThemeSettingsSheet(
                 horizontalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 ModeOption(
-                    label      = "KARANLIK",
+                    label      = strings.darkLabel,
                     icon       = Icons.Rounded.DarkMode,
                     isSelected = isDark,
                     accent     = primary,
@@ -831,7 +877,7 @@ private fun ThemeSettingsSheet(
                     onClick    = { isDark = true }
                 )
                 ModeOption(
-                    label      = "AYDINLIK",
+                    label      = strings.lightLabel,
                     icon       = Icons.Rounded.LightMode,
                     isSelected = !isDark,
                     accent     = primary,
@@ -843,7 +889,7 @@ private fun ThemeSettingsSheet(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("VURGU RENGİ", color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text(strings.accentColorLabel, color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -859,7 +905,7 @@ private fun ThemeSettingsSheet(
         }
 
         Button(
-            onClick  = { onApply(AppThemeState(isDark = isDark, accent = accent)) },
+            onClick  = { onApply(current.copy(isDark = isDark, accent = accent)) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape    = RoundedCornerShape(14.dp),
             colors   = ButtonDefaults.buttonColors(
@@ -867,8 +913,268 @@ private fun ThemeSettingsSheet(
                 contentColor   = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("UYGULA", fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
         }
+    }
+}
+
+// ── Notifications Settings Sheet ──────────────────────────────────────────────
+
+@Composable
+private fun NotificationsSettingsSheet(
+    currentEnabled: Boolean,
+    strings       : AppStrings,
+    accent        : Color,
+    theme         : AppThemeState,
+    onApply       : (Boolean) -> Unit
+) {
+    var workoutReminders by remember { mutableStateOf(currentEnabled) }
+    var progressUpdates  by remember { mutableStateOf(currentEnabled) }
+    var newsAlerts       by remember { mutableStateOf(currentEnabled) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp, 8.dp, 24.dp, 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        SheetHandle(theme)
+
+        Text(
+            strings.notifSheetTitle,
+            style         = MaterialTheme.typography.labelSmall,
+            color         = accent,
+            letterSpacing = 3.sp,
+            fontWeight    = FontWeight.Black
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(theme.bg2)
+                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+        ) {
+            NotifToggleRow(
+                label           = strings.workoutReminders,
+                icon            = Icons.Rounded.FitnessCenter,
+                checked         = workoutReminders,
+                accent          = accent,
+                theme           = theme,
+                onCheckedChange = { workoutReminders = it }
+            )
+            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            NotifToggleRow(
+                label           = strings.progressUpdates,
+                icon            = Icons.Rounded.ShowChart,
+                checked         = progressUpdates,
+                accent          = accent,
+                theme           = theme,
+                onCheckedChange = { progressUpdates = it }
+            )
+            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            NotifToggleRow(
+                label           = strings.newsAlerts,
+                icon            = Icons.Rounded.Newspaper,
+                checked         = newsAlerts,
+                accent          = accent,
+                theme           = theme,
+                onCheckedChange = { newsAlerts = it }
+            )
+        }
+
+        Button(
+            onClick  = { onApply(workoutReminders || progressUpdates || newsAlerts) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape    = RoundedCornerShape(14.dp),
+            colors   = ButtonDefaults.buttonColors(
+                containerColor = accent,
+                contentColor   = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun NotifToggleRow(
+    label          : String,
+    icon           : ImageVector,
+    checked        : Boolean,
+    accent         : Color,
+    theme          : AppThemeState,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(theme.bg3),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                null,
+                tint     = if (checked) accent else theme.text2,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Text(
+            label,
+            color      = theme.text0,
+            fontSize   = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier   = Modifier.weight(1f)
+        )
+        Switch(
+            checked         = checked,
+            onCheckedChange = onCheckedChange,
+            colors          = SwitchDefaults.colors(
+                checkedTrackColor   = accent,
+                checkedThumbColor   = Color.White,
+                uncheckedTrackColor = theme.bg3,
+                uncheckedThumbColor = theme.text2
+            )
+        )
+    }
+}
+
+// ── Language Settings Sheet ───────────────────────────────────────────────────
+
+@Composable
+private fun LanguageSettingsSheet(
+    current: AppLanguage,
+    strings: AppStrings,
+    accent : Color,
+    theme  : AppThemeState,
+    onApply: (AppLanguage) -> Unit
+) {
+    var selected by remember { mutableStateOf(current) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp, 8.dp, 24.dp, 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        SheetHandle(theme)
+
+        Text(
+            strings.langSheetTitle,
+            style         = MaterialTheme.typography.labelSmall,
+            color         = accent,
+            letterSpacing = 3.sp,
+            fontWeight    = FontWeight.Black
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(theme.bg2)
+                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+        ) {
+            LanguageOptionRow(
+                flag       = "🇹🇷",
+                name       = strings.turkishLabel,
+                isSelected = selected == AppLanguage.TURKISH,
+                accent     = accent,
+                theme      = theme,
+                onClick    = { selected = AppLanguage.TURKISH }
+            )
+            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            LanguageOptionRow(
+                flag       = "🇬🇧",
+                name       = strings.englishLabel,
+                isSelected = selected == AppLanguage.ENGLISH,
+                accent     = accent,
+                theme      = theme,
+                onClick    = { selected = AppLanguage.ENGLISH }
+            )
+        }
+
+        Button(
+            onClick  = { onApply(selected) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape    = RoundedCornerShape(14.dp),
+            colors   = ButtonDefaults.buttonColors(
+                containerColor = accent,
+                contentColor   = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun LanguageOptionRow(
+    flag      : String,
+    name      : String,
+    isSelected: Boolean,
+    accent    : Color,
+    theme     : AppThemeState,
+    onClick   : () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(if (isSelected) accent.copy(0.07f) else Color.Transparent)
+            .padding(16.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text(flag, fontSize = 24.sp)
+        Text(
+            name,
+            color      = if (isSelected) accent else theme.text0,
+            fontSize   = 15.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            modifier   = Modifier.weight(1f)
+        )
+        if (isSelected) {
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Check,
+                    null,
+                    tint     = Color.White,
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+@Composable
+private fun SheetHandle(theme: AppThemeState) {
+    Box(
+        modifier         = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .clip(CircleShape)
+                .background(theme.text2.copy(0.4f))
+        )
     }
 }
 
