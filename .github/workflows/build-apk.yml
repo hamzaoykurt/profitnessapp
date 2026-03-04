@@ -63,7 +63,9 @@ jobs:
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/setup-gradle@v3
-
+        with:
+          cache-disabled: true
+          
       - name: Get Next Version
         id: version
         run: |
@@ -82,7 +84,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug Artifact
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true
+        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache
 
       - name: Rename APK
         run: |
