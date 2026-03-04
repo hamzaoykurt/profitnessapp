@@ -48,7 +48,7 @@ private val ALL_TABS = listOf(
 )
 
 @Composable
-fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
+fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab           by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var showPerformanceDetail by remember { mutableStateOf(false) }
 
@@ -67,7 +67,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit) {
                 DashboardTab.News    -> NewsScreen()
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange           = onThemeChange,
-                    onNavigateToPerformance = { showPerformanceDetail = true }
+                    onNavigateToPerformance = { showPerformanceDetail = true },
+                    onLogout                = onLogout
                 )
             }
         }
