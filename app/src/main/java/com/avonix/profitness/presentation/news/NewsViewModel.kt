@@ -4,9 +4,12 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 // ── UI State ──────────────────────────────────────────────────────────────────
@@ -22,6 +25,7 @@ data class ArticleDetailState(
     val article: Article,
     val displayTitle: String = article.title,
     val displaySummary: String = article.summary,
+    val displayContent: String = article.content,
     val isTranslating: Boolean = false,
     val wasTranslated: Boolean = false
 )
@@ -48,6 +52,16 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     )
     val reportedIds: StateFlow<Set<String>> = _reportedIds.asStateFlow()
 
+    /**
+     * Card-level title translation cache. Populated eagerly in the background when Turkish
+     * mode is active, so card titles appear localised without any visible loading state.
+     * Key = Article.id, Value = translated title string.
+     */
+    private val _cardTranslations = MutableStateFlow<Map<String, String>>(emptyMap())
+    val cardTranslations: StateFlow<Map<String, String>> = _cardTranslations.asStateFlow()
+
+    private var cardTranslationJob: Job? = null
+
     init { loadNews() }
 
     fun loadNews() {
@@ -70,6 +84,29 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Eagerly translates article titles for feed cards in the background (Turkish only).
+     * Featured carousel articles are prioritised so they localise first.
+     * Each translated title is emitted individually to avoid blocking the UI.
+     */
+    fun startCardTranslations(articles: List<Article>, lang: String) {
+        if (lang != "tr" || articles.isEmpty()) return
+        cardTranslationJob?.cancel()
+        cardTranslationJob = viewModelScope.launch(Dispatchers.IO) {
+            val ordered = articles.sortedByDescending { it.isFeatured }
+            for (article in ordered) {
+                if (!isActive) break
+                if (article.id in _cardTranslations.value) continue
+                try {
+                    val translated = NewsRepository.translateText(article.title, "tr")
+                    if (translated.isNotBlank() && translated != article.title) {
+                        _cardTranslations.value = _cardTranslations.value + (article.id to translated)
+                    }
+                } catch (_: Exception) { /* skip silently */ }
+            }
+        }
+    }
+
     fun toggleSave(articleId: String) {
         val updated = _savedIds.value.toMutableSet()
         if (articleId in updated) updated.remove(articleId) else updated.add(articleId)
@@ -78,47 +115,62 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun reportArticle(articleId: String) {
-        // Mark as reported (persisted)
         val updatedReported = _reportedIds.value.toMutableSet().also { it.add(articleId) }
         _reportedIds.value = updatedReported.toSet()
         prefs.edit().putStringSet("reported_ids", updatedReported).apply()
 
-        // Also unsave it if it was bookmarked
         val updatedSaved = _savedIds.value.toMutableSet().also { it.remove(articleId) }
         _savedIds.value = updatedSaved.toSet()
         prefs.edit().putStringSet("saved_ids", updatedSaved).apply()
 
-        // Close the detail view
         _detailState.value = null
     }
 
-    /** Open article and auto-translate if the app language is Turkish (articles fetched in EN). */
+    /**
+     * Opens article detail. Translation runs silently in the background — no loading indicator
+     * is exposed to the UI layer. Card-level cached title is reused when available.
+     */
     fun openArticle(article: Article, appLanguage: String) {
-        _detailState.value = ArticleDetailState(article = article, isTranslating = true)
+        val cachedTitle = _cardTranslations.value[article.id]
+        _detailState.value = ArticleDetailState(
+            article = article,
+            displayTitle = cachedTitle ?: article.title
+        )
+
+        if (appLanguage != "tr") return
+
         viewModelScope.launch {
-            // Fetched RSS articles are primarily English – translate when app is Turkish
-            val shouldTranslate = appLanguage == "tr" && article.sourceUrl.isNotBlank()
-            if (shouldTranslate) {
-                try {
-                    val (translatedTitle, translatedSummary) =
-                        NewsRepository.translateArticle(article, "tr")
-                    _detailState.value = ArticleDetailState(
-                        article = article,
-                        displayTitle = translatedTitle.ifBlank { article.title },
-                        displaySummary = translatedSummary.ifBlank { article.summary },
-                        isTranslating = false,
-                        wasTranslated = translatedTitle != article.title
-                    )
-                } catch (_: Exception) {
-                    _detailState.value = ArticleDetailState(article = article, isTranslating = false)
+            try {
+                val resolvedTitle = cachedTitle
+                    ?: NewsRepository.translateText(article.title, "tr").ifBlank { article.title }
+
+                val resolvedSummary =
+                    NewsRepository.translateText(article.summary, "tr").ifBlank { article.summary }
+
+                val resolvedContent = if (article.content.isNotBlank() && article.content != article.summary) {
+                    NewsRepository.translateText(article.content.take(480), "tr").ifBlank { article.content }
+                } else article.content
+
+                _detailState.value = ArticleDetailState(
+                    article = article,
+                    displayTitle = resolvedTitle,
+                    displaySummary = resolvedSummary,
+                    displayContent = resolvedContent,
+                    wasTranslated = true
+                )
+
+                if (resolvedTitle != article.title) {
+                    _cardTranslations.value = _cardTranslations.value + (article.id to resolvedTitle)
                 }
-            } else {
-                _detailState.value = ArticleDetailState(article = article, isTranslating = false)
-            }
+            } catch (_: Exception) { /* keep initial state */ }
         }
     }
 
     fun closeArticle() { _detailState.value = null }
 
-    fun refresh() { loadNews() }
+    fun refresh() {
+        cardTranslationJob?.cancel()
+        _cardTranslations.value = emptyMap()
+        loadNews()
+    }
 }

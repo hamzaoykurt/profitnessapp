@@ -58,15 +58,22 @@ private const val PAGE_SIZE = 20
 
 @Composable
 fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
-    val uiState       by newsViewModel.uiState.collectAsState()
-    val detailState   by newsViewModel.detailState.collectAsState()
-    val savedIds      by newsViewModel.savedIds.collectAsState()
-    val reportedIds   by newsViewModel.reportedIds.collectAsState()
-    val theme         = LocalAppTheme.current
-    val strings       = theme.strings
-    val appLang       = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
+    val uiState          by newsViewModel.uiState.collectAsState()
+    val detailState      by newsViewModel.detailState.collectAsState()
+    val savedIds         by newsViewModel.savedIds.collectAsState()
+    val reportedIds      by newsViewModel.reportedIds.collectAsState()
+    val cardTranslations by newsViewModel.cardTranslations.collectAsState()
+    val theme            = LocalAppTheme.current
+    val strings          = theme.strings
+    val appLang          = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
     val snackbarHost     = remember { SnackbarHostState() }
     val initialReported  = remember { reportedIds.size }
+
+    // Trigger card-level title translations as soon as articles are ready.
+    // Featured articles are prioritised inside startCardTranslations.
+    LaunchedEffect(uiState.articles, appLang) {
+        newsViewModel.startCardTranslations(uiState.articles, appLang)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -96,12 +103,13 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
                 )
             } else {
                 NewsFeed(
-                    uiState       = uiState,
-                    savedIds      = savedIds,
-                    reportedIds   = reportedIds,
-                    onArticleClick = { newsViewModel.openArticle(it, appLang) },
-                    onRefresh     = { newsViewModel.refresh() },
-                    onSave        = { newsViewModel.toggleSave(it) }
+                    uiState          = uiState,
+                    savedIds         = savedIds,
+                    reportedIds      = reportedIds,
+                    cardTranslations = cardTranslations,
+                    onArticleClick   = { newsViewModel.openArticle(it, appLang) },
+                    onRefresh        = { newsViewModel.refresh() },
+                    onSave           = { newsViewModel.toggleSave(it) }
                 )
             }
         }
@@ -139,6 +147,7 @@ private fun NewsFeed(
     uiState: NewsUiState,
     savedIds: Set<String>,
     reportedIds: Set<String>,
+    cardTranslations: Map<String, String>,
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
     onSave: (String) -> Unit
@@ -237,10 +246,11 @@ private fun NewsFeed(
                 CarouselSkeleton()
             } else if (featured.isNotEmpty()) {
                 MuseAutoCarousel(
-                    articles = featured,
-                    savedIds = savedIds,
-                    onArticleClick = onArticleClick,
-                    onSave = onSave
+                    articles         = featured,
+                    savedIds         = savedIds,
+                    cardTranslations = cardTranslations,
+                    onArticleClick   = onArticleClick,
+                    onSave           = onSave
                 )
             }
         }
@@ -313,11 +323,12 @@ private fun NewsFeed(
         // ── Article feed ───────────────────────────────────────────────────────
         itemsIndexed(displayArticles) { index, article ->
             MuseArticleCard(
-                article = article,
-                isReversed = index % 2 != 0,
-                isSaved = article.id in savedIds,
-                onClick = { onArticleClick(article) },
-                onSave = { onSave(article.id) }
+                article      = article,
+                displayTitle = cardTranslations[article.id] ?: article.title,
+                isReversed   = index % 2 != 0,
+                isSaved      = article.id in savedIds,
+                onClick      = { onArticleClick(article) },
+                onSave       = { onSave(article.id) }
             )
         }
 
@@ -345,6 +356,7 @@ private fun NewsFeed(
 private fun MuseAutoCarousel(
     articles: List<Article>,
     savedIds: Set<String>,
+    cardTranslations: Map<String, String>,
     onArticleClick: (Article) -> Unit,
     onSave: (String) -> Unit
 ) {
@@ -367,10 +379,11 @@ private fun MuseAutoCarousel(
             pageSpacing = 16.dp
         ) { page ->
             MuseHeroCard(
-                article = articles[page],
-                isSaved = articles[page].id in savedIds,
-                onClick = { onArticleClick(articles[page]) },
-                onSave = { onSave(articles[page].id) }
+                article      = articles[page],
+                displayTitle = cardTranslations[articles[page].id] ?: articles[page].title,
+                isSaved      = articles[page].id in savedIds,
+                onClick      = { onArticleClick(articles[page]) },
+                onSave       = { onSave(articles[page].id) }
             )
         }
         Spacer(Modifier.height(14.dp))
@@ -381,6 +394,7 @@ private fun MuseAutoCarousel(
 @Composable
 private fun MuseHeroCard(
     article: Article,
+    displayTitle: String,
     isSaved: Boolean,
     onClick: () -> Unit,
     onSave: () -> Unit
@@ -440,7 +454,7 @@ private fun MuseHeroCard(
                 .padding(start = 24.dp, end = 100.dp, bottom = 24.dp)
         ) {
             Text(
-                article.title.uppercase(),
+                displayTitle.uppercase(),
                 color = Snow,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
@@ -643,6 +657,7 @@ private fun MuseCategoryBar(
 @Composable
 private fun MuseArticleCard(
     article: Article,
+    displayTitle: String,
     isReversed: Boolean,
     isSaved: Boolean,
     onClick: () -> Unit,
@@ -704,9 +719,9 @@ private fun MuseArticleCard(
                         .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)),
                     contentScale = ContentScale.Crop
                 )
-                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(start = 14.dp, end = 36.dp, top = 14.dp, bottom = 14.dp), TextAlign.Start)
+                ArticleCardText(article, displayTitle, accent, theme, Modifier.weight(1f).padding(start = 14.dp, end = 36.dp, top = 14.dp, bottom = 14.dp), TextAlign.Start)
             } else {
-                ArticleCardText(article, accent, theme, Modifier.weight(1f).padding(start = 36.dp, end = 14.dp, top = 14.dp, bottom = 14.dp), TextAlign.End)
+                ArticleCardText(article, displayTitle, accent, theme, Modifier.weight(1f).padding(start = 36.dp, end = 14.dp, top = 14.dp, bottom = 14.dp), TextAlign.End)
                 AsyncImage(
                     model = article.image,
                     contentDescription = null,
@@ -746,6 +761,7 @@ private fun MuseArticleCard(
 @Composable
 private fun ArticleCardText(
     article: Article,
+    displayTitle: String,
     accent: Color,
     theme: AppThemeState,
     modifier: Modifier,
@@ -766,7 +782,7 @@ private fun ArticleCardText(
         Spacer(Modifier.height(6.dp))
         // Title
         Text(
-            article.title,
+            displayTitle,
             color = Snow,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
@@ -919,13 +935,6 @@ private fun MuseReader(
                 }
             }
 
-            // ── Translation badge ──────────────────────────────────────────────
-            if (detailState.isTranslating) {
-                TranslationBadge(isLoading = true)
-            } else if (detailState.wasTranslated) {
-                TranslationBadge(isLoading = false)
-            }
-
             // ── AI Summary box ─────────────────────────────────────────────────
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
                 // Summary card
@@ -960,11 +969,11 @@ private fun MuseReader(
                 Spacer(Modifier.height(28.dp))
 
                 // Full content
-                if (article.content.isNotBlank() && article.content != article.summary) {
+                if (detailState.displayContent.isNotBlank() && detailState.displayContent != article.summary) {
                     Text(strings.contentLabel, color = theme.text2, fontSize = 9.sp, letterSpacing = 3.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        article.content,
+                        detailState.displayContent,
                         color = Snow.copy(0.75f),
                         fontSize = 16.sp,
                         lineHeight = 26.sp,
@@ -1182,39 +1191,6 @@ private fun ReportDialog(
             }
         }
     )
-}
-
-// ── Translation Badge ─────────────────────────────────────────────────────────
-
-@Composable
-private fun TranslationBadge(isLoading: Boolean) {
-    val theme   = LocalAppTheme.current
-    val strings = theme.strings
-    val accent  = MaterialTheme.colorScheme.primary
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isLoading) theme.bg2 else accent.copy(0.1f))
-            .border(1.dp, accent.copy(0.2f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (isLoading) {
-            val alpha by rememberInfiniteTransition(label = "tl").animateFloat(
-                initialValue = 0.4f, targetValue = 1f,
-                animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-                label = "tl_alpha"
-            )
-            Icon(Icons.Rounded.Translate, null, tint = accent.copy(alpha), modifier = Modifier.size(14.dp))
-            Text(strings.translatingLabel, color = accent.copy(alpha), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-        } else {
-            Icon(Icons.Rounded.Translate, null, tint = accent, modifier = Modifier.size(14.dp))
-            Text(strings.translatedLabel, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-        }
-    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
