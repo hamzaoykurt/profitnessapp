@@ -43,6 +43,11 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     )
     val savedIds: StateFlow<Set<String>> = _savedIds.asStateFlow()
 
+    private val _reportedIds = MutableStateFlow<Set<String>>(
+        prefs.getStringSet("reported_ids", emptySet()) ?: emptySet()
+    )
+    val reportedIds: StateFlow<Set<String>> = _reportedIds.asStateFlow()
+
     init { loadNews() }
 
     fun loadNews() {
@@ -70,6 +75,21 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         if (articleId in updated) updated.remove(articleId) else updated.add(articleId)
         _savedIds.value = updated.toSet()
         prefs.edit().putStringSet("saved_ids", updated).apply()
+    }
+
+    fun reportArticle(articleId: String) {
+        // Mark as reported (persisted)
+        val updatedReported = _reportedIds.value.toMutableSet().also { it.add(articleId) }
+        _reportedIds.value = updatedReported.toSet()
+        prefs.edit().putStringSet("reported_ids", updatedReported).apply()
+
+        // Also unsave it if it was bookmarked
+        val updatedSaved = _savedIds.value.toMutableSet().also { it.remove(articleId) }
+        _savedIds.value = updatedSaved.toSet()
+        prefs.edit().putStringSet("saved_ids", updatedSaved).apply()
+
+        // Close the detail view
+        _detailState.value = null
     }
 
     /** Open article and auto-translate if the app language is Turkish (articles fetched in EN). */

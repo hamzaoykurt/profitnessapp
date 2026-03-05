@@ -58,11 +58,15 @@ private const val PAGE_SIZE = 20
 
 @Composable
 fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
-    val uiState by newsViewModel.uiState.collectAsState()
-    val detailState by newsViewModel.detailState.collectAsState()
-    val savedIds by newsViewModel.savedIds.collectAsState()
-    val theme = LocalAppTheme.current
-    val appLang = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
+    val uiState       by newsViewModel.uiState.collectAsState()
+    val detailState   by newsViewModel.detailState.collectAsState()
+    val savedIds      by newsViewModel.savedIds.collectAsState()
+    val reportedIds   by newsViewModel.reportedIds.collectAsState()
+    val theme         = LocalAppTheme.current
+    val strings       = theme.strings
+    val appLang       = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
+    val snackbarHost     = remember { SnackbarHostState() }
+    val initialReported  = remember { reportedIds.size }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -84,17 +88,46 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
                     detailState = detail,
                     isSaved = detail.article.id in savedIds,
                     onBack = { newsViewModel.closeArticle() },
-                    onSave = { newsViewModel.toggleSave(detail.article.id) }
+                    onSave = { newsViewModel.toggleSave(detail.article.id) },
+                    onReport = {
+                        newsViewModel.reportArticle(detail.article.id)
+                        snackbarHost.currentSnackbarData?.dismiss()
+                    }
                 )
             } else {
                 NewsFeed(
-                    uiState = uiState,
-                    savedIds = savedIds,
+                    uiState       = uiState,
+                    savedIds      = savedIds,
+                    reportedIds   = reportedIds,
                     onArticleClick = { newsViewModel.openArticle(it, appLang) },
-                    onRefresh = { newsViewModel.refresh() },
-                    onSave = { newsViewModel.toggleSave(it) }
+                    onRefresh     = { newsViewModel.refresh() },
+                    onSave        = { newsViewModel.toggleSave(it) }
                 )
             }
+        }
+
+        // Snackbar shown after a report action
+        SnackbarHost(
+            hostState = snackbarHost,
+            modifier  = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
+            snackbar  = { data ->
+                Snackbar(
+                    snackbarData    = data,
+                    containerColor  = theme.bg2,
+                    contentColor    = Snow,
+                    shape           = RoundedCornerShape(14.dp)
+                )
+            }
+        )
+    }
+
+    // Show snackbar only when a new report is added during this session
+    LaunchedEffect(reportedIds.size) {
+        if (reportedIds.size > initialReported) {
+            snackbarHost.showSnackbar(
+                message  = strings.reportSuccessMsg,
+                duration = SnackbarDuration.Short
+            )
         }
     }
 }
@@ -105,6 +138,7 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
 private fun NewsFeed(
     uiState: NewsUiState,
     savedIds: Set<String>,
+    reportedIds: Set<String>,
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
     onSave: (String) -> Unit
@@ -115,12 +149,13 @@ private fun NewsFeed(
     val accent  = MaterialTheme.colorScheme.primary
     val listState = rememberLazyListState()
 
-    // Filtered article list based on category
-    val filteredArticles = remember(selectedCategory, uiState.articles, savedIds) {
+    // Filtered article list: exclude reported, then apply category filter
+    val filteredArticles = remember(selectedCategory, uiState.articles, savedIds, reportedIds) {
+        val nonReported = uiState.articles.filter { it.id !in reportedIds }
         when (selectedCategory) {
-            "TÜMÜ"          -> uiState.articles
-            "KAYDEDILENLER" -> uiState.articles.filter { it.id in savedIds }
-            else            -> uiState.articles.filter { it.category == selectedCategory }
+            "TÜMÜ"          -> nonReported
+            "KAYDEDILENLER" -> nonReported.filter { it.id in savedIds }
+            else            -> nonReported.filter { it.category == selectedCategory }
         }
     }
 
@@ -801,7 +836,8 @@ private fun MuseReader(
     detailState: ArticleDetailState,
     isSaved: Boolean,
     onBack: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onReport: () -> Unit
 ) {
     val article     = detailState.article
     val context     = LocalContext.current
@@ -809,6 +845,7 @@ private fun MuseReader(
     val theme       = LocalAppTheme.current
     val strings     = theme.strings
     val accent      = MaterialTheme.colorScheme.primary
+    var showReportDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -1041,9 +1078,110 @@ private fun MuseReader(
                         Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(20.dp))
                     }
                 }
+
+                // Report button
+                IconButton(
+                    onClick = { showReportDialog = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(0.55f))
+                ) {
+                    Icon(Icons.Rounded.Flag, null, tint = Snow.copy(0.70f), modifier = Modifier.size(20.dp))
+                }
             }
         }
+
+        // Report dialog
+        if (showReportDialog) {
+            ReportDialog(
+                strings  = strings,
+                onDismiss = { showReportDialog = false },
+                onConfirm = {
+                    showReportDialog = false
+                    onReport()
+                }
+            )
+        }
     }
+}
+
+// ── Report Dialog ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ReportDialog(
+    strings: AppStrings,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    var selectedReason by remember { mutableStateOf<String?>(null) }
+
+    val reasons = listOf(
+        strings.reportReasonMisinfo,
+        strings.reportReasonSpam,
+        strings.reportReasonInappropriate
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor  = theme.bg1,
+        shape           = RoundedCornerShape(24.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Rounded.Flag, null, tint = accent, modifier = Modifier.size(18.dp))
+                Text(strings.reportDialogTitle, color = Snow, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                reasons.forEach { reason ->
+                    val isSelected = selectedReason == reason
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) accent.copy(0.15f) else theme.bg2)
+                            .border(1.dp, if (isSelected) accent.copy(0.5f) else theme.stroke.copy(0.15f), RoundedCornerShape(12.dp))
+                            .clickable { selectedReason = reason }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) accent else Color.Transparent)
+                                .border(1.5.dp, if (isSelected) accent else theme.text2.copy(0.4f), CircleShape)
+                        )
+                        Text(reason, color = if (isSelected) Snow else theme.text2, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick  = onConfirm,
+                enabled  = selectedReason != null,
+                shape    = RoundedCornerShape(12.dp),
+                colors   = ButtonDefaults.buttonColors(
+                    containerColor         = accent,
+                    contentColor           = Color.Black,
+                    disabledContainerColor = theme.bg2,
+                    disabledContentColor   = theme.text2
+                )
+            ) {
+                Text(strings.reportConfirm, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.reportCancel, color = theme.text2, fontSize = 13.sp)
+            }
+        }
+    )
 }
 
 // ── Translation Badge ─────────────────────────────────────────────────────────

@@ -114,8 +114,16 @@ data class AppStrings(
     val translatedLabel     : String,   // "Yapay zeka ile çevrildi" / "AI Translated"
     val sourceLabel         : String,   // "Kaynak" / "Source"
     val noSummaryLabel      : String,   // "Özet mevcut değil." / "No summary available."
-    val saveArticle         : String,   // "Kaydet" / "Save"
-    val unsaveArticle       : String,   // "Kaydı kaldır" / "Remove"
+    val saveArticle              : String,   // "Kaydet" / "Save"
+    val unsaveArticle            : String,   // "Kaydı kaldır" / "Remove"
+    val reportArticle            : String,   // "Bildir" / "Report"
+    val reportDialogTitle        : String,   // "Haberi Bildir" / "Report Article"
+    val reportReasonMisinfo      : String,   // "Yanlış Bilgi" / "Misinformation"
+    val reportReasonSpam         : String,   // "Spam" / "Spam"
+    val reportReasonInappropriate: String,   // "Uygunsuz İçerik" / "Inappropriate Content"
+    val reportConfirm            : String,   // "Bildir" / "Report"
+    val reportCancel             : String,   // "İptal" / "Cancel"
+    val reportSuccessMsg         : String,   // "Haber bildirildi ve kaldırıldı." / "Article reported and removed."
 
     // ── Program Builder screen ───────────────────────────────────────────────
     val programStudioSub    : String,   // "Hazır programlardan seç veya kendin tasarla."
@@ -243,8 +251,16 @@ val TurkishStrings = AppStrings(
     translatedLabel     = "Yapay zeka ile Türkçeye çevrildi",
     sourceLabel         = "Kaynak",
     noSummaryLabel      = "Bu haber için özet mevcut değil.",
-    saveArticle         = "Kaydet",
-    unsaveArticle       = "Kaydı kaldır",
+    saveArticle              = "Kaydet",
+    unsaveArticle            = "Kaydı kaldır",
+    reportArticle            = "Bildir",
+    reportDialogTitle        = "Haberi Bildir",
+    reportReasonMisinfo      = "Yanlış Bilgi",
+    reportReasonSpam         = "Spam",
+    reportReasonInappropriate= "Uygunsuz İçerik",
+    reportConfirm            = "Bildir",
+    reportCancel             = "İptal",
+    reportSuccessMsg         = "Haber bildirildi ve listenizden kaldırıldı.",
 
     // Program Builder
     programStudioSub    = "Hazır programlardan seç veya kendin tasarla.",
@@ -372,8 +388,16 @@ val EnglishStrings = AppStrings(
     translatedLabel     = "AI Translated to Turkish",
     sourceLabel         = "Source",
     noSummaryLabel      = "No summary available for this article.",
-    saveArticle         = "Save",
-    unsaveArticle       = "Remove",
+    saveArticle              = "Save",
+    unsaveArticle            = "Remove",
+    reportArticle            = "Report",
+    reportDialogTitle        = "Report Article",
+    reportReasonMisinfo      = "Misinformation",
+    reportReasonSpam         = "Spam",
+    reportReasonInappropriate= "Inappropriate Content",
+    reportConfirm            = "Report",
+    reportCancel             = "Cancel",
+    reportSuccessMsg         = "Article reported and removed from your feed.",
 
     // Program Builder
     programStudioSub    = "Choose from ready programs or design your own.",
