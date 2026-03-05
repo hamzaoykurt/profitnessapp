@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,23 +36,28 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import kotlinx.coroutines.delay
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+
+
 
 // ── Category internal keys (language-invariant, must match Article.category values) ──
 
 private val CATEGORY_KEYS = listOf(
-    "TÜMÜ", "KAYDEDILENLER", "BİLİM", "BESLENME", "ANTRENMAN",
-    "SPOR", "ZİHİN", "YAŞAM", "TOPARLANMA", "TEKNOLOJİ"
+    "TÜMÜ", "KAYDEDILENLER", "SPOR", "ANTRENMAN", "BESLENME",
+    "YAŞAM", "ZİHİN", "TOPARLANMA"
 )
 
 private const val PAGE_SIZE = 20
@@ -64,54 +71,56 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
     val savedIds         by newsViewModel.savedIds.collectAsState()
     val reportedIds      by newsViewModel.reportedIds.collectAsState()
     val cardTranslations by newsViewModel.cardTranslations.collectAsState()
+    val trendingRanks    by newsViewModel.trendingRanks.collectAsState()
     val theme            = LocalAppTheme.current
     val strings          = theme.strings
     val appLang          = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
     val snackbarHost     = remember { SnackbarHostState() }
     val initialReported  = remember { reportedIds.size }
 
-    // Trigger card-level title translations as soon as articles are ready.
-    // Featured articles are prioritised inside startCardTranslations.
+    // When language changes: flush stale translated titles from the old language.
+    LaunchedEffect(appLang) {
+        newsViewModel.onLanguageChanged()
+    }
+
+    // When articles load (or language changes): start translating card titles.
+    // onLanguageChanged above already cleared the cache, so this picks it up cleanly.
     LaunchedEffect(uiState.articles, appLang) {
         newsViewModel.startCardTranslations(uiState.articles, appLang)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
-        AnimatedContent(
-            targetState = detailState,
-            transitionSpec = {
-                if (targetState != null) {
-                    slideInHorizontally { it } + fadeIn() togetherWith
-                            slideOutHorizontally { -it } + fadeOut()
-                } else {
-                    slideInHorizontally { -it } + fadeIn() togetherWith
-                            slideOutHorizontally { it } + fadeOut()
-                }
-            },
-            label = "news_detail"
-        ) { detail ->
-            if (detail != null) {
+
+        // NewsFeed her zaman composition'da — listState hiç destroy olmaz
+        NewsFeed(
+            uiState          = uiState,
+            savedIds         = savedIds,
+            reportedIds      = reportedIds,
+            cardTranslations = cardTranslations,
+            trendingRanks    = trendingRanks,
+            onArticleClick   = { newsViewModel.openArticle(it, appLang) },
+            onRefresh        = { newsViewModel.refresh() },
+            onLoadMore       = { newsViewModel.loadMore() },
+            onSave           = { newsViewModel.toggleSave(it) }
+        )
+
+        // Detail ekranı üzerine slide-in olarak biniyor
+        AnimatedVisibility(
+            visible = detailState != null,
+            enter = slideInHorizontally { it } + fadeIn(),
+            exit  = slideOutHorizontally { it } + fadeOut()
+        ) {
+            detailState?.let { detail ->
                 MuseReader(
                     detailState = detail,
-                    isSaved = detail.article.id in savedIds,
-                    onBack = { newsViewModel.closeArticle() },
-                    onSave = { newsViewModel.toggleSave(detail.article.id) },
-                    onReport = {
+                    isSaved     = detail.article.id in savedIds,
+                    onBack      = { newsViewModel.closeArticle() },
+                    onSave      = { newsViewModel.toggleSave(detail.article.id) },
+                    onReport    = {
                         newsViewModel.reportArticle(detail.article.id)
                         snackbarHost.currentSnackbarData?.dismiss()
                     }
-                )
-            } else {
-                NewsFeed(
-                    uiState          = uiState,
-                    savedIds         = savedIds,
-                    reportedIds      = reportedIds,
-                    cardTranslations = cardTranslations,
-                    onArticleClick   = { newsViewModel.openArticle(it, appLang) },
-                    onRefresh        = { newsViewModel.refresh() },
-                    onLoadMore       = { newsViewModel.loadMore() },
-                    onSave           = { newsViewModel.toggleSave(it) }
                 )
             }
         }
@@ -140,6 +149,16 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
             )
         }
     }
+
+    // After a pull-to-refresh, show how many new articles arrived (or "up to date")
+    LaunchedEffect(uiState.lastUpdated) {
+        if (uiState.lastUpdated == 0L) return@LaunchedEffect
+        val msg = if (uiState.newArticleCount > 0)
+            "${uiState.newArticleCount} ${strings.newArticlesMsg}"
+        else
+            strings.noNewArticlesMsg
+        snackbarHost.showSnackbar(message = msg, duration = SnackbarDuration.Short)
+    }
 }
 
 // ── Feed ──────────────────────────────────────────────────────────────────────
@@ -151,6 +170,7 @@ private fun NewsFeed(
     savedIds: Set<String>,
     reportedIds: Set<String>,
     cardTranslations: Map<String, String>,
+    trendingRanks: Map<String, Int>,
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
@@ -162,13 +182,16 @@ private fun NewsFeed(
     val accent  = MaterialTheme.colorScheme.primary
     val listState = rememberLazyListState()
 
-    val pullRefreshState = rememberPullToRefreshState()
-    if (pullRefreshState.isRefreshing) {
-        LaunchedEffect(Unit) { onRefresh() }
+    var isRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) onRefresh()
     }
-    // Stop the indicator once loading finishes
-    LaunchedEffect(uiState.isLoading) {
-        if (!uiState.isLoading) pullRefreshState.endRefresh()
+    // Stop the indicator when loading finishes.
+    // uiState.lastUpdated is included so that if isLoading was already false
+    // before the swipe (race condition), the indicator still stops on completion.
+    val isLoading = uiState.isLoading
+    LaunchedEffect(isLoading, uiState.lastUpdated) {
+        if (!isLoading) isRefreshing = false
     }
 
     // Filtered article list: exclude reported, then apply category filter
@@ -209,10 +232,10 @@ private fun NewsFeed(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(pullRefreshState.nestedScrollConnection)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { isRefreshing = true },
+        modifier = Modifier.fillMaxSize()
     ) {
     LazyColumn(
         state = listState,
@@ -253,6 +276,7 @@ private fun NewsFeed(
                     articles         = featured,
                     savedIds         = savedIds,
                     cardTranslations = cardTranslations,
+                    trendingRanks    = trendingRanks,
                     onArticleClick   = onArticleClick,
                     onSave           = onSave
                 )
@@ -354,15 +378,7 @@ private fun NewsFeed(
         }
     }
 
-    PullToRefreshContainer(
-        state = pullRefreshState,
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .statusBarsPadding(),
-        containerColor = theme.bg2,
-        contentColor = accent
-    )
-    } // end Box
+    } // end PullToRefreshBox
 }
 
 // ── Auto-Scrolling Carousel ───────────────────────────────────────────────────
@@ -372,6 +388,7 @@ private fun MuseAutoCarousel(
     articles: List<Article>,
     savedIds: Set<String>,
     cardTranslations: Map<String, String>,
+    trendingRanks: Map<String, Int>,
     onArticleClick: (Article) -> Unit,
     onSave: (String) -> Unit
 ) {
@@ -393,12 +410,14 @@ private fun MuseAutoCarousel(
             contentPadding = PaddingValues(horizontal = 20.dp),
             pageSpacing = 16.dp
         ) { page ->
+            val art = articles[page]
             MuseHeroCard(
-                article      = articles[page],
-                displayTitle = cardTranslations[articles[page].id] ?: articles[page].title,
-                isSaved      = articles[page].id in savedIds,
-                onClick      = { onArticleClick(articles[page]) },
-                onSave       = { onSave(articles[page].id) }
+                article       = art,
+                displayTitle  = cardTranslations[art.id] ?: art.title,
+                isSaved       = art.id in savedIds,
+                trendingRank  = trendingRanks[art.id],
+                onClick       = { onArticleClick(art) },
+                onSave        = { onSave(art.id) }
             )
         }
         Spacer(Modifier.height(14.dp))
@@ -411,11 +430,21 @@ private fun MuseHeroCard(
     article: Article,
     displayTitle: String,
     isSaved: Boolean,
+    trendingRank: Int?,        // null = no clicks yet (new session)
     onClick: () -> Unit,
     onSave: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
+
+    // Rank-based accent colours: gold → silver → bronze → accent for the rest
+    val rankColor = when (trendingRank) {
+        1    -> Color(0xFFFFD700)
+        2    -> Color(0xFFB0BEC5)
+        3    -> Color(0xFFCD7F32)
+        else -> accent
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -438,65 +467,145 @@ private fun MuseHeroCard(
                 )
             )
         )
-        // Top category badge
+        // Top-left: TRENDING badge (when rank exists) OR category badge
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(20.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(accent)
-                .padding(horizontal = 10.dp, vertical = 4.dp)
         ) {
-            Text(article.category, color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-        }
-        // Source badge top-right
-        if (article.sourceName.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(20.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(0.5f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(article.sourceName.take(15), color = Snow.copy(0.8f), fontSize = 8.sp, fontWeight = FontWeight.Medium)
+            if (trendingRank != null) {
+                // TRENDING #N badge
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(rankColor)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.Whatshot,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Text(
+                        "TRENDING #$trendingRank",
+                        color = Color.Black,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            } else {
+                // No clicks yet — show category
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accent)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(article.category, color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                }
             }
         }
-        // Bottom content
+
+        // Top-right: category chip (when trending badge is shown) + source
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (trendingRank != null) {
+                // Category chip — distinct look: accent border + tag icon
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(0.60f))
+                        .border(1.dp, rankColor.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.Tag,
+                        contentDescription = null,
+                        tint = rankColor,
+                        modifier = Modifier.size(9.dp)
+                    )
+                    Text(
+                        article.category,
+                        color = Snow,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+            if (article.sourceName.isNotBlank()) {
+                // Source chip — subdued, clearly different from category
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(0.40f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.Newspaper,
+                        contentDescription = null,
+                        tint = Snow.copy(0.5f),
+                        modifier = Modifier.size(8.dp)
+                    )
+                    Text(
+                        article.sourceName.take(18),
+                        color = Snow.copy(0.6f),
+                        fontSize = 7.5.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+        // Bottom: title + meta row, full width with right padding for action buttons
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 24.dp, end = 100.dp, bottom = 24.dp)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 72.dp, bottom = 20.dp)
         ) {
             Text(
                 displayTitle.uppercase(),
                 color = Snow,
-                fontSize = 22.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Black,
-                lineHeight = 27.sp,
-                maxLines = 3,
+                lineHeight = 23.sp,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(12.dp))
+                Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(10.dp))
                 val heroStrings = LocalAppTheme.current.strings
-                Text("${article.readTime} ${heroStrings.readingLabel}", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
+                Text("${article.readTime} ${heroStrings.readingLabel}", color = Snow.copy(0.5f), fontSize = 8.5.sp, letterSpacing = 1.sp)
                 if (article.publishedAt.isNotBlank()) {
-                    Text("•", color = Snow.copy(0.3f), fontSize = 9.sp)
-                    Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.sp)
+                    Text("•", color = Snow.copy(0.3f), fontSize = 8.5.sp)
+                    Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 8.5.sp, letterSpacing = 0.8.sp)
                 }
             }
         }
-        // Bottom-right action buttons
+        // Bottom-right action buttons — stacked vertically, compact
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(end = 12.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Share button
@@ -899,35 +1008,54 @@ private fun MuseReader(
                         )
                     )
                 )
-                // Category + source badges at top
-                Row(
-                    modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(72.dp, 16.dp, 16.dp, 0.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(accent)
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Text(article.category, color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                    }
-                    if (article.sourceName.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.Black.copy(0.5f))
-                                .padding(horizontal = 10.dp, vertical = 5.dp)
-                        ) {
-                            Text(article.sourceName, color = Snow.copy(0.85f), fontSize = 9.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-                // Title at bottom of hero
+                // Title + category + meta at bottom of hero
                 Column(
                     modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 24.dp, vertical = 28.dp)
                 ) {
+                    // Category + source row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(accent)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                article.category,
+                                color = Color.Black,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.5.sp
+                            )
+                        }
+                        if (article.sourceName.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.White.copy(0.12f))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Article,
+                                    contentDescription = null,
+                                    tint = Snow.copy(0.75f),
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    article.sourceName,
+                                    color = Snow.copy(0.9f),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         detailState.displayTitle.uppercase(),
                         color = Snow,
@@ -963,7 +1091,7 @@ private fun MuseReader(
                             CircularProgressIndicator(color = accent, modifier = Modifier.size(36.dp))
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "Türkçeye çevriliyor…",
+                                strings.translatingLabel,
                                 color = Snow.copy(0.5f),
                                 fontSize = 12.sp,
                                 letterSpacing = 1.sp
@@ -989,30 +1117,105 @@ private fun MuseReader(
                             Text(strings.aiSummaryLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text(
-                            detailState.displaySummary.ifBlank { strings.noSummaryLabel },
-                            color = Snow.copy(0.85f),
-                            fontSize = 15.sp,
-                            lineHeight = 23.sp,
-                            fontWeight = FontWeight.Light,
-                            fontStyle = FontStyle.Italic
-                        )
+                        val summaryText = detailState.displaySummary.ifBlank { strings.noSummaryLabel }
+                        val summaryParagraphs = summaryText
+                            .split("\n\n")
+                            .map { it.replace("\n", " ").trim() }
+                            .filter { it.isNotBlank() }
+                        summaryParagraphs.forEachIndexed { idx, para ->
+                            Text(
+                                para,
+                                color      = Snow.copy(0.85f),
+                                fontSize   = 15.sp,
+                                lineHeight = 24.sp,
+                                fontWeight = FontWeight.Light,
+                                fontStyle  = FontStyle.Italic
+                            )
+                            if (idx < summaryParagraphs.lastIndex) Spacer(Modifier.height(10.dp))
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(28.dp))
 
-                // Full content
-                if (detailState.displayContent.isNotBlank() && detailState.displayContent != article.summary) {
-                    Text(strings.contentLabel, color = theme.text2, fontSize = 9.sp, letterSpacing = 3.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(12.dp))
+                // Full content — rich HTML render when available, plain-text fallback
+                if (detailState.displayContent.isNotBlank()) {
                     Text(
-                        detailState.displayContent,
-                        color = Snow.copy(0.75f),
-                        fontSize = 16.sp,
-                        lineHeight = 26.sp,
-                        fontWeight = FontWeight.Light
+                        strings.contentLabel,
+                        color         = theme.text2,
+                        fontSize      = 9.sp,
+                        letterSpacing = 3.sp,
+                        fontWeight    = FontWeight.SemiBold
                     )
+                    Spacer(Modifier.height(16.dp))
+                    if (detailState.displayContentHtml.isNotBlank()) {
+                        // Rich render: parse HTML → structured blocks
+                        val blocks = parseHtmlToBlocks(detailState.displayContentHtml)
+                        blocks.forEachIndexed { idx, block ->
+                            when (block) {
+                                is HtmlBlock.Heading -> {
+                                    if (idx > 0) Spacer(Modifier.height(24.dp))
+                                    Text(
+                                        block.text,
+                                        color      = Snow,
+                                        fontSize   = if (block.level <= 2) 19.sp else 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = if (block.level <= 2) 26.sp else 24.sp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                                is HtmlBlock.Paragraph -> {
+                                    if (block.annotated.isNotEmpty()) {
+                                        Text(
+                                            block.annotated,
+                                            color      = Snow.copy(0.82f),
+                                            fontSize   = 16.sp,
+                                            lineHeight = 27.sp,
+                                            fontWeight = FontWeight.Light
+                                        )
+                                        if (idx < blocks.lastIndex) Spacer(Modifier.height(14.dp))
+                                    }
+                                }
+                                is HtmlBlock.ListItem -> {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Text(
+                                            "•",
+                                            color      = Snow.copy(0.5f),
+                                            fontSize   = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier   = Modifier.padding(top = 1.dp)
+                                        )
+                                        Text(
+                                            block.annotated,
+                                            color      = Snow.copy(0.82f),
+                                            fontSize   = 16.sp,
+                                            lineHeight = 26.sp,
+                                            fontWeight = FontWeight.Light
+                                        )
+                                    }
+                                    if (idx < blocks.lastIndex) Spacer(Modifier.height(6.dp))
+                                }
+                            }
+                        }
+                    } else {
+                        // Plain-text fallback (translated content)
+                        val paragraphs = detailState.displayContent
+                            .split("\n\n")
+                            .map { it.replace("\n", " ").trim() }
+                            .filter { it.isNotBlank() }
+                        paragraphs.forEachIndexed { idx, para ->
+                            Text(
+                                para,
+                                color      = Snow.copy(0.82f),
+                                fontSize   = 16.sp,
+                                lineHeight = 27.sp,
+                                fontWeight = FontWeight.Light
+                            )
+                            if (idx < paragraphs.lastIndex) Spacer(Modifier.height(14.dp))
+                        }
+                    }
                     Spacer(Modifier.height(32.dp))
                 }
                 } // end isTranslating else
@@ -1238,4 +1441,207 @@ private fun formatDate(raw: String): String {
             else               -> raw.take(16)
         }
     } catch (_: Exception) { raw.take(16) }
+}
+
+// ── Rich HTML renderer ────────────────────────────────────────────────────────
+
+/** A parsed block from an HTML article body. */
+private sealed interface HtmlBlock {
+    data class Heading(val level: Int, val text: String) : HtmlBlock
+    data class Paragraph(val annotated: AnnotatedString) : HtmlBlock
+    data class ListItem(val annotated: AnnotatedString) : HtmlBlock
+}
+
+/**
+ * Converts a raw HTML string into a flat list of [HtmlBlock]s.
+ *
+ * Supported tags:
+ *  - <h1>…<h6>     → Heading block
+ *  - <p>, <div>    → Paragraph block
+ *  - <li>          → ListItem block
+ *  - <strong>, <b> → bold span
+ *  - <em>, <i>     → italic span
+ *  - <br>          → newline inside span
+ *  Everything else is stripped.
+ */
+private fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
+    if (html.isBlank()) return emptyList()
+
+    val blocks = mutableListOf<HtmlBlock>()
+
+    // ── 1. Split into raw block-level chunks ─────────────────────────────────
+    // We tokenise by block-level open/close tags. Each token is either a tag
+    // or the text between tags.
+    val blockTagPattern = Regex(
+        """<(/?)(?:p|div|h[1-6]|li|ul|ol|blockquote|section|article|header|footer|figure|figcaption)(?:\s[^>]*)?>""",
+        RegexOption.IGNORE_CASE
+    )
+
+    data class Chunk(val tag: String, val level: Int, val isClose: Boolean, val raw: String)
+
+    // Walk through splitting at block boundaries
+    var cursor = 0
+    val tagMatches = blockTagPattern.findAll(html).toList()
+
+    // collect (segment_text, tag_that_follows) pairs
+    data class Segment(val inner: String, val tagName: String, val tagLevel: Int, val isClose: Boolean)
+    val segments = mutableListOf<Segment>()
+
+    for (match in tagMatches) {
+        val before = html.substring(cursor, match.range.first)
+        if (before.isNotBlank()) {
+            segments.add(Segment(before, "", 0, false))
+        }
+        val full = match.value
+        val isClose = full.startsWith("</")
+        val tagName = Regex("[a-zA-Z][a-zA-Z0-9]*").find(full.removePrefix("</").removePrefix("<"))
+            ?.value?.lowercase() ?: ""
+        val level = if (tagName.matches(Regex("h[1-6]"))) tagName[1].digitToInt() else 0
+        segments.add(Segment("", tagName, level, isClose))
+        cursor = match.range.last + 1
+    }
+    // Trailing text after last tag
+    if (cursor < html.length) {
+        val tail = html.substring(cursor)
+        if (tail.isNotBlank()) segments.add(Segment(tail, "", 0, false))
+    }
+
+    // ── 2. Accumulate inner HTML per logical block ────────────────────────────
+    var currentTag = "p"
+    var currentLevel = 0
+    val buffer = StringBuilder()
+
+    fun flush() {
+        val raw = buffer.toString().trim()
+        buffer.clear()
+        if (raw.isBlank()) return
+        when {
+            currentTag.matches(Regex("h[1-6]")) -> {
+                val text = stripInlineTags(raw)
+                if (text.isNotBlank()) blocks.add(HtmlBlock.Heading(currentLevel, text))
+            }
+            currentTag == "li" -> {
+                val ann = inlineAnnotatedString(raw)
+                if (ann.isNotEmpty()) blocks.add(HtmlBlock.ListItem(ann))
+            }
+            else -> {
+                val ann = inlineAnnotatedString(raw)
+                if (ann.isNotEmpty()) blocks.add(HtmlBlock.Paragraph(ann))
+            }
+        }
+    }
+
+    for (seg in segments) {
+        if (seg.tagName.isEmpty()) {
+            // Plain text segment
+            buffer.append(seg.inner)
+        } else if (seg.isClose) {
+            // Closing tag — flush the accumulated buffer
+            flush()
+            currentTag = "p"
+            currentLevel = 0
+        } else {
+            // Opening tag — flush previous block then start new one
+            flush()
+            currentTag = seg.tagName
+            currentLevel = seg.tagLevel
+        }
+    }
+    flush()
+
+    return blocks
+}
+
+/** Strips all tags and entities from an inline HTML string (for headings). */
+private fun stripInlineTags(html: String): String = html
+    .replace(Regex("<[^>]*>"), "")
+    .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    .replace("&nbsp;", " ").replace("&#39;", "'").replace("&quot;", "\"")
+    .replace("&hellip;", "…").replace("&mdash;", "—").replace("&ndash;", "–")
+    .replace(Regex("\\s+"), " ").trim()
+
+/**
+ * Converts inline HTML (bold, italic, br) into a Compose [AnnotatedString].
+ * Supports <strong>, <b>, <em>, <i>, <br> and strips unknown tags.
+ */
+private fun inlineAnnotatedString(html: String): AnnotatedString {
+    if (html.isBlank()) return AnnotatedString("")
+
+    val cleaned = html
+        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        .replace("&nbsp;", " ").replace("&#39;", "'").replace("&quot;", "\"")
+        .replace("&hellip;", "…").replace("&mdash;", "—").replace("&ndash;", "–")
+        .replace("&apos;", "'")
+
+    return buildAnnotatedString {
+        val tokenPattern = Regex("""<(/?)(\w+)[^>]*>|([^<]+)""")
+        val boldTags  = setOf("strong", "b")
+        val italicTags = setOf("em", "i")
+        var boldDepth   = 0
+        var italicDepth = 0
+
+        for (tok in tokenPattern.findAll(cleaned)) {
+            val closingSlash = tok.groupValues[1]
+            val tagName      = tok.groupValues[2].lowercase()
+            val text         = tok.groupValues[3]
+
+            when {
+                text.isNotEmpty() -> append(text)
+                tagName == "br"   -> append("\n")
+                tagName in boldTags -> {
+                    if (closingSlash.isEmpty()) boldDepth++ else boldDepth = maxOf(0, boldDepth - 1)
+                }
+                tagName in italicTags -> {
+                    if (closingSlash.isEmpty()) italicDepth++ else italicDepth = maxOf(0, italicDepth - 1)
+                }
+                else -> { /* skip unknown tags */ }
+            }
+
+            // Re-apply span styles after every token so nesting works correctly
+            if (boldDepth > 0 || italicDepth > 0) {
+                val fw = if (boldDepth > 0) FontWeight.Bold else null
+                val fs = if (italicDepth > 0) FontStyle.Italic else null
+                // We can't retroactively apply spans; instead we push a zero-width span
+                // so the *next* text segment gets the right style.
+                // The approach: rebuild with a simpler two-pass tokeniser below.
+            }
+        }
+    }.let {
+        // Two-pass: simpler and more reliable than tracking depth above.
+        buildInlineAnnotatedString(cleaned)
+    }
+}
+
+/** Clean two-pass inline parser used by [inlineAnnotatedString]. */
+private fun buildInlineAnnotatedString(html: String): AnnotatedString {
+    data class Run(val text: String, val bold: Boolean, val italic: Boolean)
+
+    val runs = mutableListOf<Run>()
+    val tokenPattern = Regex("""<(/?)(\w+)[^>]*>|([^<]+)""")
+    val boldTags   = setOf("strong", "b")
+    val italicTags = setOf("em", "i")
+    var bold   = false
+    var italic = false
+
+    for (tok in tokenPattern.findAll(html)) {
+        val isClose = tok.groupValues[1] == "/"
+        val tag     = tok.groupValues[2].lowercase()
+        val text    = tok.groupValues[3]
+        when {
+            text.isNotEmpty() -> runs.add(Run(text, bold, italic))
+            tag == "br"       -> runs.add(Run("\n", bold, italic))
+            tag in boldTags   -> bold   = !isClose
+            tag in italicTags -> italic = !isClose
+        }
+    }
+
+    return buildAnnotatedString {
+        for (run in runs) {
+            val spanStyle = SpanStyle(
+                fontWeight = if (run.bold) FontWeight.Bold else FontWeight.Light,
+                fontStyle  = if (run.italic) FontStyle.Italic else FontStyle.Normal
+            )
+            withStyle(spanStyle) { append(run.text) }
+        }
+    }
 }
