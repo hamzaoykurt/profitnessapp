@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import kotlinx.coroutines.delay
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 // ── Category internal keys (language-invariant, must match Article.category values) ──
 
@@ -143,6 +144,7 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
 
 // ── Feed ──────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NewsFeed(
     uiState: NewsUiState,
@@ -159,6 +161,15 @@ private fun NewsFeed(
     val strings = theme.strings
     val accent  = MaterialTheme.colorScheme.primary
     val listState = rememberLazyListState()
+
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(Unit) { onRefresh() }
+    }
+    // Stop the indicator once loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) pullRefreshState.endRefresh()
+    }
 
     // Filtered article list: exclude reported, then apply category filter
     val filteredArticles = remember(selectedCategory, uiState.articles, savedIds, reportedIds) {
@@ -198,6 +209,11 @@ private fun NewsFeed(
         }
     }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(pullRefreshState.nestedScrollConnection)
+    ) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -205,44 +221,25 @@ private fun NewsFeed(
     ) {
         // ── Header ─────────────────────────────────────────────────────────────
         item {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                Column {
-                    Text(
-                        "EDITORIAL",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accent,
-                        letterSpacing = 6.sp,
-                        fontWeight = FontWeight.ExtraLight
-                    )
-                    Text(
-                        "MUSE",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = Snow,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-                IconButton(
-                    onClick = onRefresh,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg2)
-                ) {
-                    Icon(
-                        if (uiState.isLoading) Icons.Rounded.HourglassEmpty
-                        else Icons.Rounded.Refresh,
-                        contentDescription = "Yenile",
-                        tint = if (uiState.isLoading) accent else Snow.copy(0.6f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Text(
+                    "EDITORIAL",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accent,
+                    letterSpacing = 6.sp,
+                    fontWeight = FontWeight.ExtraLight
+                )
+                Text(
+                    "MUSE",
+                    style = MaterialTheme.typography.displayLarge,
+                    color = Snow,
+                    fontWeight = FontWeight.Black
+                )
             }
         }
 
@@ -356,6 +353,16 @@ private fun NewsFeed(
             }
         }
     }
+
+    PullToRefreshContainer(
+        state = pullRefreshState,
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .statusBarsPadding(),
+        containerColor = theme.bg2,
+        contentColor = accent
+    )
+    } // end Box
 }
 
 // ── Auto-Scrolling Carousel ───────────────────────────────────────────────────
