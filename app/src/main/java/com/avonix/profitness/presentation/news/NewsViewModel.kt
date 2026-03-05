@@ -127,17 +127,28 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Opens article detail. Translation runs silently in the background — no loading indicator
-     * is exposed to the UI layer. Card-level cached title is reused when available.
+     * Opens article detail.
+     * - Non-Turkish: shown immediately in original language.
+     * - Turkish: show loading (isTranslating=true) until translation completes,
+     *   then reveal the fully translated content — no English flash.
+     *   Cached card titles are reused to skip redundant title translation.
      */
     fun openArticle(article: Article, appLanguage: String) {
+        if (appLanguage != "tr") {
+            _detailState.value = ArticleDetailState(article = article)
+            return
+        }
+
         val cachedTitle = _cardTranslations.value[article.id]
+
+        // Show loading indicator; keep content blank until translation is done
         _detailState.value = ArticleDetailState(
             article = article,
-            displayTitle = cachedTitle ?: article.title
+            displayTitle = cachedTitle ?: article.title,
+            displaySummary = "",
+            displayContent = "",
+            isTranslating = true
         )
-
-        if (appLanguage != "tr") return
 
         viewModelScope.launch {
             try {
@@ -145,24 +156,31 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                     ?: NewsRepository.translateText(article.title, "tr").ifBlank { article.title }
 
                 val resolvedSummary =
-                    NewsRepository.translateText(article.summary, "tr").ifBlank { article.summary }
+                    NewsRepository.translateLongText(article.summary, "tr").ifBlank { article.summary }
 
                 val resolvedContent = if (article.content.isNotBlank() && article.content != article.summary) {
-                    NewsRepository.translateText(article.content.take(480), "tr").ifBlank { article.content }
-                } else article.content
+                    NewsRepository.translateLongText(article.content, "tr").ifBlank { article.content }
+                } else resolvedSummary
 
                 _detailState.value = ArticleDetailState(
                     article = article,
                     displayTitle = resolvedTitle,
                     displaySummary = resolvedSummary,
                     displayContent = resolvedContent,
+                    isTranslating = false,
                     wasTranslated = true
                 )
 
                 if (resolvedTitle != article.title) {
                     _cardTranslations.value = _cardTranslations.value + (article.id to resolvedTitle)
                 }
-            } catch (_: Exception) { /* keep initial state */ }
+            } catch (_: Exception) {
+                // Fallback to original content on error
+                _detailState.value = ArticleDetailState(
+                    article = article,
+                    isTranslating = false
+                )
+            }
         }
     }
 
