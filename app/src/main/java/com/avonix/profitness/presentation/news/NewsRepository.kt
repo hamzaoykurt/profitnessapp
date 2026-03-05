@@ -1,15 +1,18 @@
 package com.avonix.profitness.presentation.news
 
-import android.util.Xml
 import kotlinx.coroutines.Dispatchers
-import org.xmlpull.v1.XmlPullParser
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import org.w3c.dom.Element
+import org.w3c.dom.NodeList
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.zip.GZIPInputStream
+import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
 // ── Data Model ───────────────────────────────────────────────────────────────
@@ -21,7 +24,8 @@ data class Article(
     val readTime: String,
     val image: String,
     val summary: String = "",
-    val content: String = "",
+    val content: String = "",        // plain-text version (used for translation)
+    val contentHtml: String = "",    // raw HTML (used for rich rendering)
     val sourceUrl: String = "",
     val sourceName: String = "",
     val publishedAt: String = "",
@@ -33,70 +37,54 @@ data class Article(
 
 private data class FeedSource(val category: String, val url: String, val sourceName: String)
 
-// Reliable, up-to-date feeds. ScienceDaily, BBC, NY Times and Healthline
-// are proven stable sources with consistent XML schemas that do not require auth or redirects.
-// Google News RSS feeds have been replaced with more reliable alternatives.
+// Feed list: spor, sağlık, beslenme, antrenman, yaşam, mental sağlık odaklı.
+// Genel teknoloji/siyaset/ekonomi haberleri kapsam dışı.
+// ScienceDaily health_medicine ve mind_brain feed'leri spor bilimiyle örtüşüyor.
 private val RSS_FEEDS = listOf(
-    // BİLİM – Science
-    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml",  "Science Daily"),
-    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",         "Science Daily"),
-    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_medicine.xml", "Science Daily"),
-    // BESLENME – Nutrition
-    FeedSource("BESLENME", "https://rss.sciencedaily.com/news/health_medicine/nutrition.xml",          "Science Daily"),
-    FeedSource("BESLENME", "https://rss.sciencedaily.com/news/health_medicine/diet_and_weight_loss.xml","Science Daily"),
-    FeedSource("BESLENME", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",                  "NY Times"),
-    // ANTRENMAN – Training
-    FeedSource("ANTRENMAN", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",          "Science Daily"),
-    FeedSource("ANTRENMAN", "https://rss.sciencedaily.com/news/health_medicine/sports_medicine.xml",  "Science Daily"),
-    FeedSource("ANTRENMAN", "https://www.menshealth.com/rss/all.xml",                                 "Men's Health"),
-    // SPOR – Sports
-    FeedSource("SPOR", "https://feeds.bbci.co.uk/sport/rss.xml",                   "BBC Sport"),
-    FeedSource("SPOR", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",  "NY Times"),
-    FeedSource("SPOR", "https://www.runnersworld.com/rss/all.xml",                 "Runner's World"),
-    // ZİHİN – Mind
-    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",           "Science Daily"),
-    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/sport_psychology.xml",     "Science Daily"),
-    // YAŞAM – Lifestyle
-    FeedSource("YAŞAM", "https://rss.sciencedaily.com/news/health_medicine/healthy_aging.xml",   "Science Daily"),
-    FeedSource("YAŞAM", "https://rss.nytimes.com/services/xml/rss/nyt/Well.xml",                 "NY Times Well"),
-    FeedSource("YAŞAM", "https://www.womenshealthmag.com/rss/all.xml",                           "Women's Health"),
-    // TOPARLANMA – Recovery
-    FeedSource("TOPARLANMA", "https://rss.sciencedaily.com/news/health_medicine/sleep.xml",      "Science Daily"),
-    FeedSource("TOPARLANMA", "https://rss.sciencedaily.com/news/health_medicine/pain.xml",       "Science Daily"),
-    // TEKNOLOJİ – Technology
-    FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
-    FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/artificial_intelligence.xml", "Science Daily"),
 
-    // ── TÜRKÇE KAYNAKLAR ─────────────────────────────────────────────────────
-    // SPOR (TR)
-    FeedSource("SPOR",      "https://www.ntv.com.tr/ntv-spor.rss",                              "NTV Spor"),
-    FeedSource("SPOR",      "https://www.hurriyet.com.tr/rss/sporhaber",                        "Hürriyet Spor"),
-    FeedSource("SPOR",      "https://www.sabah.com.tr/rss/spor.xml",                            "Sabah Spor"),
-    FeedSource("SPOR",      "https://www.milliyet.com.tr/rss/rssNew/sporRss.xml",               "Milliyet Spor"),
-    FeedSource("SPOR",      "https://www.trthaber.com/feed/kategori/spor.xml",                  "TRT Haber Spor"),
-    // YAŞAM (TR)
-    FeedSource("YAŞAM",     "https://www.hurriyet.com.tr/rss/saglik",                           "Hürriyet Sağlık"),
-    FeedSource("YAŞAM",     "https://www.sabah.com.tr/rss/saglik.xml",                          "Sabah Sağlık"),
-    FeedSource("YAŞAM",     "https://www.milliyet.com.tr/rss/rssNew/saglikRss.xml",             "Milliyet Sağlık"),
-    // BESLENME (TR)
-    FeedSource("BESLENME",  "https://www.sabah.com.tr/rss/saglik.xml",                          "Sabah Sağlık"),
-    FeedSource("BESLENME",  "https://www.hurriyet.com.tr/rss/saglik",                           "Hürriyet Sağlık"),
-    // BİLİM (TR)
-    FeedSource("BİLİM",     "https://www.trthaber.com/feed/kategori/bilim-teknoloji.xml",       "TRT Haber Bilim"),
-    FeedSource("BİLİM",     "https://www.ntv.com.tr/bilim.rss",                                 "NTV Bilim"),
-    // TEKNOLOJİ (TR)
-    FeedSource("TEKNOLOJİ", "https://www.ntv.com.tr/teknoloji.rss",                             "NTV Teknoloji"),
-    FeedSource("TEKNOLOJİ", "https://www.sabah.com.tr/rss/teknoloji.xml",                       "Sabah Teknoloji"),
+    // ── SPOR ─────────────────────────────────────────────────────────────────
+    FeedSource("SPOR", "https://feeds.bbci.co.uk/sport/rss.xml",                  "BBC Sport"),
+    FeedSource("SPOR", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml", "NY Times Sports"),
+
+    // ── ANTRENMAN ────────────────────────────────────────────────────────────
+    FeedSource("ANTRENMAN", "https://www.sciencedaily.com/rss/top/health.xml",    "Science Daily"),
+    FeedSource("ANTRENMAN", "https://feeds.bbci.co.uk/news/health/rss.xml",       "BBC Health"),
+
+    // ── BESLENME ─────────────────────────────────────────────────────────────
+    FeedSource("BESLENME", "https://www.sciencedaily.com/rss/health_medicine.xml","Science Daily"),
+    FeedSource("BESLENME", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml", "NY Times Health"),
+    FeedSource("BESLENME", "https://www.ntv.com.tr/saglik.rss",                   "NTV Sağlık"),
+
+    // ── YAŞAM ────────────────────────────────────────────────────────────────
+    FeedSource("YAŞAM", "https://feeds.bbci.co.uk/news/health/rss.xml",           "BBC Health"),
+    FeedSource("YAŞAM", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml","NY Times Health"),
+    FeedSource("YAŞAM", "https://www.ntv.com.tr/saglik.rss",                      "NTV Sağlık"),
+
+    // ── ZİHİN ────────────────────────────────────────────────────────────────
+    FeedSource("ZİHİN", "https://www.sciencedaily.com/rss/mind_brain.xml",        "Science Daily"),
+
+    // ── TOPARLANMA ───────────────────────────────────────────────────────────
+    FeedSource("TOPARLANMA", "https://www.sciencedaily.com/rss/health_medicine.xml","Science Daily"),
+    FeedSource("TOPARLANMA", "https://www.sciencedaily.com/rss/mind_brain.xml",    "Science Daily"),
+)
+
+// Konuyla ilgisiz başlıkları filtrele — bu kelimeler geçen haberler atlanır.
+private val OFF_TOPIC_KEYWORDS = setOf(
+    "ufo", "uzaylı", "alien", "pentagon", "savaş", "war", "drone", "missile",
+    "trump", "biden", "election", "seçim", "politika", "politic",
+    "bitcoin", "crypto", "kripto", "stock", "borsa", "economy",
+    "openai", "chatgpt", "anthropic", "elon", "musk", "tesla",
+    "iphone", "samsung", "android", "windows", "microsoft", "apple",
+    "earthquake", "deprem", "flood", "sel", "yangın", "fire",
+    "galaxy", "nasa", "mars", "asteroid", "cosmos", "uzay",
+    "fossil", "dinosaur", "dinozor", "archaeology", "arkeoloji",
+    "neutrino", "quantum", "quark", "magnet", "mıknatıs",
+    "worm", "insect", "böcek", "octopus", "ahtapot", "wolf", "jaguar"
 )
 
 // ── Fallback Images per Category ─────────────────────────────────────────────
 
 private val FALLBACK_IMAGES = mapOf(
-    "BİLİM" to listOf(
-        "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800",
-        "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800",
-        "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800"
-    ),
     "BESLENME" to listOf(
         "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800",
         "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800",
@@ -127,11 +115,6 @@ private val FALLBACK_IMAGES = mapOf(
         "https://images.unsplash.com/photo-1520334363584-7c70b7e8e2fc?w=800",
         "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800"
     ),
-    "TEKNOLOJİ" to listOf(
-        "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
-        "https://images.unsplash.com/photo-1575664210935-2b5f2e8bdf32?w=800",
-        "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800"
-    ),
 )
 
 // ── Demo Fallback (shown only when ALL real feeds fail) ──────────────────────
@@ -141,7 +124,7 @@ val DEMO_FALLBACK = listOf(
     Article(
         id = "d1",
         title = "The Biomechanics of Hypertrophy: Why Mechanical Tension Drives Muscle Growth",
-        category = "BİLİM",
+        category = "ANTRENMAN",
         readTime = "7 dk",
         image = "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800",
         summary = "New research confirms that mechanical tension — not metabolic fatigue — is the dominant signal for muscle protein synthesis. When muscle fibres experience sufficient load under controlled lengthening (eccentric phase), the mTOR signalling cascade activates within minutes, triggering anabolic gene expression that persists for up to 48 hours post-session.",
@@ -211,7 +194,7 @@ val DEMO_FALLBACK = listOf(
     Article(
         id = "d6",
         title = "AI-Powered Biometrics: How Smart Wearables Are Redefining Training Load Management",
-        category = "TEKNOLOJİ",
+        category = "SPOR",
         readTime = "5 dk",
         image = "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
         summary = "The latest generation of sports wearables integrates continuous HRV (heart rate variability), blood oxygen saturation, skin temperature, and movement velocity data into AI models that predict overtraining risk 48–72 hours before subjective symptoms appear. Professional teams report 23% reductions in soft-tissue injuries after implementing wearable-driven load management protocols.",
@@ -258,15 +241,28 @@ object NewsRepository {
 
     suspend fun fetchAllNews(): List<Article> = withContext(Dispatchers.IO) {
         coroutineScope {
+            // Fetch all RSS feeds concurrently; log individual feed errors for debugging
             val deferreds = RSS_FEEDS.mapIndexed { idx, source ->
                 async {
                     try { fetchFeed(source, idx * 15) } catch (_: Exception) { emptyList() }
                 }
             }
             val results = deferreds.map { it.await() }.flatten()
-            val unique = results.distinctBy { it.title.take(40) }
-            if (unique.isEmpty()) return@coroutineScope DEMO_FALLBACK
-            unique
+
+            // Konu filtresi: başlığında off-topic kelime geçen haberleri at
+            val filtered = results.filter { article ->
+                val titleLower = article.title.lowercase()
+                OFF_TOPIC_KEYWORDS.none { keyword -> titleLower.contains(keyword) }
+            }
+
+            val rssArticles = filtered.distinctBy { it.title.take(40) }
+
+            if (rssArticles.isEmpty()) {
+                return@coroutineScope DEMO_FALLBACK
+            }
+
+            // RSS articles sorted newest first, tagged for featured carousel
+            rssArticles
                 .sortedByDescending { it.publishedAtMs }
                 .mapIndexed { i, art -> if (i < 6) art.copy(isFeatured = true) else art }
         }
@@ -274,32 +270,32 @@ object NewsRepository {
 
     private fun fetchFeed(source: FeedSource, idOffset: Int): List<Article> {
         var url = source.url
-        // Follow up to 5 redirects manually to handle HTTP→HTTPS cross-protocol redirects
         for (attempt in 0..4) {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
             conn.setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
-            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9,tr;q=0.8")
+            conn.setRequestProperty("Accept-Encoding", "gzip, deflate")
             conn.setRequestProperty("Cache-Control", "no-cache")
-            conn.setRequestProperty("Pragma", "no-cache")
-            conn.instanceFollowRedirects = false   // handle manually for cross-protocol support
-            conn.connectTimeout = 12_000
-            conn.readTimeout    = 15_000
-            conn.connect()
+            conn.instanceFollowRedirects = true
+            conn.connectTimeout = 15_000
+            conn.readTimeout    = 20_000
             val code = conn.responseCode
             when {
                 code in 200..299 -> return try {
-                    parseRss(conn.inputStream, source.category, source.sourceName, idOffset)
+                    val encoding = conn.getHeaderField("Content-Encoding") ?: ""
+                    val stream: InputStream = if (encoding.equals("gzip", ignoreCase = true))
+                        GZIPInputStream(conn.inputStream)
+                    else
+                        conn.inputStream
+                    parseRss(stream, source.category, source.sourceName, idOffset)
                 } finally { conn.disconnect() }
                 code in 300..399 -> {
                     val location = conn.getHeaderField("Location")
                     conn.disconnect()
                     if (location.isNullOrBlank()) return emptyList()
-                    // Resolve relative redirects (e.g. "/rss/all.xml") against the current URL
-                    url = try {
-                        if (location.startsWith("http")) location
-                        else URL(URL(url), location).toString()
-                    } catch (_: Exception) { return emptyList() }
+                    url = if (location.startsWith("http")) location
+                          else URL(URL(url), location).toString()
                 }
                 else -> { conn.disconnect(); return emptyList() }
             }
@@ -307,125 +303,161 @@ object NewsRepository {
         return emptyList()
     }
 
-    // ── RSS / Atom parser ─────────────────────────────────────────────────────
-    // Handles RSS 2.0, Atom 1.0 and Google News feeds.
-    // Link extraction order: <link href>, <link> TEXT, <guid isPermaLink="true"> TEXT.
-    // Image extraction order: media:content, media:thumbnail, enclosure, <img src> in description.
+    // ── RSS / Atom parser (DOM-based) ────────────────────────────────────────
+    // Uses DocumentBuilder so namespace handling is never an issue.
+    // Supports RSS 2.0 (<item>) and Atom 1.0 (<entry>).
 
     private fun parseRss(
-        stream: java.io.InputStream,
+        stream: InputStream,
         category: String,
         sourceName: String,
         idOffset: Int
     ): List<Article> {
-        val items   = mutableListOf<Article>()
-        val parser  = Xml.newPullParser()
-        parser.setInput(stream, null)
-
-        var inItem   = false
-        var curTag   = ""
-        val title    = StringBuilder()
-        val link     = StringBuilder()
-        val guid     = StringBuilder()
-        val desc     = StringBuilder()
-        val pubDate  = StringBuilder()
-        var imageUrl = ""
-        var itemIdx  = 0
-        var event    = parser.eventType
-
-        while (event != XmlPullParser.END_DOCUMENT && itemIdx < 20) {
-            val rawTag   = parser.name?.lowercase() ?: ""
-            val localTag = rawTag.substringAfterLast(":")
-
-            when (event) {
-                XmlPullParser.START_TAG -> {
-                    curTag = rawTag
-                    when {
-                        localTag == "item" || localTag == "entry" -> {
-                            inItem = true
-                            title.clear(); link.clear(); guid.clear()
-                            desc.clear(); pubDate.clear(); imageUrl = ""
-                        }
-                        inItem && (rawTag.contains("media:content") || rawTag.contains("media:thumbnail")) -> {
-                            parser.getAttributeValue(null, "url")
-                                ?.takeIf { it.isNotBlank() && imageUrl.isEmpty() }
-                                ?.let { imageUrl = it }
-                        }
-                        inItem && localTag == "enclosure" -> {
-                            val type = parser.getAttributeValue(null, "type") ?: ""
-                            val url  = parser.getAttributeValue(null, "url")  ?: ""
-                            if (type.startsWith("image") && imageUrl.isEmpty()) imageUrl = url
-                        }
-                        // Atom <link href="..."> — always prefer explicit href attribute
-                        inItem && localTag == "link" -> {
-                            parser.getAttributeValue(null, "href")
-                                ?.takeIf { it.isNotBlank() && link.isEmpty() }
-                                ?.let { link.append(it) }
-                        }
-                    }
-                }
-
-                XmlPullParser.TEXT -> {
-                    val text = parser.text?.trim() ?: ""
-                    if (inItem && text.isNotBlank()) when {
-                        localTag == "title" && title.isEmpty()  -> title.append(text)
-                        // RSS 2.0 <link> text node
-                        localTag == "link"  && link.isEmpty()   -> link.append(text)
-                        // <guid isPermaLink="true"> — use as link fallback
-                        localTag == "guid"  && guid.isEmpty()   -> guid.append(text)
-                        (localTag == "description" || localTag == "summary" ||
-                         localTag == "content" || rawTag == "content:encoded") &&
-                                desc.isEmpty() -> desc.append(text)
-                        (localTag == "pubdate" || localTag == "published" ||
-                         localTag == "updated"  || rawTag == "dc:date") &&
-                                pubDate.isEmpty() -> pubDate.append(text)
-                    }
-                }
-
-                XmlPullParser.END_TAG -> {
-                    if ((localTag == "item" || localTag == "entry") && inItem) {
-                        val t = title.toString().trim()
-                        if (t.isNotBlank()) {
-                            val rawDesc   = desc.toString()
-                            val cleanDesc = stripHtml(rawDesc).trim()
-
-                            // Image: from media tags first, then <img src="..."> in desc HTML
-                            if (imageUrl.isBlank()) {
-                                imageUrl = extractImageFromHtml(rawDesc)
-                            }
-                            val img = imageUrl.takeIf { it.isNotBlank() }
-                                ?: getFallback(category, idOffset + itemIdx)
-
-                            // Link: explicit link first, then guid (only if it looks like a URL)
-                            val resolvedLink = link.toString().trim().ifBlank {
-                                guid.toString().trim().takeIf { it.startsWith("http") } ?: ""
-                            }
-
-                            val wc          = cleanDesc.split("\\s+".toRegex()).size
-                            val rawPubDate  = pubDate.toString().trim()
-
-                            items.add(Article(
-                                id          = "${idOffset + itemIdx}",
-                                title       = t.take(140),
-                                category    = category,
-                                readTime    = "${maxOf(1, wc / 200)} dk",
-                                image       = img,
-                                summary     = cleanDesc.take(600),
-                                content     = cleanDesc,
-                                sourceUrl   = resolvedLink,
-                                sourceName  = sourceName,
-                                publishedAt = rawPubDate,
-                                publishedAtMs = parseDateToMs(rawPubDate)
-                            ))
-                            itemIdx++
-                        }
-                        inItem = false; curTag = ""
-                    }
-                }
-            }
-            try { event = parser.next() } catch (_: Exception) { break }
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+            isValidating = false
+            try { setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false) } catch (_: Exception) {}
+            try { setFeature("http://xml.org/sax/features/external-general-entities", false) } catch (_: Exception) {}
         }
-        return items
+        val doc = factory.newDocumentBuilder().parse(stream)
+        doc.documentElement.normalize()
+
+        // Collect all <item> (RSS) and <entry> (Atom) nodes
+        val nodes: NodeList = doc.getElementsByTagName("item").let {
+            if (it.length > 0) it else doc.getElementsByTagName("entry")
+        }
+
+        val articles = mutableListOf<Article>()
+        val max = minOf(nodes.length, 20)
+
+        for (i in 0 until max) {
+            val el = nodes.item(i) as? Element ?: continue
+
+            val title   = el.firstText("title").trim().take(140)
+            if (title.isBlank()) continue
+            val pubDate = el.firstText("pubDate")
+                .ifBlank { el.firstText("published") }
+                .ifBlank { el.firstText("updated") }
+
+            // Link: <link href="..."> (Atom) or <link> text (RSS) or <guid>
+            val link = el.atomLinkHref()
+                .ifBlank { el.firstText("link") }
+                .ifBlank { el.firstText("guid").takeIf { it.startsWith("http") } ?: "" }
+
+            // Full content: content:encoded (CDATA) > content > description > summary
+            // content:encoded often contains the full article text; description is the teaser.
+            val rawFull = el.cdataText("encoded")       // content:encoded — richest source
+                .ifBlank { el.firstText("content") }    // Atom <content>
+            val rawTeaser = el.firstText("description")
+                .ifBlank { el.firstText("summary") }
+
+            // Use whichever is longer as the definitive raw source for images
+            val rawForImage = if (rawFull.length > rawTeaser.length) rawFull else rawTeaser
+
+            val cleanFull   = stripHtml(rawFull).trim()
+            val cleanTeaser = stripHtml(rawTeaser).trim()
+
+            // summary = teaser (first 800 chars), content = full text (up to 8 000 chars)
+            // If there's no separate full text, content falls back to the teaser.
+            val summaryText = cleanTeaser.take(800).ifBlank { cleanFull.take(800) }
+            val contentText = if (cleanFull.length > cleanTeaser.length + 100)
+                cleanFull.take(8_000)
+            else
+                cleanTeaser.take(8_000)
+
+            // Image: media:content url > media:thumbnail url > enclosure url > <img> in html
+            val imageUrl = el.mediaUrl()
+                .ifBlank { el.enclosureUrl() }
+                .ifBlank { extractImageFromHtml(rawForImage) }
+                .ifBlank { getFallback(category, idOffset + i) }
+
+            val wc = contentText.split("\\s+".toRegex()).size
+
+            // Stable ID: hash of title prefix + sourceName so the same article keeps
+            // the same ID across fetches regardless of its position in the RSS feed.
+            // This ensures clickCounts (keyed by articleKey) and trendingRanks (keyed
+            // by article.id) always refer to the same underlying story.
+            val stableId = "${title.take(60)}|${sourceName}".hashCode().toString()
+
+            articles.add(Article(
+                id            = stableId,
+                title         = title,
+                category      = category,
+                readTime      = "${maxOf(1, wc / 200)} dk",
+                image         = imageUrl,
+                summary       = summaryText,
+                content       = contentText,
+                contentHtml   = rawFull.take(40_000).ifBlank { rawTeaser },
+                sourceUrl     = link,
+                sourceName    = sourceName,
+                publishedAt   = pubDate,
+                publishedAtMs = parseDateToMs(pubDate)
+            ))
+        }
+        return articles
+    }
+
+    // ── DOM helper extensions ─────────────────────────────────────────────────
+
+    /** Text content of the first matching tag (any namespace). */
+    private fun Element.firstText(localName: String): String {
+        val nl = getElementsByTagNameNS("*", localName)
+        if (nl.length > 0) {
+            val text = nl.item(0).textContent?.trim() ?: ""
+            if (text.isNotBlank()) return text
+        }
+        // fallback: no-namespace
+        val nl2 = getElementsByTagName(localName)
+        return nl2.item(0)?.textContent?.trim() ?: ""
+    }
+
+    /** CDATA text — used for content:encoded */
+    private fun Element.cdataText(localName: String): String {
+        val nl = getElementsByTagNameNS("*", localName)
+        return nl.item(0)?.textContent?.trim() ?: ""
+    }
+
+    /** Atom <link rel="alternate" href="..."> */
+    private fun Element.atomLinkHref(): String {
+        val links = getElementsByTagNameNS("*", "link")
+        for (j in 0 until links.length) {
+            val e = links.item(j) as? Element ?: continue
+            val rel = e.getAttribute("rel")
+            val href = e.getAttribute("href")
+            if (href.isNotBlank() && (rel.isBlank() || rel == "alternate")) return href
+        }
+        // also try no-namespace link with href attr
+        val links2 = getElementsByTagName("link")
+        for (j in 0 until links2.length) {
+            val e = links2.item(j) as? Element ?: continue
+            val href = e.getAttribute("href")
+            if (href.isNotBlank()) return href
+        }
+        return ""
+    }
+
+    /** media:content or media:thumbnail url attribute */
+    private fun Element.mediaUrl(): String {
+        for (tag in listOf("content", "thumbnail")) {
+            val nl = getElementsByTagNameNS("http://search.yahoo.com/mrss/", tag)
+            if (nl.length > 0) {
+                val url = (nl.item(0) as? Element)?.getAttribute("url") ?: ""
+                if (url.isNotBlank()) return url
+            }
+        }
+        return ""
+    }
+
+    /** <enclosure type="image/..." url="..."> */
+    private fun Element.enclosureUrl(): String {
+        val nl = getElementsByTagName("enclosure")
+        for (j in 0 until nl.length) {
+            val e = nl.item(j) as? Element ?: continue
+            val type = e.getAttribute("type")
+            val url  = e.getAttribute("url")
+            if (url.isNotBlank() && type.startsWith("image")) return url
+        }
+        return ""
     }
 
     // ── Date parsing ─────────────────────────────────────────────────────────
@@ -464,46 +496,121 @@ object NewsRepository {
             .find(html)?.groupValues?.getOrNull(1) ?: ""
     }
 
-    private fun stripHtml(html: String): String = html
-        .replace(Regex("<[^>]*>"), " ")
-        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-        .replace("&nbsp;", " ").replace("&#39;", "'").replace("&quot;", "\"")
-        .replace(Regex("\\s{2,}"), " ").trim()
+    private fun stripHtml(html: String): String {
+        if (html.isBlank()) return ""
+        return html
+            // Block-level tags → paragraph break
+            .replace(Regex("</?(p|div|h[1-6]|li|blockquote|section|article|header|footer)[^>]*>",
+                RegexOption.IGNORE_CASE), "\n\n")
+            // Line breaks → single newline
+            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+            // Strip remaining tags
+            .replace(Regex("<[^>]*>"), "")
+            // HTML entities
+            .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+            .replace("&nbsp;", " ").replace("&#39;", "'").replace("&quot;", "\"")
+            .replace("&apos;", "'").replace("&hellip;", "…").replace("&mdash;", "—")
+            .replace("&ndash;", "–").replace("&laquo;", "«").replace("&raquo;", "»")
+            // Collapse multiple blank lines to at most one blank line
+            .replace(Regex("[ \\t]+"), " ")
+            .replace(Regex("\\n[ \\t]+"), "\n")
+            .replace(Regex("\\n{3,}"), "\n\n")
+            .trim()
+    }
 
-    // ── Translation (MyMemory – free, no API key required) ───────────────────
+    // ── Translation ───────────────────────────────────────────────────────────
+    // Primary  : Google Translate (unofficial endpoint — no API key, high quota)
+    // Fallback : MyMemory (free, no API key)
+    // If both fail the original text is returned so the UI never breaks.
 
+    /**
+     * Translates [text] to [targetLang] ("tr" or "en").
+     * Tries Google Translate first; falls back to MyMemory on any error.
+     * Chunk limit: 4 800 chars per call (Google's practical safe limit).
+     */
     suspend fun translateText(text: String, targetLang: String): String = withContext(Dispatchers.IO) {
-        if (text.isBlank() || text.length < 8) return@withContext text
-        try {
+        if (text.isBlank() || text.length < 4) return@withContext text
+        translateWithGoogle(text, targetLang)
+            .takeIf { it.isNotBlank() && it != text }
+            ?: translateWithMyMemory(text, targetLang)
+                .takeIf { it.isNotBlank() && it != text }
+            ?: text
+    }
+
+    /** Google Translate unofficial endpoint — returns blank string on failure. */
+    private fun translateWithGoogle(text: String, targetLang: String): String {
+        return try {
+            val sourceLang = if (targetLang == "tr") "en" else "tr"
+            val encoded = URLEncoder.encode(text.take(4_800), "UTF-8")
+            val urlStr  = "https://translate.googleapis.com/translate_a/single" +
+                          "?client=gtx&sl=$sourceLang&tl=$targetLang&dt=t&q=$encoded"
+            val conn = URL(urlStr).openConnection() as HttpURLConnection
+            conn.setRequestProperty("User-Agent",
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+            conn.setRequestProperty("Accept", "application/json")
+            conn.connectTimeout = 10_000
+            conn.readTimeout    = 15_000
+            val body = conn.inputStream.bufferedReader(Charsets.UTF_8).readText()
+            conn.disconnect()
+            // Response format: [[["translated","original",null,null,1],...],null,"en",...]
+            // Parse the nested JSON array manually to avoid a full JSON library dependency.
+            parseGoogleTranslateResponse(body)
+        } catch (_: Exception) { "" }
+    }
+
+    /**
+     * Parses the Google Translate JSON array response.
+     * Format: [ [ ["chunk_translated", "chunk_original", ...], ... ], null, "srcLang", ... ]
+     */
+    private fun parseGoogleTranslateResponse(body: String): String {
+        return try {
+            val outer = org.json.JSONArray(body)
+            val segments = outer.getJSONArray(0)
+            val sb = StringBuilder()
+            for (i in 0 until segments.length()) {
+                val segment = segments.optJSONArray(i) ?: continue
+                val part = segment.optString(0, "")
+                if (part.isNotBlank()) sb.append(part)
+            }
+            sb.toString().trim()
+        } catch (_: Exception) { "" }
+    }
+
+    /** MyMemory fallback — returns blank string on failure. */
+    private fun translateWithMyMemory(text: String, targetLang: String): String {
+        return try {
             val langPair = if (targetLang == "tr") "en|tr" else "tr|en"
             val encoded  = URLEncoder.encode(text.take(480), "UTF-8")
             val url      = URL("https://api.mymemory.translated.net/get?q=$encoded&langpair=$langPair")
             val conn     = url.openConnection() as HttpURLConnection
             conn.setRequestProperty("User-Agent", "Mozilla/5.0")
-            conn.connectTimeout = 8_000
-            conn.readTimeout    = 10_000
+            conn.connectTimeout = 10_000
+            conn.readTimeout    = 12_000
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
             val translated = JSONObject(body)
                 .getJSONObject("responseData")
                 .getString("translatedText")
-            if (translated.isNotBlank() && translated != "null") translated else text
-        } catch (_: Exception) { text }
+            if (translated.isNotBlank() && translated != "null") translated else ""
+        } catch (_: Exception) { "" }
     }
 
     /**
-     * Splits text into chunks of at most 480 chars (breaking at word boundaries) and
-     * translates each chunk sequentially, then joins them. Max 4 chunks (~1920 chars)
-     * to avoid excessive API calls while covering most article bodies.
+     * Splits [text] into word-boundary chunks of at most [CHUNK_SIZE] chars and
+     * translates each via [translateText], then rejoins. Up to [MAX_CHUNKS] chunks
+     * so very long articles don't hammer the API excessively.
      */
+    private const val CHUNK_SIZE  = 4_800
+    private const val MAX_CHUNKS  = 6   // ≈ 28 800 chars — covers full articles
+
     suspend fun translateLongText(text: String, targetLang: String): String {
         if (text.isBlank()) return text
-        if (text.length <= 480) return translateText(text, targetLang)
+        if (text.length <= CHUNK_SIZE) return translateText(text, targetLang)
 
         val chunks = mutableListOf<String>()
         var start = 0
-        while (start < text.length && chunks.size < 4) {
-            val end = minOf(start + 480, text.length)
+        while (start < text.length && chunks.size < MAX_CHUNKS) {
+            val end = minOf(start + CHUNK_SIZE, text.length)
             val chunk = if (end >= text.length) {
                 text.substring(start)
             } else {
@@ -514,21 +621,19 @@ object NewsRepository {
             chunks.add(chunk.trim())
             start += chunk.length + 1
         }
-
         return chunks.map { translateText(it, targetLang) }.joinToString(" ")
     }
 
     /** Translates article title and summary concurrently. */
     suspend fun translateArticle(article: Article, targetLang: String): Pair<String, String> =
         coroutineScope {
-            val titleJob   = async { translateText(article.title,   targetLang) }
-            val summaryJob = async { translateLongText(article.summary, targetLang) }
+            val titleJob   = async { translateText(article.title,          targetLang) }
+            val summaryJob = async { translateLongText(article.summary,    targetLang) }
             Pair(titleJob.await(), summaryJob.await())
         }
 
     /**
-     * Translates title, summary and body content concurrently.
-     * Content is chunked into up to 4×480-char segments for full coverage.
+     * Translates title, summary and full body content concurrently.
      */
     suspend fun translateArticleFull(article: Article, targetLang: String): Triple<String, String, String> =
         coroutineScope {

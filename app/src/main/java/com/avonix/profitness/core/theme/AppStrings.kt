@@ -91,14 +91,12 @@ data class AppStrings(
     // ── News screen – categories ─────────────────────────────────────────────
     val newsCatAll          : String,   // "TÜMÜ" / "ALL"
     val newsCatSaved        : String,   // "KAYDEDILENLER" / "SAVED"
-    val newsCatScience      : String,   // "BİLİM" / "SCIENCE"
     val newsCatNutrition    : String,   // "BESLENME" / "NUTRITION"
     val newsCatTraining     : String,   // "ANTRENMAN" / "TRAINING"
     val newsCatSports       : String,   // "SPOR" / "SPORTS"
     val newsCatMind         : String,   // "ZİHİN" / "MIND"
     val newsCatLifestyle    : String,   // "YAŞAM" / "LIFESTYLE"
     val newsCatRecovery     : String,   // "TOPARLANMA" / "RECOVERY"
-    val newsCatTech         : String,   // "TEKNOLOJİ" / "TECHNOLOGY"
 
     // ── News screen – UI labels ──────────────────────────────────────────────
     val liveLabel           : String,   // "CANLI" / "LIVE"
@@ -124,6 +122,8 @@ data class AppStrings(
     val reportConfirm            : String,   // "Bildir" / "Report"
     val reportCancel             : String,   // "İptal" / "Cancel"
     val reportSuccessMsg         : String,   // "Haber bildirildi ve kaldırıldı." / "Article reported and removed."
+    val newArticlesMsg           : String,   // "yeni haber" / "new articles"
+    val noNewArticlesMsg         : String,   // "Haberler güncel." / "Already up to date."
 
     // ── Program Builder screen ───────────────────────────────────────────────
     val programStudioSub    : String,   // "Hazır programlardan seç veya kendin tasarla."
@@ -228,14 +228,12 @@ val TurkishStrings = AppStrings(
     // News – categories
     newsCatAll          = "TÜMÜ",
     newsCatSaved        = "KAYDEDILENLER",
-    newsCatScience      = "BİLİM",
     newsCatNutrition    = "BESLENME",
     newsCatTraining     = "ANTRENMAN",
     newsCatSports       = "SPOR",
     newsCatMind         = "ZİHİN",
     newsCatLifestyle    = "YAŞAM",
     newsCatRecovery     = "TOPARLANMA",
-    newsCatTech         = "TEKNOLOJİ",
 
     // News – UI labels
     liveLabel           = "CANLI",
@@ -261,6 +259,8 @@ val TurkishStrings = AppStrings(
     reportConfirm            = "Bildir",
     reportCancel             = "İptal",
     reportSuccessMsg         = "Haber bildirildi ve listenizden kaldırıldı.",
+    newArticlesMsg           = "yeni haber",
+    noNewArticlesMsg         = "Haberler güncel.",
 
     // Program Builder
     programStudioSub    = "Hazır programlardan seç veya kendin tasarla.",
@@ -365,14 +365,12 @@ val EnglishStrings = AppStrings(
     // News – categories
     newsCatAll          = "ALL",
     newsCatSaved        = "SAVED",
-    newsCatScience      = "SCIENCE",
     newsCatNutrition    = "NUTRITION",
     newsCatTraining     = "TRAINING",
     newsCatSports       = "SPORTS",
     newsCatMind         = "MIND",
     newsCatLifestyle    = "LIFESTYLE",
     newsCatRecovery     = "RECOVERY",
-    newsCatTech         = "TECHNOLOGY",
 
     // News – UI labels
     liveLabel           = "LIVE",
@@ -384,8 +382,8 @@ val EnglishStrings = AppStrings(
     aiSummaryLabel      = "AI SUMMARY",
     contentLabel        = "CONTENT",
     goToOriginal        = "READ ORIGINAL ARTICLE",
-    translatingLabel    = "Translating to Turkish…",
-    translatedLabel     = "AI Translated to Turkish",
+    translatingLabel    = "Translating to English…",
+    translatedLabel     = "AI Translated to English",
     sourceLabel         = "Source",
     noSummaryLabel      = "No summary available for this article.",
     saveArticle              = "Save",
@@ -398,6 +396,8 @@ val EnglishStrings = AppStrings(
     reportConfirm            = "Report",
     reportCancel             = "Cancel",
     reportSuccessMsg         = "Article reported and removed from your feed.",
+    newArticlesMsg           = "new articles",
+    noNewArticlesMsg         = "Already up to date.",
 
     // Program Builder
     programStudioSub    = "Choose from ready programs or design your own.",
@@ -437,13 +437,11 @@ val AppThemeState.strings: AppStrings
 fun AppStrings.localizedNewsCategory(key: String): String = when (key) {
     "TÜMÜ"          -> newsCatAll
     "KAYDEDILENLER" -> newsCatSaved
-    "BİLİM"         -> newsCatScience
     "BESLENME"      -> newsCatNutrition
     "ANTRENMAN"     -> newsCatTraining
     "SPOR"          -> newsCatSports
     "ZİHİN"         -> newsCatMind
     "YAŞAM"         -> newsCatLifestyle
     "TOPARLANMA"    -> newsCatRecovery
-    "TEKNOLOJİ"     -> newsCatTech
     else            -> key
 }
