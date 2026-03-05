@@ -937,6 +937,25 @@ private fun MuseReader(
 
             // ── AI Summary box ─────────────────────────────────────────────────
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
+
+                if (detailState.isTranslating) {
+                    // Translation in progress — show centred spinner
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = accent, modifier = Modifier.size(36.dp))
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "Türkçeye çevriliyor…",
+                                color = Snow.copy(0.5f),
+                                fontSize = 12.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+                } else {
                 // Summary card
                 Box(
                     modifier = Modifier
@@ -981,6 +1000,7 @@ private fun MuseReader(
                     )
                     Spacer(Modifier.height(32.dp))
                 }
+                } // end isTranslating else
 
                 // ── Original article button ────────────────────────────────────
                 if (article.sourceUrl.isNotBlank()) {

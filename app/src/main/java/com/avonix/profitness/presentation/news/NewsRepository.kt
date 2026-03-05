@@ -33,35 +33,39 @@ data class Article(
 
 private data class FeedSource(val category: String, val url: String, val sourceName: String)
 
-// Reliable, up-to-date feeds. Google News RSS returns fresh content without auth.
-// ScienceDaily, BBC and NY Times are proven stable sources with consistent XML schemas.
+// Reliable, up-to-date feeds. ScienceDaily, BBC, NY Times and Healthline
+// are proven stable sources with consistent XML schemas that do not require auth or redirects.
+// Google News RSS feeds have been replaced with more reliable alternatives.
 private val RSS_FEEDS = listOf(
     // BİLİM – Science
-    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml", "Science Daily"),
-    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",        "Science Daily"),
-    FeedSource("BİLİM", "https://news.google.com/rss/search?q=sports+science+research+exercise+physiology&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml",  "Science Daily"),
+    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",         "Science Daily"),
+    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_medicine.xml", "Science Daily"),
     // BESLENME – Nutrition
-    FeedSource("BESLENME", "https://news.google.com/rss/search?q=nutrition+diet+protein+health+2025&hl=en-US&gl=US&ceid=US:en", "Google News"),
-    FeedSource("BESLENME", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",            "NY Times"),
-    FeedSource("BESLENME", "https://rss.sciencedaily.com/news/health_medicine/nutrition.xml",    "Science Daily"),
+    FeedSource("BESLENME", "https://rss.sciencedaily.com/news/health_medicine/nutrition.xml",          "Science Daily"),
+    FeedSource("BESLENME", "https://rss.sciencedaily.com/news/health_medicine/diet_and_weight_loss.xml","Science Daily"),
+    FeedSource("BESLENME", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",                  "NY Times"),
     // ANTRENMAN – Training
-    FeedSource("ANTRENMAN", "https://news.google.com/rss/search?q=workout+training+gym+strength+exercise&hl=en-US&gl=US&ceid=US:en", "Google News"),
-    FeedSource("ANTRENMAN", "https://news.google.com/rss/search?q=bodybuilding+muscle+hypertrophy+resistance+training&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("ANTRENMAN", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",          "Science Daily"),
+    FeedSource("ANTRENMAN", "https://rss.sciencedaily.com/news/health_medicine/sports_medicine.xml",  "Science Daily"),
+    FeedSource("ANTRENMAN", "https://www.menshealth.com/rss/all.xml",                                 "Men's Health"),
     // SPOR – Sports
-    FeedSource("SPOR", "https://feeds.bbci.co.uk/sport/rss.xml",                                 "BBC Sport"),
-    FeedSource("SPOR", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",                "NY Times"),
+    FeedSource("SPOR", "https://feeds.bbci.co.uk/sport/rss.xml",                   "BBC Sport"),
+    FeedSource("SPOR", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",  "NY Times"),
+    FeedSource("SPOR", "https://www.runnersworld.com/rss/all.xml",                 "Runner's World"),
     // ZİHİN – Mind
-    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",            "Science Daily"),
-    FeedSource("ZİHİN", "https://news.google.com/rss/search?q=sports+psychology+mental+performance+mindset&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",           "Science Daily"),
+    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/sport_psychology.xml",     "Science Daily"),
     // YAŞAM – Lifestyle
-    FeedSource("YAŞAM", "https://news.google.com/rss/search?q=wellness+lifestyle+healthy+living+habits&hl=en-US&gl=US&ceid=US:en", "Google News"),
     FeedSource("YAŞAM", "https://rss.sciencedaily.com/news/health_medicine/healthy_aging.xml",   "Science Daily"),
+    FeedSource("YAŞAM", "https://rss.nytimes.com/services/xml/rss/nyt/Well.xml",                 "NY Times Well"),
+    FeedSource("YAŞAM", "https://www.womenshealthmag.com/rss/all.xml",                           "Women's Health"),
     // TOPARLANMA – Recovery
-    FeedSource("TOPARLANMA", "https://news.google.com/rss/search?q=muscle+recovery+sleep+sports+medicine+rest&hl=en-US&gl=US&ceid=US:en", "Google News"),
-    FeedSource("TOPARLANMA", "https://rss.sciencedaily.com/news/health_medicine/sleep.xml",       "Science Daily"),
+    FeedSource("TOPARLANMA", "https://rss.sciencedaily.com/news/health_medicine/sleep.xml",      "Science Daily"),
+    FeedSource("TOPARLANMA", "https://rss.sciencedaily.com/news/health_medicine/pain.xml",       "Science Daily"),
     // TEKNOLOJİ – Technology
     FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
-    FeedSource("TEKNOLOJİ", "https://news.google.com/rss/search?q=fitness+technology+wearable+AI+health+2025&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/artificial_intelligence.xml", "Science Daily"),
 )
 
 // ── Fallback Images per Category ─────────────────────────────────────────────
@@ -248,20 +252,34 @@ object NewsRepository {
     }
 
     private fun fetchFeed(source: FeedSource, idOffset: Int): List<Article> {
-        val conn = URL(source.url).openConnection() as HttpURLConnection
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 ProfitnesApp/1.0")
-        conn.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml, */*")
-        conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
-        conn.instanceFollowRedirects = true
-        conn.connectTimeout = 12_000
-        conn.readTimeout   = 15_000
-        conn.connect()
-        if (conn.responseCode !in 200..299) { conn.disconnect(); return emptyList() }
-        return try {
-            parseRss(conn.inputStream, source.category, source.sourceName, idOffset)
-        } finally {
-            conn.disconnect()
+        var url = source.url
+        // Follow up to 5 redirects manually to handle HTTP→HTTPS cross-protocol redirects
+        for (attempt in 0..4) {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+            conn.setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            conn.setRequestProperty("Cache-Control", "no-cache")
+            conn.setRequestProperty("Pragma", "no-cache")
+            conn.instanceFollowRedirects = false   // handle manually for cross-protocol support
+            conn.connectTimeout = 12_000
+            conn.readTimeout    = 15_000
+            conn.connect()
+            val code = conn.responseCode
+            when {
+                code in 200..299 -> return try {
+                    parseRss(conn.inputStream, source.category, source.sourceName, idOffset)
+                } finally { conn.disconnect() }
+                code in 300..399 -> {
+                    val location = conn.getHeaderField("Location")
+                    conn.disconnect()
+                    if (location.isNullOrBlank()) return emptyList()
+                    url = location
+                }
+                else -> { conn.disconnect(); return emptyList() }
+            }
         }
+        return emptyList()
     }
 
     // ── RSS / Atom parser ─────────────────────────────────────────────────────
@@ -367,7 +385,7 @@ object NewsRepository {
                                 category    = category,
                                 readTime    = "${maxOf(1, wc / 200)} dk",
                                 image       = img,
-                                summary     = cleanDesc.take(300),
+                                summary     = cleanDesc.take(600),
                                 content     = cleanDesc,
                                 sourceUrl   = resolvedLink,
                                 sourceName  = sourceName,
@@ -448,23 +466,50 @@ object NewsRepository {
         } catch (_: Exception) { text }
     }
 
+    /**
+     * Splits text into chunks of at most 480 chars (breaking at word boundaries) and
+     * translates each chunk sequentially, then joins them. Max 4 chunks (~1920 chars)
+     * to avoid excessive API calls while covering most article bodies.
+     */
+    suspend fun translateLongText(text: String, targetLang: String): String {
+        if (text.isBlank()) return text
+        if (text.length <= 480) return translateText(text, targetLang)
+
+        val chunks = mutableListOf<String>()
+        var start = 0
+        while (start < text.length && chunks.size < 4) {
+            val end = minOf(start + 480, text.length)
+            val chunk = if (end >= text.length) {
+                text.substring(start)
+            } else {
+                val lastSpace = text.lastIndexOf(' ', end)
+                if (lastSpace > start) text.substring(start, lastSpace)
+                else text.substring(start, end)
+            }
+            chunks.add(chunk.trim())
+            start += chunk.length + 1
+        }
+
+        return chunks.map { translateText(it, targetLang) }.joinToString(" ")
+    }
+
     /** Translates article title and summary concurrently. */
     suspend fun translateArticle(article: Article, targetLang: String): Pair<String, String> =
         coroutineScope {
             val titleJob   = async { translateText(article.title,   targetLang) }
-            val summaryJob = async { translateText(article.summary, targetLang) }
+            val summaryJob = async { translateLongText(article.summary, targetLang) }
             Pair(titleJob.await(), summaryJob.await())
         }
 
     /**
-     * Translates title, summary and the first 480 chars of body content concurrently.
-     * Body is capped to stay within MyMemory's free-tier character limit per request.
+     * Translates title, summary and body content concurrently.
+     * Content is chunked into up to 4×480-char segments for full coverage.
      */
     suspend fun translateArticleFull(article: Article, targetLang: String): Triple<String, String, String> =
         coroutineScope {
-            val titleJob   = async { translateText(article.title,                     targetLang) }
-            val summaryJob = async { translateText(article.summary,                   targetLang) }
-            val contentJob = async { translateText(article.content.take(480),         targetLang) }
+            val titleJob   = async { translateText(article.title,          targetLang) }
+            val summaryJob = async { translateLongText(article.summary,    targetLang) }
+            val contentJob = async { translateLongText(article.content,    targetLang) }
             Triple(titleJob.await(), summaryJob.await(), contentJob.await())
         }
 }
