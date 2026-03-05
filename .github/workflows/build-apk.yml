@@ -84,14 +84,15 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug Artifact
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --info 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
 
-      - name: Upload Build Log on Failure
+      - name: Print Error Log on Failure
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
+        run: |
+          echo "=== BUILD ERRORS ==="
+          grep -E "error:|FAILED|Exception|Caused by:|Unresolved reference|> Task" build.log | tail -60 || true
+          echo "=== LAST 80 LINES ==="
+          tail -80 build.log || true
 
       - name: Rename APK
         run: |
