@@ -45,10 +45,11 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import kotlinx.coroutines.delay
 
-// ── Categories ────────────────────────────────────────────────────────────────
+// ── Category internal keys (language-invariant, must match Article.category values) ──
 
-private val CATEGORIES = listOf(
-    "TÜMÜ", "KAYDEDILENLER", "BİLİM", "BESLENME", "ANTRENMAN", "SPOR", "ZİHİN", "YAŞAM", "TOPARLANMA", "TEKNOLOJİ"
+private val CATEGORY_KEYS = listOf(
+    "TÜMÜ", "KAYDEDILENLER", "BİLİM", "BESLENME", "ANTRENMAN",
+    "SPOR", "ZİHİN", "YAŞAM", "TOPARLANMA", "TEKNOLOJİ"
 )
 
 private const val PAGE_SIZE = 20
@@ -57,11 +58,15 @@ private const val PAGE_SIZE = 20
 
 @Composable
 fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
-    val uiState by newsViewModel.uiState.collectAsState()
-    val detailState by newsViewModel.detailState.collectAsState()
-    val savedIds by newsViewModel.savedIds.collectAsState()
-    val theme = LocalAppTheme.current
-    val appLang = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
+    val uiState       by newsViewModel.uiState.collectAsState()
+    val detailState   by newsViewModel.detailState.collectAsState()
+    val savedIds      by newsViewModel.savedIds.collectAsState()
+    val reportedIds   by newsViewModel.reportedIds.collectAsState()
+    val theme         = LocalAppTheme.current
+    val strings       = theme.strings
+    val appLang       = if (theme.language == AppLanguage.TURKISH) "tr" else "en"
+    val snackbarHost     = remember { SnackbarHostState() }
+    val initialReported  = remember { reportedIds.size }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -83,17 +88,46 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
                     detailState = detail,
                     isSaved = detail.article.id in savedIds,
                     onBack = { newsViewModel.closeArticle() },
-                    onSave = { newsViewModel.toggleSave(detail.article.id) }
+                    onSave = { newsViewModel.toggleSave(detail.article.id) },
+                    onReport = {
+                        newsViewModel.reportArticle(detail.article.id)
+                        snackbarHost.currentSnackbarData?.dismiss()
+                    }
                 )
             } else {
                 NewsFeed(
-                    uiState = uiState,
-                    savedIds = savedIds,
+                    uiState       = uiState,
+                    savedIds      = savedIds,
+                    reportedIds   = reportedIds,
                     onArticleClick = { newsViewModel.openArticle(it, appLang) },
-                    onRefresh = { newsViewModel.refresh() },
-                    onSave = { newsViewModel.toggleSave(it) }
+                    onRefresh     = { newsViewModel.refresh() },
+                    onSave        = { newsViewModel.toggleSave(it) }
                 )
             }
+        }
+
+        // Snackbar shown after a report action
+        SnackbarHost(
+            hostState = snackbarHost,
+            modifier  = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
+            snackbar  = { data ->
+                Snackbar(
+                    snackbarData    = data,
+                    containerColor  = theme.bg2,
+                    contentColor    = Snow,
+                    shape           = RoundedCornerShape(14.dp)
+                )
+            }
+        )
+    }
+
+    // Show snackbar only when a new report is added during this session
+    LaunchedEffect(reportedIds.size) {
+        if (reportedIds.size > initialReported) {
+            snackbarHost.showSnackbar(
+                message  = strings.reportSuccessMsg,
+                duration = SnackbarDuration.Short
+            )
         }
     }
 }
@@ -104,21 +138,24 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
 private fun NewsFeed(
     uiState: NewsUiState,
     savedIds: Set<String>,
+    reportedIds: Set<String>,
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
     onSave: (String) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("TÜMÜ") }
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
+    val accent  = MaterialTheme.colorScheme.primary
     val listState = rememberLazyListState()
 
-    // Filtered article list based on category
-    val filteredArticles = remember(selectedCategory, uiState.articles, savedIds) {
+    // Filtered article list: exclude reported, then apply category filter
+    val filteredArticles = remember(selectedCategory, uiState.articles, savedIds, reportedIds) {
+        val nonReported = uiState.articles.filter { it.id !in reportedIds }
         when (selectedCategory) {
-            "TÜMÜ"          -> uiState.articles
-            "KAYDEDILENLER" -> uiState.articles.filter { it.id in savedIds }
-            else            -> uiState.articles.filter { it.category == selectedCategory }
+            "TÜMÜ"          -> nonReported
+            "KAYDEDILENLER" -> nonReported.filter { it.id in savedIds }
+            else            -> nonReported.filter { it.category == selectedCategory }
         }
     }
 
@@ -218,7 +255,7 @@ private fun NewsFeed(
                 ) {
                     LiveDot()
                     Text(
-                        "CANLI • ${uiState.articles.size} HABER",
+                        "${strings.liveLabel} • ${uiState.articles.size} ${strings.newsCountLabel}",
                         color = theme.text2,
                         fontSize = 9.sp,
                         letterSpacing = 2.sp,
@@ -230,13 +267,14 @@ private fun NewsFeed(
 
         // ── Categories ─────────────────────────────────────────────────────────
         item {
-            MuseCategoryBar(selected = selectedCategory, onSelect = { selectedCategory = it })
+            MuseCategoryBar(selected = selectedCategory, onSelect = { selectedCategory = it }, strings = strings)
         }
 
         // ── Section label ──────────────────────────────────────────────────────
         item {
             Text(
-                text = if (selectedCategory == "TÜMÜ") "TÜM HABERLER" else selectedCategory,
+                text = if (selectedCategory == "TÜMÜ") strings.allNewsLabel
+                       else strings.localizedNewsCategory(selectedCategory),
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 color = theme.text2,
                 fontSize = 10.sp,
@@ -262,8 +300,8 @@ private fun NewsFeed(
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            if (selectedCategory == "KAYDEDILENLER") "Henüz kaydedilen haber yok"
-                            else "Bu kategoride haber bulunamadı",
+                            if (selectedCategory == "KAYDEDILENLER") strings.noSavedNews
+                            else strings.noCategoryNews,
                             color = Snow.copy(0.4f),
                             fontSize = 13.sp
                         )
@@ -416,7 +454,8 @@ private fun MuseHeroCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(12.dp))
-                Text("${article.readTime} OKUMA", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
+                val heroStrings = LocalAppTheme.current.strings
+                Text("${article.readTime} ${heroStrings.readingLabel}", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
                 if (article.publishedAt.isNotBlank()) {
                     Text("•", color = Snow.copy(0.3f), fontSize = 9.sp)
                     Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.sp)
@@ -530,8 +569,12 @@ private fun PagerDotIndicator(pagerState: PagerState, count: Int) {
 // ── Category Bar — Nav-bar pill style ─────────────────────────────────────────
 
 @Composable
-private fun MuseCategoryBar(selected: String, onSelect: (String) -> Unit) {
-    val theme = LocalAppTheme.current
+private fun MuseCategoryBar(
+    selected: String,
+    onSelect: (String) -> Unit,
+    strings: AppStrings
+) {
+    val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
     LazyRow(
@@ -539,7 +582,7 @@ private fun MuseCategoryBar(selected: String, onSelect: (String) -> Unit) {
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(CATEGORIES) { cat ->
+        items(CATEGORY_KEYS) { cat ->
             val isSelected = cat == selected
             val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()
@@ -584,7 +627,7 @@ private fun MuseCategoryBar(selected: String, onSelect: (String) -> Unit) {
                     )
                 }
                 Text(
-                    cat,
+                    strings.localizedNewsCategory(cat),
                     color = textColor,
                     fontSize = 10.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -692,7 +735,7 @@ private fun MuseArticleCard(
         ) {
             Icon(
                 if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
-                contentDescription = if (isSaved) "Kaydı kaldır" else "Kaydet",
+                contentDescription = if (isSaved) LocalAppTheme.current.strings.unsaveArticle else LocalAppTheme.current.strings.saveArticle,
                 tint = if (isSaved) accent else Snow.copy(0.70f),
                 modifier = Modifier.size(13.dp)
             )
@@ -793,13 +836,16 @@ private fun MuseReader(
     detailState: ArticleDetailState,
     isSaved: Boolean,
     onBack: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onReport: () -> Unit
 ) {
-    val article = detailState.article
-    val context = LocalContext.current
+    val article     = detailState.article
+    val context     = LocalContext.current
     val scrollState = rememberScrollState()
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val theme       = LocalAppTheme.current
+    val strings     = theme.strings
+    val accent      = MaterialTheme.colorScheme.primary
+    var showReportDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -864,7 +910,7 @@ private fun MuseReader(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(12.dp))
-                        Text("${article.readTime} OKUMA", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
+                        Text("${article.readTime} ${strings.readingLabel}", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
                         if (article.publishedAt.isNotBlank()) {
                             Text("•", color = Snow.copy(0.3f), fontSize = 9.sp)
                             Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 9.sp)
@@ -897,11 +943,11 @@ private fun MuseReader(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(16.dp))
-                            Text("AI ÖZETİ", color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                            Text(strings.aiSummaryLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                         }
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            detailState.displaySummary.ifBlank { "Bu haber için özet mevcut değil." },
+                            detailState.displaySummary.ifBlank { strings.noSummaryLabel },
                             color = Snow.copy(0.85f),
                             fontSize = 15.sp,
                             lineHeight = 23.sp,
@@ -915,7 +961,7 @@ private fun MuseReader(
 
                 // Full content
                 if (article.content.isNotBlank() && article.content != article.summary) {
-                    Text("İÇERİK", color = theme.text2, fontSize = 9.sp, letterSpacing = 3.sp, fontWeight = FontWeight.SemiBold)
+                    Text(strings.contentLabel, color = theme.text2, fontSize = 9.sp, letterSpacing = 3.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
                     Text(
                         article.content,
@@ -947,7 +993,7 @@ private fun MuseReader(
                         Icon(Icons.Rounded.OpenInNew, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            "HABERİN ORİJİNALİNE GİT",
+                            strings.goToOriginal,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.5.sp
@@ -966,7 +1012,7 @@ private fun MuseReader(
                         Icon(Icons.Rounded.Article, null, tint = theme.text2, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(5.dp))
                         Text(
-                            "Kaynak: ${article.sourceName}",
+                            "${strings.sourceLabel}: ${article.sourceName}",
                             color = theme.text2,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Light
@@ -1032,17 +1078,119 @@ private fun MuseReader(
                         Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(20.dp))
                     }
                 }
+
+                // Report button
+                IconButton(
+                    onClick = { showReportDialog = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(0.55f))
+                ) {
+                    Icon(Icons.Rounded.Flag, null, tint = Snow.copy(0.70f), modifier = Modifier.size(20.dp))
+                }
             }
         }
+
+        // Report dialog
+        if (showReportDialog) {
+            ReportDialog(
+                strings  = strings,
+                onDismiss = { showReportDialog = false },
+                onConfirm = {
+                    showReportDialog = false
+                    onReport()
+                }
+            )
+        }
     }
+}
+
+// ── Report Dialog ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ReportDialog(
+    strings: AppStrings,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    var selectedReason by remember { mutableStateOf<String?>(null) }
+
+    val reasons = listOf(
+        strings.reportReasonMisinfo,
+        strings.reportReasonSpam,
+        strings.reportReasonInappropriate
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor  = theme.bg1,
+        shape           = RoundedCornerShape(24.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Rounded.Flag, null, tint = accent, modifier = Modifier.size(18.dp))
+                Text(strings.reportDialogTitle, color = Snow, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                reasons.forEach { reason ->
+                    val isSelected = selectedReason == reason
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) accent.copy(0.15f) else theme.bg2)
+                            .border(1.dp, if (isSelected) accent.copy(0.5f) else theme.stroke.copy(0.15f), RoundedCornerShape(12.dp))
+                            .clickable { selectedReason = reason }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) accent else Color.Transparent)
+                                .border(1.5.dp, if (isSelected) accent else theme.text2.copy(0.4f), CircleShape)
+                        )
+                        Text(reason, color = if (isSelected) Snow else theme.text2, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick  = onConfirm,
+                enabled  = selectedReason != null,
+                shape    = RoundedCornerShape(12.dp),
+                colors   = ButtonDefaults.buttonColors(
+                    containerColor         = accent,
+                    contentColor           = Color.Black,
+                    disabledContainerColor = theme.bg2,
+                    disabledContentColor   = theme.text2
+                )
+            ) {
+                Text(strings.reportConfirm, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.reportCancel, color = theme.text2, fontSize = 13.sp)
+            }
+        }
+    )
 }
 
 // ── Translation Badge ─────────────────────────────────────────────────────────
 
 @Composable
 private fun TranslationBadge(isLoading: Boolean) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
+    val accent  = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1061,10 +1209,10 @@ private fun TranslationBadge(isLoading: Boolean) {
                 label = "tl_alpha"
             )
             Icon(Icons.Rounded.Translate, null, tint = accent.copy(alpha), modifier = Modifier.size(14.dp))
-            Text("Türkçeye çevriliyor...", color = accent.copy(alpha), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text(strings.translatingLabel, color = accent.copy(alpha), fontSize = 11.sp, fontWeight = FontWeight.Medium)
         } else {
             Icon(Icons.Rounded.Translate, null, tint = accent, modifier = Modifier.size(14.dp))
-            Text("Yapay zeka ile Türkçeye çevrildi", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text(strings.translatedLabel, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

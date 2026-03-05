@@ -45,13 +45,27 @@ data class SavedProgram(
     val icon: ImageVector
 )
 
-enum class ProgramCategory(val label: String, val color: Color, val icon: ImageVector) {
-    ALL("TÜMÜ", Snow, Icons.Rounded.GridView),
-    MUSCLE("KAS", CardPurple, Icons.Rounded.FitnessCenter),
+enum class ProgramCategory(val trLabel: String, val color: Color, val icon: ImageVector) {
+    ALL("TÜMÜ",          Snow,       Icons.Rounded.GridView),
+    MUSCLE("KAS",        CardPurple, Icons.Rounded.FitnessCenter),
     FAT_LOSS("YAĞ YAKIMI", CardCoral, Icons.Rounded.LocalFireDepartment),
-    STRENGTH("GÜÇ", Amber, Icons.Rounded.Bolt),
+    STRENGTH("GÜÇ",     Amber,      Icons.Rounded.Bolt),
     ENDURANCE("DAYANIKLILIK", CardCyan, Icons.Rounded.DirectionsRun),
     BEGINNER("BAŞLANGIÇ", CardGreen, Icons.Rounded.StarOutline)
+}
+
+/** Returns the localised display label for this category. */
+@Composable
+fun ProgramCategory.localizedLabel(): String {
+    val strings = LocalAppTheme.current.strings
+    return when (this) {
+        ProgramCategory.ALL       -> strings.progCatAll
+        ProgramCategory.MUSCLE    -> strings.progCatMuscle
+        ProgramCategory.FAT_LOSS  -> strings.progCatFatLoss
+        ProgramCategory.STRENGTH  -> strings.progCatStrength
+        ProgramCategory.ENDURANCE -> strings.progCatEndurance
+        ProgramCategory.BEGINNER  -> strings.progCatBeginner
+    }
 }
 
 data class ReadyProgram(
@@ -242,7 +256,8 @@ fun ProgramBuilderScreen() {
     val savedPrograms = remember { mutableStateListOf<SavedProgram>() }
     var mode by remember { mutableStateOf<BuilderMode>(BuilderMode.Choose) }
     var snackbarMsg by remember { mutableStateOf<String?>(null) }
-    val theme = LocalAppTheme.current
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         ArchitectGrid()
@@ -258,7 +273,7 @@ fun ProgramBuilderScreen() {
                     onBack = { mode = BuilderMode.Choose },
                     onSave = { name ->
                         savedPrograms.add(SavedProgram(name, 6, "Oracle Optimized", Icons.Rounded.AutoAwesome))
-                        snackbarMsg = "\"$name\" kaydedildi ✓"
+                        snackbarMsg = "\"$name\" ${strings.programSavedMsg}"
                         mode = BuilderMode.Choose
                     }
                 )
@@ -266,7 +281,7 @@ fun ProgramBuilderScreen() {
                     onBack = { mode = BuilderMode.Choose },
                     onSave = { name ->
                         savedPrograms.add(SavedProgram(name, 4, "Custom Protocol", Icons.Rounded.Construction))
-                        snackbarMsg = "Program kaydedildi ✓"
+                        snackbarMsg = strings.programSavedDefault
                         mode = BuilderMode.Choose
                     }
                 )
@@ -361,7 +376,7 @@ private fun BuilderChooseScreen(
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Hazır programlardan seç veya kendin tasarla.",
+                    LocalAppTheme.current.strings.programStudioSub,
                     color = Mist,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Light
@@ -377,17 +392,18 @@ private fun BuilderChooseScreen(
                     .padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val chooseStrings = LocalAppTheme.current.strings
                 QuickCreateButton(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.AutoAwesome,
-                    label = "AI ile Oluştur",
+                    label = chooseStrings.createWithAI,
                     accent = MaterialTheme.colorScheme.primary,
                     onClick = { onMode(BuilderMode.AI) }
                 )
                 QuickCreateButton(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.Draw,
-                    label = "Manuel Oluştur",
+                    label = chooseStrings.createManually,
                     accent = CardCyan,
                     onClick = { onMode(BuilderMode.Manual) }
                 )
@@ -395,9 +411,10 @@ private fun BuilderChooseScreen(
         }
 
         // ── Active Programs ───────────────────────────────────────────────────
+        val sectionStrings = LocalAppTheme.current.strings
         if (savedPrograms.isNotEmpty()) {
             item {
-                SectionLabel("AKTİF PROTOKOLLER", MaterialTheme.colorScheme.primary)
+                SectionLabel(sectionStrings.activeProtocols, MaterialTheme.colorScheme.primary)
             }
             items(savedPrograms) { prog ->
                 SavedProgramTile(prog)
@@ -406,7 +423,7 @@ private fun BuilderChooseScreen(
 
         // ── Ready Programs Header ─────────────────────────────────────────────
         item {
-            SectionLabel("HAZIR PROGRAMLAR", TextMuted)
+            SectionLabel(sectionStrings.readyPrograms, TextMuted)
         }
 
         // ── Category Tabs ─────────────────────────────────────────────────────
@@ -522,7 +539,7 @@ private fun CategoryChip(
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                category.label,
+                category.localizedLabel(),
                 color = textColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -591,7 +608,7 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    ProgramBadge(program.category.label, accent)
+                    ProgramBadge(program.category.localizedLabel(), accent)
                     LevelBadge(program.level)
                 }
                 Spacer(Modifier.height(7.dp))
@@ -608,9 +625,10 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     fontWeight = FontWeight.Light
                 )
                 Spacer(Modifier.height(10.dp))
+                val cardS = LocalAppTheme.current.strings
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    StatChip(Icons.Rounded.CalendarMonth, "${program.days} Gün")
-                    StatChip(Icons.Rounded.Schedule, "${program.weeks} Hafta")
+                    StatChip(Icons.Rounded.CalendarMonth, "${program.days} ${cardS.dayLabel}")
+                    StatChip(Icons.Rounded.Schedule, "${program.weeks} ${cardS.weekLabel}")
                     StatChip(Icons.Rounded.TrackChanges, program.goal)
                 }
             }
@@ -689,8 +707,9 @@ private fun SavedProgramTile(prog: SavedProgram) {
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
+                val tileStrings = LocalAppTheme.current.strings
                 Text(prog.name, color = Snow, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("${prog.days} GÜN • ${prog.focus.uppercase()}", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("${prog.days} ${tileStrings.dayLabel} • ${prog.focus.uppercase()}", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Box(
                 modifier = Modifier
@@ -698,7 +717,7 @@ private fun SavedProgramTile(prog: SavedProgram) {
                     .background(MaterialTheme.colorScheme.primary.copy(0.1f))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                Text("AKTİF", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Text(LocalAppTheme.current.strings.activeLabel, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
         }
     }
@@ -708,8 +727,9 @@ private fun SavedProgramTile(prog: SavedProgram) {
 
 @Composable
 private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
-    val accent = program.category.color
-    val theme = LocalAppTheme.current
+    val accent  = program.category.color
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
 
     Dialog(onDismissRequest = onDismiss) {
         Box(
@@ -735,7 +755,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(program.category.label, color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                        Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                         Text(program.level, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -755,11 +775,11 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", "GÜN", accent)
+                    DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accent)
                     Box(Modifier.width(1.dp).height(36.dp).background(SurfaceStroke))
-                    DialogStat(Icons.Rounded.Schedule, "${program.weeks}", "HAFTA", accent)
+                    DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accent)
                     Box(Modifier.width(1.dp).height(36.dp).background(SurfaceStroke))
-                    DialogStat(Icons.Rounded.TrackChanges, program.level.take(3).uppercase(), "SEVİYE", accent)
+                    DialogStat(Icons.Rounded.TrackChanges, program.level.take(3).uppercase(), strings.levelLabel, accent)
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -770,7 +790,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
 
                 // Muscle distribution
-                Text("KAS YÜKÜ DAĞILIMI", color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.muscleDistLabel, color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(10.dp))
                 program.muscleLabels.forEachIndexed { i, label ->
                     Column(Modifier.padding(bottom = 8.dp)) {
@@ -802,7 +822,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
 
                 // Schedule
-                Text("ANTRENMAN PROGRAMI", color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.scheduleLabel, color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
@@ -826,7 +846,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        "PROTOKOLÜ UYGULA",
+                        strings.applyProtocol,
                         color = Surface0,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -863,8 +883,9 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
         }
     }
 
+    val aiStrings = LocalAppTheme.current.strings
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
-        DetailHeader(title = "Oracle AI", sub = "PROTOKOL ÜRETİMİ", onBack = onBack)
+        DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
         Spacer(Modifier.height(40.dp))
 
         if (showResult) {
@@ -879,9 +900,9 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
                             .padding(24.dp)
                     ) {
                         Column {
-                            Text("ANALİZ SONUCU", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            Text(aiStrings.analysisResult, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                             Spacer(Modifier.height(16.dp))
-                            Text("PUSH / PULL / LEGS • 8 HAFTA", color = Snow, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            Text("PUSH / PULL / LEGS • 8 ${aiStrings.weekLabel.uppercase()}", color = Snow, fontWeight = FontWeight.Black, fontSize = 20.sp)
                             Spacer(Modifier.height(12.dp))
                             Text("Oracle seviyeniz için 6 günlük yüksek frekanslı bir hipertrofi planı oluşturdu. Progresif yükleme için temel setler hazırlandı.", color = Mist, fontSize = 14.sp, fontWeight = FontWeight.Light)
                         }
@@ -895,7 +916,7 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("PROTOKOLÜ KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+                        Text(aiStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -954,10 +975,11 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
 @Composable
 private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
     data class ManualDay(val name: String)
-    val days = remember { mutableStateListOf(ManualDay("DAY 01"), ManualDay("DAY 02")) }
+    val days       = remember { mutableStateListOf(ManualDay("DAY 01"), ManualDay("DAY 02")) }
+    val manStrings = LocalAppTheme.current.strings
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
-        DetailHeader(title = "Manuel", sub = "HASSAS TASARIM", onBack = onBack)
+        DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
 
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -1002,7 +1024,7 @@ private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("PROJEYİ KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+            Text(manStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
         }
     }
 }

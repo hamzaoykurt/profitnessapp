@@ -33,19 +33,30 @@ data class Article(
 
 private data class FeedSource(val category: String, val url: String, val sourceName: String)
 
+// Reliable, up-to-date feeds. Google News RSS is always accessible and returns
+// fresh content. ScienceDaily and BBC are proven stable sources.
 private val RSS_FEEDS = listOf(
-    FeedSource("BİLİM",       "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml",      "Science Daily"),
-    FeedSource("BİLİM",       "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",             "Science Daily"),
-    FeedSource("BESLENME",    "https://www.healthline.com/rss/nutrition",                                  "Healthline"),
-    FeedSource("BESLENME",    "https://www.medicalnewstoday.com/rss",                                      "Medical News Today"),
-    FeedSource("ANTRENMAN",   "https://www.runnersworld.com/rss/all.xml",                                  "Runner's World"),
-    FeedSource("ANTRENMAN",   "https://www.self.com/feed/rss",                                             "SELF"),
-    FeedSource("SPOR",        "https://feeds.bbci.co.uk/sport/rss.xml",                                   "BBC Sport"),
-    FeedSource("SPOR",        "https://www.sportingnews.com/rss",                                         "Sporting News"),
-    FeedSource("ZİHİN",       "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",               "Science Daily"),
-    FeedSource("YAŞAM",       "https://www.healthline.com/rss/wellness",                                   "Healthline"),
-    FeedSource("TOPARLANMA",  "https://www.healthline.com/rss/health-news",                                "Healthline"),
-    FeedSource("TEKNOLOJİ",   "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
+    // BİLİM – Science
+    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/sports_science.xml", "Science Daily"),
+    FeedSource("BİLİM", "https://rss.sciencedaily.com/news/health_medicine/fitness.xml",        "Science Daily"),
+    // BESLENME – Nutrition
+    FeedSource("BESLENME", "https://news.google.com/rss/search?q=nutrition+diet+protein+health&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("BESLENME", "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",            "NY Times"),
+    // ANTRENMAN – Training
+    FeedSource("ANTRENMAN", "https://news.google.com/rss/search?q=workout+training+gym+strength&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    FeedSource("ANTRENMAN", "https://news.google.com/rss/search?q=bodybuilding+muscle+hypertrophy&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    // SPOR – Sports
+    FeedSource("SPOR", "https://feeds.bbci.co.uk/sport/rss.xml",                                 "BBC Sport"),
+    FeedSource("SPOR", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",                "NY Times"),
+    // ZİHİN – Mind
+    FeedSource("ZİHİN", "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",            "Science Daily"),
+    // YAŞAM – Lifestyle
+    FeedSource("YAŞAM", "https://news.google.com/rss/search?q=wellness+lifestyle+healthy+living&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    // TOPARLANMA – Recovery
+    FeedSource("TOPARLANMA", "https://news.google.com/rss/search?q=muscle+recovery+sleep+sports+medicine&hl=en-US&gl=US&ceid=US:en", "Google News"),
+    // TEKNOLOJİ – Technology
+    FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
+    FeedSource("TEKNOLOJİ", "https://news.google.com/rss/search?q=fitness+technology+wearable+smartwatch&hl=en-US&gl=US&ceid=US:en", "Google News"),
 )
 
 // ── Fallback Images per Category ─────────────────────────────────────────────
@@ -58,8 +69,8 @@ private val FALLBACK_IMAGES = mapOf(
     ),
     "BESLENME" to listOf(
         "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800",
-        "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800",
-        "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800"
+        "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800",
+        "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800"
     ),
     "ANTRENMAN" to listOf(
         "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800",
@@ -93,53 +104,63 @@ private val FALLBACK_IMAGES = mapOf(
     ),
 )
 
+// ── Demo Fallback (shown only when ALL real feeds fail) ──────────────────────
+
 val DEMO_FALLBACK = listOf(
-    Article("d1", "Hipertrofi Bilimi: Mekanik Gerilim ve Kas Büyümesi",
+    Article(
+        "d1", "Hypertrophy Science: Mechanical Tension & Muscle Growth",
         "BİLİM", "6 dk",
         "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800",
-        "Mekanik gerilim ve metabolik stres, kas kütlesi artışının temel iki direğini oluşturur.",
-        "Hipertrofi — kas kütlesi artışı — mekanik gerilim ve metabolik stres üzerine inşa edilmiştir. Araştırmalar, kas liflerine uygulanan mekanik yükün, mTOR yolağını aktive ederek protein sentezini başlattığını göstermektedir.",
+        "Mechanical tension and metabolic stress form the two primary pillars of muscle mass growth.",
+        "Hypertrophy — increased muscle mass — is built on mechanical tension and metabolic stress. Research shows mechanical load on muscle fibres activates the mTOR pathway, initiating protein synthesis.",
         sourceUrl = "https://examine.com/topics/muscle-hypertrophy/",
-        sourceName = "Examine",
-        isFeatured = true),
-    Article("d2", "Kreatin: Gerçek Performans Bilimi",
+        sourceName = "Examine", isFeatured = true
+    ),
+    Article(
+        "d2", "Creatine: The Real Performance Science",
         "BESLENME", "4 dk",
         "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800",
-        "Kreatin monohidrat, dünya genelinde en kapsamlı araştırılan spor takviyesidir.",
-        "Kreatin monohidrat, dünya genelinde en çok araştırılan spor takviyesidir. ATP yenilenmesini hızlandırarak kısa süreli yüksek yoğunluklu egzersizlerde performansı artırır.",
+        "Creatine monohydrate is the most extensively researched sports supplement in the world.",
+        "Creatine monohydrate is the most studied sports supplement globally. By accelerating ATP regeneration it enhances performance in short-duration, high-intensity exercise.",
         sourceUrl = "https://examine.com/supplements/creatine/",
-        sourceName = "Examine",
-        isFeatured = true),
-    Article("d3", "Minimalist Toparlanma Protokolleri",
+        sourceName = "Examine", isFeatured = true
+    ),
+    Article(
+        "d3", "Minimalist Recovery Protocols",
         "TOPARLANMA", "5 dk",
         "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800",
-        "Uyku sırasında büyüme hormonu zirvesine ulaşır. Yetersiz uyku kortizolü artırır.",
-        "Parasempatik sinir sistemi aktivasyonu, antrenmandan sonra toparlanmayı hızlandıran en kritik faktördür.",
+        "Growth hormone peaks during sleep. Insufficient sleep raises cortisol levels significantly.",
+        "Parasympathetic nervous system activation is the most critical factor that accelerates recovery after training.",
         sourceUrl = "https://www.healthline.com/nutrition/10-benefits-of-exercise",
-        sourceName = "Healthline"),
-    Article("d4", "Zihinsel Akış ve Sporcu Performansı",
+        sourceName = "Healthline"
+    ),
+    Article(
+        "d4", "Mental Flow State & Athletic Performance",
         "ZİHİN", "8 dk",
         "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800",
-        "Vizualizasyon ve nefes protokolleri performansı doğrudan etkileyen unsurlardır.",
-        "Flow state, optimal performansın kapısını açar. Nörobilim araştırmaları, zihinsel hazırlığın fiziksel kapasiteyi %15'e kadar artırabileceğini ortaya koymaktadır.",
-        sourceUrl = "https://rss.sciencedaily.com/news/mind_brain/psychology.xml",
-        sourceName = "Science Daily",
-        isFeatured = true),
-    Article("d5", "HIIT vs LISS: Yağ Yakım Savaşı",
+        "Visualization and breathing protocols directly influence performance outcomes.",
+        "Flow state unlocks optimal performance. Neuroscience research shows mental preparation can increase physical capacity by up to 15%.",
+        sourceUrl = "https://www.sciencedaily.com/news/mind_brain/",
+        sourceName = "Science Daily", isFeatured = true
+    ),
+    Article(
+        "d5", "HIIT vs LISS: The Fat-Burning Battle",
         "ANTRENMAN", "5 dk",
         "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800",
-        "Yüksek yoğunluklu interval antrenman, uzun süreli sabit tempo kardioya kıyasla avantajlar sunar.",
-        "Araştırmalar, HIIT antrenmanının EPOC (egzersiz sonrası aşırı oksijen tüketimi) etkisiyle kalori yakmayı antrenman sonrasında da sürdürdüğünü göstermektedir.",
-        sourceUrl = "https://www.self.com/story/hiit-vs-steady-state-cardio",
-        sourceName = "SELF",
-        isFeatured = true),
-    Article("d6", "Spor Teknolojisinin Geleceği",
+        "High-intensity interval training offers distinct advantages over prolonged steady-state cardio.",
+        "Research shows HIIT's EPOC effect keeps calorie burning elevated long after the session ends.",
+        sourceUrl = "https://www.healthline.com/health/fitness/hiit-vs-steady-state-cardio",
+        sourceName = "Healthline", isFeatured = true
+    ),
+    Article(
+        "d6", "The Future of Sports Technology",
         "TEKNOLOJİ", "4 dk",
         "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
-        "Giyilebilir teknoloji ve yapay zeka, sporcuların antrenman süreçlerini devrim niteliğinde değiştiriyor.",
-        "Biyometrik izleme teknolojileri artık nabız değişkenliği, uyku kalitesi ve stres seviyelerini gerçek zamanlı analiz edebilmektedir.",
-        sourceUrl = "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml",
-        sourceName = "Science Daily")
+        "Wearable technology and AI are revolutionising how athletes approach their training process.",
+        "Biometric tracking technologies can now analyse heart-rate variability, sleep quality and stress levels in real time.",
+        sourceUrl = "https://www.sciencedaily.com/news/computers_math/",
+        sourceName = "Science Daily"
+    )
 )
 
 // ── Repository ────────────────────────────────────────────────────────────────
@@ -150,31 +171,28 @@ object NewsRepository {
         coroutineScope {
             val deferreds = RSS_FEEDS.mapIndexed { idx, source ->
                 async {
-                    try {
-                        fetchFeed(source, idx * 15)
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
+                    try { fetchFeed(source, idx * 15) } catch (_: Exception) { emptyList() }
                 }
             }
             val results = deferreds.map { it.await() }.flatten()
             val unique = results.distinctBy { it.title.take(40) }
             if (unique.isEmpty()) return@coroutineScope DEMO_FALLBACK
-            // Sort newest first, then mark first 5 as featured
             unique
                 .sortedByDescending { it.publishedAtMs }
-                .mapIndexed { i, art -> if (i < 5) art.copy(isFeatured = true) else art }
+                .mapIndexed { i, art -> if (i < 6) art.copy(isFeatured = true) else art }
         }
     }
 
     private fun fetchFeed(source: FeedSource, idOffset: Int): List<Article> {
         val conn = URL(source.url).openConnection() as HttpURLConnection
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 ProfitnesApp/1.0")
-        conn.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 ProfitnesApp/1.0")
+        conn.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml, */*")
+        conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+        conn.instanceFollowRedirects = true
         conn.connectTimeout = 12_000
-        conn.readTimeout = 15_000
+        conn.readTimeout   = 15_000
         conn.connect()
-        if (conn.responseCode != 200) { conn.disconnect(); return emptyList() }
+        if (conn.responseCode !in 200..299) { conn.disconnect(); return emptyList() }
         return try {
             parseRss(conn.inputStream, source.category, source.sourceName, idOffset)
         } finally {
@@ -182,28 +200,34 @@ object NewsRepository {
         }
     }
 
+    // ── RSS / Atom parser ─────────────────────────────────────────────────────
+    // Handles RSS 2.0, Atom 1.0 and Google News feeds.
+    // Link extraction order: <link href>, <link> TEXT, <guid isPermaLink="true"> TEXT.
+    // Image extraction order: media:content, media:thumbnail, enclosure, <img src> in description.
+
     private fun parseRss(
         stream: java.io.InputStream,
         category: String,
         sourceName: String,
         idOffset: Int
     ): List<Article> {
-        val items = mutableListOf<Article>()
-        val parser = Xml.newPullParser()
+        val items   = mutableListOf<Article>()
+        val parser  = Xml.newPullParser()
         parser.setInput(stream, null)
 
-        var inItem = false
-        var curTag = ""
-        val title = StringBuilder()
-        val link = StringBuilder()
-        val desc = StringBuilder()
-        val pubDate = StringBuilder()
+        var inItem   = false
+        var curTag   = ""
+        val title    = StringBuilder()
+        val link     = StringBuilder()
+        val guid     = StringBuilder()
+        val desc     = StringBuilder()
+        val pubDate  = StringBuilder()
         var imageUrl = ""
-        var itemIdx = 0
-        var event = parser.eventType
+        var itemIdx  = 0
+        var event    = parser.eventType
 
-        while (event != XmlPullParser.END_DOCUMENT && itemIdx < 15) {
-            val rawTag = parser.name?.lowercase() ?: ""
+        while (event != XmlPullParser.END_DOCUMENT && itemIdx < 20) {
+            val rawTag   = parser.name?.lowercase() ?: ""
             val localTag = rawTag.substringAfterLast(":")
 
             when (event) {
@@ -212,7 +236,8 @@ object NewsRepository {
                     when {
                         localTag == "item" || localTag == "entry" -> {
                             inItem = true
-                            title.clear(); link.clear(); desc.clear(); pubDate.clear(); imageUrl = ""
+                            title.clear(); link.clear(); guid.clear()
+                            desc.clear(); pubDate.clear(); imageUrl = ""
                         }
                         inItem && (rawTag.contains("media:content") || rawTag.contains("media:thumbnail")) -> {
                             parser.getAttributeValue(null, "url")
@@ -221,9 +246,10 @@ object NewsRepository {
                         }
                         inItem && localTag == "enclosure" -> {
                             val type = parser.getAttributeValue(null, "type") ?: ""
-                            val url = parser.getAttributeValue(null, "url") ?: ""
+                            val url  = parser.getAttributeValue(null, "url")  ?: ""
                             if (type.startsWith("image") && imageUrl.isEmpty()) imageUrl = url
                         }
+                        // Atom <link href="..."> — always prefer explicit href attribute
                         inItem && localTag == "link" -> {
                             parser.getAttributeValue(null, "href")
                                 ?.takeIf { it.isNotBlank() && link.isEmpty() }
@@ -231,37 +257,56 @@ object NewsRepository {
                         }
                     }
                 }
+
                 XmlPullParser.TEXT -> {
                     val text = parser.text?.trim() ?: ""
                     if (inItem && text.isNotBlank()) when {
                         localTag == "title" && title.isEmpty()  -> title.append(text)
+                        // RSS 2.0 <link> text node
                         localTag == "link"  && link.isEmpty()   -> link.append(text)
+                        // <guid isPermaLink="true"> — use as link fallback
+                        localTag == "guid"  && guid.isEmpty()   -> guid.append(text)
                         (localTag == "description" || localTag == "summary" ||
-                            localTag == "content" || rawTag == "content:encoded") &&
+                         localTag == "content" || rawTag == "content:encoded") &&
                                 desc.isEmpty() -> desc.append(text)
                         (localTag == "pubdate" || localTag == "published" ||
-                            localTag == "updated" || rawTag == "dc:date") &&
+                         localTag == "updated"  || rawTag == "dc:date") &&
                                 pubDate.isEmpty() -> pubDate.append(text)
                     }
                 }
+
                 XmlPullParser.END_TAG -> {
                     if ((localTag == "item" || localTag == "entry") && inItem) {
                         val t = title.toString().trim()
                         if (t.isNotBlank()) {
-                            val cleanDesc = stripHtml(desc.toString()).trim()
-                            val img = imageUrl.ifBlank { getFallback(category, idOffset + itemIdx) }
-                            val wc = cleanDesc.split("\\s+".toRegex()).size
-                            val rawPubDate = pubDate.toString().trim()
+                            val rawDesc   = desc.toString()
+                            val cleanDesc = stripHtml(rawDesc).trim()
+
+                            // Image: from media tags first, then <img src="..."> in desc HTML
+                            if (imageUrl.isBlank()) {
+                                imageUrl = extractImageFromHtml(rawDesc)
+                            }
+                            val img = imageUrl.takeIf { it.isNotBlank() }
+                                ?: getFallback(category, idOffset + itemIdx)
+
+                            // Link: explicit link first, then guid (only if it looks like a URL)
+                            val resolvedLink = link.toString().trim().ifBlank {
+                                guid.toString().trim().takeIf { it.startsWith("http") } ?: ""
+                            }
+
+                            val wc          = cleanDesc.split("\\s+".toRegex()).size
+                            val rawPubDate  = pubDate.toString().trim()
+
                             items.add(Article(
-                                id = "${idOffset + itemIdx}",
-                                title = t.take(140),
-                                category = category,
-                                readTime = "${maxOf(1, wc / 200)} dk",
-                                image = img,
-                                summary = cleanDesc.take(300),
-                                content = cleanDesc,
-                                sourceUrl = link.toString().trim(),
-                                sourceName = sourceName,
+                                id          = "${idOffset + itemIdx}",
+                                title       = t.take(140),
+                                category    = category,
+                                readTime    = "${maxOf(1, wc / 200)} dk",
+                                image       = img,
+                                summary     = cleanDesc.take(300),
+                                content     = cleanDesc,
+                                sourceUrl   = resolvedLink,
+                                sourceName  = sourceName,
                                 publishedAt = rawPubDate,
                                 publishedAtMs = parseDateToMs(rawPubDate)
                             ))
@@ -276,20 +321,21 @@ object NewsRepository {
         return items
     }
 
+    // ── Date parsing ─────────────────────────────────────────────────────────
+
     private fun parseDateToMs(dateStr: String): Long {
         if (dateStr.isBlank()) return 0L
         return try {
             when {
                 dateStr.contains("T") -> {
-                    // ISO 8601: 2025-03-04T12:00:00Z
                     val clean = dateStr.take(19).replace("T", " ")
                     java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).also {
                         it.timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }.parse(clean)?.time ?: 0L
                 }
                 else -> {
-                    // RFC 822: Tue, 04 Mar 2025 12:00:00 +0000 or GMT
-                    val normalized = dateStr.trim().replace("GMT", "+0000").replace("UTC", "+0000")
+                    val normalized = dateStr.trim()
+                        .replace("GMT", "+0000").replace("UTC", "+0000")
                     java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", java.util.Locale.US)
                         .parse(normalized)?.time ?: 0L
                 }
@@ -297,9 +343,18 @@ object NewsRepository {
         } catch (_: Exception) { 0L }
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private fun getFallback(category: String, index: Int): String {
         val list = FALLBACK_IMAGES[category] ?: FALLBACK_IMAGES.values.first()
         return list[abs(index) % list.size]
+    }
+
+    /** Extract first <img src="..."> URL from an HTML snippet (used for description fields). */
+    private fun extractImageFromHtml(html: String): String {
+        if (html.isBlank()) return ""
+        return Regex("""<img[^>]+src=["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+            .find(html)?.groupValues?.getOrNull(1) ?: ""
     }
 
     private fun stripHtml(html: String): String = html
@@ -308,18 +363,18 @@ object NewsRepository {
         .replace("&nbsp;", " ").replace("&#39;", "'").replace("&quot;", "\"")
         .replace(Regex("\\s{2,}"), " ").trim()
 
-    // ── Translation (MyMemory – free, no key required) ────────────────────────
+    // ── Translation (MyMemory – free, no API key required) ───────────────────
 
     suspend fun translateText(text: String, targetLang: String): String = withContext(Dispatchers.IO) {
         if (text.isBlank() || text.length < 8) return@withContext text
         try {
             val langPair = if (targetLang == "tr") "en|tr" else "tr|en"
-            val encoded = URLEncoder.encode(text.take(480), "UTF-8")
-            val url = URL("https://api.mymemory.translated.net/get?q=$encoded&langpair=$langPair")
-            val conn = url.openConnection() as HttpURLConnection
+            val encoded  = URLEncoder.encode(text.take(480), "UTF-8")
+            val url      = URL("https://api.mymemory.translated.net/get?q=$encoded&langpair=$langPair")
+            val conn     = url.openConnection() as HttpURLConnection
             conn.setRequestProperty("User-Agent", "Mozilla/5.0")
             conn.connectTimeout = 8_000
-            conn.readTimeout = 10_000
+            conn.readTimeout    = 10_000
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
             val translated = JSONObject(body)
@@ -329,14 +384,11 @@ object NewsRepository {
         } catch (_: Exception) { text }
     }
 
-    // ── Concurrent title + summary translation ────────────────────────────────
-
-    suspend fun translateArticle(
-        article: Article,
-        targetLang: String
-    ): Pair<String, String> = coroutineScope {
-        val titleJob   = async { translateText(article.title,   targetLang) }
-        val summaryJob = async { translateText(article.summary, targetLang) }
-        Pair(titleJob.await(), summaryJob.await())
-    }
+    /** Translates article title and summary concurrently. */
+    suspend fun translateArticle(article: Article, targetLang: String): Pair<String, String> =
+        coroutineScope {
+            val titleJob   = async { translateText(article.title,   targetLang) }
+            val summaryJob = async { translateText(article.summary, targetLang) }
+            Pair(titleJob.await(), summaryJob.await())
+        }
 }
