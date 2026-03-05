@@ -51,13 +51,13 @@ data class ChatMessage(
 
 // ── Responses Logic ──────────────────────────────────────────────────────────
 
-private val CANNED_RESPONSES: Map<String, List<String>> = mapOf(
-    "beslenme" to listOf(
+private val TR_CANNED: Map<String, List<String>> = mapOf(
+    "nutrition" to listOf(
         "Protein alımın hedef vücut ağırlığının kg başına 1.8–2.2g olmalı. Günlük kalori açığını %15–20 ile sınırlı tut — daha fazlası kas kaybına yol açar.",
         "Antrenman öncesi (~90 dk) kompleks karbonhidrat + protein: yulaf + yumurta ideal. Antrenman sonrası 30 dakika içinde yüksek GI karbonhidrat + whey dene.",
         "Kreatin monohidrat 5g/gün kanıtlanmış en güvenli takviyedir. Yükleme fazı şart değil — 3–4 haftada doygunluğa ulaşır. Bol su iç."
     ),
-    "motivasyon" to listOf(
+    "motivation" to listOf(
         "Motivasyon bir his değil, bir disiplindir. Hissetmesen de yap — vücut sinyali beyin sinyalinden önce gelir. Salona gir, gerisi otomatik.",
         "En zor set ilk rep'tir. Sonraki her rep öncekini mümkün kılıyor. Ağırlık seni yenemiyor, ancak sen kendin kendini yenebilirsin.",
         "Progresif yükleme prensibine dön: her hafta ya bir kg ekle ya bir rep yap. Küçük kazanımlar 12 haftada dönüşüme kapı açar."
@@ -66,29 +66,69 @@ private val CANNED_RESPONSES: Map<String, List<String>> = mapOf(
         "Hedefin hipertrofi ise Push-Pull-Legs 6 günlük split optimal. Her grup haftada 2x çalışıyor, toplam 12–20 set/grup yeterli. Önce compound hareketler, sonra izolasyon.",
         "Başlangıç seviyesi için Full Body 3 günlük program daha etkili — frekans teknikten önemli. Squat, Press, Hinge, Pull, Carry — bu 5 hareket kategorisini kap.",
         "Upper/Lower split dengeli güç ve hacim için ideal. Alt gün squat dominant, üst gün press dominant. 4 gün üst düzey adaptasyon sağlar."
+    ),
+    "recovery" to listOf(
+        "Toparlanma antrenmanın yarısıdır. Uyku sırasında büyüme hormonu zirvesine ulaşır — 7–9 saat şart. Kalite düşükse tüm program çöker.",
+        "Aktif toparlanma pasif dinlenmeden daha etkilidir. Hafif yürüyüş, mobilite çalışması ve yüzme, laktik asit temizlemeyi hızlandırır.",
+        "Soğuk duş (2–5°C, 3–5 dk) iltihabı azaltır ve kas ağrısını kısaltır. Antrenman sonrası 1 saat içinde uygula."
     )
 )
 
-private val DEFAULT_RESPONSES = listOf(
+private val TR_DEFAULT = listOf(
     "Oracle bu soruyu analiz ediyor... Liquid Forge protokolüne göre: spesifik, ölçülebilir ve zaman çerçeveli bir hedef belirlemek ilk adımdır.",
     "Bu iyi bir soru. Cevap birçok değişkene bağlı: başlangıç seviyeniz, genetik yanıt hızınız ve tutarlılığınız."
 )
 
-private val QUICK_CHIPS = listOf(
-    "Beslenme Tavsiyesi", "Motivasyon", "Program Önerisi", "Toparlanma", "HIIT vs LISS"
+private val EN_CANNED: Map<String, List<String>> = mapOf(
+    "nutrition" to listOf(
+        "Protein intake should be 1.8–2.2g per kg of target bodyweight. Keep your daily calorie deficit to 15–20% — more than that leads to muscle loss.",
+        "Pre-workout (~90 min before): complex carbs + protein — oats and eggs are ideal. Post-workout within 30 minutes: high-GI carbs + whey protein.",
+        "Creatine monohydrate 5g/day is the most proven safe supplement. Loading phase isn't necessary — saturation is reached in 3–4 weeks. Drink plenty of water."
+    ),
+    "motivation" to listOf(
+        "Motivation is a discipline, not a feeling. Do it even when you don't feel like it — the body signal comes before the brain signal. Get in the gym; the rest is automatic.",
+        "The hardest set is the first rep. Every subsequent rep makes the previous one possible. The weight can't beat you — only you can beat yourself.",
+        "Return to progressive overload: add one kg or one rep each week. Small wins open the door to transformation in 12 weeks."
+    ),
+    "program" to listOf(
+        "For hypertrophy, a 6-day Push-Pull-Legs split is optimal. Each group trains 2x per week; 12–20 sets/group is enough. Compound movements first, then isolation.",
+        "For beginners, a 3-day Full Body programme is more effective — frequency matters more than technique. Cover Squat, Press, Hinge, Pull, Carry — these 5 movement patterns.",
+        "Upper/Lower split is ideal for balanced strength and volume. Lower days are squat-dominant; upper days are press-dominant. 4 days provides top-level adaptation."
+    ),
+    "recovery" to listOf(
+        "Recovery is half the training. Growth hormone peaks during sleep — 7–9 hours is non-negotiable. Poor sleep quality collapses the entire programme.",
+        "Active recovery outperforms passive rest. Light walking, mobility work and swimming accelerate lactic acid clearance.",
+        "Cold exposure (2–5°C, 3–5 min) reduces inflammation and shortens DOMS. Apply within 1 hour post-workout."
+    )
 )
 
-private fun getResponse(input: String, counters: MutableMap<String, Int>): String {
-    val lower = input.lowercase()
+private val EN_DEFAULT = listOf(
+    "Oracle is analysing your question… According to the Liquid Forge protocol: setting a specific, measurable and time-bound goal is the first step.",
+    "That's a good question. The answer depends on many variables: your starting level, genetic response rate and consistency."
+)
+
+private fun getResponse(
+    input: String,
+    isEnglish: Boolean,
+    counters: MutableMap<String, Int>
+): String {
+    val lower   = input.lowercase()
+    val canned  = if (isEnglish) EN_CANNED  else TR_CANNED
+    val default = if (isEnglish) EN_DEFAULT else TR_DEFAULT
+
     val category = when {
-        "beslenme" in lower || "protein" in lower || "yemek" in lower -> "beslenme"
-        "motivasyon" in lower || "motive" in lower -> "motivasyon"
-        "program" in lower || "split" in lower || "plan" in lower -> "program"
+        "nutrition" in lower || "protein" in lower || "diet" in lower ||
+        "beslenme" in lower || "yemek"   in lower                       -> "nutrition"
+        "motivation" in lower || "motivasyon" in lower                  -> "motivation"
+        "program" in lower || "split" in lower || "plan" in lower       -> "program"
+        "recovery" in lower || "toparlanma" in lower || "sleep" in lower ||
+        "uyku"     in lower                                             -> "recovery"
         else -> "default"
     }
-    return if (category == "default") DEFAULT_RESPONSES.random() else {
-        val list = CANNED_RESPONSES[category] ?: DEFAULT_RESPONSES
-        val idx = (counters[category] ?: 0) % list.size
+
+    return if (category == "default") default.random() else {
+        val list = canned[category] ?: default
+        val idx  = (counters[category] ?: 0) % list.size
         counters[category] = idx + 1
         list[idx]
     }
@@ -98,14 +138,29 @@ private fun getResponse(input: String, counters: MutableMap<String, Int>): Strin
 
 @Composable
 fun AICoachScreen(bottomPadding: Dp = 0.dp) {
-    val messages = remember { mutableStateListOf(ChatMessage(id="w", text="Oracle Sanctuary'ye Hoş Geldiniz. Performans hedeflerini analiz etmeye hazırım.", isUser=false)) }
-    var inputText by remember { mutableStateOf("") }
-    var isTyping by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    val responseCounters = remember { mutableStateMapOf<String, Int>() }
+    val theme     = LocalAppTheme.current
+    val strings   = theme.strings
+    val isEnglish = theme.language == com.avonix.profitness.core.theme.AppLanguage.ENGLISH
 
-    // Track keyboard height to push input above it
+    val messages = remember { mutableStateListOf(ChatMessage(id = "w", text = strings.oracleWelcome, isUser = false)) }
+    var inputText by remember { mutableStateOf("") }
+    var isTyping  by remember { mutableStateOf(false) }
+    val listState         = rememberLazyListState()
+    val scope             = rememberCoroutineScope()
+    val responseCounters  = remember { mutableStateMapOf<String, Int>() }
+
+    val quickChips = listOf(
+        strings.chipNutrition, strings.chipMotivation, strings.chipProgram,
+        strings.chipRecovery,  strings.chipHiitVsLiss
+    )
+
+    // Update welcome message when language changes
+    LaunchedEffect(isEnglish) {
+        if (messages.isNotEmpty() && messages[0].id == "w") {
+            messages[0] = messages[0].copy(text = strings.oracleWelcome)
+        }
+    }
+
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
 
     fun sendMessage(text: String) {
@@ -117,13 +172,15 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
             listState.animateScrollToItem(messages.size - 1)
             delay(1500)
             isTyping = false
-            messages.add(ChatMessage(id = (System.currentTimeMillis() + 1).toString(), text = getResponse(text, responseCounters), isUser = false))
+            messages.add(ChatMessage(
+                id     = (System.currentTimeMillis() + 1).toString(),
+                text   = getResponse(text, isEnglish, responseCounters),
+                isUser = false
+            ))
             delay(100)
             listState.animateScrollToItem(messages.size - 1)
         }
     }
-
-    val theme = LocalAppTheme.current
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         // ── Accent Background Bloom ───────────────────────────────────────────
         PageAccentBloom()
@@ -172,7 +229,7 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(bottom = 12.dp)
             ) {
-                items(QUICK_CHIPS) { chip ->
+                items(quickChips) { chip ->
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))

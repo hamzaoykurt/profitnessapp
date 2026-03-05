@@ -140,7 +140,8 @@ fun WorkoutScreen(
     val selectedDayIdx = state.selectedDayIdx
     val currentState = dayStates[selectedDayIdx]
     val currentDay   = currentState.day
-    val theme = LocalAppTheme.current
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -196,14 +197,14 @@ fun WorkoutScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "BUGÜNKÜ PROGRAM",
+                        text = strings.todayProgram,
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = "${currentState.completedCount}/${currentDay.exercises.size} tamamlandı",
+                        text = "${currentState.completedCount}/${currentDay.exercises.size} ${strings.completedLabel}",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -250,7 +251,8 @@ private fun calculateStreak(dayStates: List<WorkoutDayState>): Int {
 @Composable
 private fun StreakBanner(dayStates: List<WorkoutDayState>) {
     val streakDays = remember(dayStates) { calculateStreak(dayStates) }
-    val accent = MaterialTheme.colorScheme.primary
+    val accent  = MaterialTheme.colorScheme.primary
+    val strings = LocalAppTheme.current.strings
 
     Box(
         modifier = Modifier
@@ -273,13 +275,13 @@ private fun StreakBanner(dayStates: List<WorkoutDayState>) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    if (streakDays > 0) "$streakDays Günlük Seri!" else "Seri başlat!",
+                    if (streakDays > 0) strings.streakTitle.format(streakDays) else strings.streakStart,
                     color = TextPrimary,
                     fontWeight = FontWeight.Black,
                     fontSize = 15.sp
                 )
                 Text(
-                    if (streakDays > 0) "Devam et, yavaşlama." else "Bugün bir hareket yap, serin başlasın.",
+                    if (streakDays > 0) strings.streakMotivate else strings.streakBegin,
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -291,6 +293,7 @@ private fun StreakBanner(dayStates: List<WorkoutDayState>) {
 // ── Dashboard Header with Progress Ring ───────────────────────────────────────
 @Composable
 private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
+    val strings = LocalAppTheme.current.strings
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -303,7 +306,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
         ) {
             Column {
                 Text(
-                    text = "Merhaba, Atlet 👋",
+                    text = strings.helloAthlete,
                     color = TextSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -321,7 +324,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                 // Pill stats
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (day.totalKcal > 0) StatPill("${day.totalKcal}", "kcal", Amber)
-                    if (day.durationMin > 0) StatPill("${day.durationMin}", "dk", MaterialTheme.colorScheme.primary)
+                    if (day.durationMin > 0) StatPill("${day.durationMin}", strings.unitMin, MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -413,6 +416,7 @@ fun CircularProgressRing(
             }
         }
 
+        val strings = LocalAppTheme.current.strings
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = label,
@@ -421,7 +425,7 @@ fun CircularProgressRing(
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "done",
+                text = strings.unitDone,
                 color = TextMuted,
                 fontSize = 10.sp,
                 letterSpacing = 1.sp
@@ -519,7 +523,8 @@ private fun DaySelector(
 
 @Composable
 private fun RestDayView() {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent  = MaterialTheme.colorScheme.primary
+    val strings = LocalAppTheme.current.strings
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -542,18 +547,17 @@ private fun RestDayView() {
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "RECOVERY", color = TextPrimary,
+            strings.restDayTitle, color = TextPrimary,
             fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp
         )
         Text(
-            "Kasların büyüyor. Bugün dinlen.",
+            strings.restDaySubtitle,
             color = TextSecondary, fontSize = 15.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(0.dp, 8.dp, 0.dp, 0.dp)
         )
         Spacer(Modifier.height(32.dp))
-        // Recovery tips
-        val tips = listOf("💧 Bol su için", "😴 8 saat uyu", "🥗 Protein al")
+        val tips = listOf(strings.recoveryTip1, strings.recoveryTip2, strings.recoveryTip3)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             tips.forEach { tip ->
                 Box(
