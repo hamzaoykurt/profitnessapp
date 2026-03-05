@@ -66,6 +66,27 @@ private val RSS_FEEDS = listOf(
     // TEKNOLOJİ – Technology
     FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/wearable_technology.xml", "Science Daily"),
     FeedSource("TEKNOLOJİ", "https://rss.sciencedaily.com/news/computers_math/artificial_intelligence.xml", "Science Daily"),
+
+    // ── TÜRKÇE KAYNAKLAR ─────────────────────────────────────────────────────
+    // SPOR (TR)
+    FeedSource("SPOR",      "https://www.ntv.com.tr/ntv-spor.rss",                              "NTV Spor"),
+    FeedSource("SPOR",      "https://www.hurriyet.com.tr/rss/sporhaber",                        "Hürriyet Spor"),
+    FeedSource("SPOR",      "https://www.sabah.com.tr/rss/spor.xml",                            "Sabah Spor"),
+    FeedSource("SPOR",      "https://www.milliyet.com.tr/rss/rssNew/sporRss.xml",               "Milliyet Spor"),
+    FeedSource("SPOR",      "https://www.trthaber.com/feed/kategori/spor.xml",                  "TRT Haber Spor"),
+    // YAŞAM (TR)
+    FeedSource("YAŞAM",     "https://www.hurriyet.com.tr/rss/saglik",                           "Hürriyet Sağlık"),
+    FeedSource("YAŞAM",     "https://www.sabah.com.tr/rss/saglik.xml",                          "Sabah Sağlık"),
+    FeedSource("YAŞAM",     "https://www.milliyet.com.tr/rss/rssNew/saglikRss.xml",             "Milliyet Sağlık"),
+    // BESLENME (TR)
+    FeedSource("BESLENME",  "https://www.sabah.com.tr/rss/saglik.xml",                          "Sabah Sağlık"),
+    FeedSource("BESLENME",  "https://www.hurriyet.com.tr/rss/saglik",                           "Hürriyet Sağlık"),
+    // BİLİM (TR)
+    FeedSource("BİLİM",     "https://www.trthaber.com/feed/kategori/bilim-teknoloji.xml",       "TRT Haber Bilim"),
+    FeedSource("BİLİM",     "https://www.ntv.com.tr/bilim.rss",                                 "NTV Bilim"),
+    // TEKNOLOJİ (TR)
+    FeedSource("TEKNOLOJİ", "https://www.ntv.com.tr/teknoloji.rss",                             "NTV Teknoloji"),
+    FeedSource("TEKNOLOJİ", "https://www.sabah.com.tr/rss/teknoloji.xml",                       "Sabah Teknoloji"),
 )
 
 // ── Fallback Images per Category ─────────────────────────────────────────────

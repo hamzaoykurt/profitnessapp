@@ -109,6 +109,7 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
                     cardTranslations = cardTranslations,
                     onArticleClick   = { newsViewModel.openArticle(it, appLang) },
                     onRefresh        = { newsViewModel.refresh() },
+                    onLoadMore       = { newsViewModel.loadMore() },
                     onSave           = { newsViewModel.toggleSave(it) }
                 )
             }
@@ -150,6 +151,7 @@ private fun NewsFeed(
     cardTranslations: Map<String, String>,
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onSave: (String) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("TÜMÜ") }
@@ -186,8 +188,13 @@ private fun NewsFeed(
         }
     }
     LaunchedEffect(isNearBottom) {
-        if (isNearBottom && !uiState.isLoading && hasMore) {
+        if (!isNearBottom || uiState.isLoading) return@LaunchedEffect
+        if (hasMore) {
+            // More local articles available — just reveal next page instantly
             visibleCount += PAGE_SIZE
+        } else if (uiState.canLoadMore && !uiState.isLoadingMore) {
+            // Local list exhausted — fetch new articles from network
+            onLoadMore()
         }
     }
 
@@ -333,7 +340,8 @@ private fun NewsFeed(
         }
 
         // ── Load more indicator ────────────────────────────────────────────────
-        if (!uiState.isLoading && hasMore) {
+        // Show spinner when paging through local articles OR fetching from network
+        if (!uiState.isLoading && (hasMore || uiState.isLoadingMore)) {
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
