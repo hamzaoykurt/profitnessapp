@@ -349,6 +349,8 @@ private fun BuilderChooseScreen(
         else READY_PROGRAMS.filter { it.category == activeCategory }
     }
 
+    val sectionStrings = LocalAppTheme.current.strings
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 140.dp)
@@ -411,7 +413,6 @@ private fun BuilderChooseScreen(
         }
 
         // ── Active Programs ───────────────────────────────────────────────────
-        val sectionStrings = LocalAppTheme.current.strings
         if (savedPrograms.isNotEmpty()) {
             item {
                 SectionLabel(sectionStrings.activeProtocols, MaterialTheme.colorScheme.primary)
