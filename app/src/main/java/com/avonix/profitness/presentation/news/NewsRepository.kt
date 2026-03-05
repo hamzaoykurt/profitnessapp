@@ -274,7 +274,11 @@ object NewsRepository {
                     val location = conn.getHeaderField("Location")
                     conn.disconnect()
                     if (location.isNullOrBlank()) return emptyList()
-                    url = location
+                    // Resolve relative redirects (e.g. "/rss/all.xml") against the current URL
+                    url = try {
+                        if (location.startsWith("http")) location
+                        else URL(URL(url), location).toString()
+                    } catch (_: Exception) { return emptyList() }
                 }
                 else -> { conn.disconnect(); return emptyList() }
             }
