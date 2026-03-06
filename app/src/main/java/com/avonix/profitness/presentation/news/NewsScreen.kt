@@ -593,7 +593,7 @@ private fun MuseHeroCard(
             ) {
                 Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(10.dp))
                 val heroStrings = LocalAppTheme.current.strings
-                Text("${article.readTime} ${heroStrings.readingLabel}", color = Snow.copy(0.5f), fontSize = 8.5.sp, letterSpacing = 1.sp)
+                Text("${article.readTime} ${heroStrings.readTimeUnit} ${heroStrings.readingLabel}", color = Snow.copy(0.5f), fontSize = 8.5.sp, letterSpacing = 1.sp)
                 if (article.publishedAt.isNotBlank()) {
                     Text("•", color = Snow.copy(0.3f), fontSize = 8.5.sp)
                     Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 8.5.sp, letterSpacing = 0.8.sp)
@@ -925,7 +925,7 @@ private fun ArticleCardText(
         ) {
             Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.35f), modifier = Modifier.size(10.dp))
             Spacer(Modifier.width(4.dp))
-            Text(article.readTime, color = Snow.copy(0.35f), fontSize = 9.sp)
+            Text("${article.readTime} ${LocalAppTheme.current.strings.readTimeUnit}", color = Snow.copy(0.35f), fontSize = 9.sp)
         }
     }
 }
@@ -1069,7 +1069,7 @@ private fun MuseReader(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.5f), modifier = Modifier.size(12.dp))
-                        Text("${article.readTime} ${strings.readingLabel}", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
+                        Text("${article.readTime} ${strings.readTimeUnit} ${strings.readingLabel}", color = Snow.copy(0.5f), fontSize = 9.sp, letterSpacing = 1.5.sp)
                         if (article.publishedAt.isNotBlank()) {
                             Text("•", color = Snow.copy(0.3f), fontSize = 9.sp)
                             Text(formatDate(article.publishedAt), color = Snow.copy(0.5f), fontSize = 9.sp)
@@ -1081,8 +1081,8 @@ private fun MuseReader(
             // ── AI Summary box ─────────────────────────────────────────────────
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
 
-                if (detailState.isTranslating) {
-                    // Translation in progress — show centred spinner
+                if (detailState.isTranslating || detailState.isLoadingContent) {
+                    // Translation or full-content fetch in progress — show centred spinner
                     Box(
                         modifier = Modifier.fillMaxWidth().height(200.dp),
                         contentAlignment = Alignment.Center
@@ -1091,7 +1091,8 @@ private fun MuseReader(
                             CircularProgressIndicator(color = accent, modifier = Modifier.size(36.dp))
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                strings.translatingLabel,
+                                if (detailState.isTranslating) strings.translatingLabel
+                                else strings.loadingContentLabel,
                                 color = Snow.copy(0.5f),
                                 fontSize = 12.sp,
                                 letterSpacing = 1.sp

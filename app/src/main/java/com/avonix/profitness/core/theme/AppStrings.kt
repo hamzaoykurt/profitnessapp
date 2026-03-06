@@ -105,10 +105,12 @@ data class AppStrings(
     val noSavedNews         : String,
     val noCategoryNews      : String,
     val readingLabel        : String,   // "OKUMA" / "READ"
+    val readTimeUnit        : String,   // "dk" / "min"
     val aiSummaryLabel      : String,   // "AI ÖZETİ" / "AI SUMMARY"
     val contentLabel        : String,   // "İÇERİK" / "CONTENT"
     val goToOriginal        : String,   // "HABERİN ORİJİNALİNE GİT" / "READ ORIGINAL ARTICLE"
     val translatingLabel    : String,   // "Türkçeye çevriliyor…" / "Translating…"
+    val loadingContentLabel : String,   // "İçerik yükleniyor…"  / "Loading content…"
     val translatedLabel     : String,   // "Yapay zeka ile çevrildi" / "AI Translated"
     val sourceLabel         : String,   // "Kaynak" / "Source"
     val noSummaryLabel      : String,   // "Özet mevcut değil." / "No summary available."
@@ -242,10 +244,12 @@ val TurkishStrings = AppStrings(
     noSavedNews         = "Henüz kaydedilen haber yok",
     noCategoryNews      = "Bu kategoride haber bulunamadı",
     readingLabel        = "OKUMA",
+    readTimeUnit        = "dk",
     aiSummaryLabel      = "AI ÖZETİ",
     contentLabel        = "İÇERİK",
     goToOriginal        = "HABERİN ORİJİNALİNE GİT",
     translatingLabel    = "Türkçeye çevriliyor…",
+    loadingContentLabel = "İçerik yükleniyor…",
     translatedLabel     = "Yapay zeka ile Türkçeye çevrildi",
     sourceLabel         = "Kaynak",
     noSummaryLabel      = "Bu haber için özet mevcut değil.",
@@ -379,10 +383,12 @@ val EnglishStrings = AppStrings(
     noSavedNews         = "No saved articles yet",
     noCategoryNews      = "No articles found in this category",
     readingLabel        = "READ",
+    readTimeUnit        = "min",
     aiSummaryLabel      = "AI SUMMARY",
     contentLabel        = "CONTENT",
     goToOriginal        = "READ ORIGINAL ARTICLE",
     translatingLabel    = "Translating to English…",
+    loadingContentLabel = "Loading content…",
     translatedLabel     = "AI Translated to English",
     sourceLabel         = "Source",
     noSummaryLabel      = "No summary available for this article.",
