@@ -46,6 +46,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
@@ -78,6 +81,23 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
     val snackbarHost     = remember { SnackbarHostState() }
     val initialReported  = remember { reportedIds.size }
 
+    // Uygulama ön plana döndüğünde (onResume) haberleri otomatik yenile.
+    // Son fetch'ten 5 dakika geçmişse uygulama ön plana gelince otomatik yenile.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val staleMs = 5 * 60 * 1000L
+                val lastUpdated = newsViewModel.uiState.value.lastUpdated
+                if (lastUpdated == 0L || System.currentTimeMillis() - lastUpdated > staleMs) {
+                    newsViewModel.refresh()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // When language changes: flush stale translated titles from the old language.
     LaunchedEffect(appLang) {
         newsViewModel.onLanguageChanged()
@@ -88,6 +108,8 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
     LaunchedEffect(uiState.articles, appLang) {
         newsViewModel.startCardTranslations(uiState.articles, appLang)
     }
+
+
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -194,9 +216,11 @@ private fun NewsFeed(
         if (!isLoading) isRefreshing = false
     }
 
-    // Filtered article list: exclude reported, then apply category filter
+    // Filtered article list: exclude reported, apply category filter, sort newest first
     val filteredArticles = remember(selectedCategory, uiState.articles, savedIds, reportedIds) {
-        val nonReported = uiState.articles.filter { it.id !in reportedIds }
+        val nonReported = uiState.articles
+            .filter { it.id !in reportedIds }
+            .sortedByDescending { it.publishedAtMs }
         when (selectedCategory) {
             "TÜMÜ"          -> nonReported
             "KAYDEDILENLER" -> nonReported.filter { it.id in savedIds }
@@ -266,7 +290,7 @@ private fun NewsFeed(
             }
         }
 
-        // ── Hero Carousel ──────────────────────────────────────────────────────
+        // ── Hero Carousel ─────────────────────────────────────────────────────
         item {
             val featured = uiState.articles.filter { it.isFeatured }.take(6)
             if (uiState.isLoading) {
@@ -917,7 +941,7 @@ private fun ArticleCardText(
             modifier = Modifier.weight(1f)
         )
         Spacer(Modifier.height(8.dp))
-        // Footer
+        // Footer — okuma süresi + tarih
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (align == TextAlign.End) Arrangement.End else Arrangement.Start,
@@ -926,6 +950,10 @@ private fun ArticleCardText(
             Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.35f), modifier = Modifier.size(10.dp))
             Spacer(Modifier.width(4.dp))
             Text("${article.readTime} ${LocalAppTheme.current.strings.readTimeUnit}", color = Snow.copy(0.35f), fontSize = 9.sp)
+            val dateStr = formatDate(article.publishedAt)
+            if (dateStr.isNotBlank()) {
+                Text("  ·  $dateStr", color = Snow.copy(0.35f), fontSize = 9.sp)
+            }
         }
     }
 }
@@ -1435,13 +1463,16 @@ private fun ReportDialog(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 private fun formatDate(raw: String): String {
+    if (raw.isBlank()) return ""
     return try {
         when {
+            // ISO-8601: "2026-03-04T12:18:34+03:00" → "2026-03-04"
             raw.contains("T") -> raw.substringBefore("T")
-            raw.length >= 16  -> raw.take(16).substringAfterLast(",").trim()
-            else               -> raw.take(16)
+            // RFC 822: "Wed, 04 Mar 2026 22:06:35 +0000" → "04 Mar 2026"
+            raw.contains(",") -> raw.substringAfter(",").trim().take(11).trim()
+            else -> raw.take(10)
         }
-    } catch (_: Exception) { raw.take(16) }
+    } catch (_: Exception) { "" }
 }
 
 // ── Rich HTML renderer ────────────────────────────────────────────────────────

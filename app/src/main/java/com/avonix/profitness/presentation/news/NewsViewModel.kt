@@ -102,12 +102,12 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadNews() {
         viewModelScope.launch {
-            val prevCount = _uiState.value.articles.size
+            val prevKeys = _uiState.value.articles.map { articleKey(it) }.toHashSet()
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val articles = NewsRepository.fetchAllNews()
                 val ranked = applyClickRanking(articles)
-                val newCount = (ranked.size - prevCount).coerceAtLeast(0)
+                val newCount = ranked.count { articleKey(it) !in prevKeys }
                 _uiState.value = NewsUiState(
                     articles = ranked,
                     isLoading = false,
@@ -433,6 +433,9 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 .toHashSet()
         }
 
-        return articles.map { it.copy(isFeatured = it.id in featuredIds) }
+        // isFeatured flag'ini güncelle, ardından en yeniden eskiye sırala
+        return articles
+            .map { it.copy(isFeatured = it.id in featuredIds) }
+            .sortedByDescending { it.publishedAtMs }
     }
 }

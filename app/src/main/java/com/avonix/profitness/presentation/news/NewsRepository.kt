@@ -15,6 +15,8 @@ import java.util.zip.GZIPInputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
+
+
 // ── Data Model ───────────────────────────────────────────────────────────────
 
 data class Article(
@@ -68,19 +70,20 @@ private val RSS_FEEDS = listOf(
     FeedSource("TOPARLANMA", "https://www.sciencedaily.com/rss/mind_brain.xml",    "Science Daily"),
 )
 
-// Konuyla ilgisiz başlıkları filtrele — bu kelimeler geçen haberler atlanır.
-private val OFF_TOPIC_KEYWORDS = setOf(
-    "ufo", "uzaylı", "alien", "pentagon", "savaş", "war", "drone", "missile",
-    "trump", "biden", "election", "seçim", "politika", "politic",
-    "bitcoin", "crypto", "kripto", "stock", "borsa", "economy",
-    "openai", "chatgpt", "anthropic", "elon", "musk", "tesla",
-    "iphone", "samsung", "android", "windows", "microsoft", "apple",
-    "earthquake", "deprem", "flood", "sel", "yangın", "fire",
-    "galaxy", "nasa", "mars", "asteroid", "cosmos", "uzay",
-    "fossil", "dinosaur", "dinozor", "archaeology", "arkeoloji",
-    "neutrino", "quantum", "quark", "magnet", "mıknatıs",
-    "worm", "insect", "böcek", "octopus", "ahtapot", "wolf", "jaguar"
-)
+// Konuyla ilgisiz başlıkları filtrele — tam kelime eşleşmesi kullanılır.
+// "wolf" → "Wolves" gibi yanlış kesmeleri önlemek için \b word-boundary regex.
+private val OFF_TOPIC_PATTERNS = listOf(
+    "\\bufo\\b", "\\buzaylı\\b", "\\balien\\b", "\\bpentagon\\b",
+    "\\bdrone\\b", "\\bmissile\\b",
+    "\\btrump\\b", "\\bbiden\\b", "\\belection\\b", "\\bseçim\\b",
+    "\\bpolitika\\b", "\\bpolitic\\b",
+    "\\bbitcoin\\b", "\\bcrypto\\b", "\\bkripto\\b", "\\bborsa\\b",
+    "\\bopenai\\b", "\\bchatgpt\\b", "\\banthropoc\\b",
+    "\\biphone\\b", "\\bsamsung\\b", "\\bwindows\\b", "\\bmicrosoft\\b",
+    "\\bearthquake\\b", "\\bdeprem\\b", "\\bflood\\b", "\\bsel\\b",
+    "\\basteroid\\b", "\\bneutrino\\b", "\\bquantum\\b",
+    "\\bdinosaur\\b", "\\bdinozor\\b", "\\barchaeology\\b", "\\barkeoloji\\b"
+).map { it.toRegex(RegexOption.IGNORE_CASE) }
 
 // ── Fallback Images per Category ─────────────────────────────────────────────
 
@@ -241,7 +244,6 @@ object NewsRepository {
 
     suspend fun fetchAllNews(): List<Article> = withContext(Dispatchers.IO) {
         coroutineScope {
-            // Fetch all RSS feeds concurrently; log individual feed errors for debugging
             val deferreds = RSS_FEEDS.mapIndexed { idx, source ->
                 async {
                     try { fetchFeed(source, idx * 15) } catch (_: Exception) { emptyList() }
@@ -249,19 +251,14 @@ object NewsRepository {
             }
             val results = deferreds.map { it.await() }.flatten()
 
-            // Konu filtresi: başlığında off-topic kelime geçen haberleri at
             val filtered = results.filter { article ->
-                val titleLower = article.title.lowercase()
-                OFF_TOPIC_KEYWORDS.none { keyword -> titleLower.contains(keyword) }
+                OFF_TOPIC_PATTERNS.none { pattern -> pattern.containsMatchIn(article.title) }
             }
 
             val rssArticles = filtered.distinctBy { it.title.take(40) }
 
-            if (rssArticles.isEmpty()) {
-                return@coroutineScope DEMO_FALLBACK
-            }
+            if (rssArticles.isEmpty()) return@coroutineScope DEMO_FALLBACK
 
-            // RSS articles sorted newest first, tagged for featured carousel
             rssArticles
                 .sortedByDescending { it.publishedAtMs }
                 .mapIndexed { i, art -> if (i < 6) art.copy(isFeatured = true) else art }
@@ -269,14 +266,20 @@ object NewsRepository {
     }
 
     private fun fetchFeed(source: FeedSource, idOffset: Int): List<Article> {
-        var url = source.url
+        // Cache-busting: her istek benzersiz URL ile yapılır, hiçbir katman cache'leyemez
+        val cacheBuster = System.currentTimeMillis() / 60_000  // her dakika değişir
+        var url = if (source.url.contains("?")) "${source.url}&_t=$cacheBuster"
+                  else "${source.url}?_t=$cacheBuster"
         for (attempt in 0..4) {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
             conn.setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
             conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9,tr;q=0.8")
             conn.setRequestProperty("Accept-Encoding", "gzip, deflate")
-            conn.setRequestProperty("Cache-Control", "no-cache")
+            conn.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
+            conn.setRequestProperty("Pragma", "no-cache")
+            conn.setRequestProperty("Expires", "0")
+            conn.useCaches = false
             conn.instanceFollowRedirects = true
             conn.connectTimeout = 15_000
             conn.readTimeout    = 20_000
@@ -477,22 +480,48 @@ object NewsRepository {
 
     private fun parseDateToMs(dateStr: String): Long {
         if (dateStr.isBlank()) return 0L
-        return try {
-            when {
-                dateStr.contains("T") -> {
-                    val clean = dateStr.take(19).replace("T", " ")
-                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).also {
-                        it.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                    }.parse(clean)?.time ?: 0L
-                }
-                else -> {
-                    val normalized = dateStr.trim()
-                        .replace("GMT", "+0000").replace("UTC", "+0000")
-                    java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", java.util.Locale.US)
-                        .parse(normalized)?.time ?: 0L
-                }
+        val s = dateStr.trim()
+
+        // 1) ISO-8601 with offset: "2026-03-04T12:18:34+03:00" veya "2026-03-04T12:18:34Z"
+        if (s.contains("T")) {
+            // offset'i SimpleDateFormat'ın anlayacağı şekle getir (+03:00 → +0300)
+            val normalized = s.replace(Regex("([+-])(\\d{2}):(\\d{2})$")) { m ->
+                "${m.groupValues[1]}${m.groupValues[2]}${m.groupValues[3]}"
+            }.replace("Z", "+0000").take(24)
+            for (fmt in listOf("yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss")) {
+                try {
+                    return java.text.SimpleDateFormat(fmt, java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.parse(normalized)?.time ?: continue
+                } catch (_: Exception) {}
             }
-        } catch (_: Exception) { 0L }
+        }
+
+        // 2) RFC 822: "Wed, 04 Mar 2026 22:06:35 GMT" veya "Fri, 06 Mar 2026 01:57:35 EST"
+        // Timezone kısaltmalarını offset'e çevir (uzun olanlar önce)
+        val normalized = s
+            .replace("CEST", "+0200").replace("CET",  "+0100")
+            .replace("EEST", "+0300").replace("EET",  "+0200")
+            .replace("BST",  "+0100")
+            .replace("EDT",  "-0400").replace("EST",  "-0500")
+            .replace("CDT",  "-0500").replace("CST",  "-0600")
+            .replace("MDT",  "-0600").replace("MST",  "-0700")
+            .replace("PDT",  "-0700").replace("PST",  "-0800")
+            .replace("GMT",  "+0000").replace("UTC",  "+0000")
+            .replace("UT",   "+0000")
+
+        for (fmt in listOf(
+            "EEE, dd MMM yyyy HH:mm:ss Z",
+            "dd MMM yyyy HH:mm:ss Z",
+            "EEE, dd MMM yyyy HH:mm Z"
+        )) {
+            try {
+                return java.text.SimpleDateFormat(fmt, java.util.Locale.US)
+                    .parse(normalized)?.time ?: continue
+            } catch (_: Exception) {}
+        }
+
+        return 0L
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
