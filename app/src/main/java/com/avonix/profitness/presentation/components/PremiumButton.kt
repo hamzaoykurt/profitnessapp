@@ -154,6 +154,7 @@ fun GhostButton(
     isEnabled: Boolean = true
 ) {
     val haptic = LocalHapticFeedback.current
+    val theme  = LocalAppTheme.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -165,8 +166,8 @@ fun GhostButton(
         modifier = modifier
             .scale(scale)
             .clip(RoundedCornerShape(18.dp))
-            .background(Depth2)
-            .border(1.dp, BorderSoft, RoundedCornerShape(18.dp))
+            .background(theme.bg2)
+            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
             .clickable(enabled = isEnabled, interactionSource = interactionSource, indication = null, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
@@ -176,7 +177,7 @@ fun GhostButton(
     ) {
         Text(
             text          = text,
-            color         = if (isEnabled) Mist else Fog,
+            color         = if (isEnabled) theme.text1 else theme.text2,
             fontWeight    = FontWeight.Bold,
             fontSize      = 14.sp,
             letterSpacing = 0.5.sp

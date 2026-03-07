@@ -38,18 +38,22 @@ fun ForgeCard(
     elevation: Dp = 16.dp,
     content: @Composable () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val accentColor = if (glowColor != Color.Transparent) glowColor else MaterialTheme.colorScheme.primary
+    val shadowSpot = if (glowColor != Color.Transparent) accentColor.copy(0.35f)
+                     else if (theme.isDark) Color.Black.copy(0.8f) else accentColor.copy(0.20f)
+    val shadowAmbient = if (theme.isDark) Color.Black.copy(0.4f) else Color.Black.copy(0.10f)
 
     Box(
         modifier = modifier
             .shadow(
                 elevation = elevation,
                 shape = shape,
-                spotColor = if (glowColor != Color.Transparent) accentColor.copy(0.35f) else Color.Black.copy(0.8f),
-                ambientColor = Color.Black.copy(0.4f)
+                spotColor = shadowSpot,
+                ambientColor = shadowAmbient
             )
             .clip(shape)
-            .background(Surface2)
+            .background(theme.bg2)
             .drawWithCache {
                 onDrawBehind {
                     // 1dp rim light — top edge
@@ -105,27 +109,33 @@ fun Modifier.glassCard(
 ): Modifier = this
     .clip(shape)
     .drawWithCache {
-        val base = theme.bg1.copy(alpha = 0.75f)
+        val base = theme.bg1.copy(alpha = if (theme.isDark) 0.75f else 0.90f)
+        // In light mode use a warm tint shimmer instead of harsh white
+        val shimmerAlphaTop = if (theme.isDark) 0.09f else 0.50f
+        val shimmerAlphaMid = if (theme.isDark) 0.02f else 0.15f
         val shimmer = Brush.verticalGradient(
             colorStops = arrayOf(
-                0.00f to Color.White.copy(alpha = 0.09f),
-                0.32f to Color.White.copy(alpha = 0.02f),
+                0.00f to Color.White.copy(alpha = shimmerAlphaTop),
+                0.32f to Color.White.copy(alpha = shimmerAlphaMid),
                 0.55f to Color.Transparent
             )
         )
         val accentBleed = Brush.linearGradient(
             colorStops = arrayOf(
-                0.00f to accent.copy(alpha = 0.14f),
-                0.45f to accent.copy(alpha = 0.05f),
+                0.00f to accent.copy(alpha = if (theme.isDark) 0.14f else 0.08f),
+                0.45f to accent.copy(alpha = if (theme.isDark) 0.05f else 0.03f),
                 1.00f to Color.Transparent
             ),
             start = Offset(0f, size.height * 0.5f),
             end   = Offset(size.width, size.height * 0.5f)
         )
+        // Light mode: use a warm brown shadow instead of black
+        val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.30f)
+                         else Color(0xFF6B4E2A).copy(alpha = 0.10f)
         val depth = Brush.verticalGradient(
             colorStops = arrayOf(
                 0.48f to Color.Transparent,
-                1.00f to Color.Black.copy(alpha = 0.30f)
+                1.00f to depthColor
             )
         )
         onDrawBehind {
@@ -139,9 +149,9 @@ fun Modifier.glassCard(
         width = 1.dp,
         brush = Brush.linearGradient(
             listOf(
-                accent.copy(alpha = 0.28f),
-                theme.stroke.copy(alpha = 0.45f),
-                accent.copy(alpha = 0.16f)
+                accent.copy(alpha = if (theme.isDark) 0.28f else 0.35f),
+                theme.stroke.copy(alpha = if (theme.isDark) 0.45f else 0.70f),
+                accent.copy(alpha = if (theme.isDark) 0.16f else 0.20f)
             )
         ),
         shape = shape

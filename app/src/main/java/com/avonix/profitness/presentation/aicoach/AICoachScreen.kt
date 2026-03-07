@@ -194,7 +194,7 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(0.dp, 16.dp, 0.dp, 0.dp).align(Alignment.Center)) {
                 Text("ORACLE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = 6.sp, fontWeight = FontWeight.ExtraLight)
-                Text("SANCTUARY", style = MaterialTheme.typography.labelSmall, color = Snow.copy(0.4f), letterSpacing = 2.sp, fontSize = 8.sp)
+                Text("SANCTUARY", style = MaterialTheme.typography.labelSmall, color = LocalAppTheme.current.text2, letterSpacing = 2.sp, fontSize = 8.sp)
             }
         }
 
@@ -230,15 +230,16 @@ fun AICoachScreen(bottomPadding: Dp = 0.dp) {
                 modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 items(quickChips) { chip ->
+                    val chipTheme = LocalAppTheme.current
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Surface1.copy(0.5f))
-                            .border(1.dp, WhiteGlow, RoundedCornerShape(12.dp))
+                            .background(chipTheme.bg1.copy(0.85f))
+                            .border(1.dp, chipTheme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
                             .clickable { sendMessage(chip) }
                             .padding(16.dp, 8.dp)
                     ) {
-                        Text(chip, color = Mist, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
+                        Text(chip, color = chipTheme.text1, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                     }
                 }
             }

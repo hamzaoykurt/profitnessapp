@@ -152,12 +152,12 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
             hostState = snackbarHost,
             modifier  = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
             snackbar  = { data ->
-                Snackbar(
-                    snackbarData    = data,
-                    containerColor  = theme.bg2,
-                    contentColor    = Snow,
-                    shape           = RoundedCornerShape(14.dp)
-                )
+                    Snackbar(
+                            snackbarData    = data,
+                            containerColor  = theme.bg2,
+                            contentColor    = theme.text0,
+                            shape           = RoundedCornerShape(14.dp)
+                        )
             }
         )
     }
@@ -284,7 +284,7 @@ private fun NewsFeed(
                 Text(
                     "MUSE",
                     style = MaterialTheme.typography.displayLarge,
-                    color = Snow,
+                    color = theme.text0,
                     fontWeight = FontWeight.Black
                 )
             }
@@ -357,14 +357,14 @@ private fun NewsFeed(
                             if (selectedCategory == "KAYDEDILENLER") Icons.Rounded.BookmarkBorder
                             else Icons.Rounded.SearchOff,
                             null,
-                            tint = Snow.copy(0.3f),
+                            tint = theme.text2,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
                             if (selectedCategory == "KAYDEDILENLER") strings.noSavedNews
                             else strings.noCategoryNews,
-                            color = Snow.copy(0.4f),
+                            color = theme.text2,
                             fontSize = 13.sp
                         )
                     }
@@ -705,6 +705,7 @@ private fun MuseHeroCard(
 @Composable
 private fun PagerDotIndicator(pagerState: PagerState, count: Int) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -714,7 +715,7 @@ private fun PagerDotIndicator(pagerState: PagerState, count: Int) {
             val isSelected = pagerState.currentPage == i
             val width by animateDpAsState(if (isSelected) 20.dp else 6.dp, label = "dot_w")
             val color by animateColorAsState(
-                if (isSelected) accent else Snow.copy(0.25f), label = "dot_c"
+                if (isSelected) accent else theme.text2.copy(0.40f), label = "dot_c"
             )
             Box(
                 modifier = Modifier
@@ -888,7 +889,7 @@ private fun MuseArticleCard(
                 .padding(8.dp)
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.48f))
+                .background(if (theme.isDark) Color.Black.copy(alpha = 0.48f) else theme.bg3.copy(alpha = 0.80f))
                 .clickable(
                     interactionSource = saveInteractionSource,
                     indication = null,
@@ -899,7 +900,7 @@ private fun MuseArticleCard(
             Icon(
                 if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
                 contentDescription = if (isSaved) LocalAppTheme.current.strings.unsaveArticle else LocalAppTheme.current.strings.saveArticle,
-                tint = if (isSaved) accent else Snow.copy(0.70f),
+                tint = if (isSaved) accent else theme.text1,
                 modifier = Modifier.size(13.dp)
             )
         }
@@ -931,7 +932,7 @@ private fun ArticleCardText(
         // Title
         Text(
             displayTitle,
-            color = Snow,
+            color = theme.text0,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 19.sp,
@@ -947,12 +948,12 @@ private fun ArticleCardText(
             horizontalArrangement = if (align == TextAlign.End) Arrangement.End else Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Rounded.Schedule, null, tint = Snow.copy(0.35f), modifier = Modifier.size(10.dp))
+            Icon(Icons.Rounded.Schedule, null, tint = theme.text2, modifier = Modifier.size(10.dp))
             Spacer(Modifier.width(4.dp))
-            Text("${article.readTime} ${LocalAppTheme.current.strings.readTimeUnit}", color = Snow.copy(0.35f), fontSize = 9.sp)
+            Text("${article.readTime} ${LocalAppTheme.current.strings.readTimeUnit}", color = theme.text2, fontSize = 9.sp)
             val dateStr = formatDate(article.publishedAt)
             if (dateStr.isNotBlank()) {
-                Text("  ·  $dateStr", color = Snow.copy(0.35f), fontSize = 9.sp)
+                Text("  ·  $dateStr", color = theme.text2, fontSize = 9.sp)
             }
         }
     }
@@ -1121,7 +1122,7 @@ private fun MuseReader(
                             Text(
                                 if (detailState.isTranslating) strings.translatingLabel
                                 else strings.loadingContentLabel,
-                                color = Snow.copy(0.5f),
+                                color = theme.text2,
                                 fontSize = 12.sp,
                                 letterSpacing = 1.sp
                             )
@@ -1151,15 +1152,15 @@ private fun MuseReader(
                             .split("\n\n")
                             .map { it.replace("\n", " ").trim() }
                             .filter { it.isNotBlank() }
-                        summaryParagraphs.forEachIndexed { idx, para ->
-                            Text(
-                                para,
-                                color      = Snow.copy(0.85f),
-                                fontSize   = 15.sp,
-                                lineHeight = 24.sp,
-                                fontWeight = FontWeight.Light,
-                                fontStyle  = FontStyle.Italic
-                            )
+                         summaryParagraphs.forEachIndexed { idx, para ->
+                                Text(
+                                    para,
+                                    color      = theme.text1,
+                                    fontSize   = 15.sp,
+                                    lineHeight = 24.sp,
+                                    fontWeight = FontWeight.Light,
+                                    fontStyle  = FontStyle.Italic
+                                )
                             if (idx < summaryParagraphs.lastIndex) Spacer(Modifier.height(10.dp))
                         }
                     }
@@ -1186,7 +1187,7 @@ private fun MuseReader(
                                     if (idx > 0) Spacer(Modifier.height(24.dp))
                                     Text(
                                         block.text,
-                                        color      = Snow,
+                                        color      = theme.text0,
                                         fontSize   = if (block.level <= 2) 19.sp else 17.sp,
                                         fontWeight = FontWeight.Bold,
                                         lineHeight = if (block.level <= 2) 26.sp else 24.sp
@@ -1197,7 +1198,7 @@ private fun MuseReader(
                                     if (block.annotated.isNotEmpty()) {
                                         Text(
                                             block.annotated,
-                                            color      = Snow.copy(0.82f),
+                                            color      = theme.text1,
                                             fontSize   = 16.sp,
                                             lineHeight = 27.sp,
                                             fontWeight = FontWeight.Light
@@ -1211,14 +1212,14 @@ private fun MuseReader(
                                     ) {
                                         Text(
                                             "•",
-                                            color      = Snow.copy(0.5f),
+                                            color      = theme.text2,
                                             fontSize   = 16.sp,
                                             fontWeight = FontWeight.Bold,
                                             modifier   = Modifier.padding(top = 1.dp)
                                         )
                                         Text(
                                             block.annotated,
-                                            color      = Snow.copy(0.82f),
+                                            color      = theme.text1,
                                             fontSize   = 16.sp,
                                             lineHeight = 26.sp,
                                             fontWeight = FontWeight.Light
@@ -1237,7 +1238,7 @@ private fun MuseReader(
                         paragraphs.forEachIndexed { idx, para ->
                             Text(
                                 para,
-                                color      = Snow.copy(0.82f),
+                                color      = theme.text1,
                                 fontSize   = 16.sp,
                                 lineHeight = 27.sp,
                                 fontWeight = FontWeight.Light
@@ -1308,14 +1309,15 @@ private fun MuseReader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val navBtnBg = if (theme.isDark) Color.Black.copy(0.55f) else theme.bg2.copy(0.90f)
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(0.55f))
+                    .background(navBtnBg)
             ) {
-                Icon(Icons.Rounded.ArrowBack, null, tint = Snow, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1325,12 +1327,12 @@ private fun MuseReader(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (isSaved) accent.copy(0.25f) else Color.Black.copy(0.55f))
+                        .background(if (isSaved) accent.copy(0.25f) else navBtnBg)
                 ) {
                     Icon(
                         if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
                         null,
-                        tint = if (isSaved) accent else Snow,
+                        tint = if (isSaved) accent else theme.text0,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1349,9 +1351,9 @@ private fun MuseReader(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(0.55f))
+                            .background(navBtnBg)
                     ) {
-                        Icon(Icons.Rounded.Share, null, tint = Snow, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Share, null, tint = theme.text0, modifier = Modifier.size(20.dp))
                     }
                 }
 
@@ -1361,9 +1363,9 @@ private fun MuseReader(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(0.55f))
+                        .background(navBtnBg)
                 ) {
-                    Icon(Icons.Rounded.Flag, null, tint = Snow.copy(0.70f), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Flag, null, tint = theme.text1, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -1407,7 +1409,7 @@ private fun ReportDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Rounded.Flag, null, tint = accent, modifier = Modifier.size(18.dp))
-                Text(strings.reportDialogTitle, color = Snow, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(strings.reportDialogTitle, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         },
         text = {
@@ -1432,7 +1434,7 @@ private fun ReportDialog(
                                 .background(if (isSelected) accent else Color.Transparent)
                                 .border(1.5.dp, if (isSelected) accent else theme.text2.copy(0.4f), CircleShape)
                         )
-                        Text(reason, color = if (isSelected) Snow else theme.text2, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                         Text(reason, color = if (isSelected) theme.text0 else theme.text2, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
             }

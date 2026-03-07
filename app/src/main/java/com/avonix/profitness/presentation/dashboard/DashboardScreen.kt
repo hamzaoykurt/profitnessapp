@@ -152,12 +152,19 @@ fun AppBackground(modifier: Modifier = Modifier) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
+    // Light mode: much subtler bloom — warm earthy bg doesn't need heavy neon glow
+    val radialPeak = if (theme.isDark) 0.16f else 0.06f
+    val radialMid  = if (theme.isDark) 0.10f else 0.03f
+    val radialEdge = if (theme.isDark) 0.04f else 0.01f
+    val sweepPeak  = if (theme.isDark) 0.07f else 0.03f
+    val sweepMid   = if (theme.isDark) 0.02f else 0.005f
+
     Box(modifier = modifier.drawWithCache {
         val radial = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f  to accent.copy(alpha = 0.16f),
-                0.30f to accent.copy(alpha = 0.10f),
-                0.60f to accent.copy(alpha = 0.04f),
+                0.0f  to accent.copy(alpha = radialPeak),
+                0.30f to accent.copy(alpha = radialMid),
+                0.60f to accent.copy(alpha = radialEdge),
                 1.0f  to Color.Transparent
             ),
             center = Offset(size.width, 0f),
@@ -165,8 +172,8 @@ fun AppBackground(modifier: Modifier = Modifier) {
         )
         val sweep = Brush.linearGradient(
             colorStops = arrayOf(
-                0.0f to accent.copy(alpha = 0.07f),
-                0.5f to accent.copy(alpha = 0.02f),
+                0.0f to accent.copy(alpha = sweepPeak),
+                0.5f to accent.copy(alpha = sweepMid),
                 1.0f to Color.Transparent
             ),
             start = Offset(size.width, 0f),
@@ -215,40 +222,48 @@ fun AppNavBar(
                     elevation    = 30.dp,
                     shape        = shape,
                     clip         = false,
-                    spotColor    = accent.copy(alpha = 0.35f),
-                    ambientColor = Color.Black.copy(alpha = 0.65f)
+                    spotColor    = accent.copy(alpha = if (theme.isDark) 0.35f else 0.20f),
+                    ambientColor = if (theme.isDark) Color.Black.copy(alpha = 0.65f)
+                                   else Color.Black.copy(alpha = 0.12f)
                 )
                 .clip(shape)
                 .drawWithCache {
-                    // ① Dense semi-transparent base — more opaque = "blurrier" feel
-                    val bgBase = theme.bg0.copy(alpha = 0.76f)
+                    // ① Dense semi-transparent base
+                    val bgBase = theme.bg0.copy(alpha = if (theme.isDark) 0.76f else 0.92f)
 
-                    // ② Top glass reflection — restrained highlight, preserves dark feel
+                    // ② Top glass reflection — lighter in light mode for warm feel
+                    val topMirrorAlpha0 = if (theme.isDark) 0.09f else 0.45f
+                    val topMirrorAlpha1 = if (theme.isDark) 0.02f else 0.10f
                     val topMirror = Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0.00f to Color.White.copy(alpha = 0.09f),
-                            0.30f to Color.White.copy(alpha = 0.02f),
+                            0.00f to Color.White.copy(alpha = topMirrorAlpha0),
+                            0.30f to Color.White.copy(alpha = topMirrorAlpha1),
                             0.55f to Color.Transparent
                         )
                     )
 
-                    // ③ Accent bleed: linear left→right, spreads across full pill width
+                    // ③ Accent bleed: linear left→right
+                    val accentBleedA0 = if (theme.isDark) 0.18f else 0.08f
+                    val accentBleedA1 = if (theme.isDark) 0.09f else 0.04f
+                    val accentBleedA2 = if (theme.isDark) 0.03f else 0.01f
                     val accentBleed = Brush.linearGradient(
                         colorStops = arrayOf(
-                            0.00f to accent.copy(alpha = 0.18f),
-                            0.28f to accent.copy(alpha = 0.09f),
-                            0.58f to accent.copy(alpha = 0.03f),
+                            0.00f to accent.copy(alpha = accentBleedA0),
+                            0.28f to accent.copy(alpha = accentBleedA1),
+                            0.58f to accent.copy(alpha = accentBleedA2),
                             1.00f to Color.Transparent
                         ),
                         start = Offset(0f, size.height * 0.5f),
                         end   = Offset(size.width, size.height * 0.5f)
                     )
 
-                    // ④ Bottom inner shadow — adds weight/3D grounding
+                    // ④ Bottom inner shadow — warm brown in light mode, not harsh black
+                    val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.38f)
+                                     else Color(0xFF6B4E2A).copy(alpha = 0.08f)
                     val depthShadow = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.42f to Color.Transparent,
-                            1.00f to Color.Black.copy(alpha = 0.38f)
+                            1.00f to depthColor
                         )
                     )
 

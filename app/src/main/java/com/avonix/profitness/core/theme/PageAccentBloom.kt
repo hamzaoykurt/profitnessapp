@@ -14,10 +14,19 @@ import androidx.compose.ui.graphics.Color
  * Sağ üst köşeden tema vurgu rengiyle ışıma efekti.
  * Radial + diyagonal sweep kombinasyonu sayfa sonuna kadar uzanır.
  * Tüm ekranlarda arka plan üzerine katman olarak kullanılır.
+ * Light modda daha subtle — warm-earthy arka plan rengini bozmaz.
  */
 @Composable
 fun PageAccentBloom(modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
+    // Light modda bloom çok daha subtle — neon glow warm bg üzerinde garip durur
+    val radialPeak  = if (theme.isDark) 0.16f else 0.07f
+    val radialMid   = if (theme.isDark) 0.10f else 0.04f
+    val radialEdge  = if (theme.isDark) 0.04f else 0.01f
+    val sweepPeak   = if (theme.isDark) 0.07f else 0.03f
+    val sweepMid    = if (theme.isDark) 0.02f else 0.01f
+
     Spacer(
         modifier = modifier
             .fillMaxSize()
@@ -25,9 +34,9 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
                 // Sağ üst köşeden yayılan radyal bloom — büyük yarıçap
                 val radial = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f  to accent.copy(alpha = 0.16f),
-                        0.30f to accent.copy(alpha = 0.10f),
-                        0.60f to accent.copy(alpha = 0.04f),
+                        0.0f  to accent.copy(alpha = radialPeak),
+                        0.30f to accent.copy(alpha = radialMid),
+                        0.60f to accent.copy(alpha = radialEdge),
                         1.0f  to Color.Transparent
                     ),
                     center = Offset(size.width, 0f),
@@ -36,8 +45,8 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
                 // Diyagonal sweep — sağ üstten sol alta rengi uzatır
                 val sweep = Brush.linearGradient(
                     colorStops = arrayOf(
-                        0.0f to accent.copy(alpha = 0.07f),
-                        0.5f to accent.copy(alpha = 0.02f),
+                        0.0f to accent.copy(alpha = sweepPeak),
+                        0.5f to accent.copy(alpha = sweepMid),
                         1.0f to Color.Transparent
                     ),
                     start = Offset(size.width, 0f),

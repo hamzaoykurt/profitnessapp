@@ -31,15 +31,17 @@ fun ProfitnessTheme(
         )
     } else {
         lightColorScheme(
-            primary        = themeState.accent.color,
-            onPrimary      = themeState.accent.onColor,
-            secondary      = Lava500,
-            tertiary       = Forge300,
+            primary        = themeState.effectiveAccentColor,
+            onPrimary      = themeState.effectiveOnAccentColor,
+            secondary      = Color(0xFFEA580C),
+            tertiary       = Color(0xFFD97706),
             background     = themeState.bg0,
             surface        = themeState.bg1,
             onBackground   = themeState.text0,
             onSurface      = themeState.text0,
-            surfaceVariant = themeState.bg2
+            surfaceVariant = themeState.bg2,
+            outline        = themeState.stroke,
+            outlineVariant = themeState.stroke.copy(alpha = 0.5f)
         )
     }
 

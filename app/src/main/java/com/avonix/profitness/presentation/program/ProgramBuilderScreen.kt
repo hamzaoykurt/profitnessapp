@@ -312,7 +312,8 @@ fun ProgramBuilderScreen() {
 
 @Composable
 private fun ArchitectGrid() {
-    val gridColor = SurfaceStroke.copy(0.3f)
+    val theme = LocalAppTheme.current
+    val gridColor = theme.stroke.copy(0.3f)
     Spacer(
         modifier = Modifier
             .fillMaxSize()
@@ -373,13 +374,13 @@ private fun BuilderChooseScreen(
                 Text(
                     "STUDIO",
                     style = MaterialTheme.typography.displayLarge,
-                    color = Snow,
+                    color = LocalAppTheme.current.text0,
                     fontWeight = FontWeight.Black
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
                     LocalAppTheme.current.strings.programStudioSub,
-                    color = Mist,
+                    color = LocalAppTheme.current.text1,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Light
                 )
@@ -555,6 +556,7 @@ private fun CategoryChip(
 @Composable
 private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
     val accent = program.category.color
+    val theme  = LocalAppTheme.current
     val iSource = remember { MutableInteractionSource() }
     val isPressed by iSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "pscale")
@@ -565,8 +567,8 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 7.dp)
             .scale(scale)
             .clip(RoundedCornerShape(20.dp))
-            .background(Surface1.copy(alpha = 0.7f))
-            .border(1.dp, SurfaceStroke, RoundedCornerShape(20.dp))
+            .background(theme.bg1.copy(alpha = 0.9f))
+            .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
         // Left accent bar
@@ -615,13 +617,13 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                 Spacer(Modifier.height(7.dp))
                 Text(
                     program.title,
-                    color = Snow,
+                    color = theme.text0,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
                 Text(
                     program.subtitle,
-                    color = Mist,
+                    color = theme.text1,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Light
                 )
@@ -676,10 +678,11 @@ private fun LevelBadge(level: String) {
 
 @Composable
 private fun StatChip(icon: ImageVector, text: String) {
+    val theme = LocalAppTheme.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = TextMuted, modifier = Modifier.size(11.dp))
+        Icon(icon, null, tint = theme.text2, modifier = Modifier.size(11.dp))
         Spacer(Modifier.width(3.dp))
-        Text(text, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -687,12 +690,13 @@ private fun StatChip(icon: ImageVector, text: String) {
 
 @Composable
 private fun SavedProgramTile(prog: SavedProgram) {
+    val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface1.copy(0.4f))
+            .background(theme.bg1.copy(0.9f))
             .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.25f), RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
@@ -708,9 +712,9 @@ private fun SavedProgramTile(prog: SavedProgram) {
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                val tileStrings = LocalAppTheme.current.strings
-                Text(prog.name, color = Snow, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("${prog.days} ${tileStrings.dayLabel} • ${prog.focus.uppercase()}", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                val tileStrings = theme.strings
+                Text(prog.name, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("${prog.days} ${tileStrings.dayLabel} • ${prog.focus.uppercase()}", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Box(
                 modifier = Modifier
@@ -762,8 +766,8 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Text(program.title, style = MaterialTheme.typography.headlineMedium, color = Snow, fontWeight = FontWeight.Black)
-                Text(program.subtitle, color = Mist, fontSize = 13.sp, fontWeight = FontWeight.Light)
+                Text(program.title, style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Black)
+                Text(program.subtitle, color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Light)
 
                 Spacer(Modifier.height(20.dp))
 
@@ -772,31 +776,31 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Surface2.copy(0.6f))
+                        .background(theme.bg2.copy(0.8f))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accent)
-                    Box(Modifier.width(1.dp).height(36.dp).background(SurfaceStroke))
+                    Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
                     DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accent)
-                    Box(Modifier.width(1.dp).height(36.dp).background(SurfaceStroke))
+                    Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
                     DialogStat(Icons.Rounded.TrackChanges, program.level.take(3).uppercase(), strings.levelLabel, accent)
                 }
 
                 Spacer(Modifier.height(20.dp))
 
                 // Description
-                Text(program.description, color = TextSecondary, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.Light)
+                Text(program.description, color = theme.text1, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.Light)
 
                 Spacer(Modifier.height(20.dp))
 
                 // Muscle distribution
-                Text(strings.muscleDistLabel, color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.muscleDistLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(10.dp))
                 program.muscleLabels.forEachIndexed { i, label ->
                     Column(Modifier.padding(bottom = 8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(label, color = Snow, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(label, color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(program.musclePct[i], color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(4.dp))
@@ -805,7 +809,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                                 .fillMaxWidth()
                                 .height(5.dp)
                                 .clip(CircleShape)
-                                .background(Surface3)
+                                .background(theme.bg3)
                         ) {
                             Box(
                                 Modifier
@@ -823,17 +827,17 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
 
                 // Schedule
-                Text(strings.scheduleLabel, color = Mist, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.scheduleLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Surface2.copy(0.4f))
-                        .border(1.dp, SurfaceStroke, RoundedCornerShape(14.dp))
+                        .background(theme.bg2.copy(0.6f))
+                        .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                         .padding(16.dp)
                 ) {
-                    Text(program.schedule, color = TextSecondary, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
+                    Text(program.schedule, color = theme.text1, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -860,11 +864,12 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
 
 @Composable
 private fun DialogStat(icon: ImageVector, value: String, label: String, accent: Color) {
+    val theme = LocalAppTheme.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
         Spacer(Modifier.height(4.dp))
-        Text(value, color = Snow, fontWeight = FontWeight.Black, fontSize = 16.sp)
-        Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(value, color = theme.text0, fontWeight = FontWeight.Black, fontSize = 16.sp)
+        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
     }
 }
 
@@ -885,6 +890,7 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
     }
 
     val aiStrings = LocalAppTheme.current.strings
+    val aiTheme   = LocalAppTheme.current
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
         DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
         Spacer(Modifier.height(40.dp))
@@ -896,16 +902,16 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Surface1.copy(0.4f))
+                            .background(aiTheme.bg1.copy(0.9f))
                             .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f), RoundedCornerShape(24.dp))
                             .padding(24.dp)
                     ) {
                         Column {
                             Text(aiStrings.analysisResult, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                             Spacer(Modifier.height(16.dp))
-                            Text("PUSH / PULL / LEGS • 8 ${aiStrings.weekLabel.uppercase()}", color = Snow, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            Text("PUSH / PULL / LEGS • 8 ${aiStrings.weekLabel.uppercase()}", color = aiTheme.text0, fontWeight = FontWeight.Black, fontSize = 20.sp)
                             Spacer(Modifier.height(12.dp))
-                            Text("Oracle seviyeniz için 6 günlük yüksek frekanslı bir hipertrofi planı oluşturdu. Progresif yükleme için temel setler hazırlandı.", color = Mist, fontSize = 14.sp, fontWeight = FontWeight.Light)
+                            Text("Oracle seviyeniz için 6 günlük yüksek frekanslı bir hipertrofi planı oluşturdu. Progresif yükleme için temel setler hazırlandı.", color = aiTheme.text1, fontSize = 14.sp, fontWeight = FontWeight.Light)
                         }
                     }
                 }
@@ -927,20 +933,20 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Surface1.copy(0.4f))
-                    .border(1.dp, SurfaceStroke, RoundedCornerShape(24.dp))
+                    .background(aiTheme.bg1.copy(0.9f))
+                    .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
                     .padding(24.dp)
             ) {
                 Column {
-                    Text("TASARIM PARAMETRELERİ", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                    Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                     Spacer(Modifier.height(16.dp))
                     BasicTextField(
                         value = prompt,
                         onValueChange = { prompt = it },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = Snow, fontWeight = FontWeight.Light),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                         decorationBox = { inner ->
-                            if (prompt.isEmpty()) Text("Antrenman sıklığı, hedefin ve seviyeni belirt...", color = TextMuted, fontSize = 15.sp)
+                            if (prompt.isEmpty()) Text("Antrenman sıklığı, hedefin ve seviyeni belirt...", color = aiTheme.text2, fontSize = 15.sp)
                             inner()
                         }
                     )
@@ -977,7 +983,8 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
 private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
     data class ManualDay(val name: String)
     val days       = remember { mutableStateListOf(ManualDay("DAY 01"), ManualDay("DAY 02")) }
-    val manStrings = LocalAppTheme.current.strings
+    val manTheme   = LocalAppTheme.current
+    val manStrings = manTheme.strings
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
         DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
@@ -992,14 +999,14 @@ private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Surface1.copy(0.4f))
-                        .border(1.dp, SurfaceStroke, RoundedCornerShape(16.dp))
+                        .background(manTheme.bg1.copy(0.9f))
+                        .border(1.dp, manTheme.stroke, RoundedCornerShape(16.dp))
                         .padding(20.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.ViewQuilt, null, tint = CardCyan, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(16.dp))
-                        Text(day.name, color = Snow, fontWeight = FontWeight.Bold)
+                        Text(day.name, color = manTheme.text0, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.weight(1f))
                         Icon(Icons.Rounded.Add, null, tint = CardCyan)
                     }
@@ -1034,6 +1041,7 @@ private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
 
 @Composable
 private fun DetailHeader(title: String, sub: String, onBack: () -> Unit) {
+    val theme = LocalAppTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1041,11 +1049,11 @@ private fun DetailHeader(title: String, sub: String, onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.Rounded.ArrowBack, null, tint = Mist)
+            Icon(Icons.Rounded.ArrowBack, null, tint = theme.text1)
         }
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = 2.sp)
-            Text(title, style = MaterialTheme.typography.displayMedium, color = Snow, fontWeight = FontWeight.Black)
+            Text(title, style = MaterialTheme.typography.displayMedium, color = theme.text0, fontWeight = FontWeight.Black)
         }
     }
 }

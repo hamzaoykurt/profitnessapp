@@ -73,6 +73,9 @@ dependencies {
     // Networking / Utils
     implementation(libs.coil.compose)
 
+    // DataStore (theme persistence)
+    implementation(libs.androidx.datastore.preferences)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

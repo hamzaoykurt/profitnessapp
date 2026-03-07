@@ -524,7 +524,8 @@ private fun DaySelector(
 @Composable
 private fun RestDayView() {
     val accent  = MaterialTheme.colorScheme.primary
-    val strings = LocalAppTheme.current.strings
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -547,12 +548,12 @@ private fun RestDayView() {
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            strings.restDayTitle, color = TextPrimary,
+            strings.restDayTitle, color = theme.text0,
             fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp
         )
         Text(
             strings.restDaySubtitle,
-            color = TextSecondary, fontSize = 15.sp,
+            color = theme.text1, fontSize = 15.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(0.dp, 8.dp, 0.dp, 0.dp)
         )
@@ -564,10 +565,10 @@ private fun RestDayView() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Surface2)
+                        .background(theme.bg2)
                         .padding(20.dp, 14.dp)
                 ) {
-                    Text(tip, color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(tip, color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
