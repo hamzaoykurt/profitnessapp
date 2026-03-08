@@ -64,3 +64,6 @@ screen2.png
 
 # IDE scratch files
 view.xml
+
+# MCP config (contains secrets)
+.mcp.json
