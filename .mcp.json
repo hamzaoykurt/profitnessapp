@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "supabase": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@supabase/mcp-server-supabase@latest",
+        "/root/.npm/_npx/53c4795544aaa350/node_modules/@supabase/mcp-server-supabase/dist/transports/stdio.js",
         "--access-token",
-        "sbp_fa9555e157ab01ef4540b5257790b378fceccc44"
+        "sbp_5ceec4a3651f1906c705b34565443634df0d8b0f"
       ]
     }
   }
