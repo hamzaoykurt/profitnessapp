@@ -11,10 +11,12 @@ Mevcut fitness uygulamaları (MyFitnessPal, Hevy, Strong) ya çok karmaşık UI'
 | Problem | Profitness Çözümü |
 |---------|-------------------|
 | Karmaşık antrenman kaydı | Hızlı "tap to log" arayüzü |
-| Motivasyon eksikliği | AI Coach ile bağlamsal geri bildirim |
-| Jenerik tasarım | Dual-mode bespoke UI sistemi |
-| Veri kalıcılığı | DataStore (tema) + Room DB (workout, planlanan) |
-| Tema esnekliği | Light & Dark mode, 6 accent renk seçeneği, kalıcı tercih |
+| Motivasyon eksikliği | AI Coach (Oracle) + Commitment Mode + streak sistemi |
+| Jenerik tasarım | Neon Forge Dark — premium bespoke UI |
+| Veri kalıcılığı | Supabase PostgreSQL backend |
+| AI koçluk | Gemini API — gerçek LLM yanıtları |
+| Sosyal motivasyon | Program paylaşma, grup challenge'ları |
+| Disiplin eksikliği | Commitment Mode — sanal ceza sistemi (XP/kredi kaybı) |
 
 ---
 
@@ -22,9 +24,9 @@ Mevcut fitness uygulamaları (MyFitnessPal, Hevy, Strong) ya çok karmaşık UI'
 
 - **İlk İzlenim:** Uygulamayı açan kullanıcı "premium" hissi almalı (< 3 saniye)
 - **Günlük Kullanım:** Antrenman kayıt süresi < 30 saniye
-- **Alışkanlık:** Günlük açılış teşviki (streak, motivasyon mesajı)
-- **AI Chat:** Kullanıcı sorularına < 2s yanıt; bağlamsal ve kişiselleştirilmiş
-- **Tema Tercihi:** Seçilen tema (dark/light + accent) uygulama kapansa da korunmalı
+- **Alışkanlık:** Streak sistemi + Commitment Mode ile günlük açılış teşviki
+- **AI Chat:** Kullanıcı sorularına gerçek Gemini yanıtı; bağlamsal ve kişiselleştirilmiş
+- **Sosyal:** Program paylaşma, beğenme, grup challenge leaderboard
 
 ---
 
@@ -32,36 +34,46 @@ Mevcut fitness uygulamaları (MyFitnessPal, Hevy, Strong) ya çok karmaşık UI'
 
 ```
 MainActivity (NavHost)
-├── WorkoutScreen        — Günlük egzersiz planı, set/rep takibi
+├── AuthScreen           — Kayıt / Giriş / Şifremi Unuttum
+├── WorkoutScreen        — Günlük egzersiz planı, set/rep takibi, timer
 ├── ProgramBuilderScreen — Program şablonları, AI builder, manuel builder
-├── AICoachScreen        — Oracle AI sohbet arayüzü
+├── AICoachScreen        — Oracle AI sohbet arayüzü (Gemini)
 ├── NewsScreen           — Muse — bilim/beslenme/motivasyon içerikleri
-└── ProfileScreen        — İstatistikler, ayarlar, tema/dil/bildirim tercihleri
+├── ProfileScreen        — İstatistikler, başarımlar, rank, ayarlar
+├── DiscoverScreen       — Sosyal — başkalarının programları
+├── ChallengeScreen      — Grup etkinlikleri, leaderboard
+└── SubscriptionScreen   — Kredi satın alma, abonelik
 ```
 
 ---
 
 ## Tasarım Prensipleri
 
-1. **Dual-Mode First:** Her bileşen hem dark hem light temada doğal görünmeli
-   - Dark: Neon Forge — `#0A0A0F` zemin, elektrik neon accent renkler
-   - Light: Warm & Earthy — `#FAF8F5` zemin, doygun/okunabilir accent varyantlar
+1. **Dark Only:** Sadece Neon Forge Dark — `#0A0A0F` zemin, elektrik neon accent renkler
 2. **Motion:** Her geçiş animasyonlu; idle animasyonlar hayat katar
 3. **Density:** Bilgi yoğunluğu kontrollü — overload yok
 4. **Tactile Feel:** Dokunuş geri bildirimi, scale/spring efektleri
-5. **Readability:** Light modda kontrast en az WCAG AA seviyesinde olmalı
+5. **Readability:** WCAG AA kontrast oranı dark modda korunmalı
 
 ---
 
-## Tema Sistemi Kullanıcı Kontrolü
+## Commitment Mode (Disiplin Modu)
 
-Kullanıcı `ProfileScreen → Ayarlar` üzerinden:
-- **Dark / Light mod** geçişi yapabilir
-- **6 accent rengi** (LIME, PURPLE, CYAN, ORANGE, PINK, BLUE) seçebilir
-- **Dil** (TR / EN) değiştirebilir
-- **Bildirimler** açıp/kapatabilir
+Sanal ceza sistemi — gerçek para yok:
+- Kullanıcı haftalık hedef gün sayısı belirler (commitment_contracts tablosu)
+- Kaçırılan gün: −50 XP
+- 3 gün üst üste: streak sıfırlama
+- 7 gün üst üste: −1 kredi
+- Hedef tutturanlar: +100 XP/hafta + özel başarım
 
-Tüm tercihler `ThemeRepository` (DataStore Preferences) ile kalıcı olarak saklanır.
+---
+
+## Kredi & Abonelik Sistemi
+
+- Başlangıçta 3 ücretsiz AI kredisi (`is_trial_used` flag ile hesap bazlı)
+- AI Chat: 3 kredi/mesaj
+- AI Program Oluşturma: 1 kredi
+- Kredi paketleri: 10 / 50 / 100 kredi (Google Play Billing)
 
 ---
 
@@ -70,4 +82,4 @@ Tüm tercihler `ThemeRepository` (DataStore Preferences) ile kalıcı olarak sak
 - Orta-ileri düzey fitness enthusiast'lar
 - Kendi programını oluşturmak isteyen bireyler
 - 18–35 yaş, teknoloji meraklısı, estetiğe önem veren kullanıcılar
-- Hem "dark mode severler" hem de "light mode tercih edenler"
+- AI koçluk ve sosyal motivasyon arayan kullanıcılar

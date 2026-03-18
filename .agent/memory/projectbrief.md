@@ -4,30 +4,43 @@
 
 **Profitness**, kullanıcıların antrenman programlarını takip edebildiği, günlük egzersizlerini yönetebildiği ve yapay zeka destekli koçluk alabileceği premium bir Android fitness uygulamasıdır. Avonix tarafından geliştirilmektedir.
 
+Backend: **Supabase** (PostgreSQL + Auth + Storage + Edge Functions)
+AI: **Gemini API**
+Tema: **Neon Forge Dark (tek tema — light mode kaldırıldı)**
+
 ---
 
-## Kapsam
+## Kapsam — 10 Faz
 
-### Temel Özellikler (Core Features)
+| Faz | İçerik | Durum |
+|-----|--------|-------|
+| FAZ 1 | DB şeması + Auth + Exercise seed | 🔄 Aktif |
+| FAZ 2 | Program sistemi (hazır/manuel/düzenleme) | ⏳ Bekliyor |
+| FAZ 3 | Workout takibi + streak + timer + bug fix | ⏳ Bekliyor |
+| FAZ 4 | Gemini AI entegrasyonu (chat + program builder) | ⏳ Bekliyor |
+| FAZ 5 | Profil + analitik + başarımlar + rank | ⏳ Bekliyor |
+| FAZ 6 | Sosyal özellikler (paylaşım + grup challenge) | ⏳ Bekliyor |
+| FAZ 7 | Abonelik + kredi sistemi + Google Play Billing | ⏳ Bekliyor |
+| FAZ 7.5 | Commitment Mode (Disiplin Modu) | ⏳ Bekliyor |
+| FAZ 8 | Auth redesign + light mode kaldırma + haberler + çeviri | ⏳ Bekliyor |
+| FAZ 9 | Optimizasyon (21 bulgu) + güvenlik | ⏳ Bekliyor |
 
-- **Antrenman Takibi:** Günlük egzersiz planı, set/tekrar/ağırlık kaydı
-- **Program Yönetimi:** Hazır şablonlar + AI builder + manuel program oluşturma
-- **AI Chat (Oracle):** Yapay zeka destekli fitness koçu (sohbet arayüzü)
-- **İçerik Akışı (Muse):** Bilim, beslenme, motivasyon haberleri; okuma + bookmark
-- **Profil & İstatistikler:** Haftalık aktivite, streak takvimi, büyük bold stat kartları
-- **Tema Sistemi:** Dark (Neon Forge) + Light (Warm & Earthy), 6 accent seçeneği, DataStore ile kalıcı
+### Temel Özellikler
 
-### Planlanan (Sonraki Milestone)
+- **Antrenman Takibi:** Günlük egzersiz planı, set/tekrar/ağırlık kaydı, set timer
+- **Program Yönetimi:** Hazır şablonlar + Gemini AI builder + manuel program oluşturma
+- **AI Chat (Oracle):** Gemini tabanlı fitness koçu, konuşma geçmişi, program önerisi
+- **İçerik Akışı (Muse):** Bilim, beslenme, motivasyon haberleri; bookmark
+- **Profil & İstatistikler:** XP/level, streak, haftalık aktivite, VKİ, başarımlar, rank
+- **Sosyal:** Program paylaşma, beğenme, grup challenge, leaderboard
+- **Commitment Mode:** Sanal ceza sistemi (XP/kredi kaybı)
+- **Abonelik:** Kredi sistemi + Google Play Billing
 
-- **Veri Katmanı:** Room DB ile gerçek workout/exercise kalıcılığı
-- **AI Entegrasyonu:** Gemini API — gerçek LLM yanıtları
-- **Beslenme Takibi:** Kalori ve makro takibi
+### Kapsam Dışı
 
-### Kapsam Dışı (MVP için)
-
-- Sosyal paylaşım özellikleri
 - Canlı antrenman videoları
 - Wearable entegrasyonu
+- Beslenme takibi (makro/kalori manuel giriş)
 
 ---
 
@@ -35,18 +48,19 @@
 
 - Orta-ileri düzey fitness enthusiast'lar
 - Kendi programını oluşturmak isteyen bireyler
-- 18–35 yaş, teknoloji meraklısı, hem dark hem light mode kullananlar
+- 18–35 yaş, teknoloji meraklısı, AI koçluk ve sosyal motivasyon arayan kullanıcılar
 
 ---
 
 ## Başarı Kriterleri
 
 1. Uygulama sorunsuz derlenir ve çalışır (Debug + Release)
-2. Tüm ana ekranlar (Workout, Studio, Oracle, Muse, Profile) işlevsel ve görsel olarak tutarlı
-3. Light ve dark tema her ekranda doğal ve okunaklı görünür
-4. Tema tercihi (dark/light + accent) uygulama kapatılınca kaybolmaz
-5. Veri Room DB'de kalıcı olarak saklanır (planlanan)
-6. Minimum ANR / crash: Crash-free rate ≥ 99%
+2. Tüm ana ekranlar işlevsel, Supabase'e bağlı ve görsel olarak tutarlı
+3. Auth akışı (register/login/logout) çalışır, RLS aktif
+4. AI Chat gerçek Gemini yanıtı döner, konuşma geçmişi kaydedilir
+5. XP/streak/başarım sistemi tutarlı ve DB'ye yazılır
+6. Kredi sistemi doğru çalışır (3 free → satın alma)
+7. Minimum ANR / crash: Crash-free rate ≥ 99%
 
 ---
 
@@ -56,15 +70,16 @@
 - **Target/Compile SDK:** 35
 - Kotlin + Jetpack Compose (XML layout kullanılmaz)
 - Hilt ile DI (manuel DI yok)
-- Tüm async işlemler Coroutine/Flow tabanlı
-- Tema state'i: `rememberSaveable` (rotation) + `DataStore` (process kill)
+- Tüm async işlemler Coroutine/Flow tabanlı, Supabase çağrıları `Dispatchers.IO`'da
+- Repository: interface + Impl ayrımı, mapper = extension function
+- Use Case: sadece CalorieCalculation ve XpCalculation
 
 ---
 
 ## Proje Durumu
 
-Aktif geliştirme aşamasında.
-- **UI Katmanı:** Tamamlandı — tüm ekranlar dual-mode tema destekli
-- **Tema Sistemi:** Tamamlandı — Dark (Neon Forge) + Light (Warm & Earthy) + DataStore persistence
-- **Veri Katmanı:** Planlandı — Room DB entegrasyonu sonraki milestone
-- **AI Entegrasyonu:** Planlandı — Gemini API bağlantısı sonraki milestone
+- **UI Katmanı:** ✅ Tamamlandı — tüm ekranlar Neon Forge Dark tema
+- **Tema Sistemi:** ✅ Dark only (Neon Forge) + DataStore persistence
+- **Backend:** 🔄 FAZ 1 — Supabase migration oluşturuluyor
+- **Auth:** 🔄 FAZ 1 — Supabase Auth entegrasyonu
+- **AI:** ⏳ FAZ 4 — Gemini API bağlantısı

@@ -29,12 +29,12 @@
 | `coil-compose` | `2.6.0` | Asenkron görüntü yükleme |
 | `ui-text-google-fonts` | BOM | Space Grotesk font |
 
-### Planlanan (Henüz Eklenmedi)
-
-| Kütüphane | Kullanım Amacı |
-|-----------|----------------|
-| `room` + `room-compiler` | Workout/exercise lokal veritabanı |
-| `retrofit` + `converter-gson` | AI endpoint REST API iletişimi |
+| `supabase-bom` | `2.6.1` | Supabase BOM sürüm yönetimi |
+| `supabase-gotrue` | BOM | Authentication (email/password + session) |
+| `supabase-postgrest` | BOM | PostgreSQL REST API istemcisi |
+| `supabase-storage` | BOM | Dosya/avatar depolama |
+| `ktor-client-android` | `2.3.12` | Supabase HTTP engine |
+| `kotlin-serialization` plugin | `2.0.0` | Supabase JSON serializasyonu |
 
 ### Test Bağımlılıkları
 
@@ -105,7 +105,14 @@ profitnessapp/
 │       │   │   └── ProgramBuilderScreen.kt
 │       │   └── workout/
 │       │       └── WorkoutScreen.kt
-│       └── data/                         ← (Planlandı — Room, Retrofit)
+│       ├── data/
+│       │   ├── remote/supabase/SupabaseClient.kt
+│       │   └── auth/
+│       │       ├── AuthRepository.kt         ← interface
+│       │       └── AuthRepositoryImpl.kt
+│       ├── di/
+│       │   └── AppModule.kt             ← abstract class, @Binds + @Provides
+│       └── ...
 ├── gradle/
 │   └── libs.versions.toml
 └── build.gradle.kts
@@ -123,14 +130,17 @@ profitnessapp/
 ## Bilinen Kısıtlar
 
 - `minSdk = 31` — Android 11 altı cihazlar desteklenmiyor
-- Room migration stratejisi tanımlı değil — v1 için `fallbackToDestructiveMigration` kullanılacak
+- Session persistence: Supabase gotrue varsayılan olarak in-memory session. Process kill sonrası kullanıcı tekrar login olmak zorunda. FAZ sonraki adımda DataStore-based `SessionStorage` eklenmeli.
 - Release signing config eksik — Play Store öncesi gerekli
-- AI yanıtları canned (gerçek LLM yok) — Retrofit/Gemini entegrasyonu planlandı
+- AI yanıtları canned (gerçek LLM yok) — FAZ 4'te Gemini entegrasyonu yapılacak
 
 ---
 
 ## Ortam Değişkenleri / Secrets
 
 - API anahtarları `local.properties`'e eklenmeli, VCS'e commit edilmemeli
-- Örnek: `AI_API_KEY=sk-...`
-- `BuildConfig` alanı olarak expose edilmeli (`buildConfigField` in `build.gradle.kts`)
+- `local.properties`'teki mevcut anahtarlar:
+  - `SUPABASE_URL=https://dkcriptafzdrynsilxku.supabase.co`
+  - `SUPABASE_ANON_KEY=sb_publishable_...`
+- `app/build.gradle.kts`'de `buildConfigField` ile `BuildConfig.SUPABASE_URL` ve `BuildConfig.SUPABASE_ANON_KEY` olarak expose ediliyor
+- `.gitignore`'da `local.properties` zaten listelendi

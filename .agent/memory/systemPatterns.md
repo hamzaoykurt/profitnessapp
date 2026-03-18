@@ -31,67 +31,156 @@
 
 ---
 
-## Tema Sistemi — v4 Dual-Mode Neon Forge (GÜNCEL)
+## Backend Mimari Kararları (FAZ 1 — 2026-03-15)
+
+### Repository Pattern (Interface-First)
+
+```kotlin
+// data/auth/AuthRepository.kt — SADECE INTERFACE
+interface AuthRepository {
+    suspend fun signIn(email: String, password: String): Result<Unit>
+    suspend fun signUp(email: String, password: String): Result<Unit>
+    suspend fun signOut(): Result<Unit>
+    fun isLoggedIn(): Boolean
+    suspend fun sendPasswordReset(email: String): Result<Unit>
+}
+
+// data/auth/AuthRepositoryImpl.kt — IMPL, sadece Hilt'e görünür
+class AuthRepositoryImpl @Inject constructor(
+    private val supabase: SupabaseClient
+) : AuthRepository { ... }
+
+// di/AppModule.kt — Hilt bağlaması
+@Binds @Singleton abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+```
+
+**Kural:** ViewModel her zaman interface'e inject edilir, asla `Impl`'e.
+
+### Extension Function Mapper (Mapper Class Yasak)
+
+```kotlin
+// data/auth/dto/UserDto.kt
+@Serializable data class UserDto(val id: String, val email: String)
+
+// Mapper — extension function olarak, ayrı mapper class değil
+fun UserDto.toDomain() = User(id = id, email = email)
+```
+
+**Kural:** `fun Dto.toDomain()` şeklinde extension function. `UserMapper`, `ProgramMapper` gibi ayrı mapper class yazmak yasak.
+
+### AppModule: abstract class + companion object
+
+```kotlin
+// di/AppModule.kt
+@Module @InstallIn(SingletonComponent::class)
+abstract class AppModule {
+    @Binds @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    companion object {
+        @Provides @Singleton
+        fun provideSupabaseClient(): SupabaseClient = createSupabaseClient(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+        ) {
+            install(GoTrue)
+            install(Postgrest)
+            install(Storage)
+        }
+    }
+}
+```
+
+**Kural:** `@Binds` için abstract class gerekli. `@Provides` ise `companion object` içinde.
+
+### Supabase Çağrı Kuralları
+
+```kotlin
+// ✅ Doğru
+override suspend fun signIn(email: String, password: String): Result<Unit> =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.gotrue.signInWith(Email) { this.email = email; this.password = password }
+        }
+    }
+
+// ❌ Yanlış — IO dispatcher yok, runCatching yok
+supabase.gotrue.signInWith(Email) { ... }
+```
+
+**Kurallar:**
+- Tüm Supabase çağrıları `withContext(Dispatchers.IO)` içinde
+- Hata yönetimi `runCatching {}` ile, `try/catch` değil
+- Repository `Result<T>` döner, exception fırlatmaz
+
+### BaseViewModel<S, E> Pattern
+
+```kotlin
+// State (S) + one-time Events (E)
+abstract class BaseViewModel<S : Any, E : Any>(initialState: S) : ViewModel() {
+    val uiState: StateFlow<S>             // UI continuous state
+    val events: SharedFlow<E>             // one-time: navigation, toast
+
+    protected fun updateState(update: (S) -> S)
+    protected fun sendEvent(event: E)
+}
+
+// Events gerektiren ViewModel
+sealed class AuthEvent { object NavigateToDashboard : AuthEvent() }
+class AuthViewModel : BaseViewModel<AuthState, AuthEvent>(AuthState())
+
+// Events gerektirmeyen ViewModel
+class WorkoutViewModel : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState())
+```
+
+**Kural:** Navigation veya toast gibi one-time event'ler için `sendEvent()` kullan, `uiState`'e flag ekleme.
+
+---
+
+## Tema Sistemi — Dark Only: Neon Forge (GÜNCEL)
+
+> **NOT:** Light mode FAZ 8B'de tamamen kaldırılacak. Şu an kod içinde hâlâ light palette var ama yeni kod yazan hiç light bileşeni eklememeli.
 
 ### Genel Yapı
 
 ```
 ProfitnessTheme(themeState: AppThemeState)
     ↓
-darkColorScheme  OR  lightColorScheme
+darkColorScheme  (light mode kaldırılıyor — FAZ 8B)
     ↓
 MaterialTheme  +  LocalAppTheme (CompositionLocal)
 ```
 
-### AppThemeState
-
-```kotlin
-data class AppThemeState(
-    val isDark: Boolean = true,
-    val accent: AccentPreset = AccentPreset.LIME,
-    val language: AppLanguage = AppLanguage.TR,
-    val notificationsEnabled: Boolean = true
-)
-```
-
-- `rememberSaveable(AppThemeStateSaver)` — rotation'a karşı anlık state
-- `ThemeRepository` (DataStore) — process kill'e karşı kalıcı depolama
-
 ### AccentPreset
 
-Her preset'in iki renk versiyonu var:
+| Preset | Dark (neon) |
+|--------|-------------|
+| LIME   | `#CBFF4D`   |
+| PURPLE | `#A855F7`   |
+| CYAN   | `#00E5D3`   |
+| ORANGE | `#F97316`   |
+| PINK   | `#EC4899`   |
+| BLUE   | `#3B82F6`   |
 
-| Preset | Dark (neon) | Light (saturated) |
-|--------|-------------|-------------------|
-| LIME   | `#CBFF4D`   | `#5C8A00`         |
-| PURPLE | `#A855F7`   | `#7C3AED`         |
-| CYAN   | `#00E5D3`   | `#0891B2`         |
-| ORANGE | `#F97316`   | `#EA580C`         |
-| PINK   | `#EC4899`   | `#DB2777`         |
-| BLUE   | `#3B82F6`   | `#2563EB`         |
-
-`theme.effectiveAccentColor` → dark modda `.color`, light modda `.lightColor` döner.
-`theme.effectiveOnAccentColor` → dark modda `.onColor`, light modda `.onLightColor` döner.
-
-### Surface / Text Token'ları
+### Surface / Text Token'ları (Dark Only)
 
 `LocalAppTheme.current` extension property olarak:
 
-| Token    | Dark       | Light (Warm Earthy) |
-|----------|------------|---------------------|
-| `bg0`    | `#0A0A0F`  | `#FAF8F5`           |
-| `bg1`    | `#111117`  | `#F2EDE7`           |
-| `bg2`    | `#18181F`  | `#E8E0D5`           |
-| `bg3`    | `#21212A`  | `#DDD2C2`           |
-| `stroke` | `#2A2A35`  | `#CEC0AD`           |
-| `text0`  | `#F8F8F8`  | `#1A1410`           |
-| `text1`  | `#9A9AB0`  | `#5C4E3E`           |
-| `text2`  | `#5A5A72`  | `#9E8A72`           |
+| Token    | Dark       |
+|----------|------------|
+| `bg0`    | `#0A0A0F`  |
+| `bg1`    | `#111117`  |
+| `bg2`    | `#18181F`  |
+| `bg3`    | `#21212A`  |
+| `stroke` | `#2A2A35`  |
+| `text0`  | `#F8F8F8`  |
+| `text1`  | `#9A9AB0`  |
+| `text2`  | `#5A5A72`  |
 
 ### Image Overlay İstisnası
 
 `Snow (#F8F8F8)` **fotoğraf scrim üzerinde** kullanılabilir (hero card, CinematicExerciseCard).
-Bu bağlamlarda arka plan her zaman `Color.Black.copy(alpha)` — tema durumundan bağımsız.
+Bu bağlamlarda arka plan her zaman `Color.Black.copy(alpha)`.
 
 ---
 
@@ -255,10 +344,12 @@ val Snow     = TextPrimary   // Color.kt'de sabit — composable'da theme.text0 
 | Glassmorphic → Solid Forge | Render/tutarsızlık sorunları |
 | Solid Forge → Matte Obsidian | Kullanıcı: Apple/Porsche seviye minimallik |
 | Matte Obsidian → Neon Forge | Kullanıcı: Referans fitness uygulamalarına eşleşme |
-| Neon Forge Dark-only → Dual-Mode | Light mod "tersine çevrilmiş dark" sorunu çözüldü |
-| Light palette: Warm & Earthy | Soğuk gri yerine krem/bej — fitness için daha inviting |
-| Light accent'ler saturated/koyu | Neon renkler light bg'de kontrast sorunu — readable varyant |
+| Neon Forge Dark-only → Dual-Mode → Dark-Only | Light mod kaldırılacak (FAZ 8B). Şimdilik kod içinde var ama aktif kullanılmayacak |
 | `rememberSaveable` + DataStore | Rotation: hızlı state; process kill: kalıcı storage |
+| Interface-first repository | Test edilebilirlik, DI swap, backend bağımsızlığı |
+| Extension mapper, no mapper class | `fun Dto.toDomain()` — boilerplate azaltır |
+| BaseViewModel<S,E> | Typed state + one-time navigation/toast events |
+| AppModule abstract class | `@Binds` abstract method + `@Provides` companion object |
 | Random() yasak | Recomposition'da flicker — deterministik hash kullan |
 | CinematicExerciseCard locked | Kullanıcı onaylı, yapısal değişiklik yasak |
 | Legacy alias sistemi | Eski ekranlar kırılmasın, zamanı gelince temizlenir |

@@ -1,18 +1,51 @@
 package com.avonix.profitness.di
 
+import com.avonix.profitness.BuildConfig
+import com.avonix.profitness.data.auth.AuthRepository
+import com.avonix.profitness.data.auth.AuthRepositoryImpl
+import com.avonix.profitness.data.program.ProgramRepository
+import com.avonix.profitness.data.program.ProgramRepositoryImpl
+import com.avonix.profitness.data.workout.WorkoutRepository
+import com.avonix.profitness.data.workout.WorkoutRepositoryImpl
+import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.Auth
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import javax.inject.Singleton
 
-/**
- * AppModule — DI bindings for the app.
- * Currently a placeholder following Clean Architecture;
- * Firebase / Gemini repositories will be bound here in future milestones.
- */
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
-    // TODO: Provide Firebase Auth, Firestore, Gemini service bindings here
-    // @Provides @Singleton fun provideFirebaseAuth() = Firebase.auth
-    // @Provides @Singleton fun provideFirestore() = Firebase.firestore
+abstract class AppModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindProgramRepository(impl: ProgramRepositoryImpl): ProgramRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWorkoutRepository(impl: WorkoutRepositoryImpl): WorkoutRepository
+
+    companion object {
+
+        @Provides
+        @Singleton
+        fun provideSupabaseClient(): SupabaseClient = createSupabaseClient(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+        ) {
+            install(Auth)
+            install(Postgrest)
+            install(Storage)
+        }
+    }
 }

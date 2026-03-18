@@ -42,14 +42,18 @@ fun AuthScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    var email     by remember { mutableStateOf("test@profitness.app") }
+    var email     by remember { mutableStateOf("hamzaoykurt@gmail.com") }
     var password  by remember { mutableStateOf("123456") }
     var isLogin   by remember { mutableStateOf(true) }
     var showPass  by remember { mutableStateOf(false) }
 
-    // Navigate on successful auth
-    LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) onNavigateToDashboard()
+    // Navigate on successful auth — event-based (one-time, no double-fire risk)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                AuthEvent.NavigateToDashboard -> onNavigateToDashboard()
+            }
+        }
     }
 
     // Cinematic entrance animation

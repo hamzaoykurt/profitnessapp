@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -32,18 +33,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.data.program.ManualExerciseInput
+import com.avonix.profitness.data.program.autoTitle
+import com.avonix.profitness.domain.model.Program
+import com.avonix.profitness.domain.model.ProgramType
 import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
 // ── Data ─────────────────────────────────────────────────────────────────────
-
-data class SavedProgram(
-    val name: String,
-    val days: Int,
-    val focus: String,
-    val icon: ImageVector
-)
 
 enum class ProgramCategory(val trLabel: String, val color: Color, val icon: ImageVector) {
     ALL("TÜMÜ",          Snow,       Icons.Rounded.GridView),
@@ -252,12 +252,21 @@ sealed class BuilderMode {
 }
 
 @Composable
-fun ProgramBuilderScreen() {
-    val savedPrograms = remember { mutableStateListOf<SavedProgram>() }
+fun ProgramBuilderScreen(viewModel: ProgramViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf<BuilderMode>(BuilderMode.Choose) }
     var snackbarMsg by remember { mutableStateOf<String?>(null) }
     val theme   = LocalAppTheme.current
     val strings = theme.strings
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ProgramEvent.ShowSnackbar -> snackbarMsg = event.message
+                ProgramEvent.NavigateBack    -> mode = BuilderMode.Choose
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         ArchitectGrid()
@@ -266,24 +275,23 @@ fun ProgramBuilderScreen() {
         Crossfade(targetState = mode, label = "builder_fade") { m ->
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
-                    savedPrograms = savedPrograms,
-                    onMode = { mode = it }
+                    userPrograms    = uiState.userPrograms,
+                    isLoading       = uiState.isLoading,
+                    onMode          = { mode = it },
+                    onSelectTemplate = { viewModel.selectTemplate(it) },
+                    onSetActive     = { viewModel.setActive(it) },
+                    onDeleteProgram = { viewModel.deleteProgram(it) }
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
                     onBack = { mode = BuilderMode.Choose },
                     onSave = { name ->
-                        savedPrograms.add(SavedProgram(name, 6, "Oracle Optimized", Icons.Rounded.AutoAwesome))
                         snackbarMsg = "\"$name\" ${strings.programSavedMsg}"
                         mode = BuilderMode.Choose
                     }
                 )
                 is BuilderMode.Manual -> ManualBuilderScreen(
-                    onBack = { mode = BuilderMode.Choose },
-                    onSave = { name ->
-                        savedPrograms.add(SavedProgram(name, 4, "Custom Protocol", Icons.Rounded.Construction))
-                        snackbarMsg = strings.programSavedDefault
-                        mode = BuilderMode.Choose
-                    }
+                    viewModel = viewModel,
+                    onBack    = { mode = BuilderMode.Choose }
                 )
             }
         }
@@ -335,14 +343,22 @@ private fun ArchitectGrid() {
 
 @Composable
 private fun BuilderChooseScreen(
-    savedPrograms: List<SavedProgram>,
-    onMode: (BuilderMode) -> Unit
+    userPrograms: List<Program>,
+    isLoading: Boolean,
+    onMode: (BuilderMode) -> Unit,
+    onSelectTemplate: (String) -> Unit,
+    onSetActive: (String) -> Unit,
+    onDeleteProgram: (String) -> Unit
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
 
     selectedProgram?.let { prog ->
-        ProgramDetailDialog(program = prog, onDismiss = { selectedProgram = null })
+        ProgramDetailDialog(
+            program   = prog,
+            onDismiss = { selectedProgram = null },
+            onApply   = { onSelectTemplate(prog.title); selectedProgram = null }
+        )
     }
 
     val filtered = remember(activeCategory) {
@@ -413,13 +429,23 @@ private fun BuilderChooseScreen(
             }
         }
 
-        // ── Active Programs ───────────────────────────────────────────────────
-        if (savedPrograms.isNotEmpty()) {
+        // ── My Programs ───────────────────────────────────────────────────────
+        if (isLoading) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                }
+            }
+        } else if (userPrograms.isNotEmpty()) {
             item {
                 SectionLabel(sectionStrings.activeProtocols, MaterialTheme.colorScheme.primary)
             }
-            items(savedPrograms) { prog ->
-                SavedProgramTile(prog)
+            items(userPrograms, key = { it.id }) { prog ->
+                SavedProgramTile(
+                    program     = prog,
+                    onSetActive = { onSetActive(prog.id) },
+                    onDelete    = { onDeleteProgram(prog.id) }
+                )
             }
         }
 
@@ -689,15 +715,35 @@ private fun StatChip(icon: ImageVector, text: String) {
 // ── Saved Program Tile ────────────────────────────────────────────────────────
 
 @Composable
-private fun SavedProgramTile(prog: SavedProgram) {
+private fun SavedProgramTile(
+    program: Program,
+    onSetActive: () -> Unit,
+    onDelete: () -> Unit
+) {
     val theme = LocalAppTheme.current
+    val primary = MaterialTheme.colorScheme.primary
+    val typeIcon = when (program.type) {
+        ProgramType.TEMPLATE -> Icons.Rounded.ViewList
+        ProgramType.AI       -> Icons.Rounded.AutoAwesome
+        ProgramType.MANUAL   -> Icons.Rounded.Construction
+    }
+    val typeLabel = when (program.type) {
+        ProgramType.TEMPLATE -> "ŞABLON"
+        ProgramType.AI       -> "AI"
+        ProgramType.MANUAL   -> "MANUEL"
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(theme.bg1.copy(0.9f))
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.25f), RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                if (program.isActive) primary.copy(0.4f) else theme.stroke,
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onSetActive)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -705,24 +751,33 @@ private fun SavedProgramTile(prog: SavedProgram) {
                 Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(0.1f)),
+                    .background(if (program.isActive) primary.copy(0.1f) else theme.bg2),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(prog.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Icon(
+                    typeIcon, null,
+                    tint = if (program.isActive) primary else theme.text2,
+                    modifier = Modifier.size(22.dp)
+                )
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                val tileStrings = theme.strings
-                Text(prog.name, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("${prog.days} ${tileStrings.dayLabel} • ${prog.focus.uppercase()}", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(program.name, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(typeLabel, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(0.1f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(LocalAppTheme.current.strings.activeLabel, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            if (program.isActive) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(primary.copy(0.1f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(theme.strings.activeLabel, color = primary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                }
+                Spacer(Modifier.width(8.dp))
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Rounded.DeleteOutline, null, tint = theme.text2.copy(0.5f), modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -731,7 +786,7 @@ private fun SavedProgramTile(prog: SavedProgram) {
 // ── Program Detail Dialog ─────────────────────────────────────────────────────
 
 @Composable
-private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
+private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit, onApply: () -> Unit = onDismiss) {
     val accent  = program.category.color
     val theme   = LocalAppTheme.current
     val strings = theme.strings
@@ -843,7 +898,7 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(24.dp))
 
                 Button(
-                    onClick = onDismiss,
+                    onClick = onApply,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -977,62 +1032,319 @@ private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
     }
 }
 
+// ── Manual Builder — helper state classes ─────────────────────────────────────
+
+private class MutableManualDay {
+    var title    by mutableStateOf("")
+    var isRestDay by mutableStateOf(false)
+    val exercises = mutableStateListOf<DraftExercise>()
+}
+
+private data class DraftExercise(
+    val exerciseId  : String,
+    val name        : String,
+    val targetMuscle: String,
+    val sets        : Int,
+    val reps        : Int,
+    val restSeconds : Int
+)
+
 // ── Manual Builder Screen ─────────────────────────────────────────────────────
 
 @Composable
-private fun ManualBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
-    data class ManualDay(val name: String)
-    val days       = remember { mutableStateListOf(ManualDay("DAY 01"), ManualDay("DAY 02")) }
-    val manTheme   = LocalAppTheme.current
-    val manStrings = manTheme.strings
+private fun ManualBuilderScreen(
+    viewModel: ProgramViewModel,
+    onBack   : () -> Unit
+) {
+    val uiState    by viewModel.uiState.collectAsStateWithLifecycle()
+    val exercises   = uiState.exercises
+    val manTheme    = LocalAppTheme.current
+    val manStrings  = manTheme.strings
 
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
+    var programName       by remember { mutableStateOf("") }
+    val days              = remember { mutableStateListOf<MutableManualDay>().also { it.add(MutableManualDay()) } }
+    var showPickerForDay  by remember { mutableStateOf<Int?>(null) }
+
+    // Exercise picker bottom sheet
+    showPickerForDay?.let { dayIndex ->
+        ExercisePickerSheet(
+            exercises = exercises,
+            onDismiss = { showPickerForDay = null },
+            onConfirm = { exerciseId, name, muscle, sets, reps, rest ->
+                val day = days[dayIndex]
+                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest))
+                if (day.title.isBlank()) {
+                    day.title = autoTitle(day.exercises.map { it.targetMuscle })
+                }
+                showPickerForDay = null
+            }
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = 100.dp)) {
         DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
 
+        // ── Program name input ────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(manTheme.bg1)
+                .border(1.dp, manTheme.stroke, RoundedCornerShape(16.dp))
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            BasicTextField(
+                value = programName,
+                onValueChange = { programName = it },
+                textStyle = MaterialTheme.typography.titleMedium.copy(
+                    color = manTheme.text0,
+                    fontWeight = FontWeight.Bold
+                ),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    if (programName.isEmpty()) {
+                        Text(
+                            "Program adı...",
+                            color = manTheme.text2,
+                            fontWeight = FontWeight.Light,
+                            fontSize = 16.sp
+                        )
+                    }
+                    inner()
+                }
+            )
+        }
+
+        // ── Days list ─────────────────────────────────────────────────────────
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(24.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(days) { day ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(manTheme.bg1.copy(0.9f))
-                        .border(1.dp, manTheme.stroke, RoundedCornerShape(16.dp))
-                        .padding(20.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.ViewQuilt, null, tint = CardCyan, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(16.dp))
-                        Text(day.name, color = manTheme.text0, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Rounded.Add, null, tint = CardCyan)
-                    }
-                }
+            itemsIndexed(days) { index, day ->
+                ManualDayCard(
+                    day      = day,
+                    dayNumber = index + 1,
+                    onAddExercise = { showPickerForDay = index },
+                    onRemoveExercise = { exIdx -> day.exercises.removeAt(exIdx) },
+                    onRemoveDay = { if (days.size > 1) days.removeAt(index) }
+                )
             }
 
             item {
-                TextButton(
-                    onClick = { days.add(ManualDay("DAY 0${days.size + 1}")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("+ YENİ GÜN", color = CardCyan, fontWeight = FontWeight.Bold)
+                if (days.size < 7) {
+                    TextButton(
+                        onClick = { days.add(MutableManualDay()) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.Add, null, tint = CardCyan, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "+ YENİ GÜN  (${days.size}/7)",
+                            color = CardCyan,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }
 
+        // ── Save button ───────────────────────────────────────────────────────
+        val isLoading = uiState.isLoading
         Button(
-            onClick = { onSave("Custom Strategic Plan") },
+            onClick = {
+                val dayDrafts = days.mapIndexed { i, d ->
+                    ManualDayDraft(
+                        title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                        isRestDay = d.isRestDay,
+                        selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                            ManualExerciseInput(
+                                exerciseId  = ex.exerciseId,
+                                sets        = ex.sets,
+                                reps        = ex.reps,
+                                restSeconds = ex.restSeconds,
+                                orderIndex  = ei
+                            )
+                        }
+                    )
+                }
+                viewModel.createManualProgram(
+                    name = programName,
+                    days = dayDrafts
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
                 .padding(horizontal = 24.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            enabled = !isLoading
         ) {
-            Text(manStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+            if (isLoading) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+            } else {
+                Text(manStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+            }
+        }
+    }
+}
+
+// ── Manual Day Card ───────────────────────────────────────────────────────────
+
+@Composable
+private fun ManualDayCard(
+    day             : MutableManualDay,
+    dayNumber       : Int,
+    onAddExercise   : () -> Unit,
+    onRemoveExercise: (Int) -> Unit,
+    onRemoveDay     : () -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = if (day.isRestDay) Mist else CardCyan
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1.copy(0.9f))
+            .border(1.dp, if (day.isRestDay) theme.stroke else accent.copy(0.3f), RoundedCornerShape(16.dp))
+    ) {
+        // Day header row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    dayNumber.toString(),
+                    color = accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+
+            // Editable title
+            BasicTextField(
+                value = day.title,
+                onValueChange = { day.title = it },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = theme.text0,
+                    fontWeight = FontWeight.Bold
+                ),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    if (day.title.isEmpty()) {
+                        Text(
+                            if (day.isRestDay) "DİNLENME GÜNÜ"
+                            else "GÜN $dayNumber",
+                            color = theme.text2,
+                            fontWeight = FontWeight.Light,
+                            fontSize = 14.sp
+                        )
+                    }
+                    inner()
+                }
+            )
+
+            // Rest day toggle
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { day.isRestDay = !day.isRestDay }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    "Dinlenme",
+                    color = if (day.isRestDay) accent else theme.text2,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.width(4.dp))
+                Switch(
+                    checked = day.isRestDay,
+                    onCheckedChange = { day.isRestDay = it },
+                    modifier = Modifier.size(width = 36.dp, height = 20.dp).scale(0.7f),
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = Mist,
+                        uncheckedTrackColor = theme.bg3
+                    )
+                )
+            }
+
+            IconButton(onClick = onRemoveDay, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Rounded.Close, null, tint = theme.text2.copy(0.4f), modifier = Modifier.size(16.dp))
+            }
+        }
+
+        // Exercises section (hidden when rest day)
+        if (!day.isRestDay) {
+            if (day.exercises.isNotEmpty()) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = theme.stroke,
+                    thickness = 0.5.dp
+                )
+                day.exercises.forEachIndexed { i, ex ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(accent)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(ex.name, color = theme.text0, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            Text(
+                                "${ex.sets}×${ex.reps}  •  ${ex.restSeconds}s",
+                                color = theme.text2,
+                                fontSize = 10.sp
+                            )
+                        }
+                        IconButton(onClick = { onRemoveExercise(i) }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Rounded.Close, null, tint = theme.text2.copy(0.4f), modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+            }
+
+            TextButton(
+                onClick = onAddExercise,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Hareket Ekle",
+                    color = accent,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+        } else {
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

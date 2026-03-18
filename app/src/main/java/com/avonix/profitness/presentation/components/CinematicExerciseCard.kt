@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
@@ -35,7 +36,8 @@ fun CinematicExerciseCard(
     exercise: Exercise,
     index: Int,
     isCompleted: Boolean = false,
-    onComplete: () -> Unit = {}
+    onComplete: () -> Unit = {},
+    onShowDetail: (() -> Unit)? = null
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
@@ -45,8 +47,15 @@ fun CinematicExerciseCard(
     val setsDone = remember(exercise.id) { mutableStateListOf(*Array(exercise.sets) { false }) }
     val allSetsDone = setsDone.all { it }
 
-    // Rest timer state
-    var timerSeconds by remember { mutableStateOf(60) }
+    // FAZ 3D: Sync set states when isCompleted changes from outside
+    LaunchedEffect(isCompleted) {
+        if (isCompleted) {
+            for (i in setsDone.indices) setsDone[i] = true
+        }
+    }
+
+    // Rest timer state — FAZ 3E: use exercise.restSeconds instead of hardcoded 60
+    var timerSeconds by remember(exercise.id) { mutableStateOf(exercise.restSeconds) }
     var timerRunning by remember { mutableStateOf(false) }
     var timerDone    by remember { mutableStateOf(false) }
 
@@ -172,6 +181,18 @@ fun CinematicExerciseCard(
                                     lineHeight = 28.sp,
                                     modifier = Modifier.weight(1f)
                                 )
+                                // FAZ 3C: Info button for how-to detail sheet
+                                if (onShowDetail != null) {
+                                    Icon(
+                                        Icons.Rounded.Info,
+                                        null,
+                                        tint = Snow.copy(0.5f),
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { onShowDetail() }
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                }
                                 if (isCompleted) {
                                     Icon(
                                         Icons.Rounded.CheckCircle,
@@ -233,8 +254,9 @@ fun CinematicExerciseCard(
                                     seconds     = timerSeconds,
                                     isRunning   = timerRunning,
                                     isDone      = timerDone,
+                                    defaultSeconds = exercise.restSeconds,
                                     onStart     = {
-                                        timerSeconds = 60
+                                        timerSeconds = exercise.restSeconds
                                         timerDone    = false
                                         timerRunning = true
                                     },
@@ -334,6 +356,7 @@ private fun RestTimerChip(
     seconds: Int,
     isRunning: Boolean,
     isDone: Boolean,
+    defaultSeconds: Int = 90,
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
@@ -381,7 +404,7 @@ private fun RestTimerChip(
             text = when {
                 isDone    -> "DİNLENDİN! ✓"
                 isRunning -> "${seconds}s"
-                else      -> "60s REST"
+                else      -> "${defaultSeconds}s REST"
             },
             color = chipColor,
             fontSize = 12.sp,

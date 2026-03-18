@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+}
+
+val localProperties = Properties()
+rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use {
+    localProperties.load(it)
 }
 
 android {
@@ -18,6 +26,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
     }
 
     buildTypes {
@@ -38,6 +49,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -46,7 +58,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    
+
     // Compose UX/UI
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -61,7 +73,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     // Google Fonts (Space Grotesk)
     implementation("androidx.compose.ui:ui-text-google-fonts")
-    
+
     // Dependency Injection (Hilt)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -70,11 +82,20 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
-    // Networking / Utils
+    // Image loading
     implementation(libs.coil.compose)
 
     // DataStore (theme persistence)
     implementation(libs.androidx.datastore.preferences)
+
+    // Supabase
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.gotrue)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.storage)
+
+    // Ktor (Supabase HTTP engine for Android)
+    implementation(libs.ktor.client.android)
 
     // Testing
     testImplementation(libs.junit)

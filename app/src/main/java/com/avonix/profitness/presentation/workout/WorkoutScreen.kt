@@ -50,7 +50,9 @@ data class Exercise(
     val reps: String,
     val image: String,
     val isCompleted: Boolean = false,
-    val category: String = "Strength"
+    val category: String = "Strength",
+    val restSeconds: Int = 90,
+    val exerciseTableId: String = "" // FK to exercises table — used for DB logging
 )
 
 data class WorkoutDay(
@@ -59,7 +61,8 @@ data class WorkoutDay(
     val exercises: List<Exercise>,
     val isRestDay: Boolean = false,
     val totalKcal: Int = 0,
-    val durationMin: Int = 0
+    val durationMin: Int = 0,
+    val programDayId: String = ""   // program_days tablosundaki ID — workout log için
 )
 
 // ── Demo Data — 7 günün hepsi dolu ─────────────────────────────────────────
@@ -136,6 +139,74 @@ fun WorkoutScreen(
     viewModel: WorkoutViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
+
+    // Her tab girişinde reload — program değiştiyse günceller, aynıysa tamamlananları korur
+    LaunchedEffect(Unit) {
+        viewModel.reload()
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
+        PageAccentBloom()
+
+        when {
+            state.isLoading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            state.dayStates.isEmpty() -> {
+                NoProgramView(bottomPadding = bottomPadding)
+            }
+            else -> {
+                WorkoutContent(
+                    state = state,
+                    viewModel = viewModel,
+                    bottomPadding = bottomPadding
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoProgramView(bottomPadding: Dp) {
+    val theme   = LocalAppTheme.current
+    val accent  = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp, 80.dp, 24.dp, bottomPadding + 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("🏋️", fontSize = 64.sp)
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "AKTİF PROGRAM YOK",
+            color = accent,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Program ekranından bir program oluştur veya seç, ardından buraya geri dön.",
+            color = theme.text2,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
+private fun WorkoutContent(
+    state: WorkoutScreenState,
+    viewModel: WorkoutViewModel,
+    bottomPadding: Dp
+) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
     val currentState = dayStates[selectedDayIdx]
@@ -143,15 +214,13 @@ fun WorkoutScreen(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(0.dp, 0.dp, 0.dp, bottomPadding + 16.dp)
     ) {
         // ── Streak Banner ─────────────────────────────────────────────────
         item {
-            StreakBanner(dayStates = dayStates)
+            StreakBanner(streak = state.currentStreak)
         }
 
         // ── Header: Greeting + Progress Ring ─────────────────────────────
@@ -219,38 +288,30 @@ fun WorkoutScreen(
         } else {
             itemsIndexed(currentDay.exercises) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
+                var showDetail by remember { mutableStateOf(false) }
                 CinematicExerciseCard(
                     exercise    = exercise,
                     index       = idx,
                     isCompleted = isCompleted,
                     onComplete  = {
                         viewModel.toggleExercise(selectedDayIdx, exercise.id)
-                    }
+                    },
+                    onShowDetail = { showDetail = true }
                 )
+                if (showDetail) {
+                    ExerciseDetailSheet(
+                        exercise  = exercise,
+                        onDismiss = { showDetail = false }
+                    )
+                }
             }
         }
     }
-    } // Box
-}
-
-// ── Streak Banner ─────────────────────────────────────────────────────────────
-// Seri hesaplama: listenin sonundan geriye doğru, o gün en az 1 egzersiz
-// tamamlandıysa veya dinlenme günüyse seri devam eder.
-private fun calculateStreak(dayStates: List<WorkoutDayState>): Int {
-    var streak = 0
-    for (ds in dayStates.reversed()) {
-        if (ds.day.isRestDay || ds.completedIds.isNotEmpty()) {
-            streak++
-        } else {
-            break
-        }
-    }
-    return streak
 }
 
 @Composable
-private fun StreakBanner(dayStates: List<WorkoutDayState>) {
-    val streakDays = remember(dayStates) { calculateStreak(dayStates) }
+private fun StreakBanner(streak: Int) {
+    val streakDays = streak
     val accent  = MaterialTheme.colorScheme.primary
     val strings = LocalAppTheme.current.strings
 
@@ -304,7 +365,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(
                     text = strings.helloAthlete,
                     color = TextSecondary,
@@ -315,9 +376,11 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                 Text(
                     text = day.title,
                     color = TextPrimary,
-                    fontSize = 26.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
-                    lineHeight = 30.sp
+                    lineHeight = 26.sp,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -417,18 +480,23 @@ fun CircularProgressRing(
         }
 
         val strings = LocalAppTheme.current.strings
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 10.dp)
+        ) {
             Text(
                 text = label,
                 color = if (progress > 0) resolvedRingColor else TextSecondary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
             )
             Text(
                 text = strings.unitDone,
                 color = TextMuted,
-                fontSize = 10.sp,
-                letterSpacing = 1.sp
+                fontSize = 9.sp,
+                letterSpacing = 1.sp,
+                maxLines = 1
             )
         }
     }
@@ -445,14 +513,13 @@ private fun DaySelector(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val theme    = LocalAppTheme.current
     val haptic   = LocalHapticFeedback.current
-    LazyRow(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-                .padding(0.dp, 20.dp, 0.dp, 8.dp),
-        contentPadding = PaddingValues(24.dp, 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(16.dp, 20.dp, 16.dp, 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        itemsIndexed(days) { idx, state ->
+        days.forEachIndexed { idx, state ->
             val day        = state.day
             val isSelected = idx == selectedIndex
             val iSource    = remember { MutableInteractionSource() }
@@ -467,8 +534,8 @@ private fun DaySelector(
             Box(
                 modifier = Modifier
                     .scale(scale)
-                    .width(52.dp)
-                    .height(68.dp)
+                    .weight(1f)
+                    .height(64.dp)
                     .then(
                         if (isSelected)
                             Modifier.clip(RoundedCornerShape(16.dp)).background(accent)
