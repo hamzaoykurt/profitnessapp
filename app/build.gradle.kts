@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -21,7 +22,7 @@ val ksAlias: String = localProperties.getProperty("KEY_ALIAS", "androiddebugkey"
 val ksKeyPassword: String = localProperties.getProperty("KEY_PASSWORD", "android")
 
 val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
-    val bytes = java.util.Base64.getDecoder().decode(ksBase64.trim())
+    val bytes = Base64.getDecoder().decode(ksBase64.trim())
     val f = rootProject.file("build/ci_signing.keystore")
     f.parentFile?.mkdirs()
     f.writeBytes(bytes)
