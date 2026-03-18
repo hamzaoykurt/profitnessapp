@@ -14,6 +14,22 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
     localProperties.load(it)
 }
 
+// Keystore: CI'da KEYSTORE_BASE64'ten decode et, lokalde varsayılan debug keystore'u kullan
+val ksBase64: String = localProperties.getProperty("KEYSTORE_BASE64", "")
+val ksPassword: String = localProperties.getProperty("KEYSTORE_PASSWORD", "android")
+val ksAlias: String = localProperties.getProperty("KEY_ALIAS", "androiddebugkey")
+val ksKeyPassword: String = localProperties.getProperty("KEY_PASSWORD", "android")
+
+val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
+    val bytes = java.util.Base64.getDecoder().decode(ksBase64.trim())
+    val f = rootProject.file("build/ci_signing.keystore")
+    f.parentFile?.mkdirs()
+    f.writeBytes(bytes)
+    f
+} else {
+    File(System.getProperty("user.home"), ".android/debug.keystore")
+}
+
 android {
     namespace = "com.avonix.profitness"
     compileSdk = 35
@@ -31,8 +47,21 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile     = resolvedKeystore
+            storePassword = ksPassword
+            keyAlias      = ksAlias
+            keyPassword   = ksKeyPassword
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
+            signingConfig = signingConfigs.getByName("debug") // debug key ile imzala (şimdilik)
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
