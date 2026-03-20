@@ -46,6 +46,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "GEMINI_API_KEY",    "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
     }
 
     signingConfigs {
@@ -124,8 +125,10 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.storage)
 
-    // Ktor (Supabase HTTP engine for Android)
+    // Ktor (Supabase HTTP engine for Android + Gemini JSON content negotiation)
     implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
 
     // Testing
     testImplementation(libs.junit)

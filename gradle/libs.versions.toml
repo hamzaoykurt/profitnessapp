@@ -56,8 +56,10 @@ supabase-gotrue = { group = "io.github.jan-tennert.supabase", name = "gotrue-kt"
 supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt" }
 supabase-storage = { group = "io.github.jan-tennert.supabase", name = "storage-kt" }
 
-# Ktor (Supabase engine)
-ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
+# Ktor (Supabase engine + Gemini HTTP client)
+ktor-client-android              = { group = "io.ktor", name = "ktor-client-android",              version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json  = { group = "io.ktor", name = "ktor-serialization-kotlinx-json",  version.ref = "ktor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

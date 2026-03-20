@@ -1,0 +1,17 @@
+package com.avonix.profitness.data.ai
+
+/**
+ * Konuşma geçmişini ve kullanıcı mesajını Gemini API'ye gönderir,
+ * Oracle'ın yanıt metnini döndürür.
+ *
+ * @param history Önceki mesajlar — List<Pair<role, text>> ("user" | "model")
+ * @param userMessage Kullanıcının yeni mesajı (geçmişe henüz eklenmemiş)
+ * @param systemPrompt Oracle'ın kimliğini ve kullanıcı bağlamını tanımlayan sistem talimatı
+ */
+interface GeminiRepository {
+    suspend fun chat(
+        history: List<Pair<String, String>>,
+        userMessage: String,
+        systemPrompt: String
+    ): Result<String>
+}
