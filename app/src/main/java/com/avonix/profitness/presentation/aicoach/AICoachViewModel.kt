@@ -126,7 +126,7 @@ $programContext
 
         val programLine = "USER ACTIVE PROGRAM: ${program.name} (${program.days.size} training days)"
         val todayLine = if (todayDay != null && !todayDay.isRestDay) {
-            val exerciseNames = todayDay.exercises.joinToString(", ") { it.name }
+            val exerciseNames = todayDay.exercises.joinToString(", ") { it.exerciseName }
             "TODAY'S SESSION (${todayDay.title}): $exerciseNames"
         } else {
             "TODAY: Rest day"
