@@ -259,6 +259,11 @@ fun ProgramBuilderScreen(viewModel: ProgramViewModel = hiltViewModel()) {
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
+    // Ekran her açıldığında programları taze yükle (Oracle'dan oluşturulan programların görünmesi için)
+    LaunchedEffect(Unit) {
+        viewModel.loadUserPrograms()
+    }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -283,11 +288,8 @@ fun ProgramBuilderScreen(viewModel: ProgramViewModel = hiltViewModel()) {
                     onDeleteProgram = { viewModel.deleteProgram(it) }
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
-                    onBack = { mode = BuilderMode.Choose },
-                    onSave = { name ->
-                        snackbarMsg = "\"$name\" ${strings.programSavedMsg}"
-                        mode = BuilderMode.Choose
-                    }
+                    viewModel = viewModel,
+                    onBack    = { mode = BuilderMode.Choose }
                 )
                 is BuilderMode.Manual -> ManualBuilderScreen(
                     viewModel = viewModel,
@@ -931,97 +933,77 @@ private fun DialogStat(icon: ImageVector, value: String, label: String, accent: 
 // ── AI Builder Screen ─────────────────────────────────────────────────────────
 
 @Composable
-private fun AIBuilderScreen(onBack: () -> Unit, onSave: (String) -> Unit) {
-    var prompt by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var showResult by remember { mutableStateOf(false) }
+private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
+    val uiState   by viewModel.uiState.collectAsStateWithLifecycle()
+    var prompt    by remember { mutableStateOf("") }
+    val aiStrings  = LocalAppTheme.current.strings
+    val aiTheme    = LocalAppTheme.current
 
-    LaunchedEffect(isLoading) {
-        if (isLoading) {
-            delay(2500)
-            isLoading = false
-            showResult = true
-        }
-    }
-
-    val aiStrings = LocalAppTheme.current.strings
-    val aiTheme   = LocalAppTheme.current
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
         DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
         Spacer(Modifier.height(40.dp))
 
-        if (showResult) {
-            LazyColumn(modifier = Modifier.padding(horizontal = 24.dp)) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(aiTheme.bg1.copy(0.9f))
-                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f), RoundedCornerShape(24.dp))
-                            .padding(24.dp)
-                    ) {
-                        Column {
-                            Text(aiStrings.analysisResult, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                            Spacer(Modifier.height(16.dp))
-                            Text("PUSH / PULL / LEGS • 8 ${aiStrings.weekLabel.uppercase()}", color = aiTheme.text0, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text("Oracle seviyeniz için 6 günlük yüksek frekanslı bir hipertrofi planı oluşturdu. Progresif yükleme için temel setler hazırlandı.", color = aiTheme.text1, fontSize = 14.sp, fontWeight = FontWeight.Light)
-                        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(aiTheme.bg1.copy(0.9f))
+                .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                Spacer(Modifier.height(16.dp))
+                BasicTextField(
+                    value = prompt,
+                    onValueChange = { prompt = it },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                    enabled = !uiState.aiLoading,
+                    decorationBox = { inner ->
+                        if (prompt.isEmpty()) Text("Antrenman sıklığı, hedefin ve seviyeni belirt...", color = aiTheme.text2, fontSize = 15.sp)
+                        inner()
                     }
-                }
-                item {
-                    Spacer(Modifier.height(24.dp))
-                    Button(
-                        onClick = { onSave("Oracle Optimized Plan") },
-                        modifier = Modifier.fillMaxWidth().height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text(aiStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
-                    }
-                }
+                )
             }
-        } else {
+        }
+
+        // Error banner
+        uiState.aiError?.let { errMsg ->
+            Spacer(Modifier.height(16.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(aiTheme.bg1.copy(0.9f))
-                    .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
-                    .padding(24.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CardCoral.copy(alpha = 0.15f))
+                    .border(1.dp, CardCoral.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .padding(16.dp)
             ) {
-                Column {
-                    Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                    Spacer(Modifier.height(16.dp))
-                    BasicTextField(
-                        value = prompt,
-                        onValueChange = { prompt = it },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-                        decorationBox = { inner ->
-                            if (prompt.isEmpty()) Text("Antrenman sıklığı, hedefin ve seviyeni belirt...", color = aiTheme.text2, fontSize = 15.sp)
-                            inner()
-                        }
-                    )
-                }
+                Text(errMsg, color = CardCoral, fontSize = 13.sp)
             }
+        }
 
-            Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(1f))
 
-            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Button(
-                    onClick = { if (prompt.isNotBlank()) isLoading = true },
-                    modifier = Modifier.fillMaxWidth().height(64.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (prompt.isNotBlank()) MaterialTheme.colorScheme.primary else Surface2
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
-                    else Text(
+        Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+            Button(
+                onClick = {
+                    viewModel.clearAiError()
+                    viewModel.createFromAI(prompt)
+                },
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (prompt.isNotBlank()) MaterialTheme.colorScheme.primary else Surface2
+                ),
+                shape = RoundedCornerShape(16.dp),
+                enabled = prompt.isNotBlank() && !uiState.aiLoading
+            ) {
+                if (uiState.aiLoading) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(
                         "PROTOKOLÜ ANALİZ ET",
                         color = if (prompt.isNotBlank()) MaterialTheme.colorScheme.onPrimary else TextMuted,
                         fontWeight = FontWeight.Black

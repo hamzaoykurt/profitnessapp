@@ -9,6 +9,7 @@ import com.avonix.profitness.data.ai.dto.GeminiResponse
 import com.avonix.profitness.data.ai.dto.GeminiSystemInstruction
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -41,12 +42,11 @@ class GeminiRepositoryImpl(
                 generationConfig = GeminiGenerationConfig(temperature = 0.7, maxOutputTokens = 600)
             )
 
-            val response: GeminiResponse = httpClient
-                .post("$GEMINI_BASE_URL?key=$apiKey") {
+            val response: GeminiResponse = httpClient.post(GEMINI_BASE_URL) {
+                    parameter("key", apiKey)
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
-                }
-                .body()
+                }.body()
 
             // API düzeyinde hata varsa fırlat
             response.error?.let { err ->
