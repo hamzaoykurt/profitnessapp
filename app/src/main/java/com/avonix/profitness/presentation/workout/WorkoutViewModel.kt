@@ -224,10 +224,12 @@ class WorkoutViewModel @Inject constructor(
         val unlockedKeys= profileRepository.getUnlockedAchievementKeys(userId).getOrNull() ?: return
 
         val toCheck = mapOf(
-            "xp"        to stats.xp,
-            "volume"    to stats.total_workouts,
-            "streak"    to stats.current_streak,
-            "milestone" to stats.total_workouts
+            "xp"              to stats.xp,
+            "level"           to stats.level,
+            "volume"          to stats.total_workouts,
+            "streak"          to stats.current_streak,
+            "milestone"       to stats.total_workouts,
+            "total_exercises" to stats.total_exercises
         )
 
         allAch
@@ -240,7 +242,7 @@ class WorkoutViewModel @Inject constructor(
             }
 
         // Rank güncelleme
-        val newRank = computeRank(stats.total_workouts)
+        val newRank = computeRank(stats.xp)
         val profile = profileRepository.getProfile(userId).getOrNull()
         if (profile != null && profile.current_rank != newRank) {
             profileRepository.updateRank(userId, newRank)

@@ -191,7 +191,7 @@ class WorkoutRepositoryImpl @Inject constructor(
                 } else {
                     // XP ve total_exercises artır — seri artık workout_logs'dan hesaplanıyor
                     val newXp    = existing.xp + xpPerExercise
-                    val newLevel = (newXp / 1000) + 1
+                    val newLevel = (newXp / 500) + 1
                     supabase.postgrest["user_stats"]
                         .update({
                             set("total_exercises", existing.total_exercises + 1)

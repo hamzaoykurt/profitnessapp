@@ -16,12 +16,12 @@ import javax.inject.Inject
 
 // ── Rank Sistemi ──────────────────────────────────────────────────────────────
 
-fun computeRank(totalWorkouts: Int): String = when {
-    totalWorkouts >= 300 -> "Diamond"
-    totalWorkouts >= 100 -> "Platinum"
-    totalWorkouts >= 30  -> "Gold"
-    totalWorkouts >= 10  -> "Silver"
-    else                 -> "Bronze"
+fun computeRank(xp: Int): String = when {
+    xp >= 50000 -> "Diamond"
+    xp >= 15000 -> "Platinum"
+    xp >= 5000  -> "Gold"
+    xp >= 1000  -> "Silver"
+    else        -> "Bronze"
 }
 
 // ── Achievement Modeli (UI için) ──────────────────────────────────────────────
@@ -136,11 +136,13 @@ class ProfileViewModel @Inject constructor(
             }
 
             val lvl          = stats?.level ?: 1
-            val xpForNext    = lvl * 1000
+            val xpForNext    = lvl * 500
             val totalWorkouts= stats?.total_workouts ?: 0
+            val totalExercises= stats?.total_exercises ?: 0
+            val currentXp    = stats?.xp ?: 0
 
             // Rank hesapla ve gerekirse güncelle
-            val computedRank  = computeRank(totalWorkouts)
+            val computedRank  = computeRank(currentXp)
             val storedRank    = profile?.current_rank ?: "Bronze"
             if (computedRank != storedRank) {
                 profileRepository.updateRank(userId, computedRank)
@@ -152,12 +154,12 @@ class ProfileViewModel @Inject constructor(
                     avatar              = profile?.avatar_url?.ifBlank { "🏋️" } ?: "🏋️",
                     rank                = computedRank,
                     level               = lvl,
-                    xp                  = stats?.xp ?: 0,
+                    xp                  = currentXp,
                     xpPerLevel          = xpForNext,
                     currentStreak       = stats?.current_streak ?: 0,
                     longestStreak       = stats?.longest_streak ?: 0,
                     totalWorkouts       = totalWorkouts,
-                    totalExercises      = stats?.total_exercises ?: 0,
+                    totalExercises      = totalExercises,
                     fitnessGoal         = profile?.fitness_goal.orEmpty(),
                     heightCm            = profile?.height_cm ?: 0.0,
                     weightKg            = profile?.weight_kg ?: 0.0,
@@ -170,7 +172,7 @@ class ProfileViewModel @Inject constructor(
             }
 
             // Achievement kontrolü
-            checkAchievements(userId, stats?.xp ?: 0, totalWorkouts, stats?.current_streak ?: 0, unlockedKeys, allAch)
+            checkAchievements(userId, currentXp, lvl, totalWorkouts, totalExercises, stats?.current_streak ?: 0, unlockedKeys, allAch)
         }
     }
 
@@ -215,19 +217,22 @@ class ProfileViewModel @Inject constructor(
     // ── FAZ 5C: Achievement Kontrol ───────────────────────────────────────────
 
     private suspend fun checkAchievements(
-        userId      : String,
-        xp          : Int,
-        workouts    : Int,
-        streak      : Int,
-        unlocked    : Set<String>,
-        allAch      : List<AchievementDto>
+        userId          : String,
+        xp              : Int,
+        level           : Int,
+        workouts        : Int,
+        totalExercises  : Int,
+        streak          : Int,
+        unlocked        : Set<String>,
+        allAch          : List<AchievementDto>
     ) {
         val toCheck = mapOf(
-            "xp"             to xp,
-            "volume"         to workouts,
-            "streak"         to streak,
-            "milestone"      to workouts,      // first_workout threshold=1
-            "total_exercises" to workouts
+            "xp"              to xp,
+            "level"           to level,
+            "volume"          to workouts,
+            "streak"          to streak,
+            "milestone"       to workouts,
+            "total_exercises" to totalExercises
         )
 
         allAch
