@@ -1,5 +1,8 @@
 package com.avonix.profitness.presentation.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +19,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -24,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
 
 data class ProfileData(
@@ -70,6 +77,16 @@ fun EditProfileScreen(
     var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "Erkek" }) }
     var birthDate        by remember(state.birthDate)   { mutableStateOf(state.birthDate) }
     var showAvatarPicker by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+            ?: return@rememberLauncherForActivityResult
+        viewModel.uploadPhoto(bytes)
+    }
 
     fun saveAndExit() {
         viewModel.updateProfile(
@@ -138,18 +155,38 @@ fun EditProfileScreen(
                                 .background(theme.bg2)
                                 .clickable { showAvatarPicker = true },
                             contentAlignment = Alignment.Center
-                        ) { Text(avatar, fontSize = 46.sp) }
+                        ) {
+                            val currentAvatar = state.avatar
+                            if (currentAvatar.startsWith("http")) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context).data(currentAvatar).crossfade(true).build(),
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            } else {
+                                Text(avatar, fontSize = 46.sp)
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .size(36.dp).align(Alignment.BottomEnd).clip(CircleShape)
                                 .background(theme.bg0).padding(3.dp).clip(CircleShape)
-                                .background(accent).clickable { showAvatarPicker = true },
+                                .background(accent).clickable { photoPickerLauncher.launch("image/*") },
                             contentAlignment = Alignment.Center
                         ) { Icon(Icons.Rounded.CameraAlt, null, tint = Color.Black, modifier = Modifier.size(15.dp)) }
                     }
                     Spacer(Modifier.height(10.dp))
-                    Text("Avatar Değiştir", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { showAvatarPicker = true })
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Emoji Seç", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { showAvatarPicker = true })
+                        Text("•", color = theme.text2, fontSize = 13.sp)
+                        Text("Fotoğraf Yükle", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { photoPickerLauncher.launch("image/*") })
+                    }
                 }
             }
 

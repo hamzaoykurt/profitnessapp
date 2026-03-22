@@ -19,9 +19,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -84,6 +88,7 @@ fun ProfileScreen(
                     level           = state.level,
                     xp              = state.xp,
                     xpPerLevel      = state.xpPerLevel,
+                    fitnessGoal     = state.fitnessGoal,
                     accent          = accent,
                     theme           = theme,
                     onSettingsClick = { showAppearance = true },
@@ -306,6 +311,7 @@ private fun ProfileHeroBanner(
     level          : Int,
     xp             : Int,
     xpPerLevel     : Int,
+    fitnessGoal    : String = "",
     accent         : Color,
     theme          : AppThemeState,
     onSettingsClick: () -> Unit,
@@ -338,15 +344,15 @@ private fun ProfileHeroBanner(
             ) {
                 Column {
                     Text(
-                        "MEMBER ID",
-                        color         = theme.text0.copy(0.4f),
+                        "PROFITNESS",
+                        color         = theme.text0.copy(0.5f),
                         fontSize      = 9.sp,
                         fontWeight    = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        "#4492-AVX",
-                        color      = theme.text0.copy(0.65f),
+                        "Fitness Koçun",
+                        color      = accent.copy(0.8f),
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -382,7 +388,16 @@ private fun ProfileHeroBanner(
                         .background(theme.bg2),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(avatar, fontSize = 40.sp)
+                    if (avatar.startsWith("http")) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    } else {
+                        Text(avatar, fontSize = 40.sp)
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -414,6 +429,16 @@ private fun ProfileHeroBanner(
                 fontWeight    = FontWeight.Black,
                 letterSpacing = 2.sp
             )
+
+            if (fitnessGoal.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    fitnessGoal,
+                    color    = theme.text1,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -893,7 +918,16 @@ private fun SettingsSection(
                     .border(1.5.dp, accent.copy(0.45f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(avatar, fontSize = 22.sp)
+                if (avatar.startsWith("http")) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                        contentDescription = "Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                } else {
+                    Text(avatar, fontSize = 22.sp)
+                }
             }
             Column(Modifier.weight(1f)) {
                 Text(

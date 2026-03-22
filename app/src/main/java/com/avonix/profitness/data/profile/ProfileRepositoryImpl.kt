@@ -8,6 +8,7 @@ import com.avonix.profitness.data.workout.dto.UserStatsDto
 import com.avonix.profitness.data.workout.dto.WorkoutLogDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -52,15 +53,38 @@ class ProfileRepositoryImpl @Inject constructor(
                     put("display_name", displayName)
                     put("avatar_url",   avatar)
                     put("fitness_goal", fitnessGoal)
-                    put("height_cm",    heightCm)
-                    put("weight_kg",    weightKg)
-                    put("gender",       gender)
-                    put("birth_date",   birthDate)
+                    if (heightCm > 0) put("height_cm", heightCm)
+                    if (weightKg > 0) put("weight_kg", weightKg)
+                    if (gender.isNotBlank()) put("gender", gender)
+                    if (birthDate.isNotBlank() && birthDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                        put("birth_date", birthDate)
+                    }
                 }
             )
             Unit
         }
     }
+
+    override suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray): Result<String> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val path = "avatars/$userId.jpg"
+                // Var olan dosyayi sil (varsa)
+                runCatching { supabase.storage.from("profile-photos").delete(path) }
+                // Yukle
+                supabase.storage.from("profile-photos").upload(path, imageBytes, upsert = true)
+                // Public URL al
+                val url = supabase.storage.from("profile-photos").publicUrl(path)
+                // avatar_url'i guncelle
+                supabase.postgrest["profiles"].upsert(
+                    buildJsonObject {
+                        put("user_id",   userId)
+                        put("avatar_url", url)
+                    }
+                )
+                url
+            }
+        }
 
     override suspend fun updateRank(userId: String, rank: String): Result<Unit> =
         withContext(Dispatchers.IO) {

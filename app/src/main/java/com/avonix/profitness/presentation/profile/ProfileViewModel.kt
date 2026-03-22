@@ -140,7 +140,7 @@ class ProfileViewModel @Inject constructor(
             }
 
             val lvl          = stats?.level ?: 1
-            val xpForNext    = lvl * 500
+            val xpForNext    = 500   // Her seviye sabit 500 XP
             val totalWorkouts= stats?.total_workouts ?: 0
             val totalExercises= stats?.total_exercises ?: 0
             val currentXp    = stats?.xp ?: 0
@@ -221,6 +221,22 @@ class ProfileViewModel @Inject constructor(
             } else {
                 updateState { it.copy(isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Güncelleme başarısız"))
+            }
+        }
+    }
+
+    fun uploadPhoto(imageBytes: ByteArray) {
+        viewModelScope.launch {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: return@launch
+            updateState { it.copy(isSaving = true) }
+            val result = profileRepository.uploadProfilePhoto(userId, imageBytes)
+            if (result.isSuccess) {
+                val url = result.getOrThrow()
+                updateState { it.copy(avatar = url, isSaving = false) }
+                sendEvent(ProfileEvent.ShowSnackbar("Fotoğraf yüklendi"))
+            } else {
+                updateState { it.copy(isSaving = false) }
+                sendEvent(ProfileEvent.ShowSnackbar("Fotoğraf yüklenemedi"))
             }
         }
     }
