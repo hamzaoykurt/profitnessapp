@@ -317,6 +317,9 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("Program silindi."))
                 }
+                .onFailure { e ->
+                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
+                }
         }
     }
 

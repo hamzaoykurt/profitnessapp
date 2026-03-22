@@ -148,25 +148,36 @@ class WorkoutRepositoryImpl @Inject constructor(
                     .select { filter { eq("user_id", userId) } }
                     .decodeSingleOrNull<UserStatsDto>()
 
+                val xpPerExercise = 10
+
                 if (existing == null) {
+                    // İlk kez — yeni satır oluştur
                     supabase.postgrest["user_stats"]
                         .insert(buildJsonObject {
                             put("user_id", userId)
                             put("current_streak", 1)
                             put("longest_streak", 1)
                             put("total_exercises", 1)
+                            put("total_workouts", 1)
+                            put("xp", xpPerExercise)
+                            put("level", 1)
                             put("updated_at", todayStr)
                         })
                 } else {
                     val lastDate = existing.updated_at.take(10) // "YYYY-MM-DD"
-                    // Bugün zaten seri başlatıldıysa (current_streak > 0) sadece egzersiz sayısını artır
-                    if (lastDate == todayStr && existing.current_streak > 0) {
+                    val newXp = existing.xp + xpPerExercise
+                    val newLevel = (newXp / 1000) + 1
+
+                    if (lastDate == todayStr) {
+                        // Aynı gün — sadece egzersiz ve XP artır, seri değişmez
                         supabase.postgrest["user_stats"]
                             .update({
                                 set("total_exercises", existing.total_exercises + 1)
+                                set("xp", newXp)
+                                set("level", newLevel)
                             }) { filter { eq("user_id", userId) } }
                     } else {
-                        // Yeni gün, dün yapıldıysa seri devam et, yoksa sıfırdan başlat
+                        // Yeni gün — seri + total_workouts + XP güncelle
                         val newStreak = if (lastDate == yesterdayStr) existing.current_streak + 1 else 1
                         val newLongest = maxOf(existing.longest_streak, newStreak)
                         supabase.postgrest["user_stats"]
@@ -174,6 +185,9 @@ class WorkoutRepositoryImpl @Inject constructor(
                                 set("current_streak", newStreak)
                                 set("longest_streak", newLongest)
                                 set("total_exercises", existing.total_exercises + 1)
+                                set("total_workouts", existing.total_workouts + 1)
+                                set("xp", newXp)
+                                set("level", newLevel)
                                 set("updated_at", todayStr)
                             }) { filter { eq("user_id", userId) } }
                     }

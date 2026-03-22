@@ -2,8 +2,10 @@ package com.avonix.profitness.presentation.workout
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.workout.WorkoutRepository
+import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -26,9 +28,10 @@ data class WorkoutScreenState(
 
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
-    private val programRepository: ProgramRepository,
-    private val workoutRepository: WorkoutRepository,
-    private val supabase: SupabaseClient
+    private val programRepository : ProgramRepository,
+    private val workoutRepository : WorkoutRepository,
+    private val profileRepository : ProfileRepository,
+    private val supabase          : SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
 
     init {
@@ -207,7 +210,40 @@ class WorkoutViewModel @Inject constructor(
                 // Gerçek ardışık seriyi DB'den oku (updateStreak zaten güncelledi)
                 val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
                 updateState { it.copy(currentStreak = updatedStreak) }
+
+                // Başarım ve rank kontrolü — güncel istatistikler üzerinden
+                checkAndUnlockAchievements(userId)
             }
+        }
+    }
+
+    /** Egzersiz tamamlanınca başarımları ve rank'ı güncelle */
+    private suspend fun checkAndUnlockAchievements(userId: String) {
+        val stats       = profileRepository.getUserStats(userId).getOrNull() ?: return
+        val allAch      = profileRepository.getAllAchievements().getOrNull() ?: return
+        val unlockedKeys= profileRepository.getUnlockedAchievementKeys(userId).getOrNull() ?: return
+
+        val toCheck = mapOf(
+            "xp"        to stats.xp,
+            "volume"    to stats.total_workouts,
+            "streak"    to stats.current_streak,
+            "milestone" to stats.total_workouts
+        )
+
+        allAch
+            .filter { it.key !in unlockedKeys }
+            .forEach { ach ->
+                val value = toCheck[ach.category] ?: return@forEach
+                if (value >= ach.threshold) {
+                    profileRepository.unlockAchievement(userId, ach.key)
+                }
+            }
+
+        // Rank güncelleme
+        val newRank = computeRank(stats.total_workouts)
+        val profile = profileRepository.getProfile(userId).getOrNull()
+        if (profile != null && profile.current_rank != newRank) {
+            profileRepository.updateRank(userId, newRank)
         }
     }
 

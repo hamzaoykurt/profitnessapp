@@ -3,15 +3,23 @@ package com.avonix.profitness.data.profile
 import com.avonix.profitness.data.profile.dto.AchievementDto
 import com.avonix.profitness.data.profile.dto.ProfileDto
 import com.avonix.profitness.data.profile.dto.UserAchievementDto
+import com.avonix.profitness.data.workout.dto.ExerciseLogDto
 import com.avonix.profitness.data.workout.dto.UserStatsDto
 import com.avonix.profitness.data.workout.dto.WorkoutLogDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
+
+@Serializable
+private data class ProgramExerciseCountDto(
+    val id: String,
+    val program_day_id: String
+)
 
 class ProfileRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient
@@ -101,6 +109,49 @@ class ProfileRepositoryImpl @Inject constructor(
                 }
                 .decodeList<WorkoutLogDto>()
                 .map { it.date }
+        }
+    }
+
+    override suspend fun getWeeklyCompletionRatios(
+        userId    : String,
+        weekStart : String
+    ): Result<Map<String, Float>> = withContext(Dispatchers.IO) {
+        runCatching {
+            // Bu haftanın workout_logs'larını çek
+            val logs = supabase.postgrest["workout_logs"]
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                        gte("date", weekStart)
+                    }
+                }
+                .decodeList<WorkoutLogDto>()
+
+            if (logs.isEmpty()) return@runCatching emptyMap()
+
+            val result = mutableMapOf<String, Float>()
+            for (log in logs) {
+                val programDayId = log.program_day_id ?: continue
+
+                // Bu program günündeki toplam egzersiz sayısı
+                val total = supabase.postgrest["program_exercises"]
+                    .select { filter { eq("program_day_id", programDayId) } }
+                    .decodeList<ProgramExerciseCountDto>()
+                    .size
+
+                if (total == 0) continue // dinlenme günü veya egzersiz yok
+
+                // Bu workout_log için tamamlanan egzersizler
+                val completed = supabase.postgrest["exercise_logs"]
+                    .select { filter { eq("workout_log_id", log.id) } }
+                    .decodeList<ExerciseLogDto>()
+                    .size
+
+                val ratio = (completed.toFloat() / total).coerceIn(0f, 1f)
+                // Aynı gün birden fazla log varsa en yüksek oranı al
+                result[log.date] = maxOf(result[log.date] ?: 0f, ratio)
+            }
+            result
         }
     }
 

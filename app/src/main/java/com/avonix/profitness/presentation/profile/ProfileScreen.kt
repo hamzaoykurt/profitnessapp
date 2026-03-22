@@ -585,7 +585,7 @@ private fun WeeklyActivitySection(
     accent         : Color,
     theme          : AppThemeState,
     strings        : AppStrings,
-    weeklyActivity : List<Boolean>
+    weeklyActivity : List<Float>
 ) {
     val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1   // 0=Pzt … 6=Paz
 
@@ -618,8 +618,7 @@ private fun WeeklyActivitySection(
                 verticalAlignment     = Alignment.Bottom
             ) {
                 strings.dayAbbreviations.forEachIndexed { i, day ->
-                    val active  = weeklyActivity.getOrElse(i) { false }
-                    val level   = if (active) 1.0f else 0f
+                    val level   = weeklyActivity.getOrElse(i) { 0f }.coerceIn(0f, 1f)
                     val isToday = i == todayIndex
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -639,10 +638,12 @@ private fun WeeklyActivitySection(
                                     .background(theme.bg3)
                             )
                             if (level > 0f) {
+                                // En az %15 yükseklik göster (çok küçük olmasın)
+                                val displayLevel = level.coerceAtLeast(0.15f)
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
-                                        .fillMaxHeight(level)
+                                        .fillMaxHeight(displayLevel)
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(
                                             if (isToday) accent else accent.copy(0.4f)

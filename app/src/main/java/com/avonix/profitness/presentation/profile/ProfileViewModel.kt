@@ -49,8 +49,8 @@ data class ProfileState(
     val longestStreak        : Int                  = 0,
     val totalWorkouts        : Int                  = 0,
     val totalDurationSeconds : Int                  = 0,
-    /** 7 eleman — Pazartesi=0 … Pazar=6; true = o gün antrenman yapıldı */
-    val weeklyActivity       : List<Boolean>        = List(7) { false },
+    /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
+    val weeklyActivity       : List<Float>           = List(7) { 0f },
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
     val weeklyWorkoutCounts  : List<Int>            = List(13) { 0 },
     /** Başarımlar — tüm tanımlı başarımlar unlocked durumlarıyla */
@@ -86,14 +86,12 @@ class ProfileViewModel @Inject constructor(
             }
 
             // Paralel fetch
+            val monday    = LocalDate.now().with(DayOfWeek.MONDAY)
+            val mondayStr = monday.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
             val profileDef      = async { profileRepository.getProfile(userId) }
             val statsDef        = async { profileRepository.getUserStats(userId) }
-            val weeklyActDef    = async {
-                val monday = LocalDate.now().with(DayOfWeek.MONDAY)
-                profileRepository.getWeeklyActivity(
-                    userId, monday.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                )
-            }
+            val ratiosDef       = async { profileRepository.getWeeklyCompletionRatios(userId, mondayStr) }
             val workoutDatesDef = async {
                 val from = LocalDate.now().minusWeeks(13).format(DateTimeFormatter.ISO_LOCAL_DATE)
                 profileRepository.getWorkoutDates(userId, from)
@@ -101,19 +99,20 @@ class ProfileViewModel @Inject constructor(
             val allAchDef       = async { profileRepository.getAllAchievements() }
             val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
 
-            val profile      = profileDef.await().getOrNull()
-            val stats        = statsDef.await().getOrNull()
-            val activeDates  = weeklyActDef.await().getOrNull().orEmpty().toSet()
-            val workoutDates = workoutDatesDef.await().getOrNull().orEmpty()
-            val allAch       = allAchDef.await().getOrNull().orEmpty()
-            val unlockedKeys = unlockedAchDef.await().getOrNull().orEmpty()
+            val profile          = profileDef.await().getOrNull()
+            val stats            = statsDef.await().getOrNull()
+            val completionRatios = ratiosDef.await().getOrDefault(emptyMap())
+            val workoutDates     = workoutDatesDef.await().getOrNull().orEmpty()
+            val allAch           = allAchDef.await().getOrNull().orEmpty()
+            val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
 
-            // Bu haftanın aktif günleri
-            val monday   = LocalDate.now().with(DayOfWeek.MONDAY)
+            // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
+            // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
             val todayIdx = LocalDate.now().dayOfWeek.value - 1   // 0=Pzt, 6=Paz
             val weeklyActivity = (0..6).map { i ->
+                if (i > todayIdx) return@map 0f   // gelecekteki günler
                 val date = monday.plusDays(i.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE)
-                i <= todayIdx && date in activeDates
+                completionRatios[date] ?: 0f
             }
 
             // 13 haftalık antrenman grafiği

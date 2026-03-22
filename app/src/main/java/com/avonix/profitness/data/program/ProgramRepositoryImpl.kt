@@ -290,6 +290,50 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                // 1) program_days ID'lerini çek
+                val dayIds = supabase.postgrest["program_days"]
+                    .select { filter { eq("program_id", programId) } }
+                    .decodeList<ProgramDayDto>()
+                    .map { it.id }
+
+                if (dayIds.isNotEmpty()) {
+                    // 2) Her güne ait workout_logs'ları çek (WorkoutLogDto ile)
+                    for (dayId in dayIds) {
+                        val logs = runCatching {
+                            supabase.postgrest["workout_logs"]
+                                .select { filter { eq("program_day_id", dayId) } }
+                                .decodeList<com.avonix.profitness.data.workout.dto.WorkoutLogDto>()
+                        }.getOrNull().orEmpty()
+
+                        // Her workout_log için exercise_logs sil
+                        for (log in logs) {
+                            runCatching {
+                                supabase.postgrest["exercise_logs"]
+                                    .delete { filter { eq("workout_log_id", log.id) } }
+                            }
+                        }
+
+                        // workout_logs sil
+                        runCatching {
+                            supabase.postgrest["workout_logs"]
+                                .delete { filter { eq("program_day_id", dayId) } }
+                        }
+                    }
+
+                    // 3) program_exercises sil
+                    for (dayId in dayIds) {
+                        runCatching {
+                            supabase.postgrest["program_exercises"]
+                                .delete { filter { eq("program_day_id", dayId) } }
+                        }
+                    }
+                }
+
+                // 4) program_days sil
+                supabase.postgrest["program_days"]
+                    .delete { filter { eq("program_id", programId) } }
+
+                // 5) programı sil
                 supabase.postgrest["programs"]
                     .delete { filter { eq("id", programId) } }
                 Unit

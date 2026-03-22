@@ -30,6 +30,13 @@ interface ProfileRepository {
     suspend fun getWeeklyActivity(userId: String, weekStart: String): Result<List<String>>
 
     /**
+     * Bu haftanın her günü (tarih bazında) için egzersiz tamamlanma oranını döner.
+     * Her workout_log → (tamamlanan / toplam egzersiz) oranı — program_day_id üzerinden.
+     * Map<date "yyyy-MM-dd", ratio 0.0–1.0>
+     */
+    suspend fun getWeeklyCompletionRatios(userId: String, weekStart: String): Result<Map<String, Float>>
+
+    /**
      * fromDate (ISO "yyyy-MM-dd") tarihinden itibaren tüm workout_logs tarihlerini döner.
      * Haftalık/aylık grafik için kullanılır.
      */
