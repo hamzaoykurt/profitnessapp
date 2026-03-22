@@ -23,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.glassCard
@@ -41,9 +44,32 @@ fun ProfileScreen(
     val strings = theme.strings
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var showAppearance      by remember { mutableStateOf(false) }
-    var showNotifications   by remember { mutableStateOf(false) }
-    var showLanguagePicker  by remember { mutableStateOf(false) }
+    var showAppearance       by remember { mutableStateOf(false) }
+    var showNotifications    by remember { mutableStateOf(false) }
+    var showLanguagePicker   by remember { mutableStateOf(false) }
+    var achievementBanner    by remember { mutableStateOf<String?>(null) }
+
+    // Achievement unlock bildirimi
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ProfileEvent.AchievementUnlocked ->
+                    achievementBanner = "${event.icon} ${event.name} başarımı açıldı!"
+                is ProfileEvent.ShowSnackbar ->
+                    achievementBanner = event.message
+            }
+        }
+    }
+
+    // Sekmeye her gelindiğinde (tab geçişi dahil) profil + başarımları yenile
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.loadProfile()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -85,7 +111,14 @@ fun ProfileScreen(
                     weeklyActivity = state.weeklyActivity
                 )
             }
-            item { TrophyGallery(accent = accent, theme = theme, strings = strings) }
+            item {
+                TrophyGallery(
+                    accent       = accent,
+                    theme        = theme,
+                    strings      = strings,
+                    achievements = state.achievements
+                )
+            }
             item {
                 SettingsSection(
                     theme                = theme,
@@ -98,6 +131,43 @@ fun ProfileScreen(
                     displayName          = state.displayName.ifBlank { "Kullanıcı" },
                     avatar               = state.avatar
                 )
+            }
+        }
+    }
+
+    // ── Achievement Banner ────────────────────────────────────────────────────
+    achievementBanner?.let { msg ->
+        LaunchedEffect(msg) {
+            kotlinx.coroutines.delay(3000)
+            achievementBanner = null
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 140.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF1A3A2F))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.5f), RoundedCornerShape(14.dp))
+                    .padding(14.dp)
+            ) {
+                Row(
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.EmojiEvents,
+                        null,
+                        tint     = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(msg, color = Snow, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -593,68 +663,93 @@ private fun WeeklyActivitySection(
     }
 }
 
-// ── Trophy Gallery ────────────────────────────────────────────────────────────
+// ── Trophy Gallery (Gerçek Başarımlar) ────────────────────────────────────────
 
-private data class TrophyData(
-    val emoji    : String,
-    val label    : String,
-    val subtitle : String,
-    val colorFrom: Color,
-    val colorTo  : Color
-)
+private fun achievementColor(category: String): Pair<Color, Color> = when (category) {
+    "streak"    -> Pair(Color(0xFFF97316), Color(0xFFEF4444))
+    "volume"    -> Pair(Color(0xFF9B59FF), Color(0xFF6C35DE))
+    "xp"        -> Pair(Color(0xFFFFD700), Color(0xFFFF8C00))
+    "milestone" -> Pair(Color(0xFF00E5D3), Color(0xFF3B82F6))
+    else        -> Pair(Color(0xFFEC4899), Color(0xFFA855F7))
+}
 
 @Composable
-private fun TrophyGallery(accent: Color, theme: AppThemeState, strings: AppStrings) {
-    val trophies = listOf(
-        TrophyData("🏆", "CHAMP",          strings.trophyFirstWin,      Color(0xFFFFD700), Color(0xFFFF8C00)),
-        TrophyData("🎖️", "STREAK",         strings.trophySevenDay,      Color(0xFF9B59FF), Color(0xFF6C35DE)),
-        TrophyData("🔥", strings.trophyEliteLabel, strings.trophyFiftyWorkouts, Color(0xFFF97316), Color(0xFFEF4444)),
-        TrophyData("💎", "LEGEND",         strings.trophySuperMember,   Color(0xFF00E5D3), Color(0xFF3B82F6)),
-        TrophyData("🌟", "MASTER",         strings.trophyExcellence,    Color(0xFFEC4899), Color(0xFFA855F7)),
-    )
+private fun TrophyGallery(
+    accent       : Color,
+    theme        : AppThemeState,
+    strings      : AppStrings,
+    achievements : List<AchievementUiModel>
+) {
+    // Önce açılanlar, sonra kilitliler; max 12 göster
+    val sorted = achievements.sortedByDescending { it.isUnlocked }.take(12)
 
     Column(modifier = Modifier.padding(top = 36.dp)) {
-        Text(
-            strings.achievements,
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp,
-            modifier      = Modifier.padding(horizontal = 20.dp)
-        )
-        Spacer(Modifier.height(14.dp))
-        LazyRow(
-            contentPadding        = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier              = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
         ) {
-            items(trophies) { trophy ->
-                TrophyCard(trophy = trophy, theme = theme)
+            Text(
+                strings.achievements,
+                style         = MaterialTheme.typography.labelSmall,
+                color         = accent,
+                letterSpacing = 2.sp
+            )
+            val unlockedCount = achievements.count { it.isUnlocked }
+            Text(
+                "$unlockedCount/${achievements.size}",
+                color    = theme.text2,
+                fontSize = 10.sp
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        if (sorted.isEmpty()) {
+            // Loading placeholder
+            Text(
+                "Başarımlar yükleniyor...",
+                color    = theme.text2,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        } else {
+            LazyRow(
+                contentPadding        = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(sorted) { ach ->
+                    AchievementCard(achievement = ach, theme = theme)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TrophyCard(trophy: TrophyData, theme: AppThemeState) {
+private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeState) {
+    val (colorFrom, colorTo) = achievementColor(achievement.category)
+    val alpha = if (achievement.isUnlocked) 1f else 0.35f
+
     Box(
         modifier = Modifier
             .size(118.dp, 158.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(
-                        trophy.colorFrom.copy(0.15f),
-                        trophy.colorTo.copy(0.05f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end   = Offset(300f, 450f)
+                    colors = listOf(colorFrom.copy(if (achievement.isUnlocked) 0.15f else 0.05f), colorTo.copy(0.03f)),
+                    start  = Offset(0f, 0f),
+                    end    = Offset(300f, 450f)
                 )
             )
-            .border(1.dp, trophy.colorFrom.copy(0.3f), RoundedCornerShape(20.dp))
+            .border(
+                1.dp,
+                if (achievement.isUnlocked) colorFrom.copy(0.4f) else theme.stroke,
+                RoundedCornerShape(20.dp)
+            )
     ) {
         Column(
-            modifier            = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
+            modifier            = Modifier.fillMaxSize().padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -662,25 +757,29 @@ private fun TrophyCard(trophy: TrophyData, theme: AppThemeState) {
                 Modifier
                     .size(54.dp)
                     .clip(CircleShape)
-                    .background(trophy.colorFrom.copy(0.12f)),
+                    .background(colorFrom.copy(if (achievement.isUnlocked) 0.15f else 0.06f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(trophy.emoji, fontSize = 26.sp)
+                Text(
+                    if (achievement.isUnlocked) achievement.icon else "🔒",
+                    fontSize = 26.sp
+                )
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                trophy.label,
-                color         = trophy.colorFrom,
-                fontSize      = 10.sp,
+                achievement.name.uppercase().take(10),
+                color         = if (achievement.isUnlocked) colorFrom else theme.text2,
+                fontSize      = 9.sp,
                 fontWeight    = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                trophy.subtitle,
-                color      = theme.text2,
-                fontSize   = 8.sp,
-                fontWeight = FontWeight.Medium
+                achievement.description.take(28),
+                color      = theme.text2.copy(alpha),
+                fontSize   = 7.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 10.sp
             )
         }
     }

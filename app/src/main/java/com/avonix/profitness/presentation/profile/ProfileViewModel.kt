@@ -3,38 +3,67 @@ package com.avonix.profitness.presentation.profile
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.profile.ProfileRepository
+import com.avonix.profitness.data.profile.dto.AchievementDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+// ── Rank Sistemi ──────────────────────────────────────────────────────────────
+
+fun computeRank(totalWorkouts: Int): String = when {
+    totalWorkouts >= 300 -> "Diamond"
+    totalWorkouts >= 100 -> "Platinum"
+    totalWorkouts >= 30  -> "Gold"
+    totalWorkouts >= 10  -> "Silver"
+    else                 -> "Bronze"
+}
+
+// ── Achievement Modeli (UI için) ──────────────────────────────────────────────
+
+data class AchievementUiModel(
+    val key        : String,
+    val name       : String,
+    val description: String,
+    val icon       : String,
+    val category   : String,
+    val threshold  : Int,
+    val isUnlocked : Boolean
+)
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 data class ProfileState(
-    val displayName         : String       = "",
-    val avatar              : String       = "🏋️",
-    val rank                : String       = "Bronze",
-    val level               : Int          = 1,
-    val xp                  : Int          = 0,
-    val xpPerLevel          : Int          = 1000,
-    val currentStreak       : Int          = 0,
-    val longestStreak       : Int          = 0,
-    val totalWorkouts       : Int          = 0,
-    val totalDurationSeconds: Int          = 0,
+    val displayName          : String               = "",
+    val avatar               : String               = "🏋️",
+    val rank                 : String               = "Bronze",
+    val level                : Int                  = 1,
+    val xp                   : Int                  = 0,
+    val xpPerLevel           : Int                  = 1000,
+    val currentStreak        : Int                  = 0,
+    val longestStreak        : Int                  = 0,
+    val totalWorkouts        : Int                  = 0,
+    val totalDurationSeconds : Int                  = 0,
     /** 7 eleman — Pazartesi=0 … Pazar=6; true = o gün antrenman yapıldı */
-    val weeklyActivity      : List<Boolean> = List(7) { false },
-    val isLoading           : Boolean      = true,
-    val isSaving            : Boolean      = false
+    val weeklyActivity       : List<Boolean>        = List(7) { false },
+    /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
+    val weeklyWorkoutCounts  : List<Int>            = List(13) { 0 },
+    /** Başarımlar — tüm tanımlı başarımlar unlocked durumlarıyla */
+    val achievements         : List<AchievementUiModel> = emptyList(),
+    val isLoading            : Boolean              = true,
+    val isSaving             : Boolean              = false
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
 sealed class ProfileEvent {
     data class ShowSnackbar(val message: String) : ProfileEvent()
+    data class AchievementUnlocked(val name: String, val icon: String) : ProfileEvent()
 }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
@@ -56,43 +85,85 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
-            val profile = profileRepository.getProfile(userId).getOrNull()
-            val stats   = profileRepository.getUserStats(userId).getOrNull()
+            // Paralel fetch
+            val profileDef      = async { profileRepository.getProfile(userId) }
+            val statsDef        = async { profileRepository.getUserStats(userId) }
+            val weeklyActDef    = async {
+                val monday = LocalDate.now().with(DayOfWeek.MONDAY)
+                profileRepository.getWeeklyActivity(
+                    userId, monday.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                )
+            }
+            val workoutDatesDef = async {
+                val from = LocalDate.now().minusWeeks(13).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                profileRepository.getWorkoutDates(userId, from)
+            }
+            val allAchDef       = async { profileRepository.getAllAchievements() }
+            val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
 
-            // Bu haftanın Pazartesi'sinden itibaren aktif günler
-            val monday    = LocalDate.now().with(DayOfWeek.MONDAY)
-            val weekStart = monday.format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val activeDates = profileRepository
-                .getWeeklyActivity(userId, weekStart)
-                .getOrNull()
-                .orEmpty()
-                .toSet()
+            val profile      = profileDef.await().getOrNull()
+            val stats        = statsDef.await().getOrNull()
+            val activeDates  = weeklyActDef.await().getOrNull().orEmpty().toSet()
+            val workoutDates = workoutDatesDef.await().getOrNull().orEmpty()
+            val allAch       = allAchDef.await().getOrNull().orEmpty()
+            val unlockedKeys = unlockedAchDef.await().getOrNull().orEmpty()
 
-            val todayIdx = LocalDate.now().dayOfWeek.value - 1   // 0=Pzt … 6=Paz
+            // Bu haftanın aktif günleri
+            val monday   = LocalDate.now().with(DayOfWeek.MONDAY)
+            val todayIdx = LocalDate.now().dayOfWeek.value - 1   // 0=Pzt, 6=Paz
             val weeklyActivity = (0..6).map { i ->
                 val date = monday.plusDays(i.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE)
                 i <= todayIdx && date in activeDates
             }
 
-            val lvl       = stats?.level ?: 1
-            val xpForNext = lvl * 1000          // her seviye 1000 * seviye XP gerektiriyor
+            // 13 haftalık antrenman grafiği
+            val weeklyWorkoutCounts = buildWeeklyChart(workoutDates)
+
+            // Başarımlar UI modeline çevir
+            val achievements = allAch.map { ach ->
+                AchievementUiModel(
+                    key        = ach.key,
+                    name       = ach.name,
+                    description= ach.description ?: "",
+                    icon       = ach.icon ?: "🏆",
+                    category   = ach.category,
+                    threshold  = ach.threshold,
+                    isUnlocked = ach.key in unlockedKeys
+                )
+            }
+
+            val lvl          = stats?.level ?: 1
+            val xpForNext    = lvl * 1000
+            val totalWorkouts= stats?.total_workouts ?: 0
+
+            // Rank hesapla ve gerekirse güncelle
+            val computedRank  = computeRank(totalWorkouts)
+            val storedRank    = profile?.current_rank ?: "Bronze"
+            if (computedRank != storedRank) {
+                profileRepository.updateRank(userId, computedRank)
+            }
 
             updateState {
                 it.copy(
-                    displayName          = profile?.display_name.orEmpty(),
-                    avatar               = profile?.avatar_url?.ifBlank { "🏋️" } ?: "🏋️",
-                    rank                 = profile?.current_rank ?: "Bronze",
-                    level                = lvl,
-                    xp                   = stats?.xp ?: 0,
-                    xpPerLevel           = xpForNext,
-                    currentStreak        = stats?.current_streak ?: 0,
-                    longestStreak        = stats?.longest_streak ?: 0,
-                    totalWorkouts        = stats?.total_workouts ?: 0,
-                    totalDurationSeconds = stats?.total_duration_seconds ?: 0,
-                    weeklyActivity       = weeklyActivity,
-                    isLoading            = false
+                    displayName         = profile?.display_name.orEmpty(),
+                    avatar              = profile?.avatar_url?.ifBlank { "🏋️" } ?: "🏋️",
+                    rank                = computedRank,
+                    level               = lvl,
+                    xp                  = stats?.xp ?: 0,
+                    xpPerLevel          = xpForNext,
+                    currentStreak       = stats?.current_streak ?: 0,
+                    longestStreak       = stats?.longest_streak ?: 0,
+                    totalWorkouts       = totalWorkouts,
+                    totalDurationSeconds= stats?.total_duration_seconds ?: 0,
+                    weeklyActivity      = weeklyActivity,
+                    weeklyWorkoutCounts = weeklyWorkoutCounts,
+                    achievements        = achievements,
+                    isLoading           = false
                 )
             }
+
+            // Achievement kontrolü
+            checkAchievements(userId, stats?.xp ?: 0, totalWorkouts, stats?.current_streak ?: 0, unlockedKeys, allAch)
         }
     }
 
@@ -108,18 +179,65 @@ class ProfileViewModel @Inject constructor(
 
             val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal)
             if (result.isSuccess) {
-                updateState {
-                    it.copy(
-                        displayName = displayName,
-                        avatar      = avatar,
-                        isSaving    = false
-                    )
-                }
+                updateState { it.copy(displayName = displayName, avatar = avatar, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
             } else {
                 updateState { it.copy(isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Güncelleme başarısız"))
             }
         }
+    }
+
+    // ── Yardımcı: 13 haftalık grafik ──────────────────────────────────────────
+
+    private fun buildWeeklyChart(workoutDates: List<String>): List<Int> {
+        val today  = LocalDate.now()
+        val counts = MutableList(13) { 0 }
+        workoutDates.forEach { dateStr ->
+            runCatching {
+                val date     = LocalDate.parse(dateStr)
+                val weeksAgo = java.time.temporal.ChronoUnit.WEEKS.between(
+                    date.with(DayOfWeek.MONDAY), today.with(DayOfWeek.MONDAY)
+                ).toInt()
+                if (weeksAgo in 0..12) counts[12 - weeksAgo]++
+            }
+        }
+        return counts
+    }
+
+    // ── FAZ 5C: Achievement Kontrol ───────────────────────────────────────────
+
+    private suspend fun checkAchievements(
+        userId      : String,
+        xp          : Int,
+        workouts    : Int,
+        streak      : Int,
+        unlocked    : Set<String>,
+        allAch      : List<AchievementDto>
+    ) {
+        val toCheck = mapOf(
+            "xp"      to xp,
+            "volume"  to workouts,
+            "streak"  to streak,
+            "milestone" to workouts      // first_workout threshold=1
+        )
+
+        allAch
+            .filter { it.key !in unlocked }
+            .forEach { ach ->
+                val value = toCheck[ach.category] ?: return@forEach
+                if (value >= ach.threshold) {
+                    val result = profileRepository.unlockAchievement(userId, ach.key)
+                    if (result.isSuccess) {
+                        sendEvent(ProfileEvent.AchievementUnlocked(ach.name, ach.icon ?: "🏆"))
+                        // State'teki achievement listesini güncelle
+                        updateState { st ->
+                            st.copy(achievements = st.achievements.map { uiAch ->
+                                if (uiAch.key == ach.key) uiAch.copy(isUnlocked = true) else uiAch
+                            })
+                        }
+                    }
+                }
+            }
     }
 }

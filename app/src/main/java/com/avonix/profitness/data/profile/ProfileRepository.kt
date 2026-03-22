@@ -1,5 +1,6 @@
 package com.avonix.profitness.data.profile
 
+import com.avonix.profitness.data.profile.dto.AchievementDto
 import com.avonix.profitness.data.profile.dto.ProfileDto
 import com.avonix.profitness.data.workout.dto.UserStatsDto
 
@@ -16,6 +17,9 @@ interface ProfileRepository {
         fitnessGoal : String
     ): Result<Unit>
 
+    /** Rank'ı profiles tablosuna yazar. */
+    suspend fun updateRank(userId: String, rank: String): Result<Unit>
+
     /** user_stats tablosundan XP, level, streak ve toplam antrenman bilgisini getirir. */
     suspend fun getUserStats(userId: String): Result<UserStatsDto>
 
@@ -24,4 +28,19 @@ interface ProfileRepository {
      * tarih listesini döner — haftanın hangi günleri antrenman yapıldığını belirtmek için.
      */
     suspend fun getWeeklyActivity(userId: String, weekStart: String): Result<List<String>>
+
+    /**
+     * fromDate (ISO "yyyy-MM-dd") tarihinden itibaren tüm workout_logs tarihlerini döner.
+     * Haftalık/aylık grafik için kullanılır.
+     */
+    suspend fun getWorkoutDates(userId: String, fromDate: String): Result<List<String>>
+
+    /** Kullanıcının açtığı başarım key listesini döner. */
+    suspend fun getUnlockedAchievementKeys(userId: String): Result<Set<String>>
+
+    /** Başarım ID'ye göre user_achievements'a insert eder (zaten varsa ignore). */
+    suspend fun unlockAchievement(userId: String, achievementKey: String): Result<Unit>
+
+    /** Tüm tanımlı başarımları achievements tablosundan getirir. */
+    suspend fun getAllAchievements(): Result<List<AchievementDto>>
 }

@@ -18,19 +18,23 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 
 @Composable
-fun PerformanceDetailScreen(onBack: () -> Unit) {
+fun PerformanceDetailScreen(
+    onBack   : () -> Unit,
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val state  by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -72,38 +76,36 @@ fun PerformanceDetailScreen(onBack: () -> Unit) {
                             fontWeight    = FontWeight.Black,
                             letterSpacing = 2.sp
                         )
-                        Text("Tüm ölçütler ve trendler", color = theme.text2, fontSize = 11.sp)
+                        Text("Tüm istatistikler ve trendler", color = theme.text2, fontSize = 11.sp)
                     }
                 }
             }
 
-            // ── Body Fat Trend Chart ──────────────────────────────────────────
+            // ── Haftalık Antrenman Bar Chart ──────────────────────────────────
             item {
-                TrendChartCard(
-                    title    = "YAĞ ORANI TRENDİ",
-                    subtitle = "Son 8 hafta (%)",
-                    values   = listOf(17.2f, 16.8f, 16.1f, 15.5f, 15.0f, 14.6f, 14.2f, 14.0f),
-                    color    = CardCyan,
-                    theme    = theme,
-                    modifier = Modifier.padding(20.dp, 8.dp, 20.dp, 0.dp)
+                WorkoutBarChart(
+                    counts  = state.weeklyWorkoutCounts,
+                    accent  = accent,
+                    theme   = theme,
+                    modifier= Modifier.padding(20.dp, 8.dp, 20.dp, 0.dp)
                 )
             }
 
-            // ── Full Metrics Grid ─────────────────────────────────────────────
+            // ── Temel Metrikler ───────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(20.dp, 28.dp, 20.dp, 0.dp)) {
                     Text(
-                        "TÜM ÖLÇÜTLERİ",
+                        "TEMEL METRİKLER",
                         style         = MaterialTheme.typography.labelSmall,
                         color         = accent,
                         letterSpacing = 2.sp
                     )
                     Spacer(Modifier.height(14.dp))
-                    DetailMetricsGrid(theme = theme, accent = accent)
+                    RealMetricsGrid(state = state, theme = theme, accent = accent)
                 }
             }
 
-            // ── Goals Progress ────────────────────────────────────────────────
+            // ── Hedef İlerleme ────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
                     Text(
@@ -113,32 +115,36 @@ fun PerformanceDetailScreen(onBack: () -> Unit) {
                         letterSpacing = 2.sp
                     )
                     Spacer(Modifier.height(14.dp))
-                    GoalProgressList(theme = theme, accent = accent)
+                    RealGoalProgressList(state = state, theme = theme, accent = accent)
                 }
             }
 
-            // ── Monthly Workout Activity ──────────────────────────────────────
+            // ── Rank Yol Haritası ─────────────────────────────────────────────
             item {
-                MonthlyActivityCard(accent = accent, theme = theme)
+                RankRoadmap(
+                    totalWorkouts = state.totalWorkouts,
+                    currentRank   = state.rank,
+                    accent        = accent,
+                    theme         = theme,
+                    modifier      = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)
+                )
             }
         }
     }
 }
 
-// ── Trend Line Chart ──────────────────────────────────────────────────────────
+// ── Haftalık Antrenman Bar Chart (Gerçek Veri) ────────────────────────────────
 
 @Composable
-private fun TrendChartCard(
-    title   : String,
-    subtitle: String,
-    values  : List<Float>,
-    color   : Color,
+private fun WorkoutBarChart(
+    counts  : List<Int>,
+    accent  : Color,
     theme   : AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val minVal = values.min()
-    val maxVal = values.max()
-    val range  = (maxVal - minVal).coerceAtLeast(0.1f)
+    val maxVal   = counts.max().toFloat().coerceAtLeast(1f)
+    val totalSum = counts.sum()
+    val avgStr   = if (counts.isNotEmpty()) String.format("%.1f", totalSum.toFloat() / counts.size) else "0"
 
     Box(
         modifier = modifier
@@ -155,18 +161,18 @@ private fun TrendChartCard(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(title, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text(subtitle, color = theme.text2, fontSize = 10.sp)
+                    Text("HAFTALIK ANTRENMANlar", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Son 13 hafta", color = theme.text2, fontSize = 10.sp)
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(color.copy(0.12f))
+                        .background(accent.copy(0.12f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        "↓ ${String.format("%.1f", maxVal - minVal)}%",
-                        color      = color,
+                        "Ort: $avgStr/hf",
+                        color      = accent,
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -175,195 +181,128 @@ private fun TrendChartCard(
 
             Spacer(Modifier.height(16.dp))
 
-            // Line chart
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-            ) {
-                val w        = size.width
-                val h        = size.height
-                val stepX    = w / (values.size - 1)
-                val padding  = 8.dp.toPx()
+            Canvas(modifier = Modifier.fillMaxWidth().height(90.dp)) {
+                val barW = size.width / (counts.size * 2 - 1)
+                val maxH = size.height - 8.dp.toPx()
 
-                // Points
-                val points = values.mapIndexed { i, v ->
-                    val x = i * stepX
-                    val y = h - padding - ((v - minVal) / range) * (h - padding * 2)
-                    Offset(x, y)
-                }
-
-                // Gradient fill under line
-                val fillPath = Path().apply {
-                    moveTo(points.first().x, h)
-                    points.forEach { lineTo(it.x, it.y) }
-                    lineTo(points.last().x, h)
-                    close()
-                }
-                drawPath(
-                    path  = fillPath,
-                    brush = Brush.verticalGradient(
-                        colors    = listOf(color.copy(0.3f), Color.Transparent),
-                        startY    = 0f,
-                        endY      = h
+                counts.forEachIndexed { i, v ->
+                    val barH = (v / maxVal) * maxH
+                    val left = i * (barW + barW)
+                    val top  = size.height - barH
+                    drawRoundRect(
+                        color        = accent.copy(if (i == counts.lastIndex) 1f else 0.45f),
+                        topLeft      = Offset(left, top),
+                        size         = Size(barW, barH),
+                        cornerRadius = CornerRadius(4.dp.toPx())
                     )
-                )
-
-                // Line
-                val linePath = Path().apply {
-                    moveTo(points.first().x, points.first().y)
-                    points.drop(1).forEach { lineTo(it.x, it.y) }
-                }
-                drawPath(
-                    path        = linePath,
-                    color       = color,
-                    style       = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                )
-
-                // Dots
-                points.forEachIndexed { i, pt ->
-                    drawCircle(color = color, radius = if (i == points.lastIndex) 5.dp.toPx() else 3.dp.toPx(), center = pt)
-                    drawCircle(color = Color.Black, radius = if (i == points.lastIndex) 2.5.dp.toPx() else 1.5.dp.toPx(), center = pt)
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Week labels
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf("H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8").forEach { w ->
-                    Text(w, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Medium)
-                }
+                Text("13 hf önce", color = theme.text2, fontSize = 9.sp)
+                Text("Bu hafta", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-// ── Detailed Metrics Grid ─────────────────────────────────────────────────────
+// ── Gerçek Metrik Grid ────────────────────────────────────────────────────────
 
-private data class DetailMetric(
-    val value    : String,
-    val unit     : String,
-    val label    : String,
-    val icon     : ImageVector,
-    val color    : Color,
-    val change   : String,
-    val improving: Boolean
+private data class RealMetric(
+    val value : String,
+    val unit  : String,
+    val label : String,
+    val icon  : ImageVector,
+    val color : Color
 )
 
 @Composable
-private fun DetailMetricsGrid(theme: AppThemeState, accent: Color) {
+private fun RealMetricsGrid(
+    state  : ProfileState,
+    theme  : AppThemeState,
+    accent : Color
+) {
+    val totalMin = state.totalDurationSeconds / 60
+    val totalHr  = totalMin / 60
+    val durationStr = if (totalHr > 0) "$totalHr" else "$totalMin"
+    val durationUnit= if (totalHr > 0) "sa" else "dk"
+
     val metrics = listOf(
-        DetailMetric("14",    "%",    "YAĞ ORANI",        Icons.Rounded.Speed,         CardCyan,                "↓ 3.2%",  true),
-        DetailMetric("72",    "kg",   "KAS KÜTLESİ",      Icons.Rounded.FitnessCenter, accent,                  "↑ 1.8kg", true),
-        DetailMetric("127",   "gün",  "AKTİF GÜN",        Icons.Rounded.CalendarToday, CardPurple,              "→ +12",   true),
-        DetailMetric("12",    "seri", "GÜNLÜK SERİ",       Icons.Rounded.Whatshot,      CardCoral,               "↑ En iyi", true),
-        DetailMetric("48",    "ml",   "VO2 MAX",           Icons.Rounded.Air,           CardGreen,               "↑ +2",    true),
-        DetailMetric("22.4",  "BMI",  "VÜCUT KİTLE İND.", Icons.Rounded.Star,          Color(0xFFFFD700),        "→ Sağlıklı", true),
-        DetailMetric("8.420", "kcal", "HAFTALIK KALORİ",  Icons.Rounded.Favorite,      CardCoral,               "↑ +320",  true),
-        DetailMetric("76",    "bpm",  "DİNLENME NABZI",   Icons.Rounded.MonitorHeart,  Color(0xFFFF6B6B),        "↓ -4",    true),
+        RealMetric(state.totalWorkouts.toString(), "antrenman",  "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
+        RealMetric(durationStr,                    durationUnit, "TOPLAM SÜRE",        Icons.Rounded.Timer,         CardCyan),
+        RealMetric(state.currentStreak.toString(), "gün",        "AKTİF SERİ",         Icons.Rounded.Whatshot,      CardCoral),
+        RealMetric(state.longestStreak.toString(), "gün",        "EN UZUN SERİ",       Icons.Rounded.EmojiEvents,   CardGreen),
+        RealMetric(state.level.toString(),         "seviye",     "MEVCUT SEVİYE",      Icons.Rounded.Star,          Color(0xFFFFD700)),
+        RealMetric(state.xp.toString(),            "XP",         "TOPLAM XP",          Icons.Rounded.Bolt,          CardPurple),
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        metrics.chunked(2).forEach { rowMetrics ->
+        metrics.chunked(2).forEach { row ->
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                rowMetrics.forEach { metric ->
-                    DetailMetricCard(metric = metric, theme = theme, modifier = Modifier.weight(1f))
+                row.forEach { m ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(theme.bg1)
+                            .border(1.dp, m.color.copy(0.2f), RoundedCornerShape(18.dp))
+                            .padding(16.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(m.color.copy(0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(m.icon, null, tint = m.color, modifier = Modifier.size(17.dp))
+                            }
+                            Column {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text(m.value, color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 24.sp)
+                                    Spacer(Modifier.width(3.dp))
+                                    Text(m.unit, color = m.color, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
+                                }
+                                Text(m.label, color = theme.text2, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                            }
+                        }
+                    }
                 }
-                // Fill empty space if odd number
-                if (rowMetrics.size == 1) {
-                    Spacer(Modifier.weight(1f))
-                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
 }
 
+// ── Gerçek Hedef İlerlemesi ───────────────────────────────────────────────────
+
 @Composable
-private fun DetailMetricCard(
-    metric  : DetailMetric,
-    theme   : AppThemeState,
-    modifier: Modifier = Modifier
+private fun RealGoalProgressList(
+    state  : ProfileState,
+    theme  : AppThemeState,
+    accent : Color
 ) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(theme.bg1)
-            .border(1.dp, metric.color.copy(0.18f), RoundedCornerShape(18.dp))
-            .padding(16.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(metric.color.copy(0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(metric.icon, null, tint = metric.color, modifier = Modifier.size(17.dp))
-                }
-                Text(
-                    metric.change,
-                    color      = if (metric.improving) CardGreen else CardCoral,
-                    fontSize   = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Column {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        metric.value,
-                        color      = theme.text0,
-                        fontSize   = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        lineHeight = 24.sp
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        metric.unit,
-                        color      = metric.color,
-                        fontSize   = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier   = Modifier.padding(bottom = 2.dp)
-                    )
-                }
-                Text(
-                    metric.label,
-                    color         = theme.text2,
-                    fontSize      = 8.sp,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-            }
-        }
+    val xpInLevel  = state.xp % state.xpPerLevel.coerceAtLeast(1)
+    val nextRankAt = when (state.rank) {
+        "Bronze"   -> 10
+        "Silver"   -> 30
+        "Gold"     -> 100
+        "Platinum" -> 300
+        else       -> state.totalWorkouts
     }
-}
 
-// ── Goal Progress ─────────────────────────────────────────────────────────────
+    data class Goal(val label: String, val current: Float, val target: Float, val unit: String, val color: Color)
 
-private data class GoalItem(
-    val label   : String,
-    val current : Float,
-    val target  : Float,
-    val unit    : String,
-    val color   : Color
-)
-
-@Composable
-private fun GoalProgressList(theme: AppThemeState, accent: Color) {
     val goals = listOf(
-        GoalItem("Yağ Oranı Hedefi",    current = 14f,  target = 10f,  unit = "%",  color = CardCyan),
-        GoalItem("Antrenman / Hafta",    current = 5f,   target = 6f,   unit = "gün", color = accent),
-        GoalItem("Günlük Adım",          current = 7800f, target = 10000f, unit = "adım", color = CardGreen),
-        GoalItem("Aktif Seri Günü",      current = 12f,  target = 30f,  unit = "gün", color = CardCoral),
+        Goal("Seviye Yükselme XP",   xpInLevel.toFloat(),          state.xpPerLevel.toFloat(), "XP",  accent),
+        Goal("Aktif Seri Hedefi",    state.currentStreak.toFloat(), 30f,                        "gün", CardCoral),
+        Goal("Sonraki Rank Antrenman", state.totalWorkouts.toFloat(), nextRankAt.toFloat(),      "ant", CardGreen),
     )
 
     Column(
@@ -371,129 +310,121 @@ private fun GoalProgressList(theme: AppThemeState, accent: Color) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp)),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
     ) {
         goals.forEachIndexed { idx, goal ->
-            GoalProgressRow(goal = goal, theme = theme)
-            if (idx < goals.lastIndex) {
-                HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun GoalProgressRow(goal: GoalItem, theme: AppThemeState) {
-    val progress = (goal.current / goal.target).coerceIn(0f, 1f)
-    val pct      = (progress * 100).toInt()
-
-    Column(modifier = Modifier.padding(16.dp)) {
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(goal.label, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(
-                "${goal.current.toInt()} / ${goal.target.toInt()} ${goal.unit}",
-                color    = theme.text1,
-                fontSize = 11.sp
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(CircleShape)
-                .background(theme.bg3)
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth(progress)
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(goal.color, goal.color.copy(0.6f))
-                        )
-                    )
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text("%$pct tamamlandı", color = goal.color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-// ── Monthly Activity Bar Chart ────────────────────────────────────────────────
-
-@Composable
-private fun MonthlyActivityCard(accent: Color, theme: AppThemeState) {
-    val workoutsPerWeek = listOf(3, 5, 4, 6, 3, 5, 4, 5, 6, 4, 5, 3)
-    val maxVal          = workoutsPerWeek.max().toFloat()
-
-    Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
-        Text(
-            "AYLIK AKTİVİTE",
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(22.dp))
-                .padding(20.dp)
-        ) {
-            Column {
+            val progress = (goal.current / goal.target.coerceAtLeast(1f)).coerceIn(0f, 1f)
+            val pct      = (progress * 100).toInt()
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Text("Son 12 Hafta", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Ort: 4.6 antrenman/hafta", color = theme.text2, fontSize = 10.sp)
+                    Text(goal.label, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${goal.current.toInt()} / ${goal.target.toInt()} ${goal.unit}", color = theme.text1, fontSize = 11.sp)
                 }
-
-                Spacer(Modifier.height(16.dp))
-
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(90.dp)
-                ) {
-                    val barW    = size.width / (workoutsPerWeek.size * 2 - 1)
-                    val gap     = barW
-                    val maxH    = size.height - 8.dp.toPx()
-
-                    workoutsPerWeek.forEachIndexed { i, v ->
-                        val barH  = (v / maxVal) * maxH
-                        val left  = i * (barW + gap)
-                        val top   = size.height - barH
-
-                        drawRoundRect(
-                            color        = accent.copy(if (i == workoutsPerWeek.lastIndex) 1f else 0.5f),
-                            topLeft      = Offset(left, top),
-                            size         = Size(barW, barH),
-                            cornerRadius = CornerRadius(4.dp.toPx())
-                        )
-                    }
-                }
-
                 Spacer(Modifier.height(8.dp))
-
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Box(
+                    Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(theme.bg3)
                 ) {
-                    Text("12 hf önce", color = theme.text2, fontSize = 9.sp)
-                    Text("Bu hafta", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        Modifier
+                            .fillMaxWidth(progress)
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(Brush.horizontalGradient(listOf(goal.color, goal.color.copy(0.6f))))
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text("%$pct tamamlandı", color = goal.color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+            if (idx < goals.lastIndex) HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+        }
+    }
+}
+
+// ── Rank Yol Haritası ─────────────────────────────────────────────────────────
+
+private val RANKS = listOf(
+    Triple("Bronze",   0,   Color(0xFFCD7F32)),
+    Triple("Silver",   10,  Color(0xFFB0BEC5)),
+    Triple("Gold",     30,  Color(0xFFFFD700)),
+    Triple("Platinum", 100, Color(0xFF00E5FF)),
+    Triple("Diamond",  300, Color(0xFF64B5F6))
+)
+
+@Composable
+private fun RankRoadmap(
+    totalWorkouts: Int,
+    currentRank  : String,
+    accent       : Color,
+    theme        : AppThemeState,
+    modifier     : Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            "RANK YOL HARİTASI",
+            style         = MaterialTheme.typography.labelSmall,
+            color         = accent,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(14.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .padding(20.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                RANKS.forEach { (rankName, threshold, color) ->
+                    val isReached  = totalWorkouts >= threshold
+                    val isCurrent  = rankName == currentRank
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isReached) color.copy(0.25f) else theme.bg2)
+                                .border(1.5.dp, if (isReached) color else theme.stroke, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                if (isReached) "★" else "○",
+                                color    = if (isReached) color else theme.text2,
+                                fontSize = 16.sp
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                rankName.uppercase(),
+                                color      = if (isReached) color else theme.text2,
+                                fontSize   = 13.sp,
+                                fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold
+                            )
+                            Text(
+                                "$threshold antrenman gerekli",
+                                color    = theme.text2,
+                                fontSize = 10.sp
+                            )
+                        }
+                        if (isCurrent) {
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(color.copy(0.18f))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text("MEVCUT", color = color, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
