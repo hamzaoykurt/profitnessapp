@@ -23,6 +23,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 
 data class ProfileData(
@@ -41,21 +43,24 @@ private val AVATAR_OPTIONS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
-    profile: ProfileData,
-    onSave : (ProfileData) -> Unit,
-    onBack : () -> Unit
+    onBack    : () -> Unit,
+    viewModel : ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val state  by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var name             by remember { mutableStateOf(profile.name) }
-    var avatar           by remember { mutableStateOf(profile.avatar) }
-    var bio              by remember { mutableStateOf(profile.bio) }
-    var goal             by remember { mutableStateOf(profile.goal) }
+    var name             by remember(state.displayName) { mutableStateOf(state.displayName) }
+    var avatar           by remember(state.avatar)      { mutableStateOf(state.avatar) }
+    var goal             by remember { mutableStateOf("") }
     var showAvatarPicker by remember { mutableStateOf(false) }
 
     fun saveAndExit() {
-        onSave(ProfileData(name = name.trim().ifEmpty { profile.name }, avatar = avatar, bio = bio.trim(), goal = goal.trim()))
+        viewModel.updateProfile(
+            displayName = name.trim().ifEmpty { state.displayName },
+            avatar      = avatar,
+            fitnessGoal = goal.trim()
+        )
         onBack()
     }
 
@@ -213,18 +218,6 @@ fun EditProfileScreen(
                     accent      = accent,
                     theme       = theme,
                     imeAction   = ImeAction.Next
-                )
-
-                ProfileTextField(
-                    value       = bio,
-                    onValue     = { bio = it },
-                    label       = "BİYOGRAFİ",
-                    placeholder = "Kendinizi kısaca tanıtın...",
-                    icon        = Icons.Rounded.Info,
-                    accent      = accent,
-                    theme       = theme,
-                    imeAction   = ImeAction.Next,
-                    maxLines    = 3
                 )
 
                 ProfileTextField(

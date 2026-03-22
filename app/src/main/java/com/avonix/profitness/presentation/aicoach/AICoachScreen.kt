@@ -337,8 +337,8 @@ fun AICoachScreen(
                     .padding(horizontal = 16.dp)
                     .padding(top = 90.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(0.15f))
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f), RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1A3A2F))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(12.dp))
                     .clickable { viewModel.resetProgramStatus() }
                     .padding(16.dp)
             ) {

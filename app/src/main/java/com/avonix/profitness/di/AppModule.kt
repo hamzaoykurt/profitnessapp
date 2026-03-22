@@ -5,6 +5,8 @@ import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.ai.GeminiRepositoryImpl
 import com.avonix.profitness.data.auth.AuthRepository
 import com.avonix.profitness.data.auth.AuthRepositoryImpl
+import com.avonix.profitness.data.profile.ProfileRepository
+import com.avonix.profitness.data.profile.ProfileRepositoryImpl
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.program.ProgramRepositoryImpl
 import com.avonix.profitness.data.workout.WorkoutRepository
@@ -41,6 +43,10 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindWorkoutRepository(impl: WorkoutRepositoryImpl): WorkoutRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
 
     companion object {
 

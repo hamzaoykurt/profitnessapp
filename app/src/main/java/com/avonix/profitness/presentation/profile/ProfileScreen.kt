@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.glassCard
 
@@ -32,11 +34,12 @@ fun ProfileScreen(
     onNavigateToPerformance: () -> Unit = {},
     onLogout               : () -> Unit = {},
     onEditProfile          : () -> Unit = {},
-    profile                : ProfileData = ProfileData()
+    viewModel              : ProfileViewModel = hiltViewModel()
 ) {
     val theme   = LocalAppTheme.current
     val accent  = MaterialTheme.colorScheme.primary
     val strings = theme.strings
+    val state   by viewModel.uiState.collectAsStateWithLifecycle()
 
     var showAppearance      by remember { mutableStateOf(false) }
     var showNotifications   by remember { mutableStateOf(false) }
@@ -50,8 +53,12 @@ fun ProfileScreen(
         ) {
             item {
                 ProfileHeroBanner(
-                    name            = profile.name,
-                    avatar          = profile.avatar,
+                    name            = state.displayName.ifBlank { "Kullanıcı" },
+                    avatar          = state.avatar,
+                    rank            = state.rank,
+                    level           = state.level,
+                    xp              = state.xp,
+                    xpPerLevel      = state.xpPerLevel,
                     accent          = accent,
                     theme           = theme,
                     onSettingsClick = { showAppearance = true },
@@ -63,10 +70,21 @@ fun ProfileScreen(
                     accent             = accent,
                     theme              = theme,
                     strings            = strings,
+                    currentStreak      = state.currentStreak,
+                    longestStreak      = state.longestStreak,
+                    totalWorkouts      = state.totalWorkouts,
+                    totalDurationSec   = state.totalDurationSeconds,
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
-            item { WeeklyActivitySection(accent = accent, theme = theme, strings = strings) }
+            item {
+                WeeklyActivitySection(
+                    accent         = accent,
+                    theme          = theme,
+                    strings        = strings,
+                    weeklyActivity = state.weeklyActivity
+                )
+            }
             item { TrophyGallery(accent = accent, theme = theme, strings = strings) }
             item {
                 SettingsSection(
@@ -77,7 +95,8 @@ fun ProfileScreen(
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
-                    profile              = profile
+                    displayName          = state.displayName.ifBlank { "Kullanıcı" },
+                    avatar               = state.avatar
                 )
             }
         }
@@ -148,6 +167,10 @@ fun ProfileScreen(
 private fun ProfileHeroBanner(
     name           : String,
     avatar         : String,
+    rank           : String,
+    level          : Int,
+    xp             : Int,
+    xpPerLevel     : Int,
     accent         : Color,
     theme          : AppThemeState,
     onSettingsClick: () -> Unit,
@@ -263,12 +286,14 @@ private fun ProfileHeroBanner(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                BadgeChip("★ GOLD", Color(0xFFFFD700))
-                BadgeChip("LVL 12 ELITE", accent)
+                val rankColor = rankColor(rank)
+                BadgeChip("★ ${rank.uppercase()}", rankColor)
+                BadgeChip("LVL $level", accent)
             }
 
             Spacer(Modifier.height(20.dp))
 
+            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
             Column(
                 modifier              = Modifier.width(220.dp),
                 horizontalAlignment   = Alignment.CenterHorizontally
@@ -278,13 +303,13 @@ private fun ProfileHeroBanner(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "LEVEL 12 → 13",
+                        "LEVEL $level → ${level + 1}",
                         color         = theme.text2,
                         fontSize      = 8.sp,
                         fontWeight    = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
-                    Text("8,100 XP", color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Text("${xp % xpPerLevel} XP", color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(5.dp))
                 Box(
@@ -296,7 +321,7 @@ private fun ProfileHeroBanner(
                 ) {
                     Box(
                         Modifier
-                            .fillMaxWidth(0.81f)
+                            .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
                             .fillMaxHeight()
                             .clip(CircleShape)
                             .background(
@@ -309,6 +334,14 @@ private fun ProfileHeroBanner(
             }
         }
     }
+}
+
+private fun rankColor(rank: String) = when (rank.lowercase()) {
+    "silver"   -> Color(0xFFB0BEC5)
+    "gold"     -> Color(0xFFFFD700)
+    "platinum" -> Color(0xFF00E5FF)
+    "diamond"  -> Color(0xFF64B5F6)
+    else       -> Color(0xFFCD7F32)  // Bronze
 }
 
 @Composable
@@ -345,16 +378,18 @@ private fun PerformanceMetricsSection(
     accent            : Color,
     theme             : AppThemeState,
     strings           : AppStrings,
+    currentStreak     : Int,
+    longestStreak     : Int,
+    totalWorkouts     : Int,
+    totalDurationSec  : Int,
     onNavigateToDetail: () -> Unit
 ) {
+    val totalMinutes = totalDurationSec / 60
     val metrics = listOf(
-        PerformanceMetric("14",    "%",             strings.fatRatioLabel,       Icons.Rounded.Speed,         CardCyan),
-        PerformanceMetric("72",    "kg",            strings.muscleMassLabel,     Icons.Rounded.FitnessCenter, accent),
-        PerformanceMetric("127",   strings.unitDays,strings.activeDaysLabel,     Icons.Rounded.CalendarToday, CardPurple),
-        PerformanceMetric("12",    strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral),
-        PerformanceMetric("48",    "ml",            "VO2 MAX",                   Icons.Rounded.Air,           CardGreen),
-        PerformanceMetric("22.4",  "BMI",           strings.bmiLabel,            Icons.Rounded.Star,          Color(0xFFFFD700)),
-        PerformanceMetric("8.420", "kcal",          strings.weeklyCaloriesLabel, Icons.Rounded.Favorite,      CardCoral),
+        PerformanceMetric(totalWorkouts.toString(), strings.unitDays, strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple),
+        PerformanceMetric(currentStreak.toString(), strings.unitStreak, strings.dailyStreakLabel, Icons.Rounded.Whatshot,      CardCoral),
+        PerformanceMetric(longestStreak.toString(), strings.unitStreak, "EN UZUN SERİ",           Icons.Rounded.EmojiEvents,   CardGreen),
+        PerformanceMetric(totalMinutes.toString(),  "dk",             "TOPLAM SÜRE",              Icons.Rounded.Timer,         CardCyan),
     )
 
     Column(modifier = Modifier.padding(top = 32.dp)) {
@@ -476,9 +511,13 @@ private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
 // ── Weekly Activity ───────────────────────────────────────────────────────────
 
 @Composable
-private fun WeeklyActivitySection(accent: Color, theme: AppThemeState, strings: AppStrings) {
-    val levels     = listOf(0.85f, 0.6f, 0.9f, 0.4f, 1.0f, 0.7f, 0f)
-    val todayIndex = 4
+private fun WeeklyActivitySection(
+    accent         : Color,
+    theme          : AppThemeState,
+    strings        : AppStrings,
+    weeklyActivity : List<Boolean>
+) {
+    val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1   // 0=Pzt … 6=Paz
 
     Column(modifier = Modifier.padding(20.dp, 36.dp, 20.dp, 0.dp)) {
         Row(
@@ -509,7 +548,8 @@ private fun WeeklyActivitySection(accent: Color, theme: AppThemeState, strings: 
                 verticalAlignment     = Alignment.Bottom
             ) {
                 strings.dayAbbreviations.forEachIndexed { i, day ->
-                    val level   = levels[i]
+                    val active  = weeklyActivity.getOrElse(i) { false }
+                    val level   = if (active) 1.0f else 0f
                     val isToday = i == todayIndex
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -657,7 +697,8 @@ private fun SettingsSection(
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
-    profile             : ProfileData = ProfileData()
+    displayName         : String     = "",
+    avatar              : String     = "🏋️"
 ) {
     Column(modifier = Modifier.padding(20.dp, 40.dp, 20.dp, 0.dp)) {
         Text(
@@ -688,18 +729,18 @@ private fun SettingsSection(
                     .border(1.5.dp, accent.copy(0.45f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(profile.avatar, fontSize = 22.sp)
+                Text(avatar, fontSize = 22.sp)
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    profile.name.uppercase(),
+                    displayName.ifBlank { "Kullanıcı" }.uppercase(),
                     color      = accent,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
                 )
                 Text(
-                    if (profile.goal.isNotEmpty()) profile.goal else strings.editProfileHint,
+                    strings.editProfileHint,
                     color    = theme.text2,
                     fontSize = 11.sp,
                     maxLines = 1

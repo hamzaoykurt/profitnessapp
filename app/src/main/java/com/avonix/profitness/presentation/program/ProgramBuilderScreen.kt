@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.program.ManualExerciseInput
@@ -259,9 +262,16 @@ fun ProgramBuilderScreen(viewModel: ProgramViewModel = hiltViewModel()) {
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    // Ekran her açıldığında programları taze yükle (Oracle'dan oluşturulan programların görünmesi için)
-    LaunchedEffect(Unit) {
-        viewModel.loadUserPrograms()
+    // Ekran her görünür hale geldiğinde (tab geçişi dahil) programları yenile
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadUserPrograms()
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(Unit) {
