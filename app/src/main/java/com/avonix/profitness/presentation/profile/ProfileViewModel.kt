@@ -48,13 +48,17 @@ data class ProfileState(
     val currentStreak        : Int                  = 0,
     val longestStreak        : Int                  = 0,
     val totalWorkouts        : Int                  = 0,
-    val totalDurationSeconds : Int                  = 0,
+    val totalExercises       : Int                  = 0,
     /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
     val weeklyActivity       : List<Float>           = List(7) { 0f },
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
     val weeklyWorkoutCounts  : List<Int>            = List(13) { 0 },
     /** Başarımlar — tüm tanımlı başarımlar unlocked durumlarıyla */
     val achievements         : List<AchievementUiModel> = emptyList(),
+    val fitnessGoal          : String               = "",
+    val heightCm             : Double               = 0.0,
+    val weightKg             : Double               = 0.0,
+    val gender               : String               = "",
     val isLoading            : Boolean              = true,
     val isSaving             : Boolean              = false
 )
@@ -63,7 +67,7 @@ data class ProfileState(
 
 sealed class ProfileEvent {
     data class ShowSnackbar(val message: String) : ProfileEvent()
-    data class AchievementUnlocked(val name: String, val icon: String) : ProfileEvent()
+    data class AchievementUnlocked(val name: String, val icon: String, val description: String = "") : ProfileEvent()
 }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
@@ -153,7 +157,11 @@ class ProfileViewModel @Inject constructor(
                     currentStreak       = stats?.current_streak ?: 0,
                     longestStreak       = stats?.longest_streak ?: 0,
                     totalWorkouts       = totalWorkouts,
-                    totalDurationSeconds= stats?.total_duration_seconds ?: 0,
+                    totalExercises      = stats?.total_exercises ?: 0,
+                    fitnessGoal         = profile?.fitness_goal.orEmpty(),
+                    heightCm            = profile?.height_cm ?: 0.0,
+                    weightKg            = profile?.weight_kg ?: 0.0,
+                    gender              = profile?.gender.orEmpty(),
                     weeklyActivity      = weeklyActivity,
                     weeklyWorkoutCounts = weeklyWorkoutCounts,
                     achievements        = achievements,
@@ -167,7 +175,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     /** Profil bilgilerini DB'ye kaydeder ve state'i günceller. */
-    fun updateProfile(displayName: String, avatar: String, fitnessGoal: String) {
+    fun updateProfile(displayName: String, avatar: String, fitnessGoal: String, heightCm: Double, weightKg: Double, gender: String) {
         viewModelScope.launch {
             updateState { it.copy(isSaving = true) }
 
@@ -176,9 +184,9 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal)
+            val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal, heightCm, weightKg, gender)
             if (result.isSuccess) {
-                updateState { it.copy(displayName = displayName, avatar = avatar, isSaving = false) }
+                updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
             } else {
                 updateState { it.copy(isSaving = false) }
@@ -215,10 +223,11 @@ class ProfileViewModel @Inject constructor(
         allAch      : List<AchievementDto>
     ) {
         val toCheck = mapOf(
-            "xp"      to xp,
-            "volume"  to workouts,
-            "streak"  to streak,
-            "milestone" to workouts      // first_workout threshold=1
+            "xp"             to xp,
+            "volume"         to workouts,
+            "streak"         to streak,
+            "milestone"      to workouts,      // first_workout threshold=1
+            "total_exercises" to workouts
         )
 
         allAch
@@ -228,7 +237,7 @@ class ProfileViewModel @Inject constructor(
                 if (value >= ach.threshold) {
                     val result = profileRepository.unlockAchievement(userId, ach.key)
                     if (result.isSuccess) {
-                        sendEvent(ProfileEvent.AchievementUnlocked(ach.name, ach.icon ?: "🏆"))
+                        sendEvent(ProfileEvent.AchievementUnlocked(ach.name, ach.icon ?: "🏆", ach.description ?: ""))
                         // State'teki achievement listesini güncelle
                         updateState { st ->
                             st.copy(achievements = st.achievements.map { uiAch ->

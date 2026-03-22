@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -439,13 +440,44 @@ $profileContext
     }
 
     private suspend fun buildProfileContext(): String {
-        val user  = supabase.auth.currentUserOrNull() ?: return ""
-        val email = user.email?.takeIf { it.isNotBlank() } ?: ""
+        val user = supabase.auth.currentUserOrNull() ?: return ""
         val programPart = buildProgramContext(user.id)
 
-        return if (email.isNotEmpty() || programPart.isNotEmpty()) {
-            "\nKULLANICI BİLGİSİ:${if (email.isNotEmpty()) "\nEmail: $email" else ""}$programPart"
-        } else ""
+        // Profil bilgilerini çek
+        val profileDto = runCatching {
+            supabase.postgrest["profiles"]
+                .select { filter { eq("user_id", user.id) } }
+                .decodeSingleOrNull<com.avonix.profitness.data.profile.dto.ProfileDto>()
+        }.getOrNull()
+
+        val sb = StringBuilder()
+        sb.append("\nKULLANICI PROFİLİ:")
+
+        profileDto?.display_name?.takeIf { it.isNotBlank() }?.let { sb.append("\nİsim: $it") }
+        profileDto?.gender?.takeIf { it.isNotBlank() }?.let { sb.append("\nCinsiyet: $it") }
+
+        val h = profileDto?.height_cm ?: 0.0
+        val w = profileDto?.weight_kg ?: 0.0
+        if (h > 0) sb.append("\nBoy: ${h.toInt()} cm")
+        if (w > 0) sb.append("\nKilo: ${w.toInt()} kg")
+        if (h > 0 && w > 0) {
+            val bmi = w / ((h / 100) * (h / 100))
+            val bmiLabel = when {
+                bmi < 18.5 -> "Zayıf"
+                bmi < 25.0 -> "Normal kilolu"
+                bmi < 30.0 -> "Fazla kilolu"
+                else       -> "Obez"
+            }
+            sb.append("\nBMI: %.1f (%s)".format(bmi, bmiLabel))
+        }
+        profileDto?.fitness_goal?.takeIf { it.isNotBlank() }?.let {
+            sb.append("\nFitness Hedefi: $it")
+            sb.append("\nNOT: Kullanıcının fitness hedefini göz önünde bulundurarak öneride bulun.")
+        }
+
+        if (programPart.isNotEmpty()) sb.append(programPart)
+
+        return sb.toString()
     }
 
     /** JSON'dan int al — "8-12" gibi string aralığı da ilk sayıya çevirir */

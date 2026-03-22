@@ -39,7 +39,10 @@ class ProfileRepositoryImpl @Inject constructor(
         userId      : String,
         displayName : String,
         avatar      : String,
-        fitnessGoal : String
+        fitnessGoal : String,
+        heightCm    : Double,
+        weightKg    : Double,
+        gender      : String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             supabase.postgrest["profiles"].upsert(
@@ -48,6 +51,9 @@ class ProfileRepositoryImpl @Inject constructor(
                     put("display_name", displayName)
                     put("avatar_url",   avatar)
                     put("fitness_goal", fitnessGoal)
+                    put("height_cm",    heightCm)
+                    put("weight_kg",    weightKg)
+                    put("gender",       gender)
                 }
             )
             Unit

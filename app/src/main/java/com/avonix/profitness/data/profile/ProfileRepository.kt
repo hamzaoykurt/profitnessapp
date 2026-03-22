@@ -14,7 +14,10 @@ interface ProfileRepository {
         userId      : String,
         displayName : String,
         avatar      : String,
-        fitnessGoal : String
+        fitnessGoal : String,
+        heightCm    : Double,
+        weightKg    : Double,
+        gender      : String
     ): Result<Unit>
 
     /** Rank'ı profiles tablosuna yazar. */

@@ -224,14 +224,9 @@ private fun RealMetricsGrid(
     theme  : AppThemeState,
     accent : Color
 ) {
-    val totalMin = state.totalDurationSeconds / 60
-    val totalHr  = totalMin / 60
-    val durationStr = if (totalHr > 0) "$totalHr" else "$totalMin"
-    val durationUnit= if (totalHr > 0) "sa" else "dk"
-
     val metrics = listOf(
-        RealMetric(state.totalWorkouts.toString(), "antrenman",  "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
-        RealMetric(durationStr,                    durationUnit, "TOPLAM SÜRE",        Icons.Rounded.Timer,         CardCyan),
+        RealMetric(state.totalWorkouts.toString(),  "antrenman", "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
+        RealMetric(state.totalExercises.toString(), "kez",       "TOPLAM EGZERSİZ",   Icons.Rounded.Timer,         CardCyan),
         RealMetric(state.currentStreak.toString(), "gün",        "AKTİF SERİ",         Icons.Rounded.Whatshot,      CardCoral),
         RealMetric(state.longestStreak.toString(), "gün",        "EN UZUN SERİ",       Icons.Rounded.EmojiEvents,   CardGreen),
         RealMetric(state.level.toString(),         "seviye",     "MEVCUT SEVİYE",      Icons.Rounded.Star,          Color(0xFFFFD700)),

@@ -47,16 +47,15 @@ fun ProfileScreen(
     var showAppearance       by remember { mutableStateOf(false) }
     var showNotifications    by remember { mutableStateOf(false) }
     var showLanguagePicker   by remember { mutableStateOf(false) }
-    var achievementBanner    by remember { mutableStateOf<String?>(null) }
+    var achievementPopup     by remember { mutableStateOf<Triple<String, String, String>?>(null) } // icon, name, description
 
     // Achievement unlock bildirimi
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is ProfileEvent.AchievementUnlocked ->
-                    achievementBanner = "${event.icon} ${event.name} başarımı açıldı!"
-                is ProfileEvent.ShowSnackbar ->
-                    achievementBanner = event.message
+                    achievementPopup = Triple(event.icon, event.name, event.description)
+                is ProfileEvent.ShowSnackbar -> {} // snackbar handled elsewhere
             }
         }
     }
@@ -99,7 +98,7 @@ fun ProfileScreen(
                     currentStreak      = state.currentStreak,
                     longestStreak      = state.longestStreak,
                     totalWorkouts      = state.totalWorkouts,
-                    totalDurationSec   = state.totalDurationSeconds,
+                    totalExercises     = state.totalExercises,
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
@@ -135,38 +134,94 @@ fun ProfileScreen(
         }
     }
 
-    // ── Achievement Banner ────────────────────────────────────────────────────
-    achievementBanner?.let { msg ->
-        LaunchedEffect(msg) {
-            kotlinx.coroutines.delay(3000)
-            achievementBanner = null
+    // ── Achievement Popup ─────────────────────────────────────────────────────
+    achievementPopup?.let { (icon, name, desc) ->
+        LaunchedEffect(achievementPopup) {
+            kotlinx.coroutines.delay(4500)
+            achievementPopup = null
         }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 140.dp),
-            contentAlignment = Alignment.BottomCenter
+                .background(Color.Black.copy(0.75f))
+                .clickable { achievementPopup = null },
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF1A3A2F))
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.5f), RoundedCornerShape(14.dp))
-                    .padding(14.dp)
-            ) {
-                Row(
-                    verticalAlignment      = Alignment.CenterVertically,
-                    horizontalArrangement  = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.EmojiEvents,
-                        null,
-                        tint     = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.scaleIn(
+                    initialScale = 0.6f,
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
                     )
-                    Text(msg, color = Snow, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                ) + androidx.compose.animation.fadeIn()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(
+                            Brush.verticalGradient(listOf(Color(0xFF0D2B1F), Color(0xFF051A12)))
+                        )
+                        .border(1.dp, accent.copy(0.5f), RoundedCornerShape(28.dp))
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Glow ring around icon
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .size(110.dp)
+                                .clip(CircleShape)
+                                .background(accent.copy(0.18f))
+                                .border(2.dp, accent.copy(0.6f), CircleShape)
+                        )
+                        Text(icon, fontSize = 52.sp)
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "YENİ BAŞARIM!",
+                            color         = accent,
+                            fontSize      = 11.sp,
+                            fontWeight    = FontWeight.Black,
+                            letterSpacing = 4.sp
+                        )
+                        Text(
+                            name,
+                            color      = Snow,
+                            fontSize   = 22.sp,
+                            fontWeight = FontWeight.Black,
+                            textAlign  = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        if (desc.isNotBlank()) {
+                            Text(
+                                desc,
+                                color     = Snow.copy(0.6f),
+                                fontSize  = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(accent.copy(0.15f))
+                            .border(1.dp, accent.copy(0.3f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Harika! Devam et 🔥",
+                            color      = accent,
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -451,15 +506,14 @@ private fun PerformanceMetricsSection(
     currentStreak     : Int,
     longestStreak     : Int,
     totalWorkouts     : Int,
-    totalDurationSec  : Int,
+    totalExercises    : Int,
     onNavigateToDetail: () -> Unit
 ) {
-    val totalMinutes = totalDurationSec / 60
     val metrics = listOf(
-        PerformanceMetric(totalWorkouts.toString(), strings.unitDays, strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple),
-        PerformanceMetric(currentStreak.toString(), strings.unitStreak, strings.dailyStreakLabel, Icons.Rounded.Whatshot,      CardCoral),
-        PerformanceMetric(longestStreak.toString(), strings.unitStreak, "EN UZUN SERİ",           Icons.Rounded.EmojiEvents,   CardGreen),
-        PerformanceMetric(totalMinutes.toString(),  "dk",             "TOPLAM SÜRE",              Icons.Rounded.Timer,         CardCyan),
+        PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple),
+        PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral),
+        PerformanceMetric(longestStreak.toString(),  strings.unitStreak, "EN UZUN SERİ",            Icons.Rounded.EmojiEvents,   CardGreen),
+        PerformanceMetric(totalExercises.toString(), "kez",              "TOPLAM EGZERSİZ",         Icons.Rounded.FitnessCenter, CardCyan),
     )
 
     Column(modifier = Modifier.padding(top = 32.dp)) {
@@ -999,35 +1053,6 @@ private fun ThemeSettingsSheet(
             fontWeight    = FontWeight.Black
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(strings.modeLabel, color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg3),
-                horizontalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                ModeOption(
-                    label      = strings.darkLabel,
-                    icon       = Icons.Rounded.DarkMode,
-                    isSelected = isDark,
-                    accent     = primary,
-                    theme      = theme,
-                    modifier   = Modifier.weight(1f),
-                    onClick    = { isDark = true }
-                )
-                ModeOption(
-                    label      = strings.lightLabel,
-                    icon       = Icons.Rounded.LightMode,
-                    isSelected = !isDark,
-                    accent     = primary,
-                    theme      = theme,
-                    modifier   = Modifier.weight(1f),
-                    onClick    = { isDark = false }
-                )
-            }
-        }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(strings.accentColorLabel, color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
