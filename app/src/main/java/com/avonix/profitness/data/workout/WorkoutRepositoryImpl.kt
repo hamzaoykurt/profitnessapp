@@ -170,6 +170,24 @@ class WorkoutRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun addXp(userId: String, xpAmount: Int): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val existing = supabase.postgrest["user_stats"]
+                    .select { filter { eq("user_id", userId) } }
+                    .decodeSingleOrNull<UserStatsDto>()
+                    ?: return@runCatching  // stats yoksa skip (updateStreak halleder)
+                val newXp    = existing.xp + xpAmount
+                val newLevel = (newXp / 500) + 1
+                supabase.postgrest["user_stats"]
+                    .update({
+                        set("xp",    newXp)
+                        set("level", newLevel)
+                    }) { filter { eq("user_id", userId) } }
+                Unit
+            }
+        }
+
     override suspend fun updateStreak(userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {

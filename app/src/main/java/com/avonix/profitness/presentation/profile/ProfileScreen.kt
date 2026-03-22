@@ -103,6 +103,16 @@ fun ProfileScreen(
                 )
             }
             item {
+                BodyMetricsCard(
+                    heightCm   = state.heightCm,
+                    weightKg   = state.weightKg,
+                    bmi        = state.bmi,
+                    bodyFatPct = state.bodyFatPct,
+                    accent     = accent,
+                    theme      = theme
+                )
+            }
+            item {
                 WeeklyActivitySection(
                     accent         = accent,
                     theme          = theme,
@@ -1417,6 +1427,115 @@ private fun ColorSwatch(
                     modifier = Modifier.size(16.dp)
                 )
             }
+        }
+    }
+}
+
+// ── Vücut Metrikleri Kartı ────────────────────────────────────────────────────
+
+@Composable
+private fun BodyMetricsCard(
+    heightCm   : Double,
+    weightKg   : Double,
+    bmi        : Double,
+    bodyFatPct : Double,
+    accent     : Color,
+    theme      : AppThemeState
+) {
+    if (heightCm <= 0 && weightKg <= 0) return
+
+    val bmiColor = when {
+        bmi <= 0   -> accent
+        bmi < 18.5 -> Color(0xFF64B5F6)
+        bmi < 25.0 -> Color(0xFF4CAF50)
+        bmi < 30.0 -> Color(0xFFFFB74D)
+        else       -> Color(0xFFEF5350)
+    }
+    val bmiLabel = when {
+        bmi <= 0   -> ""
+        bmi < 18.5 -> "Zayıf"
+        bmi < 25.0 -> "Normal"
+        bmi < 30.0 -> "Fazla Kilolu"
+        else       -> "Obez"
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Text(
+            "VÜCUT METRİKLERİ",
+            style = MaterialTheme.typography.labelSmall,
+            color = accent,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (heightCm > 0) {
+                BodyMetricTile(
+                    value    = "${heightCm.toInt()}",
+                    unit     = "cm",
+                    label    = "BOY",
+                    color    = CardCyan,
+                    theme    = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (weightKg > 0) {
+                BodyMetricTile(
+                    value    = "${weightKg.toInt()}",
+                    unit     = "kg",
+                    label    = "KİLO",
+                    color    = CardPurple,
+                    theme    = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (bmi > 0) {
+                BodyMetricTile(
+                    value    = "%.1f".format(bmi),
+                    unit     = bmiLabel,
+                    label    = "BMI",
+                    color    = bmiColor,
+                    theme    = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (bodyFatPct > 0) {
+                BodyMetricTile(
+                    value    = "%.1f".format(bodyFatPct),
+                    unit     = "%",
+                    label    = "YAĞ",
+                    color    = CardCoral,
+                    theme    = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BodyMetricTile(
+    value   : String,
+    unit    : String,
+    label   : String,
+    color   : Color,
+    theme   : AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, color.copy(0.25f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text(value, color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            Text(unit, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(2.dp))
+            Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 0.5.sp)
         }
     }
 }

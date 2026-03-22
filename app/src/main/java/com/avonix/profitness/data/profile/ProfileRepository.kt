@@ -17,7 +17,8 @@ interface ProfileRepository {
         fitnessGoal : String,
         heightCm    : Double,
         weightKg    : Double,
-        gender      : String
+        gender      : String,
+        birthDate   : String = ""
     ): Result<Unit>
 
     /** Rank'ı profiles tablosuna yazar. */

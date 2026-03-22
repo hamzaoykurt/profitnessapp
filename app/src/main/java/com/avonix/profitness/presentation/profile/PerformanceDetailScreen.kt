@@ -122,11 +122,11 @@ fun PerformanceDetailScreen(
             // ── Rank Yol Haritası ─────────────────────────────────────────────
             item {
                 RankRoadmap(
-                    totalWorkouts = state.totalWorkouts,
-                    currentRank   = state.rank,
-                    accent        = accent,
-                    theme         = theme,
-                    modifier      = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)
+                    xp          = state.xp,
+                    currentRank = state.rank,
+                    accent      = accent,
+                    theme       = theme,
+                    modifier    = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)
                 )
             }
         }
@@ -224,13 +224,26 @@ private fun RealMetricsGrid(
     theme  : AppThemeState,
     accent : Color
 ) {
-    val metrics = listOf(
+    val bmiLabel = when {
+        state.bmi <= 0   -> null
+        state.bmi < 18.5 -> RealMetric("%.1f".format(state.bmi), "BMI", "VÜCUT KİTLE İND.", Icons.Rounded.Analytics, Color(0xFF64B5F6))
+        state.bmi < 25.0 -> RealMetric("%.1f".format(state.bmi), "BMI", "VÜCUT KİTLE İND.", Icons.Rounded.Analytics, Color(0xFF4CAF50))
+        state.bmi < 30.0 -> RealMetric("%.1f".format(state.bmi), "BMI", "VÜCUT KİTLE İND.", Icons.Rounded.Analytics, Color(0xFFFFB74D))
+        else             -> RealMetric("%.1f".format(state.bmi), "BMI", "VÜCUT KİTLE İND.", Icons.Rounded.Analytics, Color(0xFFEF5350))
+    }
+    val bfLabel = if (state.bodyFatPct > 0)
+        RealMetric("%.1f".format(state.bodyFatPct), "%", "VÜCUT YAĞ ORANI", Icons.Rounded.Person, CardPurple)
+    else null
+
+    val metrics = listOfNotNull(
         RealMetric(state.totalWorkouts.toString(),  "antrenman", "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
         RealMetric(state.totalExercises.toString(), "kez",       "TOPLAM EGZERSİZ",   Icons.Rounded.Timer,         CardCyan),
         RealMetric(state.currentStreak.toString(), "gün",        "AKTİF SERİ",         Icons.Rounded.Whatshot,      CardCoral),
         RealMetric(state.longestStreak.toString(), "gün",        "EN UZUN SERİ",       Icons.Rounded.EmojiEvents,   CardGreen),
         RealMetric(state.level.toString(),         "seviye",     "MEVCUT SEVİYE",      Icons.Rounded.Star,          Color(0xFFFFD700)),
         RealMetric(state.xp.toString(),            "XP",         "TOPLAM XP",          Icons.Rounded.Bolt,          CardPurple),
+        bmiLabel,
+        bfLabel,
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -284,12 +297,12 @@ private fun RealGoalProgressList(
     accent : Color
 ) {
     val xpInLevel  = state.xp % state.xpPerLevel.coerceAtLeast(1)
-    val nextRankAt = when (state.rank) {
-        "Bronze"   -> 10
-        "Silver"   -> 30
-        "Gold"     -> 100
-        "Platinum" -> 300
-        else       -> state.totalWorkouts
+    val nextRankXp = when (state.rank) {
+        "Bronze"   -> 1000
+        "Silver"   -> 5000
+        "Gold"     -> 15000
+        "Platinum" -> 50000
+        else       -> state.xp
     }
 
     data class Goal(val label: String, val current: Float, val target: Float, val unit: String, val color: Color)
@@ -297,7 +310,7 @@ private fun RealGoalProgressList(
     val goals = listOf(
         Goal("Seviye Yükselme XP",   xpInLevel.toFloat(),          state.xpPerLevel.toFloat(), "XP",  accent),
         Goal("Aktif Seri Hedefi",    state.currentStreak.toFloat(), 30f,                        "gün", CardCoral),
-        Goal("Sonraki Rank Antrenman", state.totalWorkouts.toFloat(), nextRankAt.toFloat(),      "ant", CardGreen),
+        Goal("Sonraki Rank XP",      state.xp.toFloat(),            nextRankXp.toFloat(),       "XP",  CardGreen),
     )
 
     Column(
@@ -342,20 +355,20 @@ private fun RealGoalProgressList(
 // ── Rank Yol Haritası ─────────────────────────────────────────────────────────
 
 private val RANKS = listOf(
-    Triple("Bronze",   0,   Color(0xFFCD7F32)),
-    Triple("Silver",   10,  Color(0xFFB0BEC5)),
-    Triple("Gold",     30,  Color(0xFFFFD700)),
-    Triple("Platinum", 100, Color(0xFF00E5FF)),
-    Triple("Diamond",  300, Color(0xFF64B5F6))
+    Triple("Bronze",   0,     Color(0xFFCD7F32)),
+    Triple("Silver",   1000,  Color(0xFFB0BEC5)),
+    Triple("Gold",     5000,  Color(0xFFFFD700)),
+    Triple("Platinum", 15000, Color(0xFF00E5FF)),
+    Triple("Diamond",  50000, Color(0xFF64B5F6))
 )
 
 @Composable
 private fun RankRoadmap(
-    totalWorkouts: Int,
-    currentRank  : String,
-    accent       : Color,
-    theme        : AppThemeState,
-    modifier     : Modifier = Modifier
+    xp          : Int,
+    currentRank : String,
+    accent      : Color,
+    theme       : AppThemeState,
+    modifier    : Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         Text(
@@ -376,7 +389,7 @@ private fun RankRoadmap(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 RANKS.forEach { (rankName, threshold, color) ->
-                    val isReached  = totalWorkouts >= threshold
+                    val isReached  = xp >= threshold
                     val isCurrent  = rankName == currentRank
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
@@ -404,7 +417,7 @@ private fun RankRoadmap(
                                 fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold
                             )
                             Text(
-                                "$threshold antrenman gerekli",
+                                "$threshold XP gerekli",
                                 color    = theme.text2,
                                 fontSize = 10.sp
                             )

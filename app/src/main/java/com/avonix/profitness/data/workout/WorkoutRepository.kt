@@ -34,4 +34,7 @@ interface WorkoutRepository {
      * Pazartesi 00:00'da yeni haftaya geçer.
      */
     suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>>
+
+    /** Kullanıcıya bonus XP ekler (gün tamamlama, seri, program bitişi vb.) */
+    suspend fun addXp(userId: String, xpAmount: Int): Result<Unit>
 }

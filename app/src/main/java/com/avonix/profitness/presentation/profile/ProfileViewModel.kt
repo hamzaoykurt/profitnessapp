@@ -59,6 +59,10 @@ data class ProfileState(
     val heightCm             : Double               = 0.0,
     val weightKg             : Double               = 0.0,
     val gender               : String               = "",
+    val bmi                  : Double               = 0.0,
+    val bodyFatPct           : Double               = 0.0,
+    val birthDate            : String               = "",
+    val totalCalories        : Int                  = 0,
     val isLoading            : Boolean              = true,
     val isSaving             : Boolean              = false
 )
@@ -141,6 +145,19 @@ class ProfileViewModel @Inject constructor(
             val totalExercises= stats?.total_exercises ?: 0
             val currentXp    = stats?.xp ?: 0
 
+            // BMI ve vücut yağı hesapla
+            val h = profile?.height_cm ?: 0.0
+            val w = profile?.weight_kg ?: 0.0
+            val bmi = if (h > 0 && w > 0) w / ((h / 100.0) * (h / 100.0)) else 0.0
+
+            val isMale = (profile?.gender ?: "").let { it == "Erkek" || it.lowercase() == "male" }
+            val bodyFat = if (bmi > 0) {
+                val raw = 1.2 * bmi + (if (isMale) -10.8 else 0.0) - 5.4
+                raw.coerceIn(3.0, 60.0)
+            } else 0.0
+
+            val birthDate = profile?.birth_date ?: ""
+
             // Rank hesapla ve gerekirse güncelle
             val computedRank  = computeRank(currentXp)
             val storedRank    = profile?.current_rank ?: "Bronze"
@@ -164,6 +181,9 @@ class ProfileViewModel @Inject constructor(
                     heightCm            = profile?.height_cm ?: 0.0,
                     weightKg            = profile?.weight_kg ?: 0.0,
                     gender              = profile?.gender.orEmpty(),
+                    bmi                 = bmi,
+                    bodyFatPct          = bodyFat,
+                    birthDate           = birthDate,
                     weeklyActivity      = weeklyActivity,
                     weeklyWorkoutCounts = weeklyWorkoutCounts,
                     achievements        = achievements,
@@ -177,7 +197,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     /** Profil bilgilerini DB'ye kaydeder ve state'i günceller. */
-    fun updateProfile(displayName: String, avatar: String, fitnessGoal: String, heightCm: Double, weightKg: Double, gender: String) {
+    fun updateProfile(displayName: String, avatar: String, fitnessGoal: String, heightCm: Double, weightKg: Double, gender: String, birthDate: String = "") {
         viewModelScope.launch {
             updateState { it.copy(isSaving = true) }
 
@@ -186,9 +206,17 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal, heightCm, weightKg, gender)
+            val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal, heightCm, weightKg, gender, birthDate)
             if (result.isSuccess) {
-                updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, isSaving = false) }
+                val h2 = heightCm
+                val w2 = weightKg
+                val newBmi = if (h2 > 0 && w2 > 0) w2 / ((h2 / 100.0) * (h2 / 100.0)) else 0.0
+                val isMale2 = gender == "Erkek" || gender.lowercase() == "male"
+                val newBodyFat = if (newBmi > 0) {
+                    val raw = 1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4
+                    raw.coerceIn(3.0, 60.0)
+                } else 0.0
+                updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
             } else {
                 updateState { it.copy(isSaving = false) }

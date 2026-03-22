@@ -68,6 +68,7 @@ fun EditProfileScreen(
     var heightText       by remember(state.heightCm)    { mutableStateOf(if (state.heightCm > 0) state.heightCm.toInt().toString() else "") }
     var weightText       by remember(state.weightKg)    { mutableStateOf(if (state.weightKg > 0) state.weightKg.toInt().toString() else "") }
     var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "Erkek" }) }
+    var birthDate        by remember(state.birthDate)   { mutableStateOf(state.birthDate) }
     var showAvatarPicker by remember { mutableStateOf(false) }
 
     fun saveAndExit() {
@@ -77,7 +78,8 @@ fun EditProfileScreen(
             fitnessGoal = goal.trim(),
             heightCm    = heightText.toDoubleOrNull() ?: state.heightCm,
             weightKg    = weightText.toDoubleOrNull() ?: state.weightKg,
-            gender      = gender
+            gender      = gender,
+            birthDate   = birthDate.trim()
         )
         onBack()
     }
@@ -237,6 +239,13 @@ fun EditProfileScreen(
                             )
                         }
                     }
+
+                    // Doğum Tarihi
+                    ProfileTextField(
+                        value = birthDate, onValue = { birthDate = it }, label = "DOĞUM TARİHİ (YYYY-MM-DD)",
+                        placeholder = "1995-06-15", icon = Icons.Rounded.CalendarMonth,
+                        accent = accent, theme = theme, imeAction = ImeAction.Next
+                    )
 
                     // BMI preview
                     val h = heightText.toDoubleOrNull() ?: 0.0

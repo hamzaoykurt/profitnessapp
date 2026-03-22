@@ -12,5 +12,6 @@ data class ProfileDto(
     val weight_kg    : Double? = null,
     val fitness_goal : String? = null,
     val current_rank : String  = "Bronze",
-    val total_xp     : Int     = 0
+    val total_xp     : Int     = 0,
+    val birth_date   : String? = null
 )

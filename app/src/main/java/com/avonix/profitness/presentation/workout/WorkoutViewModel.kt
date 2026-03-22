@@ -211,6 +211,16 @@ class WorkoutViewModel @Inject constructor(
                 val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
                 updateState { it.copy(currentStreak = updatedStreak) }
 
+                // Gün tamamlama bonusu: tüm egzersizler tamamlandıysa +50 XP
+                val updatedDay = uiState.value.dayStates.getOrNull(dayIdx)
+                if (updatedDay != null && !updatedDay.day.isRestDay) {
+                    val allDone = updatedDay.day.exercises.isNotEmpty() &&
+                        updatedDay.day.exercises.all { it.id in updatedDay.completedIds }
+                    if (allDone) {
+                        workoutRepository.addXp(userId, 50)
+                    }
+                }
+
                 // Başarım ve rank kontrolü — güncel istatistikler üzerinden
                 checkAndUnlockAchievements(userId)
             }
