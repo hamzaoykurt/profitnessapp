@@ -137,8 +137,8 @@ class WorkoutViewModel @Inject constructor(
                         newDs.copy(completedIds = dbCompleted + memCompleted)
                     }
 
-                    // Seri = bu hafta kaç gün spor yapıldı (tamamlanan program günü sayısı)
-                    val dbStreak = weeklyCompletions.count { it.value.isNotEmpty() }
+                    // Gerçek ardışık gün serisi (user_stats.current_streak)
+                    val dbStreak = workoutRepository.getStreak(userId).getOrDefault(0)
 
                     updateState {
                         it.copy(
@@ -204,14 +204,8 @@ class WorkoutViewModel @Inject constructor(
                 )
                 workoutRepository.updateStreak(userId)
 
-                // Seriyi yeniden hesapla: bu hafta kaç farklı gün tamamlandı
-                val weekStart = LocalDate.now()
-                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                    .toString()
-                val updatedCompletions = workoutRepository
-                    .getWeeklyCompletions(userId, weekStart)
-                    .getOrDefault(emptyMap())
-                val updatedStreak = updatedCompletions.count { it.value.isNotEmpty() }
+                // Gerçek ardışık seriyi DB'den oku (updateStreak zaten güncelledi)
+                val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
                 updateState { it.copy(currentStreak = updatedStreak) }
             }
         }
