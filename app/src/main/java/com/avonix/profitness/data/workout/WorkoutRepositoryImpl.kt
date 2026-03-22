@@ -130,67 +130,74 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun getStreak(userId: String): Result<Int> =
         withContext(Dispatchers.IO) {
             runCatching {
-                supabase.postgrest["user_stats"]
-                    .select { filter { eq("user_id", userId) } }
-                    .decodeSingleOrNull<UserStatsDto>()
-                    ?.current_streak ?: 0
+                val today = LocalDate.now()
+
+                // workout_logs tarihlerinden ardışık gün serisi hesapla
+                val distinctDates = supabase.postgrest["workout_logs"]
+                    .select {
+                        filter { eq("user_id", userId) }
+                        order("date", Order.DESCENDING)
+                    }
+                    .decodeList<WorkoutLogDto>()
+                    .mapNotNull { runCatching { LocalDate.parse(it.date.take(10)) }.getOrNull() }
+                    .distinct()
+                    .sortedDescending()
+
+                if (distinctDates.isEmpty()) {
+                    // Workout_log yoksa user_stats'tan fallback
+                    return@runCatching supabase.postgrest["user_stats"]
+                        .select { filter { eq("user_id", userId) } }
+                        .decodeSingleOrNull<UserStatsDto>()
+                        ?.current_streak ?: 0
+                }
+
+                // En son workout tarihinden geriye doğru ardışık gün say
+                val mostRecent = distinctDates.first()
+                // Eğer son antrenman bugün veya dün değilse seri 0
+                if (mostRecent.isBefore(today.minusDays(1))) return@runCatching 0
+
+                var streak = 0
+                var expected = mostRecent
+                for (date in distinctDates) {
+                    if (date == expected) {
+                        streak++
+                        expected = expected.minusDays(1)
+                    } else {
+                        break // boşluk bulundu
+                    }
+                }
+                streak
             }
         }
 
     override suspend fun updateStreak(userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val today = LocalDate.now()
-                val todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val yesterdayStr = today.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val xpPerExercise = 10
 
                 val existing = supabase.postgrest["user_stats"]
                     .select { filter { eq("user_id", userId) } }
                     .decodeSingleOrNull<UserStatsDto>()
 
-                val xpPerExercise = 10
-
                 if (existing == null) {
-                    // İlk kez — yeni satır oluştur
+                    // İlk kez — yeni satır oluştur (seri ve total_workouts workout_logs'dan hesaplanır)
                     supabase.postgrest["user_stats"]
                         .insert(buildJsonObject {
                             put("user_id", userId)
-                            put("current_streak", 1)
-                            put("longest_streak", 1)
                             put("total_exercises", 1)
-                            put("total_workouts", 1)
                             put("xp", xpPerExercise)
                             put("level", 1)
-                            put("updated_at", todayStr)
                         })
                 } else {
-                    val lastDate = existing.updated_at.take(10) // "YYYY-MM-DD"
-                    val newXp = existing.xp + xpPerExercise
+                    // XP ve total_exercises artır — seri artık workout_logs'dan hesaplanıyor
+                    val newXp    = existing.xp + xpPerExercise
                     val newLevel = (newXp / 1000) + 1
-
-                    if (lastDate == todayStr) {
-                        // Aynı gün — sadece egzersiz ve XP artır, seri değişmez
-                        supabase.postgrest["user_stats"]
-                            .update({
-                                set("total_exercises", existing.total_exercises + 1)
-                                set("xp", newXp)
-                                set("level", newLevel)
-                            }) { filter { eq("user_id", userId) } }
-                    } else {
-                        // Yeni gün — seri + total_workouts + XP güncelle
-                        val newStreak = if (lastDate == yesterdayStr) existing.current_streak + 1 else 1
-                        val newLongest = maxOf(existing.longest_streak, newStreak)
-                        supabase.postgrest["user_stats"]
-                            .update({
-                                set("current_streak", newStreak)
-                                set("longest_streak", newLongest)
-                                set("total_exercises", existing.total_exercises + 1)
-                                set("total_workouts", existing.total_workouts + 1)
-                                set("xp", newXp)
-                                set("level", newLevel)
-                                set("updated_at", todayStr)
-                            }) { filter { eq("user_id", userId) } }
-                    }
+                    supabase.postgrest["user_stats"]
+                        .update({
+                            set("total_exercises", existing.total_exercises + 1)
+                            set("xp", newXp)
+                            set("level", newLevel)
+                        }) { filter { eq("user_id", userId) } }
                 }
                 Unit
             }

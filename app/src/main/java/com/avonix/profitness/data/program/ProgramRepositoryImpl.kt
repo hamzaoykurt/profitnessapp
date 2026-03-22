@@ -297,26 +297,14 @@ class ProgramRepositoryImpl @Inject constructor(
                     .map { it.id }
 
                 if (dayIds.isNotEmpty()) {
-                    // 2) Her güne ait workout_logs'ları çek (WorkoutLogDto ile)
+                    // 2) workout_logs'daki program_day_id referansını NULL yap —
+                    //    WORKOUT GEÇMİŞİNİ KORUYORUZ, seri ve başarımlar sıfırlanmasın
                     for (dayId in dayIds) {
-                        val logs = runCatching {
-                            supabase.postgrest["workout_logs"]
-                                .select { filter { eq("program_day_id", dayId) } }
-                                .decodeList<com.avonix.profitness.data.workout.dto.WorkoutLogDto>()
-                        }.getOrNull().orEmpty()
-
-                        // Her workout_log için exercise_logs sil
-                        for (log in logs) {
-                            runCatching {
-                                supabase.postgrest["exercise_logs"]
-                                    .delete { filter { eq("workout_log_id", log.id) } }
-                            }
-                        }
-
-                        // workout_logs sil
                         runCatching {
                             supabase.postgrest["workout_logs"]
-                                .delete { filter { eq("program_day_id", dayId) } }
+                                .update({ set("program_day_id", null as String?) }) {
+                                    filter { eq("program_day_id", dayId) }
+                                }
                         }
                     }
 

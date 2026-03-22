@@ -70,10 +70,54 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun getUserStats(userId: String): Result<UserStatsDto> =
         withContext(Dispatchers.IO) {
             runCatching {
-                supabase.postgrest["user_stats"]
+                val base = supabase.postgrest["user_stats"]
                     .select { filter { eq("user_id", userId) } }
                     .decodeSingleOrNull<UserStatsDto>()
                     ?: UserStatsDto(user_id = userId)
+
+                // total_workouts ve streak'i her zaman workout_logs'tan doğrudan hesapla
+                // Böylece program silme veya değişiklikleri bu değerleri bozmaz
+                val workoutLogs = supabase.postgrest["workout_logs"]
+                    .select {
+                        filter { eq("user_id", userId) }
+                        order("date", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                    }
+                    .decodeList<WorkoutLogDto>()
+
+                val distinctDates = workoutLogs
+                    .mapNotNull { runCatching { java.time.LocalDate.parse(it.date.take(10)) }.getOrNull() }
+                    .distinct()
+                    .sortedDescending()
+
+                val totalWorkouts = distinctDates.size
+
+                // Ardışık gün serisi hesapla
+                val today = java.time.LocalDate.now()
+                val streak = if (distinctDates.isEmpty()) {
+                    base.current_streak  // fallback to stored value
+                } else {
+                    val mostRecent = distinctDates.first()
+                    if (mostRecent.isBefore(today.minusDays(1))) {
+                        0  // Son antrenman dünden eski → seri kırılmış
+                    } else {
+                        var count = 0
+                        var expected = mostRecent
+                        for (d in distinctDates) {
+                            if (d == expected) { count++; expected = expected.minusDays(1) }
+                            else break
+                        }
+                        count
+                    }
+                }
+
+                // longest_streak: saklanmış değer ile hesaplananın büyüğü
+                val longestStreak = maxOf(base.longest_streak, streak)
+
+                base.copy(
+                    total_workouts  = totalWorkouts,
+                    current_streak  = streak,
+                    longest_streak  = longestStreak
+                )
             }
         }
 

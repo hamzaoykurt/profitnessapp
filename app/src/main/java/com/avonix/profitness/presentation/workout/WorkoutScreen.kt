@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
 import com.avonix.profitness.presentation.components.glassCard
@@ -142,9 +145,17 @@ fun WorkoutScreen(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    // Her tab girişinde reload — program değiştiyse günceller, aynıysa tamamlananları korur
-    LaunchedEffect(Unit) {
-        viewModel.reload()
+    // ON_RESUME: her tab girişinde aktif programı yenile
+    // (program eklendi/silindi/değiştirildi ise güncel program gösterilir)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.reload()
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
