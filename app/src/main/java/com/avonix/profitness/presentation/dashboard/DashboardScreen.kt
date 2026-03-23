@@ -31,6 +31,7 @@ import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.news.NewsScreen
+import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
 import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
@@ -52,9 +53,10 @@ private val ALL_TABS = listOf(
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
-    var selectedTab           by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
-    var showPerformanceDetail by remember { mutableStateOf(false) }
-    var showEditProfile       by remember { mutableStateOf(false) }
+    var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    var showPerformanceDetail   by remember { mutableStateOf(false) }
+    var showAchievementsDetail  by remember { mutableStateOf(false) }
+    var showEditProfile         by remember { mutableStateOf(false) }
 
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -88,10 +90,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPad)
                 DashboardTab.News    -> NewsScreen()
                 DashboardTab.Profile -> ProfileScreen(
-                    onThemeChange           = onThemeChange,
-                    onNavigateToPerformance = { showPerformanceDetail = true },
-                    onLogout                = onLogout,
-                    onEditProfile           = { showEditProfile = true }
+                    onThemeChange            = onThemeChange,
+                    onNavigateToPerformance  = { showPerformanceDetail = true },
+                    onNavigateToAchievements = { showAchievementsDetail = true },
+                    onLogout                 = onLogout,
+                    onEditProfile            = { showEditProfile = true }
                 )
             }
         }
@@ -117,6 +120,22 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             PerformanceDetailScreen(onBack = { showPerformanceDetail = false })
+        }
+
+        // ── Achievements Detail Overlay ─────────────────────────────────
+        AnimatedVisibility(
+            visible = showAchievementsDetail,
+            enter   = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec  = tween(380, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(380)),
+            exit    = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(320, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(320)),
+            modifier = Modifier.zIndex(200f)
+        ) {
+            AchievementsDetailScreen(onBack = { showAchievementsDetail = false })
         }
 
         // ── Edit Profile Overlay ──────────────────────────────────────────

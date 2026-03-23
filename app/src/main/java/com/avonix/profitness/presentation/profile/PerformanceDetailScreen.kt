@@ -119,16 +119,7 @@ fun PerformanceDetailScreen(
                 }
             }
 
-            // ── Rank Yol Haritası ─────────────────────────────────────────────
-            item {
-                RankRoadmap(
-                    xp          = state.xp,
-                    currentRank = state.rank,
-                    accent      = accent,
-                    theme       = theme,
-                    modifier    = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)
-                )
-            }
+            // Rank yol haritası artık Başarımlar ekranında
         }
     }
 }
@@ -297,20 +288,13 @@ private fun RealGoalProgressList(
     accent : Color
 ) {
     val xpInLevel  = state.xp % state.xpPerLevel.coerceAtLeast(1)
-    val nextRankXp = when (state.rank) {
-        "Bronze"   -> 1000
-        "Silver"   -> 5000
-        "Gold"     -> 15000
-        "Platinum" -> 50000
-        else       -> state.xp
-    }
 
     data class Goal(val label: String, val current: Float, val target: Float, val unit: String, val color: Color)
 
     val goals = listOf(
         Goal("Seviye Yükselme XP",   xpInLevel.toFloat(),          state.xpPerLevel.toFloat(), "XP",  accent),
         Goal("Aktif Seri Hedefi",    state.currentStreak.toFloat(), 30f,                        "gün", CardCoral),
-        Goal("Sonraki Rank XP",      state.xp.toFloat(),            nextRankXp.toFloat(),       "XP",  CardGreen),
+        Goal("Toplam Antrenman",     state.totalWorkouts.toFloat(), 100f,                       "ant", CardGreen),
     )
 
     Column(
@@ -352,89 +336,3 @@ private fun RealGoalProgressList(
     }
 }
 
-// ── Rank Yol Haritası ─────────────────────────────────────────────────────────
-
-private val RANKS = listOf(
-    Triple("Bronze",   0,     Color(0xFFCD7F32)),
-    Triple("Silver",   1000,  Color(0xFFB0BEC5)),
-    Triple("Gold",     5000,  Color(0xFFFFD700)),
-    Triple("Platinum", 15000, Color(0xFF00E5FF)),
-    Triple("Diamond",  50000, Color(0xFF64B5F6))
-)
-
-@Composable
-private fun RankRoadmap(
-    xp          : Int,
-    currentRank : String,
-    accent      : Color,
-    theme       : AppThemeState,
-    modifier    : Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            "RANK YOL HARİTASI",
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp
-        )
-        Spacer(Modifier.height(14.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
-                .padding(20.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                RANKS.forEach { (rankName, threshold, color) ->
-                    val isReached  = xp >= threshold
-                    val isCurrent  = rankName == currentRank
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(if (isReached) color.copy(0.25f) else theme.bg2)
-                                .border(1.5.dp, if (isReached) color else theme.stroke, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                if (isReached) "★" else "○",
-                                color    = if (isReached) color else theme.text2,
-                                fontSize = 16.sp
-                            )
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                rankName.uppercase(),
-                                color      = if (isReached) color else theme.text2,
-                                fontSize   = 13.sp,
-                                fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold
-                            )
-                            Text(
-                                "$threshold XP gerekli",
-                                color    = theme.text2,
-                                fontSize = 10.sp
-                            )
-                        }
-                        if (isCurrent) {
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(color.copy(0.18f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("MEVCUT", color = color, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}

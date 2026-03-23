@@ -37,11 +37,12 @@ import com.avonix.profitness.presentation.components.glassCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onThemeChange          : (AppThemeState) -> Unit,
-    onNavigateToPerformance: () -> Unit = {},
-    onLogout               : () -> Unit = {},
-    onEditProfile          : () -> Unit = {},
-    viewModel              : ProfileViewModel = hiltViewModel()
+    onThemeChange              : (AppThemeState) -> Unit,
+    onNavigateToPerformance    : () -> Unit = {},
+    onNavigateToAchievements   : () -> Unit = {},
+    onLogout                   : () -> Unit = {},
+    onEditProfile              : () -> Unit = {},
+    viewModel                  : ProfileViewModel = hiltViewModel()
 ) {
     val theme   = LocalAppTheme.current
     val accent  = MaterialTheme.colorScheme.primary
@@ -130,7 +131,8 @@ fun ProfileScreen(
                     accent       = accent,
                     theme        = theme,
                     strings      = strings,
-                    achievements = state.achievements
+                    achievements = state.achievements,
+                    onSeeAll     = onNavigateToAchievements
                 )
             }
             item {
@@ -768,7 +770,8 @@ private fun TrophyGallery(
     accent       : Color,
     theme        : AppThemeState,
     strings      : AppStrings,
-    achievements : List<AchievementUiModel>
+    achievements : List<AchievementUiModel>,
+    onSeeAll     : () -> Unit = {}
 ) {
     // Önce açılanlar, sonra kilitliler; max 12 göster
     val sorted = achievements.sortedByDescending { it.isUnlocked }.take(12)
@@ -787,12 +790,29 @@ private fun TrophyGallery(
                 color         = accent,
                 letterSpacing = 2.sp
             )
-            val unlockedCount = achievements.count { it.isUnlocked }
-            Text(
-                "$unlockedCount/${achievements.size}",
-                color    = theme.text2,
-                fontSize = 10.sp
-            )
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val unlockedCount = achievements.count { it.isUnlocked }
+                Text(
+                    "$unlockedCount/${achievements.size}",
+                    color    = theme.text2,
+                    fontSize = 10.sp
+                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(accent.copy(0.1f))
+                        .clickable(onClick = onSeeAll)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(strings.seeAll, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent, modifier = Modifier.size(10.dp))
+                }
+            }
         }
         Spacer(Modifier.height(14.dp))
         if (sorted.isEmpty()) {
