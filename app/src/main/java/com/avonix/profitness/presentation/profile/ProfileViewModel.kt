@@ -150,7 +150,7 @@ class ProfileViewModel @Inject constructor(
             val w = profile?.weight_kg ?: 0.0
             val bmi = if (h > 0 && w > 0) w / ((h / 100.0) * (h / 100.0)) else 0.0
 
-            val isMale = (profile?.gender ?: "").let { it == "Erkek" || it.lowercase() == "male" }
+            val isMale = (profile?.gender ?: "").lowercase() == "male"
             val bodyFat = if (bmi > 0) {
                 val raw = 1.2 * bmi + (if (isMale) -10.8 else 0.0) - 5.4
                 raw.coerceIn(3.0, 60.0)
@@ -214,7 +214,7 @@ class ProfileViewModel @Inject constructor(
             val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal, heightCm, weightKg, gender, birthDate)
             if (result.isSuccess) {
                 val newBmi = if (heightCm > 0 && weightKg > 0) weightKg / ((heightCm / 100.0) * (heightCm / 100.0)) else 0.0
-                val isMale2 = gender == "Erkek" || gender.lowercase() == "male"
+                val isMale2 = gender.lowercase() == "male"
                 val newBodyFat = if (newBmi > 0) {
                     (1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0

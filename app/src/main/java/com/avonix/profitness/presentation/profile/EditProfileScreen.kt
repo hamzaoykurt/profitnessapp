@@ -22,9 +22,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -57,7 +61,12 @@ private val AVATAR_CATEGORIES = listOf(
     ))
 )
 
-private val GENDER_OPTIONS = listOf("Erkek", "Kadın", "Belirtme")
+// UI label → DB value
+private val GENDER_OPTIONS = listOf(
+    "Erkek"    to "male",
+    "Kadın"    to "female",
+    "Belirtme" to "other"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,8 +83,15 @@ fun EditProfileScreen(
     var goal             by remember(state.fitnessGoal) { mutableStateOf(state.fitnessGoal) }
     var heightText       by remember(state.heightCm)    { mutableStateOf(if (state.heightCm > 0) state.heightCm.toInt().toString() else "") }
     var weightText       by remember(state.weightKg)    { mutableStateOf(if (state.weightKg > 0) state.weightKg.toInt().toString() else "") }
-    var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "Erkek" }) }
-    var birthDate        by remember(state.birthDate)   { mutableStateOf(state.birthDate) }
+    var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "male" }) }
+    // Sadece rakam tutulur, gösterimde VisualTransformation ile DD/MM/YYYY olur
+    var birthDigits      by remember(state.birthDate)   {
+        val digits = if (state.birthDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+            val p = state.birthDate.split("-")
+            "${p[2]}${p[1]}${p[0]}"  // YYYYMMDD → DDMMYYYY
+        } else state.birthDate.filter { it.isDigit() }
+        mutableStateOf(digits)
+    }
     var showAvatarPicker by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -89,6 +105,10 @@ fun EditProfileScreen(
     }
 
     fun saveAndExit() {
+        // DDMMYYYY → YYYY-MM-DD (DB formatı)
+        val dbBirthDate = if (birthDigits.length == 8) {
+            "${birthDigits.substring(4)}-${birthDigits.substring(2, 4)}-${birthDigits.substring(0, 2)}"
+        } else ""
         viewModel.updateProfile(
             displayName = name.trim().ifEmpty { state.displayName },
             avatar      = avatar,
@@ -96,7 +116,7 @@ fun EditProfileScreen(
             heightCm    = heightText.toDoubleOrNull() ?: state.heightCm,
             weightKg    = weightText.toDoubleOrNull() ?: state.weightKg,
             gender      = gender,
-            birthDate   = birthDate.trim(),
+            birthDate   = dbBirthDate,
             onComplete  = onBack
         )
     }
@@ -217,19 +237,19 @@ fun EditProfileScreen(
                                 .padding(4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            GENDER_OPTIONS.forEach { option ->
-                                val selected = gender == option
+                            GENDER_OPTIONS.forEach { (label, dbValue) ->
+                                val selected = gender == dbValue
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(if (selected) accent else Color.Transparent)
-                                        .clickable { gender = option }
+                                        .clickable { gender = dbValue }
                                         .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        option,
+                                        label,
                                         color      = if (selected) Color.Black else theme.text2,
                                         fontSize   = 12.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
@@ -244,7 +264,7 @@ fun EditProfileScreen(
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("BOY (cm)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                             OutlinedTextField(
-                                value = heightText, onValueChange = { if (it.length <= 3) heightText = it },
+                                value = heightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) heightText = d },
                                 placeholder = { Text("175", color = theme.text2, fontSize = 14.sp) },
                                 leadingIcon = { Text("📏", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -261,7 +281,7 @@ fun EditProfileScreen(
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("KİLO (kg)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                             OutlinedTextField(
-                                value = weightText, onValueChange = { if (it.length <= 3) weightText = it },
+                                value = weightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) weightText = d },
                                 placeholder = { Text("75", color = theme.text2, fontSize = 14.sp) },
                                 leadingIcon = { Text("⚖️", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -277,12 +297,29 @@ fun EditProfileScreen(
                         }
                     }
 
-                    // Doğum Tarihi
-                    ProfileTextField(
-                        value = birthDate, onValue = { birthDate = it }, label = "DOĞUM TARİHİ (YYYY-MM-DD)",
-                        placeholder = "1995-06-15", icon = Icons.Rounded.CalendarMonth,
-                        accent = accent, theme = theme, imeAction = ImeAction.Next
-                    )
+                    // Doğum Tarihi — DD/MM/YYYY otomatik formatlı (VisualTransformation)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("DOĞUM TARİHİ", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        OutlinedTextField(
+                            value = birthDigits,
+                            onValueChange = { raw ->
+                                val d = raw.filter { it.isDigit() }
+                                if (d.length <= 8) birthDigits = d
+                            },
+                            placeholder = { Text("15/06/1995", color = theme.text2, fontSize = 14.sp) },
+                            leadingIcon = { Icon(Icons.Rounded.CalendarMonth, null, tint = accent, modifier = Modifier.size(20.dp)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = DateVisualTransformation,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
+                                focusedContainerColor = theme.bg1, unfocusedContainerColor = theme.bg1,
+                                cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
+                            )
+                        )
+                    }
 
                     // BMI preview
                     val h = heightText.toDoubleOrNull() ?: 0.0
@@ -445,5 +482,31 @@ private fun ProfileTextField(
                 cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
             )
         )
+    }
+}
+
+// DD/MM/YYYY görsel dönüşümü — state sadece rakam tutar (ör. "12092003")
+private object DateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        val out = buildString {
+            digits.forEachIndexed { i, c ->
+                append(c)
+                if ((i == 1 || i == 3) && i < digits.lastIndex) append('/')
+            }
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 2 -> offset
+                offset <= 4 -> offset + 1
+                else        -> offset + 2
+            }
+            override fun transformedToOriginal(offset: Int): Int = when {
+                offset <= 2 -> offset
+                offset <= 5 -> offset - 1
+                else        -> offset - 2
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetMapping)
     }
 }
