@@ -196,25 +196,27 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    /** Profil bilgilerini DB'ye kaydeder ve state'i günceller. */
-    fun updateProfile(displayName: String, avatar: String, fitnessGoal: String, heightCm: Double, weightKg: Double, gender: String, birthDate: String = "") {
+    /** Profil bilgilerini DB'ye kaydeder ve state'i günceller. onComplete kayıt tamamlanınca çağrılır. */
+    fun updateProfile(
+        displayName: String, avatar: String, fitnessGoal: String,
+        heightCm: Double, weightKg: Double, gender: String,
+        birthDate: String = "", onComplete: () -> Unit = {}
+    ) {
         viewModelScope.launch {
             updateState { it.copy(isSaving = true) }
 
             val userId = supabase.auth.currentUserOrNull()?.id ?: run {
                 updateState { it.copy(isSaving = false) }
+                onComplete()
                 return@launch
             }
 
             val result = profileRepository.updateProfile(userId, displayName, avatar, fitnessGoal, heightCm, weightKg, gender, birthDate)
             if (result.isSuccess) {
-                val h2 = heightCm
-                val w2 = weightKg
-                val newBmi = if (h2 > 0 && w2 > 0) w2 / ((h2 / 100.0) * (h2 / 100.0)) else 0.0
+                val newBmi = if (heightCm > 0 && weightKg > 0) weightKg / ((heightCm / 100.0) * (heightCm / 100.0)) else 0.0
                 val isMale2 = gender == "Erkek" || gender.lowercase() == "male"
                 val newBodyFat = if (newBmi > 0) {
-                    val raw = 1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4
-                    raw.coerceIn(3.0, 60.0)
+                    (1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0
                 updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
@@ -222,6 +224,7 @@ class ProfileViewModel @Inject constructor(
                 updateState { it.copy(isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Güncelleme başarısız"))
             }
+            onComplete()
         }
     }
 

@@ -77,7 +77,6 @@ fun EditProfileScreen(
     var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "Erkek" }) }
     var birthDate        by remember(state.birthDate)   { mutableStateOf(state.birthDate) }
     var showAvatarPicker by remember { mutableStateOf(false) }
-    var saveRequested    by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -89,15 +88,7 @@ fun EditProfileScreen(
         viewModel.uploadPhoto(bytes)
     }
 
-    // Kaydetme tamamlanınca geri dön
-    LaunchedEffect(state.isSaving) {
-        if (saveRequested && !state.isSaving) {
-            onBack()
-        }
-    }
-
     fun saveAndExit() {
-        saveRequested = true
         viewModel.updateProfile(
             displayName = name.trim().ifEmpty { state.displayName },
             avatar      = avatar,
@@ -105,7 +96,8 @@ fun EditProfileScreen(
             heightCm    = heightText.toDoubleOrNull() ?: state.heightCm,
             weightKg    = weightText.toDoubleOrNull() ?: state.weightKg,
             gender      = gender,
-            birthDate   = birthDate.trim()
+            birthDate   = birthDate.trim(),
+            onComplete  = onBack
         )
     }
 
