@@ -39,7 +39,7 @@ class GeminiRepositoryImpl(
             val requestBody = GeminiRequest(
                 system_instruction = GeminiSystemInstruction(listOf(GeminiPart(text = systemPrompt))),
                 contents = contents,
-                generationConfig = GeminiGenerationConfig(temperature = 0.7, maxOutputTokens = 2000)
+                generationConfig = GeminiGenerationConfig(temperature = 0.7, maxOutputTokens = 4096)
             )
 
             val response: GeminiResponse = httpClient.post(GEMINI_BASE_URL) {
@@ -78,7 +78,7 @@ class GeminiRepositoryImpl(
             val requestBody = GeminiRequest(
                 system_instruction = GeminiSystemInstruction(listOf(GeminiPart(text = systemPrompt))),
                 contents = listOf(GeminiContent(role = "user", parts = parts)),
-                generationConfig = GeminiGenerationConfig(temperature = 0.4, maxOutputTokens = 1200)
+                generationConfig = GeminiGenerationConfig(temperature = 0.4, maxOutputTokens = 4096)
             )
 
             val response: GeminiResponse = httpClient.post(GEMINI_BASE_URL) {

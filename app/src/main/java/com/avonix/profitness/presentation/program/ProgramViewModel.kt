@@ -126,13 +126,44 @@ class ProgramViewModel @Inject constructor(
                     "${ex.name} (${ex.nameEn})" else ex.name
             }
 
-            // 2. Gemini prompt
-            val basePrompt = if (userPrompt.isBlank())
-                "Yüklenen görseli/PDF'i analiz et ve içindeki antrenman programını çıkar."
-            else userPrompt
+            // 2. Metin tabanlı dosyalar (HTML, TXT vb.) inline_data yerine text olarak gönderilmeli
+            val isTextFile = mimeType?.startsWith("text/") == true
+            var textFileContent: String? = null
+            var effectiveBase64 = imageBase64
+            var effectiveMime = mimeType
+            if (isTextFile && imageBase64 != null) {
+                textFileContent = try {
+                    String(android.util.Base64.decode(imageBase64, android.util.Base64.NO_WRAP), Charsets.UTF_8)
+                } catch (_: Exception) { null }
+                // Text dosyaları inline_data olarak gönderilemez, prompt'a eklenecek
+                effectiveBase64 = null
+                effectiveMime = null
+            }
+            val effectiveHasMedia = effectiveBase64 != null && effectiveMime != null
+
+            // 3. Gemini prompt
+            val userInstruction = if (userPrompt.isNotBlank()) "\n\nKullanıcının ek talimatı: $userPrompt" else ""
+
+            val mediaAnalysisBlock = when {
+                textFileContent != null -> """
+Aşağıdaki dosya içeriğini analiz et ve içindeki antrenman programını aynen çıkar.
+Her egzersizin set, tekrar ve dinlenme sürelerini dosyada yazdığı gibi koru, değiştirme.
+
+--- DOSYA İÇERİĞİ BAŞLANGIÇ ---
+$textFileContent
+--- DOSYA İÇERİĞİ BİTİŞ ---
+$userInstruction"""
+
+                effectiveHasMedia -> """
+Yüklenen görseli/PDF'i dikkatle analiz et ve içindeki antrenman programını eksiksiz çıkar.
+KRİTİK: Her egzersizin set sayısı, tekrar sayısı ve dinlenme süresini dosyada/görselde yazdığı gibi aynen aktar. Hiçbir değeri tahmin etme veya değiştirme.
+$userInstruction"""
+
+                else -> "Kullanıcının istediği antrenman programı: $userPrompt"
+            }
 
             val geminiPrompt = """
-${if (hasMedia) "Yüklenen görseldeki/PDF/HTML'deki antrenman programını analiz et ve aşağıdaki JSON formatında çıkar." else "Kullanıcının istediği antrenman programı: $basePrompt"}
+$mediaAnalysisBlock
 
 Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
 $exerciseList
@@ -144,10 +175,10 @@ FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı oluşturucusun. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
+            val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
 
-            val result = if (hasMedia) {
-                geminiRepository.chatWithMedia(imageBase64!!, mimeType!!, geminiPrompt, systemPrompt)
+            val result = if (effectiveHasMedia) {
+                geminiRepository.chatWithMedia(effectiveBase64!!, effectiveMime!!, geminiPrompt, systemPrompt)
             } else {
                 geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
             }

@@ -967,118 +967,144 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
     }
 
     val canAnalyze = (prompt.isNotBlank() || selectedBase64 != null) && !uiState.aiLoading
+    val scrollState = rememberScrollState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
-        DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
-        Spacer(Modifier.height(40.dp))
-
-        // Metin giriş kutusu
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        // ── Scrollable content ───────────────────────────────────────────────
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(aiTheme.bg1.copy(0.9f))
-                .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
-                .padding(24.dp)
+                .fillMaxSize()
+                .padding(bottom = 100.dp)
+                .verticalScroll(scrollState)
         ) {
-            Column {
-                Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                Spacer(Modifier.height(16.dp))
-                BasicTextField(
-                    value = prompt,
-                    onValueChange = { prompt = it },
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                    enabled = !uiState.aiLoading,
-                    decorationBox = { inner ->
-                        if (prompt.isEmpty()) Text(
-                            if (selectedBase64 != null) "Ek talimat ekleyebilirsin (opsiyonel)..."
-                            else "Antrenman sıklığı, hedefin ve seviyeni belirt...",
-                            color = aiTheme.text2, fontSize = 15.sp
-                        )
-                        inner()
-                    }
-                )
-            }
-        }
+            DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
+            Spacer(Modifier.height(40.dp))
 
-        Spacer(Modifier.height(12.dp))
-
-        // Dosya yükleme butonu + seçilen dosya gösterimi
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = { fileLauncher.launch("*/*") },
-                enabled = !uiState.aiLoading,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
-                    contentDescription = null,
-                    tint = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF / HTML Yükle",
-                    color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
-                    fontSize = 13.sp
-                )
-            }
-
-            if (selectedBase64 != null) {
-                IconButton(
-                    onClick = {
-                        selectedBase64   = null
-                        selectedMimeType = null
-                        selectedFileName = null
-                    }
-                ) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Kaldır", tint = CardCoral)
-                }
-            }
-        }
-
-        // Seçilen dosya adı
-        selectedFileName?.let { name ->
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.padding(horizontal = 28.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = aiTheme.text2, modifier = Modifier.size(14.dp))
-                Text(name, color = aiTheme.text2, fontSize = 12.sp, maxLines = 1)
-            }
-        }
-
-        // Error banner
-        uiState.aiError?.let { errMsg ->
-            Spacer(Modifier.height(16.dp))
+            // Metin giriş kutusu
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(CardCoral.copy(alpha = 0.15f))
-                    .border(1.dp, CardCoral.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(aiTheme.bg1.copy(0.9f))
+                    .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
+                    .padding(24.dp)
             ) {
-                Text(errMsg, color = CardCoral, fontSize = 13.sp)
+                Column {
+                    Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                    Spacer(Modifier.height(16.dp))
+                    val textFieldScroll = rememberScrollState()
+                    BasicTextField(
+                        value = prompt,
+                        onValueChange = { prompt = it },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp, max = 200.dp)
+                            .verticalScroll(textFieldScroll),
+                        enabled = !uiState.aiLoading,
+                        decorationBox = { inner ->
+                            if (prompt.isEmpty()) Text(
+                                if (selectedBase64 != null) "Ek talimat ekleyebilirsin (opsiyonel)..."
+                                else "Antrenman sıklığı, hedefin ve seviyeni belirt...",
+                                color = aiTheme.text2, fontSize = 15.sp
+                            )
+                            inner()
+                        }
+                    )
+                }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Dosya yükleme butonu + seçilen dosya gösterimi
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { fileLauncher.launch("*/*") },
+                    enabled = !uiState.aiLoading,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
+                        contentDescription = null,
+                        tint = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF / HTML Yükle",
+                        color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
+                        fontSize = 13.sp
+                    )
+                }
+
+                if (selectedBase64 != null) {
+                    IconButton(
+                        onClick = {
+                            selectedBase64   = null
+                            selectedMimeType = null
+                            selectedFileName = null
+                        }
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Kaldır", tint = CardCoral)
+                    }
+                }
+            }
+
+            // Seçilen dosya adı
+            selectedFileName?.let { name ->
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.padding(horizontal = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = aiTheme.text2, modifier = Modifier.size(14.dp))
+                    Text(name, color = aiTheme.text2, fontSize = 12.sp, maxLines = 1)
+                }
+            }
+
+            // Error banner
+            uiState.aiError?.let { errMsg ->
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardCoral.copy(alpha = 0.15f))
+                        .border(1.dp, CardCoral.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(errMsg, color = CardCoral, fontSize = 13.sp)
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
         }
 
-        Spacer(Modifier.weight(1f))
-
-        Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+        // ── Fixed bottom button ──────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, aiTheme.bg0),
+                        startY = 0f,
+                        endY = 60f
+                    )
+                )
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 16.dp)
+        ) {
             Button(
                 onClick = {
                     viewModel.clearAiError()
