@@ -24,8 +24,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -105,31 +107,21 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             transitionSpec = {
                 val fromIdx = ALL_TABS.indexOf(initialState)
                 val toIdx   = ALL_TABS.indexOf(targetState)
-                // easeOutExpo: explosive start → long natural settle (closest to iOS spring physics)
-                // Parallax: new screen enters at full width, old screen exits at ¼ speed
-                // Depth: new screen grows from 95% (arrives from "behind"), old shrinks to 97%
-                val easeOut = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)   // easeOutExpo
-                val easeIn  = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)    // easeInQuart — snappy exit
-                val enterSlide = tween<IntOffset>(400, easing = easeOut)
-                val enterScale = tween<Float>(420, easing = easeOut)
-                val enterFade  = tween<Float>(280, easing = easeOut)
-                val exitSlide  = tween<IntOffset>(320, easing = easeIn)
-                val exitScale  = tween<Float>(280, easing = easeIn)
-                val exitFade   = tween<Float>(200)
+                // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
+                // on the full composable tree which is the #1 cause of jank during transitions.
+                // Short durations (240/160ms) keep double-render window minimal.
+                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+                val enterSlide = tween<IntOffset>(240, easing = easeOut)
+                val enterFade  = tween<Float>(200, easing = easeOut)
+                val exitSlide  = tween<IntOffset>(160, easing = easeIn)
+                val exitFade   = tween<Float>(120)
                 if (toIdx > fromIdx) {
-                    (slideInHorizontally(enterSlide) { it } +
-                     scaleIn(initialScale = 0.95f, animationSpec = enterScale) +
-                     fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { -it / 4 } +
-                     scaleOut(targetScale = 0.97f, animationSpec = exitScale) +
-                     fadeOut(exitFade))
+                    (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
                 } else {
-                    (slideInHorizontally(enterSlide) { -it } +
-                     scaleIn(initialScale = 0.95f, animationSpec = enterScale) +
-                     fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { it / 4 } +
-                     scaleOut(targetScale = 0.97f, animationSpec = exitScale) +
-                     fadeOut(exitFade))
+                    (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
                 }
             },
             modifier = swipeModifier,
@@ -260,7 +252,7 @@ fun AppBackground(modifier: Modifier = Modifier) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR — Floating pill container with expanding selected item
+//  APP NAV BAR — Glass pill, pure-orb items, drag-to-select
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppNavBar(
@@ -271,6 +263,7 @@ fun AppNavBar(
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(50)
 
     val borderBrush = remember(accent) {
@@ -282,6 +275,17 @@ fun AppNavBar(
             )
         )
     }
+
+    // Sliding accent indicator — animated float tracks selected index
+    val selectedIdx       = tabs.indexOf(selected)
+    val indicatorProgress by animateFloatAsState(
+        targetValue   = selectedIdx.toFloat(),
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label         = "nav_indicator"
+    )
+
+    // Drag-to-select state
+    var dragLastIdx by remember { mutableStateOf(-1) }
 
     Box(
         modifier = modifier
@@ -302,46 +306,30 @@ fun AppNavBar(
                 )
                 .clip(shape)
                 .drawWithCache {
-                    // ① Deeply transparent frosted base — true glass feel
                     val bgBase = theme.bg0.copy(alpha = if (theme.isDark) 0.48f else 0.88f)
-
-                    // ② Strong top-edge glass reflection — the primary glass cue
-                    val topMirrorAlpha0 = if (theme.isDark) 0.18f else 0.52f
-                    val topMirrorAlpha1 = if (theme.isDark) 0.04f else 0.12f
                     val topMirror = Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0.00f to Color.White.copy(alpha = topMirrorAlpha0),
-                            0.28f to Color.White.copy(alpha = topMirrorAlpha1),
+                            0.00f to Color.White.copy(alpha = if (theme.isDark) 0.18f else 0.52f),
+                            0.28f to Color.White.copy(alpha = if (theme.isDark) 0.04f else 0.12f),
                             0.50f to Color.Transparent
                         )
                     )
-
-                    // ③ Accent bleed: left-side color signature
-                    val accentBleedA0 = if (theme.isDark) 0.26f else 0.10f
-                    val accentBleedA1 = if (theme.isDark) 0.12f else 0.05f
-                    val accentBleedA2 = if (theme.isDark) 0.04f else 0.01f
                     val accentBleed = Brush.linearGradient(
                         colorStops = arrayOf(
-                            0.00f to accent.copy(alpha = accentBleedA0),
-                            0.28f to accent.copy(alpha = accentBleedA1),
-                            0.58f to accent.copy(alpha = accentBleedA2),
+                            0.00f to accent.copy(alpha = if (theme.isDark) 0.26f else 0.10f),
+                            0.28f to accent.copy(alpha = if (theme.isDark) 0.12f else 0.05f),
+                            0.58f to accent.copy(alpha = if (theme.isDark) 0.04f else 0.01f),
                             1.00f to Color.Transparent
                         ),
                         start = Offset(0f, size.height * 0.5f),
                         end   = Offset(size.width, size.height * 0.5f)
                     )
-
-                    // ④ Bottom inner shadow — depth under glass
-                    val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.45f)
-                                     else Color(0xFF6B4E2A).copy(alpha = 0.10f)
                     val depthShadow = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.38f to Color.Transparent,
-                            1.00f to depthColor
+                            1.00f to if (theme.isDark) Color.Black.copy(0.45f) else Color(0xFF6B4E2A).copy(0.10f)
                         )
                     )
-
-                    // ⑤ Subtle inner rim light — separates glass panel from content
                     val rimLight = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.00f to Color.White.copy(alpha = if (theme.isDark) 0.06f else 0.10f),
@@ -350,22 +338,58 @@ fun AppNavBar(
                             1.00f to Color.Black.copy(alpha = if (theme.isDark) 0.18f else 0.06f)
                         )
                     )
-
                     onDrawBehind {
                         drawRect(bgBase)
                         drawRect(accentBleed)
                         drawRect(depthShadow)
                         drawRect(topMirror)
                         drawRect(rimLight)
+
+                        // ── Sliding accent bar under active icon ──────────────────
+                        // Draw a thin pill that glides between icon positions
+                        val tabW = size.width / tabs.size
+                        val barW = tabW * 0.36f
+                        val barH = 3.dp.toPx()
+                        val barCx = (indicatorProgress + 0.5f) * tabW
+                        val barY  = size.height - barH - 6.dp.toPx()
+                        drawRoundRect(
+                            brush = Brush.horizontalGradient(
+                                listOf(
+                                    accent.copy(alpha = 0.20f),
+                                    accent.copy(alpha = 0.90f),
+                                    accent.copy(alpha = 0.20f)
+                                ),
+                                startX = barCx - barW / 2f,
+                                endX   = barCx + barW / 2f
+                            ),
+                            topLeft     = Offset(barCx - barW / 2f, barY),
+                            size        = Size(barW, barH),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(barH / 2f)
+                        )
                     }
                 }
                 .border(1.dp, borderBrush, shape)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                // Drag-to-select: slide finger across icons without lifting
+                .pointerInput(tabs) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { _ -> dragLastIdx = -1 },
+                        onHorizontalDrag = { change, _ ->
+                            val x   = change.position.x.coerceIn(0f, size.width.toFloat())
+                            val idx = ((x / size.width) * tabs.size).toInt().coerceIn(0, tabs.lastIndex)
+                            if (idx != dragLastIdx) {
+                                dragLastIdx = idx
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSelect(tabs[idx])
+                            }
+                        }
+                    )
+                },
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment     = Alignment.CenterVertically
         ) {
             tabs.forEach { tab ->
-                ExpandingNavItem(
+                NavOrbItem(
                     tab        = tab,
                     isSelected = tab == selected,
                     accent     = accent,
@@ -377,170 +401,117 @@ fun AppNavBar(
     }
 }
 
-// ─── Expanding pill nav item ─────────────────────────────────────────────────
+// ─── Pure-orb nav item — no expanding text, just icon bloom + glow ───────────
 @Composable
-private fun ExpandingNavItem(
+private fun NavOrbItem(
     tab       : DashboardTab,
     isSelected: Boolean,
     accent    : Color,
     theme     : AppThemeState,
     onClick   : () -> Unit
 ) {
-    val haptic             = LocalHapticFeedback.current
+    val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed         by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.88f else 1f,
+    // Orb and icon sizes animate on selection — the "bloom" effect IS the active indicator
+    val orbSize  by animateFloatAsState(
+        targetValue   = if (isSelected) 52f else 40f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "nav_item_scale"
+        label         = "orb_size"
+    )
+    val iconSize by animateFloatAsState(
+        targetValue   = if (isSelected) 26f else 20f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        label         = "icon_size"
+    )
+    val pressScale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.82f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        label         = "orb_press"
     )
 
-    val selectedBrush = remember(theme.bg3, theme.bg2) {
-        Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.0f to theme.bg3.copy(alpha = 0.72f),
-                1.0f to theme.bg2.copy(alpha = 0.82f)
-            )
-        )
-    }
-
-    Row(
+    Box(
         modifier = Modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(50))
-            .then(
-                if (isSelected) Modifier.background(brush = selectedBrush, shape = RoundedCornerShape(50))
-                else Modifier
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication        = null,
-                onClick           = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onClick()
-                }
-            )
-            .padding(4.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        // ── Icon circle — 3D glass orb ───────────────────────────────────────
-        // Layers (back→front): ambient glow · base fill · convex depth gradient ·
-        //                       off-center specular highlight · gradient rim border
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .drawBehind {
-                    val r  = size.minDimension / 2f
-                    val cx = size.width  / 2f
-                    val cy = size.height / 2f
+            .scale(pressScale)
+            .size(orbSize.dp)
+            .drawBehind {
+                val r  = size.minDimension / 2f
+                val cx = size.width  / 2f
+                val cy = size.height / 2f
 
-                    // ① Ambient glow halo behind the orb (selected only)
-                    if (isSelected) {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.0f to accent.copy(alpha = 0.50f),
-                                    0.5f to accent.copy(alpha = 0.18f),
-                                    1.0f to Color.Transparent
-                                ),
-                                center = Offset(cx, cy),
-                                radius = r * 1.85f
-                            ),
-                            radius = r * 1.85f,
-                            center = Offset(cx, cy)
-                        )
-                    }
-
-                    // ② Solid base color
-                    drawCircle(
-                        color  = if (isSelected) accent else theme.bg2.copy(alpha = 0.88f),
-                        radius = r,
-                        center = Offset(cx, cy)
-                    )
-
-                    // ③ Convex depth gradient — lighter top, darker bottom = 3D sphere illusion
-                    drawCircle(
-                        brush = Brush.verticalGradient(
-                            colorStops = arrayOf(
-                                0.00f to Color.White.copy(alpha = if (isSelected) 0.30f else 0.20f),
-                                0.42f to Color.Transparent,
-                                1.00f to Color.Black.copy(alpha = if (isSelected) 0.18f else 0.28f)
-                            ),
-                            startY = 0f,
-                            endY   = size.height
-                        ),
-                        radius = r,
-                        center = Offset(cx, cy)
-                    )
-
-                    // ④ Specular lens flare — off-center upper-left radial highlight
+                // Ambient glow halo (selected only)
+                if (isSelected) {
                     drawCircle(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
-                                0.0f to Color.White.copy(alpha = if (isSelected) 0.70f else 0.48f),
+                                0.0f to accent.copy(alpha = 0.55f),
+                                0.5f to accent.copy(alpha = 0.20f),
                                 1.0f to Color.Transparent
                             ),
-                            center = Offset(size.width * 0.34f, size.height * 0.22f),
-                            radius = r * 0.52f
+                            center = Offset(cx, cy),
+                            radius = r * 1.9f
                         ),
-                        radius = r,
+                        radius = r * 1.9f,
                         center = Offset(cx, cy)
                     )
                 }
-                .border(
-                    width = if (isSelected) 1.5.dp else 0.8.dp,
-                    brush = if (isSelected) {
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.55f),
-                                accent.copy(alpha = 0.40f)
-                            )
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.22f),
-                                theme.stroke.copy(alpha = 0.18f)
-                            )
-                        )
-                    },
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = tab.icon,
-                contentDescription = tab.label,
-                tint               = if (isSelected) theme.accent.onColor else theme.text2,
-                modifier           = Modifier.size(26.dp)
-            )
-        }
-
-        // ── Animated label ───────────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = isSelected,
-            enter   = fadeIn(tween(180, delayMillis = 40)) +
-                      expandHorizontally(
-                          animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-                          expandFrom    = Alignment.Start
-                      ),
-            exit    = fadeOut(tween(100)) +
-                      shrinkHorizontally(
-                          animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
-                          shrinkTowards = Alignment.Start
-                      )
-        ) {
-            Text(
-                text     = tab.label,
-                color    = theme.text0,
-                modifier = Modifier.padding(start = 8.dp, end = 10.dp),
-                style    = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
+                // Base fill
+                drawCircle(
+                    color  = if (isSelected) accent else theme.bg2.copy(alpha = 0.85f),
+                    radius = r,
+                    center = Offset(cx, cy)
                 )
+                // Convex lighting — top highlight, bottom shadow
+                drawCircle(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.00f to Color.White.copy(alpha = if (isSelected) 0.35f else 0.18f),
+                            0.45f to Color.Transparent,
+                            1.00f to Color.Black.copy(alpha = if (isSelected) 0.15f else 0.30f)
+                        ),
+                        startY = 0f, endY = size.height
+                    ),
+                    radius = r,
+                    center = Offset(cx, cy)
+                )
+                // Specular lens flare — upper-left highlight
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.White.copy(alpha = if (isSelected) 0.75f else 0.45f),
+                            1.0f to Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.33f, size.height * 0.21f),
+                        radius = r * 0.50f
+                    ),
+                    radius = r,
+                    center = Offset(cx, cy)
+                )
+            }
+            .border(
+                width = if (isSelected) 1.5.dp else 0.8.dp,
+                brush = Brush.verticalGradient(
+                    if (isSelected) listOf(Color.White.copy(0.55f), accent.copy(0.38f))
+                    else             listOf(Color.White.copy(0.20f), theme.stroke.copy(0.15f))
+                ),
+                shape = CircleShape
             )
-        }
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector        = tab.icon,
+            contentDescription = tab.label,
+            tint               = if (isSelected) theme.accent.onColor
+                                  else            theme.text2.copy(alpha = 0.55f),
+            modifier           = Modifier.size(iconSize.dp)
+        )
     }
 }
