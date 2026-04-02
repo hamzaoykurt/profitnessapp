@@ -252,8 +252,7 @@ fun AppBackground(modifier: Modifier = Modifier) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR
-//  Frosted glass bar · icon + label · sliding accent line on top · drag-select
+//  APP NAV BAR — floating capsule, icon only, accent fill on selected
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppNavBar(
@@ -265,77 +264,43 @@ fun AppNavBar(
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
-
-    val selectedIdx    = tabs.indexOf(selected)
-    val lineX by animateFloatAsState(
-        targetValue   = selectedIdx.toFloat(),
-        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-        label         = "nav_line"
-    )
+    val shape  = RoundedCornerShape(40.dp)
 
     var dragLastIdx by remember { mutableStateOf(-1) }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
+        modifier        = modifier.fillMaxWidth().navigationBarsPadding(),
+        contentAlignment = Alignment.Center
     ) {
-        // ── The bar itself ───────────────────────────────────────────────────
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                // Outer shadow
+                .wrapContentWidth()
                 .shadow(
-                    elevation    = 24.dp,
-                    shape        = RoundedCornerShape(0.dp),
-                    clip         = false,
-                    spotColor    = accent.copy(0.20f),
-                    ambientColor = Color.Black.copy(0.50f)
+                    elevation    = 20.dp,
+                    shape        = shape,
+                    spotColor    = accent.copy(0.25f),
+                    ambientColor = Color.Black.copy(0.55f)
                 )
-                .drawBehind {
-                    // Frosted glass base
-                    drawRect(theme.bg0.copy(if (theme.isDark) 0.82f else 0.94f))
-                    // Subtle gradient — slightly lighter at top (lift)
-                    drawRect(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(if (theme.isDark) 0.05f else 0.20f),
-                                Color.Transparent
-                            )
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            theme.bg2.copy(if (theme.isDark) 0.96f else 0.98f),
+                            theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f)
                         )
                     )
-                    // Top separator line
-                    drawRect(
-                        color  = if (theme.isDark) Color.White.copy(0.06f) else Color.Black.copy(0.06f),
-                        topLeft = Offset(0f, 0f),
-                        size    = Size(size.width, 0.8.dp.toPx())
-                    )
-
-                    // ── Sliding accent line on top ────────────────────────────
-                    val tabW  = size.width / tabs.size
-                    val lineW = tabW * 0.42f
-                    val cx    = (lineX + 0.5f) * tabW
-                    val lineH = 2.5.dp.toPx()
-                    // Glow behind the line
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color.Transparent, accent.copy(0.35f), Color.Transparent),
-                            startX = cx - lineW, endX = cx + lineW
-                        ),
-                        topLeft = Offset(cx - lineW, 0f),
-                        size    = Size(lineW * 2f, lineH * 4f)
-                    )
-                    // Line itself
-                    drawRoundRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color.Transparent, accent, Color.Transparent),
-                            startX = cx - lineW / 2f, endX = cx + lineW / 2f
-                        ),
-                        topLeft      = Offset(cx - lineW / 2f, 0f),
-                        size         = Size(lineW, lineH),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(lineH / 2f)
-                    )
-                }
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(if (theme.isDark) 0.12f else 0.60f),
+                            theme.stroke.copy(0.40f)
+                        )
+                    ),
+                    shape = shape
+                )
+                .padding(horizontal = 8.dp, vertical = 8.dp)
                 .pointerInput(tabs) {
                     detectHorizontalDragGestures(
                         onDragStart      = { dragLastIdx = -1 },
@@ -350,15 +315,15 @@ fun AppNavBar(
                         }
                     )
                 },
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment     = Alignment.CenterVertically
         ) {
             tabs.forEach { tab ->
-                NavBarItem(
+                NavCapsuleItem(
                     tab        = tab,
                     isSelected = tab == selected,
                     accent     = accent,
                     theme      = theme,
-                    modifier   = Modifier.weight(1f),
                     onClick    = { onSelect(tab) }
                 )
             }
@@ -367,60 +332,67 @@ fun AppNavBar(
 }
 
 @Composable
-private fun NavBarItem(
+private fun NavCapsuleItem(
     tab       : DashboardTab,
     isSelected: Boolean,
     accent    : Color,
     theme     : AppThemeState,
-    modifier  : Modifier = Modifier,
     onClick   : () -> Unit
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed         by interactionSource.collectIsPressedAsState()
 
-    val contentAlpha by animateFloatAsState(
-        targetValue   = if (isSelected) 1f else 0.35f,
-        animationSpec = tween(180),
-        label         = "nav_alpha"
-    )
+    // Pill width: selected shows label, unselected icon-only
     val scale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.86f else 1f,
+        targetValue   = if (isPressed) 0.88f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "nav_scale"
-    )
-    val iconSize by animateFloatAsState(
-        targetValue   = if (isSelected) 24f else 22f,
-        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-        label         = "icon_sz"
+        label         = "item_scale"
     )
 
-    Column(
-        modifier = modifier
+    Row(
+        modifier = Modifier
             .scale(scale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication        = null
-            ) {
+            .clip(RoundedCornerShape(32.dp))
+            .then(
+                if (isSelected)
+                    Modifier.background(
+                        Brush.linearGradient(
+                            listOf(accent.copy(0.20f), accent.copy(0.10f))
+                        )
+                    )
+                else Modifier
+            )
+            .clickable(interactionSource = interactionSource, indication = null) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+            .padding(horizontal = if (isSelected) 16.dp else 12.dp, vertical = 10.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(
             imageVector        = tab.icon,
             contentDescription = tab.label,
-            tint               = if (isSelected) accent else theme.text1.copy(contentAlpha),
-            modifier           = Modifier.size(iconSize.dp)
+            tint               = if (isSelected) accent else theme.text2.copy(0.45f),
+            modifier           = Modifier.size(20.dp)
         )
-        Text(
-            text          = tab.label,
-            color         = if (isSelected) accent else theme.text2.copy(contentAlpha),
-            fontSize      = 8.sp,
-            fontWeight    = if (isSelected) FontWeight.Bold else FontWeight.Light,
-            letterSpacing = 0.8.sp
-        )
+        AnimatedVisibility(
+            visible = isSelected,
+            enter   = expandHorizontally(
+                spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+            ) + fadeIn(tween(150, 60)),
+            exit    = shrinkHorizontally(
+                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
+            ) + fadeOut(tween(80))
+        ) {
+            Text(
+                text          = tab.label,
+                color         = accent,
+                fontSize      = 11.sp,
+                fontWeight    = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
     }
 }
