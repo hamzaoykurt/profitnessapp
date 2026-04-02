@@ -30,7 +30,9 @@ data class NewsUiState(
     val error: String? = null,
     val lastUpdated: Long = 0L,
     // Number of new articles found after a pull-to-refresh (0 = up to date)
-    val newArticleCount: Int = 0
+    val newArticleCount: Int = 0,
+    // Only updated on manual pull-to-refresh; snackbar watches this (not lastUpdated)
+    val manualRefreshAt: Long = 0L
 )
 
 data class ArticleDetailState(
@@ -100,7 +102,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
 
     init { loadNews() }
 
-    fun loadNews() {
+    fun loadNews(isManualRefresh: Boolean = false) {
         viewModelScope.launch {
             val prevKeys = _uiState.value.articles.map { articleKey(it) }.toHashSet()
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -108,12 +110,14 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 val articles = NewsRepository.fetchAllNews()
                 val ranked = applyClickRanking(articles)
                 val newCount = ranked.count { articleKey(it) !in prevKeys }
+                val now = System.currentTimeMillis()
                 _uiState.value = NewsUiState(
                     articles = ranked,
                     isLoading = false,
                     canLoadMore = true,
-                    lastUpdated = System.currentTimeMillis(),
-                    newArticleCount = newCount
+                    lastUpdated = now,
+                    newArticleCount = newCount,
+                    manualRefreshAt = if (isManualRefresh) now else 0L
                 )
             } catch (e: Exception) {
                 _uiState.value = NewsUiState(
@@ -167,8 +171,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(
                     articles = merged,
                     isLoadingMore = false,
-                    canLoadMore = true,
-                    lastUpdated = System.currentTimeMillis()
+                    canLoadMore = true
                 )
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoadingMore = false)
@@ -361,7 +364,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     fun refresh() {
         cardTranslationJob?.cancel()
         _cardTranslations.value = emptyMap()
-        loadNews()
+        loadNews(isManualRefresh = true)
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -14,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -23,11 +22,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -266,10 +262,11 @@ fun AppNavBar(
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(40.dp)
 
-    var dragLastIdx by remember { mutableStateOf(-1) }
+    var dragAccum by remember { mutableStateOf(0f) }
+    val navDraggableState = rememberDraggableState { delta -> dragAccum += delta }
 
     Box(
-        modifier        = modifier.fillMaxWidth().navigationBarsPadding(),
+        modifier        = modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -301,20 +298,27 @@ fun AppNavBar(
                     shape = shape
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp)
-                .pointerInput(tabs) {
-                    detectHorizontalDragGestures(
-                        onDragStart      = { dragLastIdx = -1 },
-                        onHorizontalDrag = { change, _ ->
-                            val x   = change.position.x.coerceIn(0f, size.width.toFloat())
-                            val idx = ((x / size.width) * tabs.size).toInt().coerceIn(0, tabs.lastIndex)
-                            if (idx != dragLastIdx) {
-                                dragLastIdx = idx
+                .draggable(
+                    state         = navDraggableState,
+                    orientation   = Orientation.Horizontal,
+                    onDragStarted = { dragAccum = 0f },
+                    onDragStopped = { velocity ->
+                        val curIdx     = tabs.indexOf(selected)
+                        val byVelocity = abs(velocity) > 300f
+                        val byDistance = abs(dragAccum) > 60f
+                        if (byVelocity || byDistance) {
+                            val goNext = if (byVelocity) velocity < 0f else dragAccum < 0f
+                            if (goNext && curIdx < tabs.lastIndex) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(tabs[idx])
+                                onSelect(tabs[curIdx + 1])
+                            } else if (!goNext && curIdx > 0) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSelect(tabs[curIdx - 1])
                             }
                         }
-                    )
-                },
+                        dragAccum = 0f
+                    }
+                ),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment     = Alignment.CenterVertically
         ) {

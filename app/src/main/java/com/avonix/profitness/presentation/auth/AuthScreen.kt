@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -413,6 +414,14 @@ private fun OtpInputRow(
     accent      : Color,
     theme       : com.avonix.profitness.core.theme.AppThemeState
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard       = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboard?.show()
+    }
+
     Box(contentAlignment = Alignment.Center) {
         // Gerçek input — görünmez, klavyeyi tetikler
         BasicTextField(
@@ -425,6 +434,7 @@ private fun OtpInputRow(
             modifier = Modifier
                 .size(1.dp)
                 .alpha(0f)
+                .focusRequester(focusRequester)
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

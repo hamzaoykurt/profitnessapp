@@ -81,22 +81,8 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
     val snackbarHost     = remember { SnackbarHostState() }
     val initialReported  = remember { reportedIds.size }
 
-    // Uygulama ön plana döndüğünde (onResume) haberleri otomatik yenile.
-    // Son fetch'ten 5 dakika geçmişse uygulama ön plana gelince otomatik yenile.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                val staleMs = 5 * 60 * 1000L
-                val lastUpdated = newsViewModel.uiState.value.lastUpdated
-                if (lastUpdated == 0L || System.currentTimeMillis() - lastUpdated > staleMs) {
-                    newsViewModel.refresh()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    // Haberler yalnızca ilk açılışta (init) veya pull-to-refresh ile yüklenir.
+    // ON_RESUME / tab geçişi tetiklemez — kullanıcı her sekmeye geçtiğinde beklemez.
 
     // When language changes: flush stale translated titles from the old language.
     LaunchedEffect(appLang) {
@@ -172,9 +158,9 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
         }
     }
 
-    // After a pull-to-refresh, show how many new articles arrived (or "up to date")
-    LaunchedEffect(uiState.lastUpdated) {
-        if (uiState.lastUpdated == 0L) return@LaunchedEffect
+    // After a manual pull-to-refresh, show how many new articles arrived (or "up to date")
+    LaunchedEffect(uiState.manualRefreshAt) {
+        if (uiState.manualRefreshAt == 0L) return@LaunchedEffect
         val msg = if (uiState.newArticleCount > 0)
             "${uiState.newArticleCount} ${strings.newArticlesMsg}"
         else
@@ -248,12 +234,11 @@ private fun NewsFeed(
     LaunchedEffect(isNearBottom) {
         if (!isNearBottom || uiState.isLoading) return@LaunchedEffect
         if (hasMore) {
-            // More local articles available — just reveal next page instantly
+            // More local articles available — reveal next page instantly (no network)
             visibleCount += PAGE_SIZE
-        } else if (uiState.canLoadMore && !uiState.isLoadingMore) {
-            // Local list exhausted — fetch new articles from network
-            onLoadMore()
         }
+        // Network loadMore removed: haberleri otomatik çekmiyoruz.
+        // Kullanıcı pull-to-refresh yapınca taze veri gelir.
     }
 
     PullToRefreshBox(
