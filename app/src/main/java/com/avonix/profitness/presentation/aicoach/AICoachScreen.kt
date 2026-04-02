@@ -21,11 +21,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,7 +89,6 @@ fun AICoachScreen(
     val listState         = rememberLazyListState()
     val scope             = rememberCoroutineScope()
 
-    // Program oluşturma sonucu: dialog kapat veya hata göster; başarıda 3sn sonra banner kapat
     LaunchedEffect(state.programStatus) {
         when (state.programStatus) {
             is ProgramStatus.Success -> {
@@ -97,12 +101,10 @@ fun AICoachScreen(
         }
     }
 
-    // Hoş geldin mesajını dil değişimine duyarlı biçimde başlat
     LaunchedEffect(strings.oracleWelcome) {
         viewModel.initWelcome(strings.oracleWelcome)
     }
 
-    // Yeni mesaj gelince en alta kaydır
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.lastIndex)
@@ -120,70 +122,80 @@ fun AICoachScreen(
         viewModel.sendMessage(text)
     }
 
-    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        // ── Accent Background Bloom ───────────────────────────────────────────
         PageAccentBloom()
 
-        // ── Message Feed ─────────────────────────────────────────────────────
-        val inputAreaHeight = 160.dp
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(0.dp, 120.dp, 0.dp, bottomPadding + inputAreaHeight + imeBottom),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
-        ) {
-            items(state.messages, key = { it.id }) { msg ->
-                SanctuaryMessage(
-                    msg           = msg,
-                    onApplyProgram = { programDialogMsg = it; programNameInput = "" }
-                )
-            }
-            if (state.isLoading) {
-                item(key = "typing") { SanctuaryTypingIndicator() }
-            }
-        }
-
-        // ── Bottom: Quick Chips + Input ───────────────────────────────────────
+        // ── Main layout: messages + bottom bar, keyboard pushes everything up ─
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = bottomPadding + 16.dp + imeBottom)
-                .fillMaxWidth()
+                .fillMaxSize()
+                .imePadding()               // keyboard pushes the whole column up
         ) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(bottom = 12.dp)
+            // Message feed — fills available space
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(top = 116.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(quickChips) { chip ->
-                    val chipTheme = LocalAppTheme.current
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(chipTheme.bg1.copy(0.85f))
-                            .border(1.dp, chipTheme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-                            .clickable(enabled = !state.isLoading) { sendMessage(chip) }
-                            .padding(16.dp, 8.dp)
+                items(state.messages, key = { it.id }) { msg ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter   = slideInVertically(
+                            animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)
+                        ) { it / 3 } + fadeIn(tween(220))
                     ) {
-                        Text(
-                            chip,
-                            color = chipTheme.text1,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 1.sp
+                        SanctuaryMessage(
+                            msg            = msg,
+                            onApplyProgram = { programDialogMsg = it; programNameInput = "" }
                         )
                     }
                 }
+                if (state.isLoading) {
+                    item(key = "typing") { SanctuaryTypingIndicator() }
+                }
             }
 
-            SanctuaryInput(
-                value = inputText,
-                onValueChange = { inputText = it },
-                onSend = { sendMessage(inputText) },
-                isTyping = state.isLoading
-            )
+            // ── Quick Chips + Input pinned to bottom ──────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(bottom = bottomPadding + 8.dp)
+            ) {
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.padding(bottom = 10.dp)
+                ) {
+                    items(quickChips) { chip ->
+                        val chipTheme = LocalAppTheme.current
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(chipTheme.bg1.copy(0.85f))
+                                .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
+                                .clickable(enabled = !state.isLoading) { sendMessage(chip) }
+                                .padding(14.dp, 7.dp)
+                        ) {
+                            Text(
+                                chip,
+                                color         = chipTheme.text1,
+                                fontSize      = 11.sp,
+                                fontWeight    = FontWeight.Light,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+                }
+
+                SanctuaryInput(
+                    value         = inputText,
+                    onValueChange = { inputText = it },
+                    onSend        = { sendMessage(inputText) },
+                    isTyping      = state.isLoading
+                )
+            }
         }
 
         // ── App Logo / Title (en üstte render edilmeli — touch almak için) ───
@@ -418,89 +430,159 @@ private fun SanctuaryMessage(
     msg            : ChatMessage,
     onApplyProgram : (ChatMessage) -> Unit = {}
 ) {
-    val arrangement = if (msg.isUser) Arrangement.End else Arrangement.Start
-    val textAlign   = if (msg.isUser) Alignment.End   else Alignment.Start
-    val accent      = MaterialTheme.colorScheme.primary
-    val theme       = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
+    val showProgramButton = !msg.isUser && msg.id != "welcome" && looksLikeProgram(msg.text)
 
-    // Oracle mesajı program içeriyor mu? (Gün + set/tekrar/rep kelimesi içeriyorsa)
-    val showProgramButton = !msg.isUser && msg.id != "welcome" &&
-        looksLikeProgram(msg.text)
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        horizontalArrangement = arrangement
-    ) {
-        Column(
-            horizontalAlignment = textAlign,
-            modifier = Modifier.widthIn(max = 320.dp)
+    if (msg.isUser) {
+        // ── User bubble — right aligned, solid accent fill ──────────────────
+        Row(
+            modifier              = Modifier.fillMaxWidth().padding(start = 56.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
+            horizontalArrangement = Arrangement.End
         ) {
-            if (!msg.isUser) {
-                Text(
-                    "ORACLE",
-                    style     = MaterialTheme.typography.labelSmall,
-                    color     = accent,
-                    letterSpacing = 2.sp,
-                    fontSize  = 9.sp,
-                    modifier  = Modifier.padding(4.dp, 0.dp, 4.dp, 6.dp)
-                )
-            }
-
-            if (msg.isUser) {
+            Column(horizontalAlignment = Alignment.End) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.linearGradient(listOf(accent.copy(0.15f), accent.copy(0.05f))))
-                        .border(1.dp, accent.copy(0.2f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
+                        .drawBehind {
+                            drawRect(color = accent)
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    listOf(Color.White.copy(0.22f), Color.Transparent),
+                                    startY = 0f, endY = size.height * 0.5f
+                                )
+                            )
+                        }
+                        .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Text(
                         text       = msg.text,
-                        color      = Snow,
-                        style      = MaterialTheme.typography.bodyLarge,
-                        lineHeight = 26.sp,
+                        color      = Color.White,
+                        fontSize   = 15.sp,
+                        lineHeight = 23.sp,
                         fontWeight = FontWeight.Normal
                     )
                 }
-            } else {
+                Spacer(Modifier.height(3.dp))
                 Text(
-                    text          = msg.text,
-                    color         = Snow.copy(0.9f),
-                    style         = MaterialTheme.typography.bodyLarge,
-                    lineHeight    = 26.sp,
-                    fontWeight    = FontWeight.Light,
-                    letterSpacing = 0.3.sp
+                    text       = msg.timestamp,
+                    color      = theme.text2.copy(0.45f),
+                    fontSize   = 10.sp,
+                    fontWeight = FontWeight.Light
                 )
             }
+        }
+    } else {
+        // ── Oracle bubble — left aligned, glass dark panel + accent left border ─
+        Row(
+            modifier          = Modifier.fillMaxWidth().padding(start = 16.dp, end = 56.dp, top = 6.dp, bottom = 2.dp),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.Top
+        ) {
+            // Oracle avatar
+            Box(
+                modifier = Modifier
+                    .padding(top = 2.dp, end = 8.dp)
+                    .size(30.dp)
+                    .drawBehind {
+                        val r  = size.minDimension / 2f
+                        val cx = size.width / 2f
+                        val cy = size.height / 2f
+                        drawCircle(color = accent.copy(0.18f), radius = r, center = Offset(cx, cy))
+                        drawCircle(
+                            brush  = Brush.verticalGradient(
+                                listOf(Color.White.copy(0.15f), Color.Transparent),
+                                startY = 0f, endY = size.height
+                            ),
+                            radius = r, center = Offset(cx, cy)
+                        )
+                    }
+                    .border(0.8.dp, accent.copy(0.35f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
+            }
 
-            Spacer(Modifier.height(4.dp))
+            Column(horizontalAlignment = Alignment.Start) {
+                // Sender label
+                Text(
+                    "ORACLE",
+                    color         = accent,
+                    fontSize      = 8.sp,
+                    fontWeight    = FontWeight.Bold,
+                    letterSpacing = 2.5.sp,
+                    modifier      = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                )
 
-            // Saat
-            Text(
-                text       = msg.timestamp,
-                color      = TextMuted.copy(0.75f),
-                fontSize   = 10.sp,
-                fontWeight = FontWeight.Light,
-                modifier   = Modifier.padding(horizontal = 4.dp)
-            )
-
-            // Program uygula butonu
-            if (showProgramButton) {
-                Spacer(Modifier.height(8.dp))
+                // Glass bubble
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(accent.copy(0.1f))
-                        .border(1.dp, accent.copy(0.3f), RoundedCornerShape(20.dp))
-                        .clickable { onApplyProgram(msg) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
+                        .drawBehind {
+                            // Dark glass base — clip handles asymmetric corners
+                            drawRect(color = Color(0xFF1A1A1A).copy(alpha = 0.82f))
+                            // Top glass sheen
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    listOf(Color.White.copy(0.07f), Color.Transparent),
+                                    startY = 0f, endY = size.height * 0.4f
+                                )
+                            )
+                            // Left accent border line
+                            drawRect(
+                                color   = accent.copy(0.55f),
+                                topLeft = Offset(0f, 0f),
+                                size    = Size(2.dp.toPx(), size.height)
+                            )
+                        }
+                        .border(
+                            width = 0.8.dp,
+                            brush = Brush.linearGradient(
+                                listOf(accent.copy(0.30f), Color.White.copy(0.06f), Color.Transparent)
+                            ),
+                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                        )
+                        .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(13.dp))
-                        Text("Planlarıma Ekle", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        text          = msg.text,
+                        color         = Snow.copy(0.92f),
+                        fontSize      = 15.sp,
+                        lineHeight    = 24.sp,
+                        fontWeight    = FontWeight.Light,
+                        letterSpacing = 0.2.sp
+                    )
+                }
+
+                Spacer(Modifier.height(3.dp))
+                Row(
+                    modifier              = Modifier.padding(start = 4.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text       = msg.timestamp,
+                        color      = theme.text2.copy(0.40f),
+                        fontSize   = 10.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                    if (showProgramButton) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(accent.copy(0.12f))
+                                .border(0.8.dp, accent.copy(0.35f), RoundedCornerShape(16.dp))
+                                .clickable { onApplyProgram(msg) }
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(11.dp))
+                                Text("Planlarıma Ekle", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
                     }
                 }
             }
@@ -841,26 +923,60 @@ private fun formatSessionDate(millis: Long): String {
 @Composable
 private fun SanctuaryTypingIndicator() {
     val transition = rememberInfiniteTransition(label = "dots")
-    val dot0 by transition.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600, delayMillis = 0),   RepeatMode.Reverse), label = "d0")
-    val dot1 by transition.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600, delayMillis = 200), RepeatMode.Reverse), label = "d1")
-    val dot2 by transition.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600, delayMillis = 400), RepeatMode.Reverse), label = "d2")
+    val dot0 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 0),   RepeatMode.Reverse), label = "d0")
+    val dot1 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 160), RepeatMode.Reverse), label = "d1")
+    val dot2 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 320), RepeatMode.Reverse), label = "d2")
 
     val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
+
     Row(
-        modifier = Modifier.padding(24.dp, 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier          = Modifier.padding(start = 16.dp, top = 6.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Text(
-            "ORACLE DÜŞÜNÜYOR",
-            style = MaterialTheme.typography.labelSmall,
-            color = accent.copy(0.6f),
-            letterSpacing = 2.sp,
-            fontSize = 8.sp
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf(dot0, dot1, dot2).forEach { alpha ->
-                Box(Modifier.size(4.dp).clip(CircleShape).background(accent.copy(alpha)))
+        Box(
+            modifier = Modifier
+                .padding(top = 2.dp, end = 8.dp)
+                .size(30.dp)
+                .drawBehind {
+                    drawCircle(color = accent.copy(0.18f))
+                    drawCircle(brush = Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent), 0f, size.height))
+                }
+                .border(0.8.dp, accent.copy(0.35f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
+                .drawBehind {
+                    drawRect(color = Color(0xFF1A1A1A).copy(alpha = 0.82f))
+                    drawRect(color = accent.copy(0.55f), topLeft = Offset(0f, 0f), size = Size(2.dp.toPx(), size.height))
+                }
+                .border(0.8.dp, accent.copy(0.25f), RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                listOf(dot0, dot1, dot2).forEach { alpha ->
+                    val dotY by rememberInfiniteTransition(label = "y").animateFloat(
+                        initialValue    = 0f,
+                        targetValue     = -4f,
+                        animationSpec   = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+                        label           = "dot_y"
+                    )
+                    Box(
+                        Modifier
+                            .offset(y = (dotY * alpha).dp)
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha))
+                    )
+                }
             }
         }
     }
