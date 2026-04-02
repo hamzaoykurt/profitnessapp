@@ -55,6 +55,8 @@ class ProgramViewModel @Inject constructor(
     private fun currentUserId(): String? =
         supabase.auth.currentSessionOrNull()?.user?.id
 
+    private var lastProgramLoadMs = 0L
+
     init {
         loadUserPrograms()
         loadExercises()
@@ -62,12 +64,20 @@ class ProgramViewModel @Inject constructor(
 
     // ── Load ──────────────────────────────────────────────────────────────────
 
+    /** Tab geçişleri için — 3 dakika geçmediyse ve programlar varsa atla */
+    fun reloadIfStale() {
+        if (System.currentTimeMillis() - lastProgramLoadMs < 3 * 60_000L &&
+            uiState.value.userPrograms.isNotEmpty()) return
+        loadUserPrograms()
+    }
+
     fun loadUserPrograms() {
         val uid = currentUserId() ?: return
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true) }
+            updateState { it.copy(isLoading = uiState.value.userPrograms.isEmpty()) }
             programRepository.getUserPrograms(uid)
                 .onSuccess { programs ->
+                    lastProgramLoadMs = System.currentTimeMillis()
                     updateState { it.copy(isLoading = false, userPrograms = programs) }
                 }
                 .onFailure {

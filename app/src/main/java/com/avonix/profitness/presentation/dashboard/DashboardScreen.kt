@@ -6,7 +6,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -27,6 +26,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -252,7 +252,8 @@ fun AppBackground(modifier: Modifier = Modifier) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR — Glass pill, sliding indicator, icon + label, drag-to-select
+//  APP NAV BAR
+//  Frosted glass bar · icon + label · sliding accent line on top · drag-select
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppNavBar(
@@ -264,114 +265,77 @@ fun AppNavBar(
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
-    val shape  = RoundedCornerShape(28.dp)
 
-    val selectedIdx       = tabs.indexOf(selected)
-    // Smooth sliding pill indicator
-    val indicatorSlide by animateFloatAsState(
+    val selectedIdx    = tabs.indexOf(selected)
+    val lineX by animateFloatAsState(
         targetValue   = selectedIdx.toFloat(),
-        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
-        label         = "nav_slide"
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label         = "nav_line"
     )
 
     var dragLastIdx by remember { mutableStateOf(-1) }
-
-    val borderBrush = remember(accent) {
-        Brush.linearGradient(
-            listOf(
-                Color.White.copy(0.18f),
-                accent.copy(0.40f),
-                Color.White.copy(0.08f)
-            )
-        )
-    }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
     ) {
+        // ── The bar itself ───────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                // Outer shadow
                 .shadow(
-                    elevation    = 32.dp,
-                    shape        = shape,
+                    elevation    = 24.dp,
+                    shape        = RoundedCornerShape(0.dp),
                     clip         = false,
-                    spotColor    = accent.copy(alpha = 0.40f),
-                    ambientColor = Color.Black.copy(alpha = 0.60f)
+                    spotColor    = accent.copy(0.20f),
+                    ambientColor = Color.Black.copy(0.50f)
                 )
-                .clip(shape)
-                .drawWithCache {
-                    // Glass base layers (same as before — works well)
-                    val bgBase      = theme.bg0.copy(if (theme.isDark) 0.55f else 0.90f)
-                    val topMirror   = Brush.verticalGradient(colorStops = arrayOf(
-                        0.00f to Color.White.copy(if (theme.isDark) 0.14f else 0.50f),
-                        0.30f to Color.White.copy(if (theme.isDark) 0.03f else 0.10f),
-                        0.55f to Color.Transparent
-                    ))
-                    val depthShadow = Brush.verticalGradient(colorStops = arrayOf(
-                        0.45f to Color.Transparent,
-                        1.00f to Color.Black.copy(if (theme.isDark) 0.35f else 0.05f)
-                    ))
+                .drawBehind {
+                    // Frosted glass base
+                    drawRect(theme.bg0.copy(if (theme.isDark) 0.82f else 0.94f))
+                    // Subtle gradient — slightly lighter at top (lift)
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(if (theme.isDark) 0.05f else 0.20f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                    // Top separator line
+                    drawRect(
+                        color  = if (theme.isDark) Color.White.copy(0.06f) else Color.Black.copy(0.06f),
+                        topLeft = Offset(0f, 0f),
+                        size    = Size(size.width, 0.8.dp.toPx())
+                    )
 
-                    // Sliding selected background pill
-                    onDrawBehind {
-                        drawRect(bgBase)
-                        drawRect(depthShadow)
-                        drawRect(topMirror)
-
-                        val tabW    = size.width / tabs.size
-                        val pillW   = tabW - 12.dp.toPx()
-                        val pillH   = size.height - 10.dp.toPx()
-                        val pillX   = indicatorSlide * tabW + 6.dp.toPx()
-                        val pillY   = 5.dp.toPx()
-                        val pillR   = pillH / 2f
-
-                        // Pill glow
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                listOf(accent.copy(0.28f), Color.Transparent),
-                                center = Offset(pillX + pillW / 2f, pillY + pillH / 2f),
-                                radius = pillW * 0.9f
-                            ),
-                            topLeft      = Offset(pillX - 8.dp.toPx(), pillY - 4.dp.toPx()),
-                            size         = Size(pillW + 16.dp.toPx(), pillH + 8.dp.toPx()),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(pillR + 4.dp.toPx())
-                        )
-                        // Pill fill
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                listOf(accent.copy(0.22f), accent.copy(0.10f)),
-                                startY = pillY, endY = pillY + pillH
-                            ),
-                            topLeft      = Offset(pillX, pillY),
-                            size         = Size(pillW, pillH),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(pillR)
-                        )
-                        // Pill top highlight
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                listOf(Color.White.copy(0.18f), Color.Transparent),
-                                startY = pillY, endY = pillY + pillH * 0.5f
-                            ),
-                            topLeft      = Offset(pillX, pillY),
-                            size         = Size(pillW, pillH),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(pillR)
-                        )
-                        // Pill border
-                        val strokeW = 1.dp.toPx()
-                        drawRoundRect(
-                            color        = accent.copy(0.45f),
-                            topLeft      = Offset(pillX + strokeW / 2f, pillY + strokeW / 2f),
-                            size         = Size(pillW - strokeW, pillH - strokeW),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(pillR),
-                            style        = androidx.compose.ui.graphics.drawscope.Stroke(strokeW)
-                        )
-                    }
+                    // ── Sliding accent line on top ────────────────────────────
+                    val tabW  = size.width / tabs.size
+                    val lineW = tabW * 0.42f
+                    val cx    = (lineX + 0.5f) * tabW
+                    val lineH = 2.5.dp.toPx()
+                    // Glow behind the line
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color.Transparent, accent.copy(0.35f), Color.Transparent),
+                            startX = cx - lineW, endX = cx + lineW
+                        ),
+                        topLeft = Offset(cx - lineW, 0f),
+                        size    = Size(lineW * 2f, lineH * 4f)
+                    )
+                    // Line itself
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color.Transparent, accent, Color.Transparent),
+                            startX = cx - lineW / 2f, endX = cx + lineW / 2f
+                        ),
+                        topLeft      = Offset(cx - lineW / 2f, 0f),
+                        size         = Size(lineW, lineH),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(lineH / 2f)
+                    )
                 }
-                .border(1.dp, borderBrush, shape)
                 .pointerInput(tabs) {
                     detectHorizontalDragGestures(
                         onDragStart      = { dragLastIdx = -1 },
@@ -386,11 +350,10 @@ fun AppNavBar(
                         }
                     )
                 },
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment     = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             tabs.forEach { tab ->
-                NavTabItem(
+                NavBarItem(
                     tab        = tab,
                     isSelected = tab == selected,
                     accent     = accent,
@@ -403,9 +366,8 @@ fun AppNavBar(
     }
 }
 
-// ─── Icon + label tab item — selected state uses accent, unselected recedes ──
 @Composable
-private fun NavTabItem(
+private fun NavBarItem(
     tab       : DashboardTab,
     isSelected: Boolean,
     accent    : Color,
@@ -417,20 +379,25 @@ private fun NavTabItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed         by interactionSource.collectIsPressedAsState()
 
-    val iconAlpha by animateFloatAsState(
-        targetValue   = if (isSelected) 1f else 0.38f,
-        animationSpec = tween(200),
-        label         = "icon_alpha"
+    val contentAlpha by animateFloatAsState(
+        targetValue   = if (isSelected) 1f else 0.35f,
+        animationSpec = tween(180),
+        label         = "nav_alpha"
     )
-    val pressScale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.84f else 1f,
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.86f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "press"
+        label         = "nav_scale"
+    )
+    val iconSize by animateFloatAsState(
+        targetValue   = if (isSelected) 24f else 22f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label         = "icon_sz"
     )
 
     Column(
         modifier = modifier
-            .scale(pressScale)
+            .scale(scale)
             .clickable(
                 interactionSource = interactionSource,
                 indication        = null
@@ -438,22 +405,22 @@ private fun NavTabItem(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Icon(
             imageVector        = tab.icon,
             contentDescription = tab.label,
-            tint               = if (isSelected) accent else theme.text2.copy(iconAlpha),
-            modifier           = Modifier.size(22.dp)
+            tint               = if (isSelected) accent else theme.text1.copy(contentAlpha),
+            modifier           = Modifier.size(iconSize.dp)
         )
         Text(
             text          = tab.label,
-            color         = if (isSelected) accent else theme.text2.copy(iconAlpha),
+            color         = if (isSelected) accent else theme.text2.copy(contentAlpha),
             fontSize      = 8.sp,
-            fontWeight    = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = if (isSelected) 1.2.sp else 0.8.sp
+            fontWeight    = if (isSelected) FontWeight.Bold else FontWeight.Light,
+            letterSpacing = 0.8.sp
         )
     }
 }

@@ -65,15 +65,8 @@ fun ProfileScreen(
         }
     }
 
-    // Sekmeye her gelindiğinde (tab geçişi dahil) profil + başarımları yenile
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.loadProfile()
-        }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
-    }
+    // Tab geçişinde stale ise yenile (5 dk cache)
+    LaunchedEffect(Unit) { viewModel.reloadIfStale() }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()

@@ -269,17 +269,8 @@ fun ProgramBuilderScreen(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    // Ekran her görünür hale geldiğinde (tab geçişi dahil) programları yenile
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadUserPrograms()
-            }
-        }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
-    }
+    // Tab geçişinde stale ise yenile (3 dk cache)
+    LaunchedEffect(Unit) { viewModel.reloadIfStale() }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->

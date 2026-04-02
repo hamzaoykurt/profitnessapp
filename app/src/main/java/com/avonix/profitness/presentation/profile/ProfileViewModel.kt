@@ -82,11 +82,21 @@ class ProfileViewModel @Inject constructor(
     private val supabase         : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
 
+    private var lastLoadMs = 0L
+
     init { loadProfile() }
+
+    /** Tab geçişleri ve ON_RESUME için — 5 dakika geçmediyse ve veri varsa atla */
+    fun reloadIfStale() {
+        if (System.currentTimeMillis() - lastLoadMs < 5 * 60_000L &&
+            uiState.value.displayName.isNotBlank()) return
+        loadProfile()
+    }
 
     fun loadProfile() {
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true) }
+            // İlk açılışta loading göster; tekrar yükleme varsa eski veri görünür kalsın
+            updateState { it.copy(isLoading = uiState.value.displayName.isBlank()) }
 
             val userId = supabase.auth.currentUserOrNull()?.id ?: run {
                 updateState { it.copy(isLoading = false) }
@@ -165,6 +175,7 @@ class ProfileViewModel @Inject constructor(
                 profileRepository.updateRank(userId, computedRank)
             }
 
+            lastLoadMs = System.currentTimeMillis()
             updateState {
                 it.copy(
                     displayName         = profile?.display_name.orEmpty(),

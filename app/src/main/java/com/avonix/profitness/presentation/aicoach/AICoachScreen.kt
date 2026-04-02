@@ -122,80 +122,73 @@ fun AICoachScreen(
         viewModel.sendMessage(text)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(theme.bg0)
+            .imePadding()           // keyboard resizes this Box from the bottom
+    ) {
         PageAccentBloom()
 
-        // ── Main layout: messages + bottom bar, keyboard pushes everything up ─
+        // ── Message feed fills full Box, has bottom padding for the input area ─
+        val inputAreaHeight = 148.dp + bottomPadding
+        LazyColumn(
+            state           = listState,
+            modifier        = Modifier.fillMaxSize(),
+            contentPadding  = PaddingValues(top = 116.dp, bottom = inputAreaHeight),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(state.messages, key = { it.id }) { msg ->
+                SanctuaryMessage(
+                    msg            = msg,
+                    onApplyProgram = { programDialogMsg = it; programNameInput = "" }
+                )
+            }
+            if (state.isLoading) {
+                item(key = "typing") { SanctuaryTypingIndicator() }
+            }
+        }
+
+        // ── Input + chips pinned to bottom of the (keyboard-adjusted) Box ────
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .imePadding()               // keyboard pushes the whole column up
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = bottomPadding + 8.dp)
         ) {
-            // Message feed — fills available space
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(top = 116.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            LazyRow(
+                contentPadding        = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier              = Modifier.padding(bottom = 10.dp)
             ) {
-                items(state.messages, key = { it.id }) { msg ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter   = slideInVertically(
-                            animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)
-                        ) { it / 3 } + fadeIn(tween(220))
+                items(quickChips) { chip ->
+                    val chipTheme = LocalAppTheme.current
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(chipTheme.bg1.copy(0.85f))
+                            .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
+                            .clickable(enabled = !state.isLoading) { sendMessage(chip) }
+                            .padding(14.dp, 7.dp)
                     ) {
-                        SanctuaryMessage(
-                            msg            = msg,
-                            onApplyProgram = { programDialogMsg = it; programNameInput = "" }
+                        Text(
+                            chip,
+                            color         = chipTheme.text1,
+                            fontSize      = 11.sp,
+                            fontWeight    = FontWeight.Light,
+                            letterSpacing = 1.sp
                         )
                     }
                 }
-                if (state.isLoading) {
-                    item(key = "typing") { SanctuaryTypingIndicator() }
-                }
             }
 
-            // ── Quick Chips + Input pinned to bottom ──────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = bottomPadding + 8.dp)
-            ) {
-                LazyRow(
-                    contentPadding        = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier              = Modifier.padding(bottom = 10.dp)
-                ) {
-                    items(quickChips) { chip ->
-                        val chipTheme = LocalAppTheme.current
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(chipTheme.bg1.copy(0.85f))
-                                .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
-                                .clickable(enabled = !state.isLoading) { sendMessage(chip) }
-                                .padding(14.dp, 7.dp)
-                        ) {
-                            Text(
-                                chip,
-                                color         = chipTheme.text1,
-                                fontSize      = 11.sp,
-                                fontWeight    = FontWeight.Light,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-                }
-
-                SanctuaryInput(
-                    value         = inputText,
-                    onValueChange = { inputText = it },
-                    onSend        = { sendMessage(inputText) },
-                    isTyping      = state.isLoading
-                )
-            }
+            SanctuaryInput(
+                value         = inputText,
+                onValueChange = { inputText = it },
+                onSend        = { sendMessage(inputText) },
+                isTyping      = state.isLoading
+            )
         }
 
         // ── App Logo / Title (en üstte render edilmeli — touch almak için) ───
