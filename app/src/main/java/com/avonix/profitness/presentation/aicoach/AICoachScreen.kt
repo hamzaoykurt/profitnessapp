@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -131,7 +132,8 @@ fun AICoachScreen(
         PageAccentBloom()
 
         // ── Message feed fills full Box, has bottom padding for the input area ─
-        val inputAreaHeight = 148.dp + bottomPadding
+        val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        val inputAreaHeight = if (imeVisible) 72.dp + bottomPadding else 148.dp + bottomPadding
         LazyColumn(
             state           = listState,
             modifier        = Modifier.fillMaxSize(),
@@ -157,28 +159,34 @@ fun AICoachScreen(
                 .navigationBarsPadding()
                 .padding(bottom = bottomPadding + 8.dp)
         ) {
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.padding(bottom = 10.dp)
+            AnimatedVisibility(
+                visible = !imeVisible,
+                enter   = fadeIn() + expandVertically(),
+                exit    = fadeOut() + shrinkVertically()
             ) {
-                items(quickChips) { chip ->
-                    val chipTheme = LocalAppTheme.current
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(chipTheme.bg1.copy(0.85f))
-                            .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
-                            .clickable(enabled = !state.isLoading) { sendMessage(chip) }
-                            .padding(14.dp, 7.dp)
-                    ) {
-                        Text(
-                            chip,
-                            color         = chipTheme.text1,
-                            fontSize      = 11.sp,
-                            fontWeight    = FontWeight.Light,
-                            letterSpacing = 1.sp
-                        )
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.padding(bottom = 10.dp)
+                ) {
+                    items(quickChips) { chip ->
+                        val chipTheme = LocalAppTheme.current
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(chipTheme.bg1.copy(0.85f))
+                                .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
+                                .clickable(enabled = !state.isLoading) { sendMessage(chip) }
+                                .padding(14.dp, 7.dp)
+                        ) {
+                            Text(
+                                chip,
+                                color         = chipTheme.text1,
+                                fontSize      = 11.sp,
+                                fontWeight    = FontWeight.Light,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
             }
