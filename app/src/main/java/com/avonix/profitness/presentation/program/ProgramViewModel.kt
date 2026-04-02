@@ -85,13 +85,22 @@ class ProgramViewModel @Inject constructor(
 
     // ── AI Program Oluşturma ──────────────────────────────────────────────────
 
-    fun createFromAI(userPrompt: String) {
+    /**
+     * [imageBase64] ve [mimeType] opsiyoneldir. Sağlanırsa Gemini görsel/PDF üzerinden programı çıkarır.
+     * Listede olmayan egzersizler otomatik olarak veritabanına eklenir.
+     */
+    fun createFromAI(
+        userPrompt: String,
+        imageBase64: String? = null,
+        mimeType: String? = null
+    ) {
         val uid = currentUserId() ?: run {
             sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
             return
         }
-        if (userPrompt.isBlank()) {
-            sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin."))
+        val hasMedia = imageBase64 != null && mimeType != null
+        if (userPrompt.isBlank() && !hasMedia) {
+            sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin veya dosya yükleyin."))
             return
         }
 
@@ -99,40 +108,52 @@ class ProgramViewModel @Inject constructor(
             updateState { it.copy(aiLoading = true, aiError = null) }
 
             // 1. Egzersiz listesini hazırla
-            val exercises = uiState.value.exercises.ifEmpty {
+            val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseList = exercises.take(120).joinToString(", ") { ex ->
+            val exerciseList = baseExercises.take(120).joinToString(", ") { ex ->
                 if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
                     "${ex.name} (${ex.nameEn})" else ex.name
             }
 
-            // 2. Gemini'ye JSON formatında program iste
-            val geminiPrompt = """
-Kullanıcı şu antrenman programını istiyor:
-$userPrompt
+            // 2. Gemini prompt
+            val basePrompt = if (userPrompt.isBlank())
+                "Yüklenen görseli/PDF'i analiz et ve içindeki antrenman programını çıkar."
+            else userPrompt
 
-Egzersiz adları için SADECE şu listeden seç (tam adı kullan):
+            val geminiPrompt = """
+${if (hasMedia) "Yüklenen görseldeki/PDF/HTML'deki antrenman programını analiz et ve aşağıdaki JSON formatında çıkar." else "Kullanıcının istediği antrenman programı: $basePrompt"}
+
+Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
 $exerciseList
 
-SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
-{"name":"Program Adı","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60}]},{"title":"Gün 2","isRestDay":true,"exercises":[]}]}
+Kural: Listede olmayan bir egzersiz kullanman gerekirse, o egzersiz için "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ve "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını mutlaka ekle.
+
+ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
+FORMAT:
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val result = geminiRepository.chat(
-                history      = emptyList(),
-                userMessage  = geminiPrompt,
-                systemPrompt = "Sen bir fitness programı oluşturucusun. Sadece JSON formatında yanıt ver, açıklama ekleme."
-            )
+            val systemPrompt = "Sen bir fitness programı oluşturucusun. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
+
+            val result = if (hasMedia) {
+                geminiRepository.chatWithMedia(imageBase64!!, mimeType!!, geminiPrompt, systemPrompt)
+            } else {
+                geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+            }
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
-                updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası, tekrar dene.") }
+                updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
                 return@launch
             }
 
-            // 3. JSON'u çıkar ve parse et
-            val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(rawJson)?.value
+            // 3. JSON'u çıkar ve parse et (markdown kod bloğu olsa bile yakala)
+            val cleaned = rawJson
+                .replace(Regex("```[a-zA-Z]*\\s*"), "")  // ```json veya ``` başlıklarını sil
+                .replace("```", "")
+                .trim()
+            val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value
             if (jsonCandidate == null) {
                 updateState { it.copy(aiLoading = false, aiError = "Geçersiz yanıt, tekrar dene.") }
                 return@launch
@@ -151,20 +172,20 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
                 return@launch
             }
 
-            // 4. Egzersiz eşleştirme
-            val exerciseMap   = exercises.associateBy { it.name.trim().lowercase() }
-            val exerciseMapEn = exercises.filter { it.nameEn.isNotBlank() }
-                .associateBy { it.nameEn.trim().lowercase() }
+            // 4. Egzersiz eşleştirme — mutable map, yeni eklenenler de aranabilir
+            val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
+                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
 
             fun findExercise(aiName: String): ExerciseItem? {
                 val key = aiName.trim().lowercase()
-                exerciseMap[key]?.let { return it }
-                exerciseMapEn[key]?.let { return it }
-                exerciseMap.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
-                exerciseMapEn.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
+                currentMap[key]?.let { return it }
+                currentMapEn[key]?.let { return it }
+                currentMap.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
+                currentMapEn.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
                 val words = key.split(" ", "-").filter { it.length > 2 }.toSet()
                 if (words.size >= 2) {
-                    exerciseMap.entries.firstOrNull { (dbKey, _) ->
+                    currentMap.entries.firstOrNull { (dbKey, _) ->
                         val dbWords = dbKey.split(" ", "-").filter { it.length > 2 }.toSet()
                         (words intersect dbWords).size >= 2
                     }?.value?.let { return it }
@@ -180,16 +201,34 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
                 if (isRest) {
                     ManualDayInput(title = title, isRestDay = true)
                 } else {
-                    val exArray  = dayObj["exercises"] as? JsonArray
-                    val matched  = exArray?.mapIndexedNotNull { exIdx, exEl ->
+                    val exArray = dayObj["exercises"] as? JsonArray
+                    val matched = exArray?.mapIndexedNotNull { exIdx, exEl ->
                         val exObj  = exEl.jsonObject
                         val exName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexedNotNull null
                         val sets   = flexInt(exObj, "sets", 3)
                         val reps   = flexInt(exObj, "reps", 10)
                         val rest   = flexInt(exObj, "restSeconds", 90)
-                        findExercise(exName)?.let {
-                            ManualExerciseInput(it.id, sets, reps, rest, exIdx)
+                        val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
+                        val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
+
+                        var exercise = findExercise(exName)
+
+                        // Bulunamadıysa veritabanına ekle — diğer kullanıcılar da erişebilsin
+                        if (exercise == null) {
+                            exercise = programRepository.addExercise(
+                                name         = exName,
+                                nameEn       = "",
+                                targetMuscle = targetMuscle,
+                                category     = category,
+                                setsDefault  = sets,
+                                repsDefault  = reps
+                            ).getOrNull()
+                            exercise?.let { newEx ->
+                                currentMap[newEx.name.trim().lowercase()] = newEx
+                            }
                         }
+
+                        exercise?.let { ManualExerciseInput(it.id, sets, reps, rest, exIdx) }
                     } ?: emptyList()
                     ManualDayInput(title = title, isRestDay = false, exercises = matched)
                 }
@@ -198,6 +237,10 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
             // 5. Programı oluştur
             programRepository.createManual(uid, programName, days)
                 .onSuccess { program ->
+                    // exercises listesini de güncelle (yeni egzersizler dahil)
+                    programRepository.getAllExercises().getOrNull()?.let { updated ->
+                        updateState { it.copy(exercises = updated) }
+                    }
                     updateState { state ->
                         val updated = state.userPrograms
                             .map { it.copy(isActive = false) }

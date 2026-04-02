@@ -328,6 +328,38 @@ class ProgramRepositoryImpl @Inject constructor(
             }
         }
 
+    // ── Add Exercise ──────────────────────────────────────────────────────────
+
+    override suspend fun addExercise(
+        name: String,
+        nameEn: String,
+        targetMuscle: String,
+        category: String,
+        setsDefault: Int,
+        repsDefault: Int
+    ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest["exercises"]
+                .insert(
+                    buildJsonObject {
+                        put("name", name)
+                        put("name_en", nameEn)
+                        put("target_muscle", targetMuscle)
+                        put("category", category)
+                        put("sets_default", setsDefault)
+                        put("reps_default", repsDefault)
+                        put("description", "")
+                    }
+                )
+
+            // Fetch the just-inserted exercise by name
+            supabase.postgrest["exercises"]
+                .select { filter { eq("name", name) } }
+                .decodeSingle<ExerciseDto>()
+                .toDomain()
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private suspend fun deactivateAll(userId: String) {

@@ -3,11 +3,13 @@ package com.avonix.profitness.presentation.navigation
 import androidx.compose.animation.core.*
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.avonix.profitness.core.theme.AppThemeState
 import com.avonix.profitness.presentation.auth.AuthScreen
+import com.avonix.profitness.presentation.auth.AuthViewModel
 import com.avonix.profitness.presentation.dashboard.DashboardScreen
 
 private val DURATION = 420
@@ -39,9 +41,12 @@ fun AppNavigation(
     navController: NavHostController,
     onThemeChange: (AppThemeState) -> Unit
 ) {
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val startDestination = if (authViewModel.isLoggedIn()) Routes.DASHBOARD else Routes.AUTH
+
     NavHost(
         navController    = navController,
-        startDestination = Routes.AUTH,
+        startDestination = startDestination,
         enterTransition  = { slideEnter() },
         exitTransition   = { slideExit() },
         popEnterTransition  = { slidePopEnter() },
@@ -61,6 +66,7 @@ fun AppNavigation(
             DashboardScreen(
                 onThemeChange = onThemeChange,
                 onLogout = {
+                    authViewModel.logout()
                     navController.navigate(Routes.AUTH) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }

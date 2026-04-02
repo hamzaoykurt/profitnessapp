@@ -14,4 +14,12 @@ interface GeminiRepository {
         userMessage: String,
         systemPrompt: String
     ): Result<String>
+
+    /** Resim veya PDF içeren multimodal istek. [imageBase64] Base64 string, [mimeType] örn. "image/jpeg" veya "application/pdf". */
+    suspend fun chatWithMedia(
+        imageBase64: String,
+        mimeType: String,
+        userMessage: String,
+        systemPrompt: String
+    ): Result<String>
 }

@@ -3,6 +3,7 @@ package com.avonix.profitness.data.auth
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.OtpType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -44,5 +45,25 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun sendPasswordReset(email: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching { supabase.auth.resetPasswordForEmail(email) }
+        }
+
+    override suspend fun verifyOtp(email: String, code: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type  = OtpType.Email.SIGNUP,
+                    email = email,
+                    token = code
+                )
+                Unit
+            }
+        }
+
+    override suspend fun resendOtp(email: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, email)
+                Unit
+            }
         }
 }

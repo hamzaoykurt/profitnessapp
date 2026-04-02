@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.workout
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -139,6 +140,8 @@ data class WorkoutDayState(
 @Composable
 fun WorkoutScreen(
     bottomPadding: Dp = 0.dp,
+    onNavigateToAIBuilder: () -> Unit = {},
+    onNavigateToManualBuilder: () -> Unit = {},
     viewModel: WorkoutViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -168,7 +171,11 @@ fun WorkoutScreen(
                 }
             }
             state.dayStates.isEmpty() -> {
-                NoProgramView(bottomPadding = bottomPadding)
+                NoProgramView(
+                    bottomPadding = bottomPadding,
+                    onAI = onNavigateToAIBuilder,
+                    onManual = onNavigateToManualBuilder
+                )
             }
             else -> {
                 WorkoutContent(
@@ -182,33 +189,69 @@ fun WorkoutScreen(
 }
 
 @Composable
-private fun NoProgramView(bottomPadding: Dp) {
-    val theme   = LocalAppTheme.current
-    val accent  = MaterialTheme.colorScheme.primary
+private fun NoProgramView(
+    bottomPadding: Dp,
+    onAI: () -> Unit,
+    onManual: () -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp, 80.dp, 24.dp, bottomPadding + 24.dp),
+            .padding(horizontal = 28.dp)
+            .padding(top = 80.dp, bottom = bottomPadding + 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("🏋️", fontSize = 64.sp)
-        Spacer(Modifier.height(20.dp))
+        // İkon
+        Text("🏋️", fontSize = 72.sp)
+        Spacer(Modifier.height(24.dp))
+
         Text(
-            "AKTİF PROGRAM YOK",
+            "HENÜZ PROGRAMIN YOK",
             color = accent,
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 2.sp
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
-            "Program ekranından bir program oluştur veya seç, ardından buraya geri dön.",
+            "Antrenman programını şimdi oluştur.\nAI sana özel bir plan hazırlasın ya da kendin düzenle.",
             color = theme.text2,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            lineHeight = 22.sp
         )
+
+        Spacer(Modifier.height(36.dp))
+
+        // AI ile Oluştur
+        Button(
+            onClick = onAI,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = accent)
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text("AI İLE OLUŞTUR", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Manuel Oluştur
+        OutlinedButton(
+            onClick = onManual,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, theme.stroke)
+        ) {
+            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(20.dp), tint = theme.text1)
+            Spacer(Modifier.width(10.dp))
+            Text("MANUEL OLUŞTUR", fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
+        }
     }
 }
 
@@ -240,15 +283,15 @@ private fun WorkoutContent(
                 targetState = selectedDayIdx,
                 transitionSpec = {
                     if (targetState > initialState) {
-                        (slideInHorizontally(tween(280, easing = FastOutSlowInEasing)) { it / 3 } +
-                            fadeIn(tween(220))) togetherWith
-                        (slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { -it / 4 } +
-                            fadeOut(tween(180)))
+                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { it / 4 } +
+                            fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { -it / 5 } +
+                            fadeOut(tween(120)))
                     } else {
-                        (slideInHorizontally(tween(280, easing = FastOutSlowInEasing)) { -it / 3 } +
-                            fadeIn(tween(220))) togetherWith
-                        (slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 4 } +
-                            fadeOut(tween(180)))
+                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { -it / 4 } +
+                            fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { it / 5 } +
+                            fadeOut(tween(120)))
                     }
                 },
                 label = "day_header"
@@ -297,7 +340,7 @@ private fun WorkoutContent(
         if (currentDay.isRestDay) {
             item { RestDayView() }
         } else {
-            itemsIndexed(currentDay.exercises) { idx, exercise ->
+            itemsIndexed(currentDay.exercises, key = { _, ex -> ex.id }) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
                 CinematicExerciseCard(
@@ -325,17 +368,16 @@ private fun StreakBanner(streak: Int) {
     val streakDays = streak
     val accent  = MaterialTheme.colorScheme.primary
     val strings = LocalAppTheme.current.strings
+    val bgBrush = remember(accent) {
+        Brush.horizontalGradient(listOf(accent.copy(0.18f), Amber.copy(0.12f)))
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(24.dp, 60.dp, 24.dp, 4.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(accent.copy(0.18f), Amber.copy(0.12f))
-                )
-            )
+            .background(bgBrush)
             .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
             .padding(20.dp, 12.dp)
     ) {
@@ -457,6 +499,10 @@ fun CircularProgressRing(
         animationSpec = tween(1200, easing = EaseOutCubic),
         label = "progress"
     )
+    // Memoize sweep brush — recreating it on every animation frame (60fps × 1.2s) is expensive
+    val sweepBrush = remember(resolvedRingColor) {
+        Brush.sweepGradient(listOf(resolvedRingColor, resolvedRingColor.copy(0.75f), resolvedRingColor))
+    }
 
     Box(
         modifier = modifier.size(size),
@@ -476,10 +522,7 @@ fun CircularProgressRing(
 
             if (animatedProgress > 0f) {
                 drawArc(
-                    brush = Brush.sweepGradient(
-                        colors = listOf(resolvedRingColor, resolvedRingColor.copy(0.75f), resolvedRingColor),
-                        center = center
-                    ),
+                    brush = sweepBrush,
                     startAngle = startAngle,
                     sweepAngle = animatedProgress * 360f,
                     useCenter = false,

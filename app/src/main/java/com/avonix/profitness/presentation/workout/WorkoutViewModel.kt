@@ -34,12 +34,17 @@ class WorkoutViewModel @Inject constructor(
     private val supabase          : SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
 
+    private var lastLoadMs = 0L
+
     init {
         loadActiveProgram()
     }
 
     fun reload() {
-        updateState { it.copy(isLoading = true) }
+        val now = System.currentTimeMillis()
+        // Zaten data varsa ve 30 saniye geçmediyse tekrar yüklemeden dön — tab geçişlerinde DB patlamasını önler
+        if (uiState.value.hasProgramLoaded && now - lastLoadMs < 30_000) return
+        updateState { it.copy(isLoading = !uiState.value.hasProgramLoaded) }
         loadActiveProgram()
     }
 
@@ -143,6 +148,7 @@ class WorkoutViewModel @Inject constructor(
                     // Gerçek ardışık gün serisi (user_stats.current_streak)
                     val dbStreak = workoutRepository.getStreak(userId).getOrDefault(0)
 
+                    lastLoadMs = System.currentTimeMillis()
                     updateState {
                         it.copy(
                             isLoading = false,
@@ -207,22 +213,21 @@ class WorkoutViewModel @Inject constructor(
                 )
                 workoutRepository.updateStreak(userId)
 
-                // Gerçek ardışık seriyi DB'den oku (updateStreak zaten güncelledi)
                 val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
                 updateState { it.copy(currentStreak = updatedStreak) }
 
-                // Gün tamamlama bonusu: tüm egzersizler tamamlandıysa +50 XP
-                val updatedDay = uiState.value.dayStates.getOrNull(dayIdx)
-                if (updatedDay != null && !updatedDay.day.isRestDay) {
-                    val allDone = updatedDay.day.exercises.isNotEmpty() &&
-                        updatedDay.day.exercises.all { it.id in updatedDay.completedIds }
-                    if (allDone) {
-                        workoutRepository.addXp(userId, 50)
+                // Başarım/XP kontrolü ayrı coroutine'de — ana tamamlama akışını bloklamaz
+                viewModelScope.launch {
+                    val updatedDay = uiState.value.dayStates.getOrNull(dayIdx)
+                    if (updatedDay != null && !updatedDay.day.isRestDay) {
+                        val allDone = updatedDay.day.exercises.isNotEmpty() &&
+                            updatedDay.day.exercises.all { it.id in updatedDay.completedIds }
+                        if (allDone) {
+                            workoutRepository.addXp(userId, 50)
+                        }
                     }
+                    checkAndUnlockAchievements(userId)
                 }
-
-                // Başarım ve rank kontrolü — güncel istatistikler üzerinden
-                checkAndUnlockAchievements(userId)
             }
         }
     }

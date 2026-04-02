@@ -1,5 +1,8 @@
 package com.avonix.profitness.presentation.program
 
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -29,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -255,9 +259,12 @@ sealed class BuilderMode {
 }
 
 @Composable
-fun ProgramBuilderScreen(viewModel: ProgramViewModel = hiltViewModel()) {
+fun ProgramBuilderScreen(
+    initialMode: BuilderMode = BuilderMode.Choose,
+    viewModel: ProgramViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var mode by remember { mutableStateOf<BuilderMode>(BuilderMode.Choose) }
+    var mode by remember { mutableStateOf<BuilderMode>(initialMode) }
     var snackbarMsg by remember { mutableStateOf<String?>(null) }
     val theme   = LocalAppTheme.current
     val strings = theme.strings
@@ -946,13 +953,35 @@ private fun DialogStat(icon: ImageVector, value: String, label: String, accent: 
 private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
     val uiState   by viewModel.uiState.collectAsStateWithLifecycle()
     var prompt    by remember { mutableStateOf("") }
-    val aiStrings  = LocalAppTheme.current.strings
     val aiTheme    = LocalAppTheme.current
+    val aiStrings  = aiTheme.strings
+    val context    = LocalContext.current
+
+    // Seçilen dosya bilgisi
+    var selectedFileName by remember { mutableStateOf<String?>(null) }
+    var selectedBase64   by remember { mutableStateOf<String?>(null) }
+    var selectedMimeType by remember { mutableStateOf<String?>(null) }
+
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        if (bytes != null) {
+            selectedBase64   = Base64.encodeToString(bytes, Base64.NO_WRAP)
+            selectedMimeType = mime
+            selectedFileName = uri.lastPathSegment ?: "dosya"
+        }
+    }
+
+    val canAnalyze = (prompt.isNotBlank() || selectedBase64 != null) && !uiState.aiLoading
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
         DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
         Spacer(Modifier.height(40.dp))
 
+        // Metin giriş kutusu
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -969,13 +998,74 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
                     value = prompt,
                     onValueChange = { prompt = it },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                     enabled = !uiState.aiLoading,
                     decorationBox = { inner ->
-                        if (prompt.isEmpty()) Text("Antrenman sıklığı, hedefin ve seviyeni belirt...", color = aiTheme.text2, fontSize = 15.sp)
+                        if (prompt.isEmpty()) Text(
+                            if (selectedBase64 != null) "Ek talimat ekleyebilirsin (opsiyonel)..."
+                            else "Antrenman sıklığı, hedefin ve seviyeni belirt...",
+                            color = aiTheme.text2, fontSize = 15.sp
+                        )
                         inner()
                     }
                 )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Dosya yükleme butonu + seçilen dosya gösterimi
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = { fileLauncher.launch("*/*") },
+                enabled = !uiState.aiLoading,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
+                    contentDescription = null,
+                    tint = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF / HTML Yükle",
+                    color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
+                    fontSize = 13.sp
+                )
+            }
+
+            if (selectedBase64 != null) {
+                IconButton(
+                    onClick = {
+                        selectedBase64   = null
+                        selectedMimeType = null
+                        selectedFileName = null
+                    }
+                ) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Kaldır", tint = CardCoral)
+                }
+            }
+        }
+
+        // Seçilen dosya adı
+        selectedFileName?.let { name ->
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = 28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = aiTheme.text2, modifier = Modifier.size(14.dp))
+                Text(name, color = aiTheme.text2, fontSize = 12.sp, maxLines = 1)
             }
         }
 
@@ -1001,21 +1091,21 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
             Button(
                 onClick = {
                     viewModel.clearAiError()
-                    viewModel.createFromAI(prompt)
+                    viewModel.createFromAI(prompt, selectedBase64, selectedMimeType)
                 },
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (prompt.isNotBlank()) MaterialTheme.colorScheme.primary else Surface2
+                    containerColor = if (canAnalyze) MaterialTheme.colorScheme.primary else Surface2
                 ),
                 shape = RoundedCornerShape(16.dp),
-                enabled = prompt.isNotBlank() && !uiState.aiLoading
+                enabled = canAnalyze
             ) {
                 if (uiState.aiLoading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
                     Text(
-                        "PROTOKOLÜ ANALİZ ET",
-                        color = if (prompt.isNotBlank()) MaterialTheme.colorScheme.onPrimary else TextMuted,
+                        if (selectedBase64 != null) "DOSYADAN PROGRAM OLUŞTUR" else "PROTOKOLÜ ANALİZ ET",
+                        color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else TextMuted,
                         fontWeight = FontWeight.Black
                     )
                 }

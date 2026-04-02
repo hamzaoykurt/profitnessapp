@@ -26,6 +26,16 @@ interface ProgramRepository {
     /** Tüm egzersizleri döner. */
     suspend fun getAllExercises(): Result<List<ExerciseItem>>
 
+    /** Yeni bir egzersiz veritabanına ekler (AI tarafından keşfedilen hareketler için). */
+    suspend fun addExercise(
+        name: String,
+        nameEn: String,
+        targetMuscle: String,
+        category: String,
+        setsDefault: Int,
+        repsDefault: Int
+    ): Result<ExerciseItem>
+
     /** Program adını günceller. */
     suspend fun updateProgramName(programId: String, name: String): Result<Unit>
 
