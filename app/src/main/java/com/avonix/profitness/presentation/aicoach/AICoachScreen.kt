@@ -133,7 +133,7 @@ fun AICoachScreen(
 
         // ── Message feed fills full Box, has bottom padding for the input area ─
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        val inputAreaHeight = if (imeVisible) 72.dp + bottomPadding else 148.dp + bottomPadding
+        val inputAreaHeight = if (imeVisible) 72.dp else 148.dp + bottomPadding
         LazyColumn(
             state           = listState,
             modifier        = Modifier.fillMaxSize(),
@@ -156,8 +156,8 @@ fun AICoachScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = bottomPadding + 8.dp)
+                .then(if (!imeVisible) Modifier.navigationBarsPadding() else Modifier)
+                .padding(bottom = if (imeVisible) 8.dp else bottomPadding + 8.dp)
         ) {
             AnimatedVisibility(
                 visible = !imeVisible,
