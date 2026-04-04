@@ -23,6 +23,9 @@ private data class ProgramExerciseCountDto(
     val program_day_id: String
 )
 
+@Serializable
+private data class RatioEntry(val date: String, val ratio: Float)
+
 class ProfileRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val disk: DiskCache
@@ -36,6 +39,10 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var _unlockedKeysUid: String? = null
     @Volatile private var _stats: UserStatsDto? = null
     @Volatile private var _statsUid: String? = null
+    @Volatile private var _ratios: Map<String, Float>? = null
+    @Volatile private var _ratiosKey: String? = null           // "userId|weekStart"
+    @Volatile private var _workoutDates: List<String>? = null
+    @Volatile private var _workoutDatesKey: String? = null     // "userId|fromDate"
 
     private fun invalidateProfile() {
         _profile = null; _profileUid = null
@@ -43,7 +50,11 @@ class ProfileRepositoryImpl @Inject constructor(
     }
     private fun invalidateStats() {
         _stats = null; _statsUid = null
+        _ratios = null; _ratiosKey = null
+        _workoutDates = null; _workoutDatesKey = null
         disk.removeByPrefix("stats_")
+        disk.removeByPrefix("ratios_")
+        disk.removeByPrefix("wdates_")
     }
 
     override suspend fun getProfile(userId: String): Result<ProfileDto> {
@@ -212,61 +223,82 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun getWorkoutDates(
         userId   : String,
         fromDate : String
-    ): Result<List<String>> = withContext(Dispatchers.IO) {
-        runCatching {
-            supabase.postgrest["workout_logs"]
-                .select {
-                    filter {
-                        eq("user_id", userId)
-                        gte("date", fromDate)
+    ): Result<List<String>> {
+        val key = "$userId|$fromDate"
+        _workoutDates?.takeIf { _workoutDatesKey == key }?.let { return Result.success(it) }
+        disk.get<List<String>>("wdates_$key")?.let {
+            _workoutDates = it; _workoutDatesKey = key; return Result.success(it)
+        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest["workout_logs"]
+                    .select {
+                        filter {
+                            eq("user_id", userId)
+                            gte("date", fromDate)
+                        }
+                        order("date", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
                     }
-                    order("date", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
-                }
-                .decodeList<WorkoutLogDto>()
-                .map { it.date }
+                    .decodeList<WorkoutLogDto>()
+                    .map { it.date }
+            }.also { r -> r.getOrNull()?.let {
+                _workoutDates = it; _workoutDatesKey = key
+                disk.put("wdates_$key", it)
+            }}
         }
     }
 
     override suspend fun getWeeklyCompletionRatios(
         userId    : String,
         weekStart : String
-    ): Result<Map<String, Float>> = withContext(Dispatchers.IO) {
-        runCatching {
-            // Bu haftanın workout_logs'larını çek
-            val logs = supabase.postgrest["workout_logs"]
-                .select {
-                    filter {
-                        eq("user_id", userId)
-                        gte("date", weekStart)
+    ): Result<Map<String, Float>> {
+        val key = "$userId|$weekStart"
+        _ratios?.takeIf { _ratiosKey == key }?.let { return Result.success(it) }
+        disk.get<List<RatioEntry>>("ratios_$key")?.associate { it.date to it.ratio }?.let {
+            _ratios = it; _ratiosKey = key; return Result.success(it)
+        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                // Bu haftanın workout_logs'larını çek
+                val logs = supabase.postgrest["workout_logs"]
+                    .select {
+                        filter {
+                            eq("user_id", userId)
+                            gte("date", weekStart)
+                        }
                     }
+                    .decodeList<WorkoutLogDto>()
+
+                if (logs.isEmpty()) return@runCatching emptyMap()
+
+                val result = mutableMapOf<String, Float>()
+                for (log in logs) {
+                    val programDayId = log.program_day_id ?: continue
+
+                    // Bu program günündeki toplam egzersiz sayısı
+                    val total = supabase.postgrest["program_exercises"]
+                        .select { filter { eq("program_day_id", programDayId) } }
+                        .decodeList<ProgramExerciseCountDto>()
+                        .size
+
+                    if (total == 0) continue // dinlenme günü veya egzersiz yok
+
+                    // Bu workout_log için tamamlanan egzersizler
+                    val completed = supabase.postgrest["exercise_logs"]
+                        .select { filter { eq("workout_log_id", log.id) } }
+                        .decodeList<ExerciseLogDto>()
+                        .size
+
+                    val ratio = (completed.toFloat() / total).coerceIn(0f, 1f)
+                    // Aynı gün birden fazla log varsa en yüksek oranı al
+                    result[log.date] = maxOf(result[log.date] ?: 0f, ratio)
                 }
-                .decodeList<WorkoutLogDto>()
-
-            if (logs.isEmpty()) return@runCatching emptyMap()
-
-            val result = mutableMapOf<String, Float>()
-            for (log in logs) {
-                val programDayId = log.program_day_id ?: continue
-
-                // Bu program günündeki toplam egzersiz sayısı
-                val total = supabase.postgrest["program_exercises"]
-                    .select { filter { eq("program_day_id", programDayId) } }
-                    .decodeList<ProgramExerciseCountDto>()
-                    .size
-
-                if (total == 0) continue // dinlenme günü veya egzersiz yok
-
-                // Bu workout_log için tamamlanan egzersizler
-                val completed = supabase.postgrest["exercise_logs"]
-                    .select { filter { eq("workout_log_id", log.id) } }
-                    .decodeList<ExerciseLogDto>()
-                    .size
-
-                val ratio = (completed.toFloat() / total).coerceIn(0f, 1f)
-                // Aynı gün birden fazla log varsa en yüksek oranı al
-                result[log.date] = maxOf(result[log.date] ?: 0f, ratio)
-            }
-            result
+                @Suppress("UNCHECKED_CAST")
+                result as Map<String, Float>
+            }.also { r -> r.getOrNull()?.let {
+                _ratios = it; _ratiosKey = key
+                disk.put("ratios_$key", it.map { (d, v) -> RatioEntry(d, v) })
+            }}
         }
     }
 
