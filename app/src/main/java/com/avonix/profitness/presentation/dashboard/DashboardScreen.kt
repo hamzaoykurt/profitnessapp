@@ -67,14 +67,21 @@ private val ALL_TABS = listOf(
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    var previousTab             by remember { mutableStateOf<DashboardTab?>(null) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
 
-    // Program tab'ından Workout tab'ına geçildiğinde aktif programı zorla yenile
+    // Sadece Program tab'ından dönerken zorla yenile (program değişmiş olabilir).
+    // Diğer geçişlerde soft reload — cache geçerliyse DB'ye gitme.
     LaunchedEffect(selectedTab) {
         if (selectedTab == DashboardTab.Workout) {
-            workoutViewModel.forceReload()
+            if (previousTab == DashboardTab.Program) {
+                workoutViewModel.forceReload()
+            } else {
+                workoutViewModel.reload()
+            }
         }
+        previousTab = selectedTab
     }
     var showPerformanceDetail   by remember { mutableStateOf(false) }
     var showAchievementsDetail  by remember { mutableStateOf(false) }

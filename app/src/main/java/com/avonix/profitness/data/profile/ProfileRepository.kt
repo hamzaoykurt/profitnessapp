@@ -57,4 +57,7 @@ interface ProfileRepository {
 
     /** Tüm tanımlı başarımları achievements tablosundan getirir. */
     suspend fun getAllAchievements(): Result<List<AchievementDto>>
+
+    /** Workout tamamlanması sonrası stats cache'ini temizler. */
+    fun invalidateStatsCache()
 }

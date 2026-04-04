@@ -13,10 +13,29 @@ import kotlinx.serialization.json.put
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import com.avonix.profitness.data.cache.DiskCache
+import kotlinx.serialization.Serializable
+
+@Serializable
+private data class CompletionEntry(val dayId: String, val exerciseIds: List<String>)
 
 class WorkoutRepositoryImpl @Inject constructor(
-    private val supabase: SupabaseClient
+    private val supabase: SupabaseClient,
+    private val disk: DiskCache
 ) : WorkoutRepository {
+
+    // ── In-memory session cache ──────────────────────────────────────────────
+    @Volatile private var _completions: Map<String, Set<String>>? = null
+    @Volatile private var _completionsKey: String? = null          // "userId|weekStart"
+    @Volatile private var _streak: Int? = null
+    @Volatile private var _streakUid: String? = null
+
+    private fun invalidateWorkoutCache() {
+        _completions = null; _completionsKey = null
+        _streak = null; _streakUid = null
+        disk.removeByPrefix("completions_")
+        disk.removeByPrefix("streak_")
+    }
 
     override suspend fun startWorkout(userId: String, programDayId: String): Result<String> =
         withContext(Dispatchers.IO) {
@@ -69,6 +88,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         durationSeconds: Int
     ): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidateWorkoutCache()
             runCatching {
                 supabase.postgrest["exercise_logs"]
                     .insert(buildJsonObject {
@@ -94,8 +114,22 @@ class WorkoutRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>> =
-        withContext(Dispatchers.IO) {
+    private fun completionsToDisk(key: String, map: Map<String, Set<String>>) {
+        val entries = map.map { (k, v) -> CompletionEntry(k, v.toList()) }
+        disk.put(key, entries)
+    }
+    private fun completionsFromDisk(key: String): Map<String, Set<String>>? {
+        return disk.get<List<CompletionEntry>>(key)
+            ?.associate { it.dayId to it.exerciseIds.toSet() }
+    }
+
+    override suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>> {
+        val key = "$userId|$weekStart"
+        _completions?.takeIf { _completionsKey == key }?.let { return Result.success(it) }
+        completionsFromDisk("completions_$key")?.let {
+            _completions = it; _completionsKey = key; return Result.success(it)
+        }
+        return withContext(Dispatchers.IO) {
             runCatching {
                 // Bu haftaya ait tüm workout_log'ları çek
                 val logs = supabase.postgrest["workout_logs"]
@@ -123,12 +157,21 @@ class WorkoutRepositoryImpl @Inject constructor(
                             .addAll(exercises.map { it.exercise_id })
                     }
                 }
-                result
-            }
+                @Suppress("UNCHECKED_CAST")
+                result as Map<String, Set<String>>
+            }.also { r -> r.getOrNull()?.let {
+                _completions = it; _completionsKey = key
+                completionsToDisk("completions_$key", it)
+            }}
         }
+    }
 
-    override suspend fun getStreak(userId: String): Result<Int> =
-        withContext(Dispatchers.IO) {
+    override suspend fun getStreak(userId: String): Result<Int> {
+        _streak?.takeIf { _streakUid == userId }?.let { return Result.success(it) }
+        disk.get<Int>("streak_$userId")?.let {
+            _streak = it; _streakUid = userId; return Result.success(it)
+        }
+        return withContext(Dispatchers.IO) {
             runCatching {
                 val today = LocalDate.now()
 
@@ -167,11 +210,16 @@ class WorkoutRepositoryImpl @Inject constructor(
                     }
                 }
                 streak
-            }
+            }.also { r -> r.getOrNull()?.let {
+                _streak = it; _streakUid = userId
+                disk.put("streak_$userId", it)
+            }}
         }
+    }
 
     override suspend fun addXp(userId: String, xpAmount: Int): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidateWorkoutCache()
             runCatching {
                 val existing = supabase.postgrest["user_stats"]
                     .select { filter { eq("user_id", userId) } }
@@ -190,6 +238,7 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun updateStreak(userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidateWorkoutCache()
             runCatching {
                 val xpPerExercise = 10
 

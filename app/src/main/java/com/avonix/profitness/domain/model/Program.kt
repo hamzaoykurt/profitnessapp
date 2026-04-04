@@ -1,7 +1,11 @@
 package com.avonix.profitness.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class ProgramType { TEMPLATE, AI, MANUAL }
 
+@Serializable
 data class Program(
     val id: String,
     val userId: String,
@@ -12,6 +16,7 @@ data class Program(
     val createdAt: String = ""
 )
 
+@Serializable
 data class ProgramDay(
     val id: String,
     val programId: String,
@@ -21,6 +26,7 @@ data class ProgramDay(
     val exercises: List<ProgramExercise> = emptyList()
 )
 
+@Serializable
 data class ProgramExercise(
     val id: String,
     val programDayId: String,
@@ -36,6 +42,7 @@ data class ProgramExercise(
     val imageUrl: String = ""
 )
 
+@Serializable
 data class ExerciseItem(
     val id: String,
     val name: String,

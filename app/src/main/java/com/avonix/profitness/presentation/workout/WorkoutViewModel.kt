@@ -42,7 +42,8 @@ class WorkoutViewModel @Inject constructor(
 
     fun reload() {
         val now = System.currentTimeMillis()
-        // Zaten data varsa ve 30 saniye geçmediyse tekrar yüklemeden dön — tab geçişlerinde DB patlamasını önler
+        // Yükleme zaten devam ediyorsa ya da data tazeyse atla — startup çift yüklemesini ve tab patlamasını önler
+        if (uiState.value.isLoading) return
         if (uiState.value.hasProgramLoaded && now - lastLoadMs < 30_000) return
         updateState { it.copy(isLoading = !uiState.value.hasProgramLoaded) }
         loadActiveProgram()
@@ -219,6 +220,7 @@ class WorkoutViewModel @Inject constructor(
                     repsCompleted = exercise.reps.toIntOrNull() ?: 0
                 )
                 workoutRepository.updateStreak(userId)
+                profileRepository.invalidateStatsCache()
 
                 val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
                 updateState { it.copy(currentStreak = updatedStreak) }

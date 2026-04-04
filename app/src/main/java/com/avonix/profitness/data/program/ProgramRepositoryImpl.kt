@@ -19,15 +19,40 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
+import com.avonix.profitness.data.cache.DiskCache
 
 class ProgramRepositoryImpl @Inject constructor(
-    private val supabase: SupabaseClient
+    private val supabase: SupabaseClient,
+    private val disk: DiskCache
 ) : ProgramRepository {
+
+    // ── In-memory session cache ──────────────────────────────────────────────
+    @Volatile private var _programs: List<Program>? = null
+    @Volatile private var _programsUid: String? = null
+    @Volatile private var _active: Program? = null
+    @Volatile private var _activeUid: String? = null
+    @Volatile private var _activeLoaded = false   // null program vs not-loaded ayrımı
+    @Volatile private var _exercises: List<ExerciseItem>? = null
+
+    private fun invalidatePrograms() {
+        _programs = null; _programsUid = null
+        _active = null; _activeUid = null; _activeLoaded = false
+        disk.removeByPrefix("programs_")
+        disk.removeByPrefix("active_")
+    }
 
     // ── Get Programs ──────────────────────────────────────────────────────────
 
-    override suspend fun getUserPrograms(userId: String): Result<List<Program>> =
-        withContext(Dispatchers.IO) {
+    override suspend fun getUserPrograms(userId: String): Result<List<Program>> {
+        // 1. Memory
+        _programs?.takeIf { _programsUid == userId }?.let { return Result.success(it) }
+        // 2. Disk
+        disk.get<List<Program>>("programs_$userId")?.let {
+            _programs = it; _programsUid = userId
+            return Result.success(it)
+        }
+        // 3. Network
+        return withContext(Dispatchers.IO) {
             runCatching {
                 val dtos = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId) } }
@@ -38,11 +63,24 @@ class ProgramRepositoryImpl @Inject constructor(
                     dto.toDomain().copy(days = days)
                 }
                 programs
-            }
+            }.also { r -> r.getOrNull()?.let {
+                _programs = it; _programsUid = userId
+                disk.put("programs_$userId", it)
+            }}
         }
+    }
 
-    override suspend fun getActiveProgram(userId: String): Result<Program?> =
-        withContext(Dispatchers.IO) {
+    override suspend fun getActiveProgram(userId: String): Result<Program?> {
+        // 1. Memory
+        if (_activeLoaded && _activeUid == userId) return Result.success(_active)
+        // 2. Disk — aktif program List olarak saklanır (boş = null, tek eleman = program)
+        disk.get<List<Program>>("active_$userId")?.let { list ->
+            val p = list.firstOrNull()
+            _active = p; _activeUid = userId; _activeLoaded = true
+            return Result.success(p)
+        }
+        // 3. Network
+        return withContext(Dispatchers.IO) {
             runCatching {
                 val dto = supabase.postgrest["programs"]
                     .select {
@@ -56,8 +94,15 @@ class ProgramRepositoryImpl @Inject constructor(
 
                 val days = fetchDays(dto.id)
                 dto.toDomain().copy(days = days)
+            }.also { r ->
+                if (r.isSuccess) {
+                    val p = r.getOrNull()
+                    _active = p; _activeUid = userId; _activeLoaded = true
+                    disk.put("active_$userId", if (p != null) listOf(p) else emptyList<Program>())
+                }
             }
         }
+    }
 
     private suspend fun fetchDays(programId: String): List<com.avonix.profitness.domain.model.ProgramDay> {
         val dayDtos = supabase.postgrest["program_days"]
@@ -87,6 +132,7 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override suspend fun createFromTemplate(userId: String, templateKey: String): Result<Program> =
         withContext(Dispatchers.IO) {
+            invalidatePrograms()
             runCatching {
                 val template = findTemplate(templateKey)
                     ?: error("Template bulunamadı: $templateKey")
@@ -181,6 +227,7 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> =
         withContext(Dispatchers.IO) {
+            invalidatePrograms()
             runCatching {
                 deactivateAll(userId)
 
@@ -252,6 +299,7 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override suspend fun setActive(programId: String, userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidatePrograms()
             runCatching {
                 deactivateAll(userId)
                 supabase.postgrest["programs"]
@@ -264,20 +312,26 @@ class ProgramRepositoryImpl @Inject constructor(
 
     // ── Get Exercises ─────────────────────────────────────────────────────────
 
-    override suspend fun getAllExercises(): Result<List<ExerciseItem>> =
-        withContext(Dispatchers.IO) {
+    override suspend fun getAllExercises(): Result<List<ExerciseItem>> {
+        _exercises?.let { return Result.success(it) }
+        disk.get<List<ExerciseItem>>("exercises")?.let {
+            _exercises = it; return Result.success(it)
+        }
+        return withContext(Dispatchers.IO) {
             runCatching {
                 supabase.postgrest["exercises"]
                     .select { order("category", Order.ASCENDING) }
                     .decodeList<ExerciseDto>()
                     .map { it.toDomain() }
-            }
+            }.also { r -> r.getOrNull()?.let { _exercises = it; disk.put("exercises", it) } }
         }
+    }
 
     // ── Update / Delete ───────────────────────────────────────────────────────
 
     override suspend fun updateProgramName(programId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidatePrograms()
             runCatching {
                 supabase.postgrest["programs"]
                     .update({ set("name", name) }) {
@@ -292,6 +346,7 @@ class ProgramRepositoryImpl @Inject constructor(
         name     : String,
         days     : List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
+        invalidatePrograms()
         runCatching {
             // 1) Program adını güncelle
             supabase.postgrest["programs"]
@@ -360,6 +415,7 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
+            invalidatePrograms()
             runCatching {
                 // 1) program_days ID'lerini çek
                 val dayIds = supabase.postgrest["program_days"]
@@ -409,6 +465,7 @@ class ProgramRepositoryImpl @Inject constructor(
         setsDefault: Int,
         repsDefault: Int
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
+        _exercises = null; disk.remove("exercises")  // yeni egzersiz eklendi
         runCatching {
             supabase.postgrest["exercises"]
                 .insert(
