@@ -27,6 +27,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.font.FontWeight
@@ -303,12 +304,31 @@ fun AppNavBar(
                 .padding(horizontal = 8.dp, vertical = 8.dp)
                 .pointerInput(tabs, selected, onSelect) {
                     awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
+                        // Initial pass: child clickable'lardan ÖNCE down eventı yakala
+                        val downEvent = awaitPointerEvent(PointerEventPass.Initial)
+                        val downChange = downEvent.changes.firstOrNull { it.pressed }
+                            ?: return@awaitEachGesture
+                        val pointerId = downChange.id
+
                         var dragAccum = 0f
-                        horizontalDrag(down.id) { change ->
+                        var isDragging = false
+
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                            if (!change.pressed) break
+
                             dragAccum += change.positionChange().x
-                            change.consume()
+
+                            // Parmak yeterince kaydıysa drag moduna gir ve child click'i iptal et
+                            if (!isDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
+                                isDragging = true
+                            }
+                            if (isDragging) {
+                                change.consume()
+                            }
                         }
+
                         val curIdx = tabs.indexOf(selected)
                         if (abs(dragAccum) > 60f) {
                             val goNext = dragAccum < 0f
