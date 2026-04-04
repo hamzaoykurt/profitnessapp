@@ -287,6 +287,77 @@ class ProgramRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun updateProgram(
+        programId: String,
+        name     : String,
+        days     : List<ManualDayInput>
+    ): Result<Program> = withContext(Dispatchers.IO) {
+        runCatching {
+            // 1) Program adını güncelle
+            supabase.postgrest["programs"]
+                .update({ set("name", name) }) { filter { eq("id", programId) } }
+
+            // 2) Mevcut günlerin ID'lerini çek
+            val oldDayIds = supabase.postgrest["program_days"]
+                .select { filter { eq("program_id", programId) } }
+                .decodeList<ProgramDayDto>()
+                .map { it.id }
+
+            // 3) Eski egzersizleri sil
+            for (dayId in oldDayIds) {
+                runCatching {
+                    supabase.postgrest["program_exercises"]
+                        .delete { filter { eq("program_day_id", dayId) } }
+                }
+            }
+
+            // 4) Eski günleri sil
+            supabase.postgrest["program_days"]
+                .delete { filter { eq("program_id", programId) } }
+
+            // 5) Yeni günleri ve egzersizleri ekle
+            val createdDays = days.mapIndexed { dayIdx, dayInput ->
+                supabase.postgrest["program_days"]
+                    .insert(buildJsonObject {
+                        put("program_id", programId)
+                        put("day_index", dayIdx)
+                        put("title", dayInput.title)
+                        put("is_rest_day", dayInput.isRestDay)
+                    })
+
+                val dayDto = supabase.postgrest["program_days"]
+                    .select {
+                        filter {
+                            eq("program_id", programId)
+                            eq("day_index", dayIdx)
+                        }
+                    }
+                    .decodeSingle<ProgramDayDto>()
+
+                dayInput.exercises.forEach { exInput ->
+                    supabase.postgrest["program_exercises"]
+                        .insert(buildJsonObject {
+                            put("program_day_id", dayDto.id)
+                            put("exercise_id", exInput.exerciseId)
+                            put("sets", exInput.sets)
+                            put("reps", exInput.reps)
+                            put("rest_seconds", exInput.restSeconds)
+                            put("order_index", exInput.orderIndex)
+                        })
+                }
+
+                dayDto.toDomain()
+            }
+
+            // 6) Güncel programı döndür
+            val programDto = supabase.postgrest["programs"]
+                .select { filter { eq("id", programId) } }
+                .decodeSingle<ProgramDto>()
+
+            programDto.toDomain().copy(days = createdDays)
+        }
+    }
+
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {

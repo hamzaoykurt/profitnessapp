@@ -47,7 +47,9 @@ import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.avonix.profitness.presentation.workout.WorkoutScreen
+import com.avonix.profitness.presentation.workout.WorkoutViewModel
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
@@ -66,6 +68,14 @@ private val ALL_TABS = listOf(
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
+    val workoutViewModel: WorkoutViewModel = hiltViewModel()
+
+    // Program tab'ından Workout tab'ına geçildiğinde aktif programı zorla yenile
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == DashboardTab.Workout) {
+            workoutViewModel.forceReload()
+        }
+    }
     var showPerformanceDetail   by remember { mutableStateOf(false) }
     var showAchievementsDetail  by remember { mutableStateOf(false) }
     var showEditProfile         by remember { mutableStateOf(false) }
@@ -132,6 +142,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
+                    viewModel = workoutViewModel,
                     onNavigateToAIBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.AI
                         selectedTab = DashboardTab.Program

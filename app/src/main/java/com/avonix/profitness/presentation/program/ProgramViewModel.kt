@@ -390,18 +390,56 @@ FORMAT:
         }
     }
 
+    // ── Update (Edit) ─────────────────────────────────────────────────────────
+
+    fun updateManualProgram(programId: String, name: String, days: List<ManualDayDraft>) {
+        if (name.isBlank()) { sendEvent(ProgramEvent.ShowSnackbar("Program adı boş olamaz.")); return }
+        if (days.isEmpty()) { sendEvent(ProgramEvent.ShowSnackbar("En az 1 gün eklemelisiniz.")); return }
+
+        val inputs = days.mapIndexed { i, d ->
+            ManualDayInput(
+                title     = d.title.ifBlank { "GÜN ${i + 1}" },
+                isRestDay = d.isRestDay,
+                exercises = d.selectedExercises
+            )
+        }
+        viewModelScope.launch {
+            updateState { it.copy(isLoading = true, error = null) }
+            programRepository.updateProgram(programId, name, inputs)
+                .onSuccess { updated ->
+                    updateState { state ->
+                        state.copy(
+                            isLoading    = false,
+                            userPrograms = state.userPrograms.map { p ->
+                                if (p.id == programId) updated else p
+                            }
+                        )
+                    }
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" güncellendi."))
+                    sendEvent(ProgramEvent.NavigateBack)
+                }
+                .onFailure { err ->
+                    updateState { it.copy(isLoading = false, error = err.message) }
+                    sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
+                }
+        }
+    }
+
     // ── Delete ────────────────────────────────────────────────────────────────
 
     fun deleteProgram(programId: String) {
+        // Optimistic: UI'dan hemen kaldır, arka planda sil
+        updateState { state ->
+            state.copy(userPrograms = state.userPrograms.filter { it.id != programId })
+        }
         viewModelScope.launch {
             programRepository.deleteProgram(programId)
                 .onSuccess {
-                    updateState { state ->
-                        state.copy(userPrograms = state.userPrograms.filter { it.id != programId })
-                    }
                     sendEvent(ProgramEvent.ShowSnackbar("Program silindi."))
                 }
                 .onFailure { e ->
+                    // Başarısız olursa listeyi yeniden yükle
+                    loadUserPrograms()
                     sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
                 }
         }

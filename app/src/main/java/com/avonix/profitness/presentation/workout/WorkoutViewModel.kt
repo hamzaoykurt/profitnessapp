@@ -48,6 +48,13 @@ class WorkoutViewModel @Inject constructor(
         loadActiveProgram()
     }
 
+    /** Program değişikliğinden sonra cache'i atlayıp zorla yeniler. */
+    fun forceReload() {
+        lastLoadMs = 0L
+        updateState { it.copy(isLoading = true) }
+        loadActiveProgram()
+    }
+
     private fun loadActiveProgram() {
         viewModelScope.launch {
             val userId = supabase.auth.currentSessionOrNull()?.user?.id

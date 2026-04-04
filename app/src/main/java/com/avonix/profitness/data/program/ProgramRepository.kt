@@ -39,6 +39,13 @@ interface ProgramRepository {
     /** Program adını günceller. */
     suspend fun updateProgramName(programId: String, name: String): Result<Unit>
 
+    /** Mevcut programın adını ve günlerini/egzersizlerini günceller. */
+    suspend fun updateProgram(
+        programId: String,
+        name     : String,
+        days     : List<ManualDayInput>
+    ): Result<Program>
+
     /** Programı siler. */
     suspend fun deleteProgram(programId: String): Result<Unit>
 }
