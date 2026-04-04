@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -268,7 +269,21 @@ private fun WorkoutContent(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
+    val listState = rememberLazyListState()
+    // Açılan kartı ekranın ortasına scroll et
+    var expandedExIdx by remember { mutableStateOf(-1) }
+    LaunchedEffect(expandedExIdx) {
+        if (expandedExIdx >= 0) {
+            // Header items: StreakBanner(0), Header(1), DaySelector(2), SectionLabel(3)
+            val lazyIdx = 4 + expandedExIdx
+            kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
+            val viewportHeight = listState.layoutInfo.viewportSize.height
+            listState.animateScrollToItem(lazyIdx, scrollOffset = -(viewportHeight / 5))
+        }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(0.dp, 0.dp, 0.dp, bottomPadding + 16.dp)
     ) {
@@ -350,7 +365,10 @@ private fun WorkoutContent(
                     onComplete  = {
                         viewModel.toggleExercise(selectedDayIdx, exercise.id)
                     },
-                    onShowDetail = { showDetail = true }
+                    onShowDetail = { showDetail = true },
+                    onExpandChanged = { expanded ->
+                        expandedExIdx = if (expanded) idx else -1
+                    }
                 )
                 if (showDetail) {
                     ExerciseDetailSheet(

@@ -40,7 +40,8 @@ fun CinematicExerciseCard(
     index: Int,
     isCompleted: Boolean = false,
     onComplete: () -> Unit = {},
-    onShowDetail: (() -> Unit)? = null
+    onShowDetail: (() -> Unit)? = null,
+    onExpandChanged: ((Boolean) -> Unit)? = null
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
@@ -102,6 +103,7 @@ fun CinematicExerciseCard(
                 ) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     isExpanded = !isExpanded
+                    onExpandChanged?.invoke(isExpanded)
                 },
             glowColor = if (isCompleted) accent else Color.Transparent
         ) {
