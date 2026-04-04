@@ -22,8 +22,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -262,8 +267,6 @@ fun AppNavBar(
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(40.dp)
 
-    var dragAccum by remember { mutableStateOf(0f) }
-    val navDraggableState = rememberDraggableState { delta -> dragAccum += delta }
 
     Box(
         modifier        = modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
@@ -298,16 +301,17 @@ fun AppNavBar(
                     shape = shape
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp)
-                .draggable(
-                    state         = navDraggableState,
-                    orientation   = Orientation.Horizontal,
-                    onDragStarted = { dragAccum = 0f },
-                    onDragStopped = { velocity ->
-                        val curIdx     = tabs.indexOf(selected)
-                        val byVelocity = abs(velocity) > 300f
-                        val byDistance = abs(dragAccum) > 60f
-                        if (byVelocity || byDistance) {
-                            val goNext = if (byVelocity) velocity < 0f else dragAccum < 0f
+                .pointerInput(tabs, selected, onSelect) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var dragAccum = 0f
+                        horizontalDrag(down.id) { change ->
+                            dragAccum += change.positionChange().x
+                            change.consume()
+                        }
+                        val curIdx = tabs.indexOf(selected)
+                        if (abs(dragAccum) > 60f) {
+                            val goNext = dragAccum < 0f
                             if (goNext && curIdx < tabs.lastIndex) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onSelect(tabs[curIdx + 1])
@@ -316,9 +320,8 @@ fun AppNavBar(
                                 onSelect(tabs[curIdx - 1])
                             }
                         }
-                        dragAccum = 0f
                     }
-                ),
+                },
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment     = Alignment.CenterVertically
         ) {
