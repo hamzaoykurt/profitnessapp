@@ -17,11 +17,20 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Profitness"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Şifre sıfırlama deep link: profitness://reset-password#access_token=...&type=recovery -->
+            <!-- Supabase → Authentication → URL Configuration → Redirect URLs: profitness://reset-password -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="profitness" android:host="reset-password" />
             </intent-filter>
         </activity>
     </application>

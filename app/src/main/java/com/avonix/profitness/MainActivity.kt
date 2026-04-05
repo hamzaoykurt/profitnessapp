@@ -1,9 +1,11 @@
 package com.avonix.profitness
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -16,6 +18,7 @@ import com.avonix.profitness.core.theme.AppThemeState
 import com.avonix.profitness.core.theme.AppThemeStateSaver
 import com.avonix.profitness.core.theme.ProfitnessTheme
 import com.avonix.profitness.core.theme.ThemeRepository
+import com.avonix.profitness.presentation.auth.AuthViewModel
 import com.avonix.profitness.presentation.navigation.AppNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -27,9 +30,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var themeRepository: ThemeRepository
 
+    // hiltViewModel() ile Compose'daki ile aynı instance'tır (activity-scoped)
+    private val authViewModel: AuthViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Uygulama kapalıyken deep link ile açıldıysa
+        handleRecoveryIntent(intent)
 
         setContent {
             // rememberSaveable handles rotation/process-death quickly (no I/O wait).
@@ -63,6 +71,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    /** Uygulama açıkken deep link ile gelindiyse (launchMode=singleTop) */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleRecoveryIntent(intent)
+    }
+
+    private fun handleRecoveryIntent(intent: Intent) {
+        val data = intent.data ?: return
+        if (data.scheme == "profitness" && data.host == "reset-password") {
+            authViewModel.onRecoveryLink(data.toString())
         }
     }
 }

@@ -10,4 +10,11 @@ interface AuthRepository {
     suspend fun verifyOtp(email: String, code: String): Result<Unit>
     /** OTP kodunu yeniden gönder. */
     suspend fun resendOtp(email: String): Result<Unit>
+    /**
+     * Şifre sıfırlama deep link URL'inden recovery session'ı geri yükler.
+     * URL formatı: profitness://reset-password#access_token=...&type=recovery
+     */
+    suspend fun restoreSessionFromUrl(url: String): Result<Unit>
+    /** Recovery session aktifken kullanıcının şifresini günceller. */
+    suspend fun updatePassword(newPassword: String): Result<Unit>
 }

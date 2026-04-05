@@ -5,5 +5,6 @@ package com.avonix.profitness.presentation.navigation
  */
 object Routes {
     const val AUTH = "auth"
+    const val ONBOARDING = "onboarding"
     const val DASHBOARD = "dashboard"
 }

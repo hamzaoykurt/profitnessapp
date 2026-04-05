@@ -15,6 +15,8 @@ sealed class AuthFlowScreen {
     /** OTP ekranı — kayıt sonrası 6 haneli kod doğrulaması */
     data class OtpVerify(val email: String) : AuthFlowScreen()
     data class EmailSent(val email: String, val type: EmailSentType) : AuthFlowScreen()
+    /** Şifre sıfırlama deep link ile gelindi — yeni şifre girme ekranı */
+    object NewPassword : AuthFlowScreen()
 }
 
 enum class EmailSentType { PasswordReset }
@@ -43,6 +45,10 @@ data class AuthState(
 
 sealed class AuthEvent {
     object NavigateToDashboard : AuthEvent()
+    /** İlk kayıtta OTP doğrulaması sonrası — kullanıcı onboarding'e yönlendirilir */
+    object NavigateToOnboarding : AuthEvent()
+    /** Recovery deep linki alındı — şu an dashboard'da olsa bile AUTH rotasına git */
+    object NavigateToAuthForRecovery : AuthEvent()
 }
 
 @HiltViewModel
@@ -123,7 +129,7 @@ class AuthViewModel @Inject constructor(
             authRepository.verifyOtp(email, code)
                 .onSuccess {
                     updateState { it.copy(otpLoading = false, screen = AuthFlowScreen.Login) }
-                    sendEvent(AuthEvent.NavigateToDashboard)
+                    sendEvent(AuthEvent.NavigateToOnboarding)
                 }
                 .onFailure { err ->
                     updateState { it.copy(otpLoading = false, error = parseOtpError(err.message)) }
@@ -177,6 +183,55 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+
+    // ── Password Recovery (Deep Link) ─────────────────────────────────────────
+
+    /**
+     * Şifre sıfırlama e-postasındaki linke tıklanınca Android bu URL'i MainActivity'ye iletir.
+     * Önce AUTH rotasına yönlendirme eventi gönderilir (kullanıcı dashboard'da olabilir),
+     * ardından recovery session geri yüklenerek NewPassword ekranına geçilir.
+     */
+    fun onRecoveryLink(url: String) {
+        sendEvent(AuthEvent.NavigateToAuthForRecovery)
+        updateState { it.copy(isLoading = true, error = null, hint = null) }
+        viewModelScope.launch {
+            authRepository.restoreSessionFromUrl(url)
+                .onSuccess {
+                    updateState { it.copy(isLoading = false, screen = AuthFlowScreen.NewPassword) }
+                }
+                .onFailure {
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            screen    = AuthFlowScreen.Login,
+                            error     = "Bağlantı geçersiz veya süresi dolmuş. Tekrar şifre sıfırlama talebi gönder."
+                        )
+                    }
+                }
+        }
+    }
+
+    fun onNewPasswordSubmit(password: String, confirmPassword: String) {
+        if (password.length < 6) {
+            updateState { it.copy(error = "Şifre en az 6 karakter olmalı.") }
+            return
+        }
+        if (password != confirmPassword) {
+            updateState { it.copy(error = "Şifreler eşleşmiyor.") }
+            return
+        }
+        updateState { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            authRepository.updatePassword(password)
+                .onSuccess {
+                    updateState { it.copy(isLoading = false) }
+                    sendEvent(AuthEvent.NavigateToDashboard)
+                }
+                .onFailure { err ->
+                    updateState { it.copy(isLoading = false, error = parseUpdatePasswordError(err.message)) }
+                }
+        }
+    }
 
     // ── Session ────────────────────────────────────────────────────────────────
 
@@ -258,6 +313,16 @@ class AuthViewModel @Inject constructor(
         message.contains("timeout", ignoreCase = true) ->
             "İnternet bağlantısını kontrol edin."
         else -> "Kod doğrulanamadı. Tekrar dene."
+    }
+
+    private fun parseUpdatePasswordError(message: String?): String = when {
+        message == null -> "Şifre güncellenemedi."
+        message.contains("network", ignoreCase = true) ||
+        message.contains("timeout", ignoreCase = true) ->
+            "İnternet bağlantısını kontrol edin."
+        message.contains("weak", ignoreCase = true) ->
+            "Şifre çok zayıf. En az 6 karakter kullanın."
+        else -> "Şifre güncellenemedi. Tekrar dene."
     }
 
     private fun parseNetworkError(message: String?): String = when {
