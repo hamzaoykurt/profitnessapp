@@ -56,6 +56,10 @@ class AuthRepositoryImpl @Inject constructor(
                     this.email = email
                     this.password = password
                 }
+                // Supabase, signUpWith sonrası onaylanmamış kullanıcı için bile
+                // geçici session oluşturur. Bunu temizliyoruz; kullanıcı OTP'yi
+                // doğruladıktan sonra gerçek session açılacak.
+                runCatching { supabase.auth.signOut() }
                 Unit
             }
         }
@@ -65,8 +69,13 @@ class AuthRepositoryImpl @Inject constructor(
             runCatching { supabase.auth.signOut() }
         }
 
-    override fun isLoggedIn(): Boolean =
-        supabase.auth.currentSessionOrNull() != null
+    override fun isLoggedIn(): Boolean {
+        supabase.auth.currentSessionOrNull() ?: return false
+        // Onaylanmamış kullanıcılar için Supabase geçici session oluşturur.
+        // emailConfirmedAt null ise email henüz doğrulanmamış → login sayılmaz.
+        val user = supabase.auth.currentUserOrNull() ?: return false
+        return user.emailConfirmedAt != null
+    }
 
     override suspend fun sendPasswordReset(email: String): Result<Unit> =
         withContext(Dispatchers.IO) {
