@@ -48,7 +48,9 @@ data class ProgramUiState(
     // AI edit
     val aiEditLoading: Boolean          = false,
     val aiEditError  : String?          = null,
-    val aiEditResult : Pair<String, List<AiEditDayResult>>? = null
+    val aiEditResult : Pair<String, List<AiEditDayResult>>? = null,
+    // Exercise request
+    val requestLoading: Boolean         = false
 )
 
 sealed class ProgramEvent {
@@ -109,6 +111,27 @@ class ProgramViewModel @Inject constructor(
         viewModelScope.launch {
             programRepository.getAllExercises()
                 .onSuccess { list -> updateState { it.copy(exercises = list) } }
+        }
+    }
+
+    // ── Hareket Talebi ────────────────────────────────────────────────────────
+
+    fun requestExercise(name: String, targetMuscle: String, notes: String) {
+        val uid = currentUserId() ?: run {
+            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
+            return
+        }
+        viewModelScope.launch {
+            updateState { it.copy(requestLoading = true) }
+            programRepository.requestExercise(uid, name, targetMuscle, notes)
+                .onSuccess {
+                    updateState { it.copy(requestLoading = false) }
+                    sendEvent(ProgramEvent.ShowSnackbar("Talebiniz alındı, en kısa sürede eklenecek!"))
+                }
+                .onFailure {
+                    updateState { it.copy(requestLoading = false) }
+                    sendEvent(ProgramEvent.ShowSnackbar("Talep gönderilemedi, tekrar deneyin."))
+                }
         }
     }
 
@@ -321,7 +344,16 @@ FORMAT:
 
     // ── AI ile Program Düzenleme ───────────────────────────────────────────────
 
-    fun editWithAI(program: Program, userInstruction: String) {
+    /**
+     * [currentName] ve [currentDays]: Composable'daki güncel state — program nesnesi değil.
+     * Böylece önceki AI düzenlemeleri ikinci çağrıda da korunur.
+     */
+    fun editWithAI(
+        programId       : String,
+        currentName     : String,
+        currentDays     : List<ManualDayDraft>,
+        userInstruction : String
+    ) {
         if (userInstruction.isBlank()) {
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
             return
@@ -337,17 +369,19 @@ FORMAT:
                     "${ex.name} (${ex.nameEn})" else ex.name
             }
 
-            // Mevcut programı JSON olarak serileştir
+            // Güncel Composable state'ini JSON olarak serileştir (egzersiz adını DB'den al)
+            val exerciseNameMap = baseExercises.associateBy { it.id }
             val currentProgramJson = buildString {
-                append("""{"name":"${program.name}","days":[""")
-                program.days.forEachIndexed { i, day ->
+                append("{\"name\":\"${currentName.replace("\"", "\\\"")}\",\"days\":[")
+                currentDays.forEachIndexed { i, day ->
                     if (i > 0) append(",")
-                    append("""{"title":"${day.title}","isRestDay":${day.isRestDay}""")
-                    if (!day.isRestDay && day.exercises.isNotEmpty()) {
-                        append(""","exercises":[""")
-                        day.exercises.sortedBy { it.orderIndex }.forEachIndexed { j, ex ->
+                    append("{\"title\":\"${day.title.replace("\"", "\\\"")}\",\"isRestDay\":${day.isRestDay}")
+                    if (!day.isRestDay && day.selectedExercises.isNotEmpty()) {
+                        append(",\"exercises\":[")
+                        day.selectedExercises.forEachIndexed { j, ex ->
                             if (j > 0) append(",")
-                            append("""{"exerciseName":"${ex.exerciseName}","sets":${ex.sets},"reps":${ex.reps},"restSeconds":${ex.restSeconds}}""")
+                            val exName = exerciseNameMap[ex.exerciseId]?.name ?: ex.exerciseId
+                            append("{\"exerciseName\":\"${exName.replace("\"", "\\\"")}\",\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds}}")
                         }
                         append("]")
                     }
@@ -398,7 +432,7 @@ FORMAT:
                 return@launch
             }
 
-            val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: program.name
+            val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: currentName
             val daysArray = rootObj["days"] as? JsonArray
             if (daysArray == null) {
                 updateState { it.copy(aiEditLoading = false, aiEditError = "Program günleri bulunamadı.") }
@@ -601,7 +635,7 @@ FORMAT:
                 }
                 .onFailure { err ->
                     updateState { it.copy(isLoading = false, error = err.message) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
+                    sendEvent(ProgramEvent.ShowSnackbar("Hata: ${err.message ?: "Program kaydedilemedi."}"))
                 }
         }
     }

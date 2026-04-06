@@ -1467,7 +1467,11 @@ private fun EditProgramScreen(
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
                 showPickerForDay = null
-            }
+            },
+            onRequestExercise = { name, muscle, notes ->
+                viewModel.requestExercise(name, muscle, notes)
+            },
+            requestLoading = uiState.requestLoading
         )
     }
 
@@ -1598,7 +1602,29 @@ private fun EditProgramScreen(
                         Text("İptal", color = editTheme.text1)
                     }
                     Button(
-                        onClick  = { viewModel.editWithAI(program, aiPrompt) },
+                        onClick  = {
+                            val currentDrafts = days.mapIndexed { i, d ->
+                                ManualDayDraft(
+                                    title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                                    isRestDay = d.isRestDay,
+                                    selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                                        com.avonix.profitness.data.program.ManualExerciseInput(
+                                            exerciseId  = ex.exerciseId,
+                                            sets        = ex.sets,
+                                            reps        = ex.reps,
+                                            restSeconds = ex.restSeconds,
+                                            orderIndex  = ei
+                                        )
+                                    }
+                                )
+                            }
+                            viewModel.editWithAI(
+                                programId       = program.id,
+                                currentName     = programName,
+                                currentDays     = currentDrafts,
+                                userInstruction = aiPrompt
+                            )
+                        },
                         enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
                         modifier = Modifier.weight(1f),
                         shape    = RoundedCornerShape(12.dp),
@@ -1813,7 +1839,11 @@ private fun ManualBuilderScreen(
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
                 showPickerForDay = null
-            }
+            },
+            onRequestExercise = { name, muscle, notes ->
+                viewModel.requestExercise(name, muscle, notes)
+            },
+            requestLoading = uiState.requestLoading
         )
     }
 
