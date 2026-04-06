@@ -123,14 +123,14 @@ class WorkoutRepositoryImpl @Inject constructor(
             ?.associate { it.dayId to it.exerciseIds.toSet() }
     }
 
-    override suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>> {
+    override suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>> =
+        withContext(Dispatchers.IO) {
         val key = "$userId|$weekStart"
-        _completions?.takeIf { _completionsKey == key }?.let { return Result.success(it) }
+        _completions?.takeIf { _completionsKey == key }?.let { return@withContext Result.success(it) }
         completionsFromDisk("completions_$key")?.let {
-            _completions = it; _completionsKey = key; return Result.success(it)
+            _completions = it; _completionsKey = key; return@withContext Result.success(it)
         }
-        return withContext(Dispatchers.IO) {
-            runCatching {
+        runCatching {
                 // Bu haftaya ait tüm workout_log'ları çek
                 val logs = supabase.postgrest["workout_logs"]
                     .select {
@@ -164,15 +164,14 @@ class WorkoutRepositoryImpl @Inject constructor(
                 completionsToDisk("completions_$key", it)
             }}
         }
-    }
 
-    override suspend fun getStreak(userId: String): Result<Int> {
-        _streak?.takeIf { _streakUid == userId }?.let { return Result.success(it) }
+    override suspend fun getStreak(userId: String): Result<Int> =
+        withContext(Dispatchers.IO) {
+        _streak?.takeIf { _streakUid == userId }?.let { return@withContext Result.success(it) }
         disk.get<Int>("streak_$userId")?.let {
-            _streak = it; _streakUid = userId; return Result.success(it)
+            _streak = it; _streakUid = userId; return@withContext Result.success(it)
         }
-        return withContext(Dispatchers.IO) {
-            runCatching {
+        runCatching {
                 val today = LocalDate.now()
 
                 // workout_logs tarihlerinden ardışık gün serisi hesapla
@@ -215,7 +214,6 @@ class WorkoutRepositoryImpl @Inject constructor(
                 disk.put("streak_$userId", it)
             }}
         }
-    }
 
     override suspend fun addXp(userId: String, xpAmount: Int): Result<Unit> =
         withContext(Dispatchers.IO) {

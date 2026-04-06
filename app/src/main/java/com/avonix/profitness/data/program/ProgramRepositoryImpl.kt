@@ -43,16 +43,16 @@ class ProgramRepositoryImpl @Inject constructor(
 
     // ── Get Programs ──────────────────────────────────────────────────────────
 
-    override suspend fun getUserPrograms(userId: String): Result<List<Program>> {
-        // 1. Memory
-        _programs?.takeIf { _programsUid == userId }?.let { return Result.success(it) }
-        // 2. Disk
-        disk.get<List<Program>>("programs_$userId")?.let {
-            _programs = it; _programsUid = userId
-            return Result.success(it)
-        }
-        // 3. Network
-        return withContext(Dispatchers.IO) {
+    override suspend fun getUserPrograms(userId: String): Result<List<Program>> =
+        withContext(Dispatchers.IO) {
+            // 1. Memory
+            _programs?.takeIf { _programsUid == userId }?.let { return@withContext Result.success(it) }
+            // 2. Disk
+            disk.get<List<Program>>("programs_$userId")?.let {
+                _programs = it; _programsUid = userId
+                return@withContext Result.success(it)
+            }
+            // 3. Network
             runCatching {
                 val dtos = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId) } }
@@ -68,19 +68,18 @@ class ProgramRepositoryImpl @Inject constructor(
                 disk.put("programs_$userId", it)
             }}
         }
-    }
 
-    override suspend fun getActiveProgram(userId: String): Result<Program?> {
-        // 1. Memory
-        if (_activeLoaded && _activeUid == userId) return Result.success(_active)
-        // 2. Disk — aktif program List olarak saklanır (boş = null, tek eleman = program)
-        disk.get<List<Program>>("active_$userId")?.let { list ->
-            val p = list.firstOrNull()
-            _active = p; _activeUid = userId; _activeLoaded = true
-            return Result.success(p)
-        }
-        // 3. Network
-        return withContext(Dispatchers.IO) {
+    override suspend fun getActiveProgram(userId: String): Result<Program?> =
+        withContext(Dispatchers.IO) {
+            // 1. Memory
+            if (_activeLoaded && _activeUid == userId) return@withContext Result.success(_active)
+            // 2. Disk — aktif program List olarak saklanır (boş = null, tek eleman = program)
+            disk.get<List<Program>>("active_$userId")?.let { list ->
+                val p = list.firstOrNull()
+                _active = p; _activeUid = userId; _activeLoaded = true
+                return@withContext Result.success(p)
+            }
+            // 3. Network
             runCatching {
                 val dto = supabase.postgrest["programs"]
                     .select {
@@ -102,7 +101,6 @@ class ProgramRepositoryImpl @Inject constructor(
                 }
             }
         }
-    }
 
     private suspend fun fetchDays(programId: String): List<com.avonix.profitness.domain.model.ProgramDay> {
         val dayDtos = supabase.postgrest["program_days"]
@@ -312,12 +310,12 @@ class ProgramRepositoryImpl @Inject constructor(
 
     // ── Get Exercises ─────────────────────────────────────────────────────────
 
-    override suspend fun getAllExercises(): Result<List<ExerciseItem>> {
-        _exercises?.let { return Result.success(it) }
-        disk.get<List<ExerciseItem>>("exercises")?.let {
-            _exercises = it; return Result.success(it)
-        }
-        return withContext(Dispatchers.IO) {
+    override suspend fun getAllExercises(): Result<List<ExerciseItem>> =
+        withContext(Dispatchers.IO) {
+            _exercises?.let { return@withContext Result.success(it) }
+            disk.get<List<ExerciseItem>>("exercises")?.let {
+                _exercises = it; return@withContext Result.success(it)
+            }
             runCatching {
                 supabase.postgrest["exercises"]
                     .select { order("category", Order.ASCENDING) }
@@ -325,7 +323,6 @@ class ProgramRepositoryImpl @Inject constructor(
                     .map { it.toDomain() }
             }.also { r -> r.getOrNull()?.let { _exercises = it; disk.put("exercises", it) } }
         }
-    }
 
     // ── Update / Delete ───────────────────────────────────────────────────────
 
@@ -485,6 +482,28 @@ class ProgramRepositoryImpl @Inject constructor(
                 .select { filter { eq("name", name) } }
                 .decodeSingle<ExerciseDto>()
                 .toDomain()
+        }
+    }
+
+    // ── Request Exercise ──────────────────────────────────────────────────────
+
+    override suspend fun requestExercise(
+        userId: String,
+        name: String,
+        targetMuscle: String,
+        notes: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest["exercise_requests"]
+                .insert(
+                    buildJsonObject {
+                        put("user_id", userId)
+                        put("name", name)
+                        put("target_muscle", targetMuscle)
+                        put("notes", notes)
+                    }
+                )
+            Unit
         }
     }
 

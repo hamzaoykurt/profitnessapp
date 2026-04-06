@@ -9,6 +9,8 @@ import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -129,10 +131,16 @@ class WorkoutViewModel @Inject constructor(
                         .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                         .toString()
 
-                    // DB'den bu haftanın tamamlanan egzersizlerini çek
-                    val weeklyCompletions = workoutRepository
-                        .getWeeklyCompletions(userId, weekStart)
-                        .getOrDefault(emptyMap())
+                    // DB'den haftalık tamamlamalar ve seri paralel çek
+                    val (weeklyCompletions, dbStreak) = coroutineScope {
+                        val completionsDeferred = async {
+                            workoutRepository.getWeeklyCompletions(userId, weekStart).getOrDefault(emptyMap())
+                        }
+                        val streakDeferred = async {
+                            workoutRepository.getStreak(userId).getOrDefault(0)
+                        }
+                        completionsDeferred.await() to streakDeferred.await()
+                    }
 
                     // completedIds'i DB'den gelen verilerle doldur
                     // DB'de exercises.id saklanır ama UI'da program_exercises.id kullanılır
@@ -152,9 +160,6 @@ class WorkoutViewModel @Inject constructor(
                         val memCompleted = if (sameProgram) previousState.dayStates.getOrNull(idx)?.completedIds ?: emptySet() else emptySet()
                         newDs.copy(completedIds = dbCompleted + memCompleted)
                     }
-
-                    // Gerçek ardışık gün serisi (user_stats.current_streak)
-                    val dbStreak = workoutRepository.getStreak(userId).getOrDefault(0)
 
                     lastLoadMs = System.currentTimeMillis()
                     updateState {
