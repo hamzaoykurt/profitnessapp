@@ -56,6 +56,7 @@ fun AuthScreen(
                 AuthEvent.NavigateToDashboard     -> onNavigateToDashboard()
                 AuthEvent.NavigateToOnboarding    -> onNavigateToOnboarding()
                 AuthEvent.NavigateToAuthForRecovery -> { /* AppNavigation halleder; burada ek eylem yok */ }
+                AuthEvent.NavigateToAuth            -> { /* Zaten auth ekranındayız; ek eylem yok */ }
             }
         }
     }
