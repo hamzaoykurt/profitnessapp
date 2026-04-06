@@ -45,7 +45,7 @@ fun AppNavigation(
     onThemeChange: (AppThemeState) -> Unit
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
-    val startDestination = if (authViewModel.isLoggedIn()) Routes.DASHBOARD else Routes.AUTH
+    val startDestination = Routes.AUTH
 
     // Recovery deep link geldiğinde kullanıcı dashboard'da olabilir;
     // her yerden AUTH rotasına yönlendiriyoruz (AuthScreen zaten NewPassword state'inde olacak).

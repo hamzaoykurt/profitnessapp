@@ -35,12 +35,16 @@ sealed class AuthHint {
 }
 
 data class AuthState(
-    val screen         : AuthFlowScreen = AuthFlowScreen.Login,
-    val isLoading      : Boolean        = false,
-    val otpLoading     : Boolean        = false,
-    val error          : String?        = null,
-    val hint           : AuthHint?      = null,
-    val resendCooldown : Boolean        = false,
+    val screen            : AuthFlowScreen = AuthFlowScreen.Login,
+    val isLoading         : Boolean        = false,
+    val otpLoading        : Boolean        = false,
+    val error             : String?        = null,
+    val hint              : AuthHint?      = null,
+    val resendCooldown    : Boolean        = false,
+    /** Supabase diskten session yüklenirken true — bu sürede auth UI gösterilmez. */
+    val isSessionLoading  : Boolean        = true,
+    /** Şifre sıfırlama deep linki işlenirken true — session init akışını bypass eder. */
+    val isRecoveryPending : Boolean        = false,
 )
 
 sealed class AuthEvent {
@@ -55,6 +59,20 @@ sealed class AuthEvent {
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : BaseViewModel<AuthState, AuthEvent>(AuthState()) {
+
+    init {
+        // Supabase session'ı diskten async yükler; bitince giriş yapıldıysa dashboard'a yönlendir.
+        // Recovery deep linki işleniyorsa bu akış atlanır — recovery kendi yönlendirmesini yapar.
+        viewModelScope.launch {
+            val loggedIn = authRepository.awaitSessionLoaded()
+            if (uiState.value.isRecoveryPending) return@launch
+            if (loggedIn) {
+                sendEvent(AuthEvent.NavigateToDashboard)
+            } else {
+                updateState { it.copy(isSessionLoading = false) }
+            }
+        }
+    }
 
     // ── Navigation ─────────────────────────────────────────────────────────────
 

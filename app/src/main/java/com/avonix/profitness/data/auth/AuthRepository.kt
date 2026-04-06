@@ -5,6 +5,8 @@ interface AuthRepository {
     suspend fun signUp(email: String, password: String): Result<Unit>
     suspend fun signOut(): Result<Unit>
     fun isLoggedIn(): Boolean
+    /** Supabase diskten session yüklenene kadar bekler; yüklendikten sonra giriş durumunu döner. */
+    suspend fun awaitSessionLoaded(): Boolean
     suspend fun sendPasswordReset(email: String): Result<Unit>
     /** Kayıt sonrası gelen 6 haneli OTP kodunu doğrula. */
     suspend fun verifyOtp(email: String, code: String): Result<Unit>

@@ -5,6 +5,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.OtpType
+import io.github.jan.supabase.gotrue.SessionStatus
+import kotlinx.coroutines.flow.first
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +77,12 @@ class AuthRepositoryImpl @Inject constructor(
         // emailConfirmedAt null ise email henüz doğrulanmamış → login sayılmaz.
         val user = supabase.auth.currentUserOrNull() ?: return false
         return user.emailConfirmedAt != null
+    }
+
+    override suspend fun awaitSessionLoaded(): Boolean {
+        // LoadingFromStorage bitene kadar bekle, ardından isLoggedIn() ile kontrol et.
+        supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+        return isLoggedIn()
     }
 
     override suspend fun sendPasswordReset(email: String): Result<Unit> =

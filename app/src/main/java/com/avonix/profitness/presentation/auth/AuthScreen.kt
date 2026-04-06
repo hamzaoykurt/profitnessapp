@@ -60,6 +60,12 @@ fun AuthScreen(
         }
     }
 
+    // Session diskten yüklenirken boş ekran göster; login sayfası yanıp sönmez.
+    if (state.isSessionLoading) {
+        Box(modifier = Modifier.fillMaxSize())
+        return
+    }
+
     AnimatedContent(
         targetState  = state.screen,
         transitionSpec = {
