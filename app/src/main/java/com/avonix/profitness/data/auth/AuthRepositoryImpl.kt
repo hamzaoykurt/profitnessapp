@@ -123,6 +123,7 @@ class AuthRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val uri = Uri.parse(url)
+                android.util.Log.d("Recovery", "URL: $url | code=${uri.getQueryParameter("code")} | fragment=${uri.fragment}")
 
                 // PKCE akışı: Supabase ?code=xxx ile yönlendirir (varsayılan yeni proje davranışı)
                 val code = uri.getQueryParameter("code")

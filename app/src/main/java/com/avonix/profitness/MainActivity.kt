@@ -82,8 +82,11 @@ class MainActivity : ComponentActivity() {
 
     private fun handleRecoveryIntent(intent: Intent) {
         val data = intent.data ?: return
+        android.util.Log.d("DeepLink", "Intent data: $data")
         if (data.scheme == "profitness" && data.host == "reset-password") {
             authViewModel.onRecoveryLink(data.toString())
+        } else {
+            android.util.Log.d("DeepLink", "Scheme/host eşleşmedi: scheme=${data.scheme}, host=${data.host}")
         }
     }
 }

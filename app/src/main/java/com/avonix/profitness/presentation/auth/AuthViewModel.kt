@@ -223,13 +223,14 @@ class AuthViewModel @Inject constructor(
                     // isSessionLoading ve screen aynı anda güncellenir → NewPassword ekranı doğrudan açılır
                     updateState { it.copy(isSessionLoading = false, screen = AuthFlowScreen.NewPassword) }
                 }
-                .onFailure {
+                .onFailure { err ->
+                    android.util.Log.e("Recovery", "restoreSessionFromUrl hata: ${err.message}", err)
                     updateState {
                         it.copy(
                             isSessionLoading  = false,
                             isRecoveryPending = false,
                             screen            = AuthFlowScreen.Login,
-                            error             = "Bağlantı geçersiz veya süresi dolmuş. Tekrar şifre sıfırlama talebi gönder."
+                            error             = "Hata: ${err.message}"
                         )
                     }
                 }
