@@ -211,19 +211,20 @@ class AuthViewModel @Inject constructor(
      */
     fun onRecoveryLink(url: String) {
         // isRecoveryPending flag'ini ÖNCE set et (setContent öncesi çağrılır).
-        // Böylece init bloğu session yüklenince Dashboard'a yönlendirmez,
-        // AppNavigation da startDestination olarak AUTH'u seçer.
-        updateState { it.copy(isRecoveryPending = true, isLoading = true, isSessionLoading = false, error = null, hint = null) }
+        // isSessionLoading true kalır → boş Box gösterilir, login ekranı yanıp sönmez.
+        // init bloğu awaitSessionLoaded() sonrasında bu flag'i görür ve Dashboard'a yönlendirmez.
+        updateState { it.copy(isRecoveryPending = true, error = null, hint = null) }
         sendEvent(AuthEvent.NavigateToAuthForRecovery)
         viewModelScope.launch {
             authRepository.restoreSessionFromUrl(url)
                 .onSuccess {
-                    updateState { it.copy(isLoading = false, screen = AuthFlowScreen.NewPassword) }
+                    // isSessionLoading ve screen aynı anda güncellenir → NewPassword ekranı doğrudan açılır
+                    updateState { it.copy(isSessionLoading = false, screen = AuthFlowScreen.NewPassword) }
                 }
                 .onFailure {
                     updateState {
                         it.copy(
-                            isLoading         = false,
+                            isSessionLoading  = false,
                             isRecoveryPending = false,
                             screen            = AuthFlowScreen.Login,
                             error             = "Bağlantı geçersiz veya süresi dolmuş. Tekrar şifre sıfırlama talebi gönder."
