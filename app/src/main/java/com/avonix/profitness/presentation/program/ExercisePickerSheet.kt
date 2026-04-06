@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.domain.model.ExerciseItem
 
@@ -46,7 +47,9 @@ private fun categoryColor(cat: String): Color =
 fun ExercisePickerSheet(
     exercises: List<ExerciseItem>,
     onDismiss: () -> Unit,
-    onConfirm: (exerciseId: String, exerciseName: String, targetMuscle: String, sets: Int, reps: Int, restSeconds: Int) -> Unit
+    onConfirm: (exerciseId: String, exerciseName: String, targetMuscle: String, sets: Int, reps: Int, restSeconds: Int) -> Unit,
+    onRequestExercise: ((name: String, targetMuscle: String, notes: String) -> Unit)? = null,
+    requestLoading: Boolean = false
 ) {
     val theme = LocalAppTheme.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -57,6 +60,7 @@ fun ExercisePickerSheet(
     var sets              by remember { mutableStateOf(3) }
     var reps              by remember { mutableStateOf(10) }
     var restSeconds       by remember { mutableStateOf(90) }
+    var showRequestDialog by remember { mutableStateOf(false) }
 
     val categories = remember(exercises) {
         exercises.map { it.category }.distinct().sorted()
@@ -363,8 +367,210 @@ fun ExercisePickerSheet(
                     }
                 }
 
-                item { Spacer(Modifier.height(8.dp)) }
+                // ── Talep Et footer ───────────────────────────────────────────
+                if (onRequestExercise != null) {
+                    item {
+                        Spacer(Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(theme.bg2)
+                                .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                                .clickable { showRequestDialog = true }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.AddCircleOutline,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Aradığın hareketi bulamadın mı?",
+                                        color = theme.text0,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(
+                                        "Eklenmesi için talep gönder",
+                                        color = theme.text2,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Light
+                                    )
+                                }
+                                Icon(
+                                    Icons.Rounded.ChevronRight,
+                                    null,
+                                    tint = theme.text2,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                } else {
+                    item { Spacer(Modifier.height(8.dp)) }
+                }
             }
+        }
+    }
+
+    // ── Request Dialog ────────────────────────────────────────────────────────
+    if (showRequestDialog && onRequestExercise != null) {
+        ExerciseRequestDialog(
+            requestLoading = requestLoading,
+            onDismiss = { showRequestDialog = false },
+            onSubmit = { name, muscle, notes ->
+                onRequestExercise(name, muscle, notes)
+                showRequestDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun ExerciseRequestDialog(
+    requestLoading: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (name: String, targetMuscle: String, notes: String) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    var name   by remember { mutableStateOf("") }
+    var muscle by remember { mutableStateOf("") }
+    var notes  by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .padding(20.dp)
+        ) {
+            Text(
+                "YENİ HAREKET TALEBİ",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 2.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "İstediğin hareket eklensin",
+                color = theme.text2,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Light
+            )
+            Spacer(Modifier.height(16.dp))
+
+            RequestInputField(
+                label = "Hareket adı *",
+                value = name,
+                onValueChange = { name = it },
+                placeholder = "ör. Cable Fly, Hack Squat",
+                theme = theme
+            )
+            Spacer(Modifier.height(10.dp))
+            RequestInputField(
+                label = "Kas grubu",
+                value = muscle,
+                onValueChange = { muscle = it },
+                placeholder = "ör. Göğüs, Bacak",
+                theme = theme
+            )
+            Spacer(Modifier.height(10.dp))
+            RequestInputField(
+                label = "Notlar",
+                value = notes,
+                onValueChange = { notes = it },
+                placeholder = "Eklemek istediğin bilgiler...",
+                theme = theme
+            )
+            Spacer(Modifier.height(20.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
+                ) {
+                    Text("İptal", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Button(
+                    onClick = {
+                        if (name.isNotBlank()) onSubmit(name.trim(), muscle.trim(), notes.trim())
+                    },
+                    enabled = name.isNotBlank() && !requestLoading,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (requestLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Snow
+                        )
+                    } else {
+                        Text("Gönder", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Request Input Field ───────────────────────────────────────────────────────
+
+@Composable
+private fun RequestInputField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    theme: AppThemeState
+) {
+    Column {
+        Text(
+            label,
+            color = theme.text2,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(theme.bg2)
+                .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = theme.text0,
+                    fontWeight = FontWeight.Normal
+                ),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = theme.text2, fontSize = 13.sp, fontWeight = FontWeight.Light)
+                    }
+                    inner()
+                }
+            )
         }
     }
 }

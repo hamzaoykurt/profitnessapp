@@ -48,6 +48,14 @@ interface ProgramRepository {
 
     /** Programı siler. */
     suspend fun deleteProgram(programId: String): Result<Unit>
+
+    /** Listede olmayan bir hareket için talep gönderir. */
+    suspend fun requestExercise(
+        userId: String,
+        name: String,
+        targetMuscle: String,
+        notes: String
+    ): Result<Unit>
 }
 
 data class ManualDayInput(
