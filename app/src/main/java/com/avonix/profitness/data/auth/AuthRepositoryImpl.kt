@@ -122,10 +122,18 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun restoreSessionFromUrl(url: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // Deep link formatı: profitness://reset-password#access_token=X&refresh_token=Y&type=recovery
-                // Fragment'ı manuel parse edip supabase-kt'ye aktarıyoruz.
-                val fragment = Uri.parse(url).fragment
-                    ?: throw IllegalArgumentException("Recovery URL fragment boş.")
+                val uri = Uri.parse(url)
+
+                // PKCE akışı: Supabase ?code=xxx ile yönlendirir (varsayılan yeni proje davranışı)
+                val code = uri.getQueryParameter("code")
+                if (code != null) {
+                    supabase.auth.exchangeCodeForSession(code)
+                    return@runCatching
+                }
+
+                // Implicit akış (eski): #access_token=X&refresh_token=Y&type=recovery
+                val fragment = uri.fragment
+                    ?: throw IllegalArgumentException("Geçersiz şifre sıfırlama bağlantısı.")
                 val params = fragment.split("&").mapNotNull { part ->
                     val idx = part.indexOf('=')
                     if (idx > 0) part.substring(0, idx) to Uri.decode(part.substring(idx + 1)) else null
@@ -137,9 +145,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val accessToken  = params["access_token"]  ?: throw IllegalArgumentException("access_token bulunamadı.")
                 val refreshToken = params["refresh_token"] ?: throw IllegalArgumentException("refresh_token bulunamadı.")
 
-                // supabase-kt 2.x — session'ı doğrudan içe aktar
                 supabase.auth.importAuthToken(accessToken, refreshToken, autoRefresh = true)
-                Unit
             }
         }
 
