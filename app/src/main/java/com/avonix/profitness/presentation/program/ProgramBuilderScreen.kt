@@ -1428,6 +1428,8 @@ private fun EditProgramScreen(
 
     var programName      by remember { mutableStateOf(program.name) }
     var showPickerForDay by remember { mutableStateOf<Int?>(null) }
+    var showAiEditDialog by remember { mutableStateOf(false) }
+    var aiPrompt         by remember { mutableStateOf("") }
 
     // Mevcut programın günlerini pre-populate et
     val days = remember {
@@ -1467,6 +1469,156 @@ private fun EditProgramScreen(
                 showPickerForDay = null
             }
         )
+    }
+
+    // AI edit sonucu geldiğinde günleri güncelle
+    val aiEditResult = uiState.aiEditResult
+    LaunchedEffect(aiEditResult) {
+        if (aiEditResult != null) {
+            programName = aiEditResult.first
+            days.clear()
+            aiEditResult.second.forEach { dayResult ->
+                val m = MutableManualDay()
+                m.title    = dayResult.title
+                m.isRestDay = dayResult.isRestDay
+                dayResult.exercises.forEach { ex ->
+                    m.exercises.add(DraftExercise(ex.exerciseId, ex.name, ex.targetMuscle, ex.sets, ex.reps, ex.restSeconds))
+                }
+                days.add(m)
+            }
+            viewModel.clearAiEditResult()
+            showAiEditDialog = false
+            aiPrompt = ""
+        }
+    }
+
+    // AI Düzenle Dialog
+    if (showAiEditDialog) {
+        Dialog(onDismissRequest = {
+            if (!uiState.aiEditLoading) {
+                showAiEditDialog = false
+                viewModel.clearAiEditError()
+            }
+        }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(editTheme.bg1)
+                    .border(1.dp, editTheme.stroke, RoundedCornerShape(20.dp))
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Başlık
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(listOf(CardPurple, CardCyan))
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = Snow,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "AI ile Düzenle",
+                            color      = editTheme.text0,
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 16.sp
+                        )
+                        Text(
+                            "Değişikliği açıkla",
+                            color    = editTheme.text2,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                // Prompt alanı
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(editTheme.bg0)
+                        .border(1.dp, editTheme.stroke, RoundedCornerShape(12.dp))
+                        .padding(14.dp)
+                ) {
+                    BasicTextField(
+                        value         = aiPrompt,
+                        onValueChange = { aiPrompt = it },
+                        enabled       = !uiState.aiEditLoading,
+                        textStyle     = MaterialTheme.typography.bodyMedium.copy(color = editTheme.text0),
+                        modifier      = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                        decorationBox = { inner ->
+                            if (aiPrompt.isEmpty()) {
+                                Text(
+                                    "Örn: Bacak günü ekle, karın egzersizlerini çıkar, dinlenme süresini azalt...",
+                                    color    = editTheme.text2,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
+
+                // Hata
+                if (uiState.aiEditError != null) {
+                    Text(
+                        uiState.aiEditError!!,
+                        color    = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp
+                    )
+                }
+
+                // Butonlar
+                Row(
+                    modifier            = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick  = {
+                            showAiEditDialog = false
+                            viewModel.clearAiEditError()
+                        },
+                        enabled  = !uiState.aiEditLoading,
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(12.dp),
+                        border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke)
+                    ) {
+                        Text("İptal", color = editTheme.text1)
+                    }
+                    Button(
+                        onClick  = { viewModel.editWithAI(program, aiPrompt) },
+                        enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(12.dp),
+                        colors   = ButtonDefaults.buttonColors(
+                            containerColor = CardPurple
+                        )
+                    ) {
+                        if (uiState.aiEditLoading) {
+                            CircularProgressIndicator(
+                                color    = Snow,
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     val navBarHeight = 78.dp
@@ -1545,7 +1697,7 @@ private fun EditProgramScreen(
             }
         }
 
-        // Kaydet butonu
+        // Alt aksiyon butonları
         val isLoading = uiState.isLoading
         Box(
             modifier = Modifier
@@ -1559,40 +1711,74 @@ private fun EditProgramScreen(
                 )
                 .padding(start = 24.dp, end = 24.dp, bottom = contentPad, top = 16.dp)
         ) {
-            Button(
-                onClick = {
-                    val dayDrafts = days.mapIndexed { i, d ->
-                        ManualDayDraft(
-                            title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
-                            isRestDay = d.isRestDay,
-                            selectedExercises = d.exercises.mapIndexed { ei, ex ->
-                                com.avonix.profitness.data.program.ManualExerciseInput(
-                                    exerciseId  = ex.exerciseId,
-                                    sets        = ex.sets,
-                                    reps        = ex.reps,
-                                    restSeconds = ex.restSeconds,
-                                    orderIndex  = ei
-                                )
-                            }
-                        )
-                    }
-                    viewModel.updateManualProgram(
-                        programId = program.id,
-                        name      = programName,
-                        days      = dayDrafts
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(64.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape    = RoundedCornerShape(16.dp),
-                enabled  = !isLoading
+            Row(
+                modifier            = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment   = Alignment.CenterVertically
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
-                } else {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                // AI ile Düzenle butonu
+                OutlinedButton(
+                    onClick  = { showAiEditDialog = true },
+                    enabled  = !isLoading && !uiState.aiEditLoading,
+                    modifier = Modifier.height(64.dp),
+                    shape    = RoundedCornerShape(16.dp),
+                    border   = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Brush.linearGradient(listOf(CardPurple, CardCyan))
+                    )
+                ) {
+                    Icon(
+                        Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint     = CardPurple,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "AI",
+                        color      = CardPurple,
+                        fontWeight = FontWeight.Black,
+                        fontSize   = 14.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                // Kaydet butonu
+                Button(
+                    onClick = {
+                        val dayDrafts = days.mapIndexed { i, d ->
+                            ManualDayDraft(
+                                title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                                isRestDay = d.isRestDay,
+                                selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                                    com.avonix.profitness.data.program.ManualExerciseInput(
+                                        exerciseId  = ex.exerciseId,
+                                        sets        = ex.sets,
+                                        reps        = ex.reps,
+                                        restSeconds = ex.restSeconds,
+                                        orderIndex  = ei
+                                    )
+                                }
+                            )
+                        }
+                        viewModel.updateManualProgram(
+                            programId = program.id,
+                            name      = programName,
+                            days      = dayDrafts
+                        )
+                    },
+                    modifier = Modifier.weight(1f).height(64.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape    = RoundedCornerShape(16.dp),
+                    enabled  = !isLoading && !uiState.aiEditLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                    } else {
+                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    }
                 }
             }
         }

@@ -22,6 +22,21 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
+data class AiEditExerciseResult(
+    val exerciseId  : String,
+    val name        : String,
+    val targetMuscle: String,
+    val sets        : Int,
+    val reps        : Int,
+    val restSeconds : Int
+)
+
+data class AiEditDayResult(
+    val title    : String,
+    val isRestDay: Boolean,
+    val exercises: List<AiEditExerciseResult> = emptyList()
+)
+
 data class ProgramUiState(
     val isLoading    : Boolean          = false,
     val error        : String?          = null,
@@ -29,7 +44,11 @@ data class ProgramUiState(
     val exercises    : List<ExerciseItem> = emptyList(),
     // AI builder
     val aiLoading    : Boolean          = false,
-    val aiError      : String?          = null
+    val aiError      : String?          = null,
+    // AI edit
+    val aiEditLoading: Boolean          = false,
+    val aiEditError  : String?          = null,
+    val aiEditResult : Pair<String, List<AiEditDayResult>>? = null
 )
 
 sealed class ProgramEvent {
@@ -299,6 +318,168 @@ FORMAT:
     }
 
     fun clearAiError() { updateState { it.copy(aiError = null) } }
+
+    // ── AI ile Program Düzenleme ───────────────────────────────────────────────
+
+    fun editWithAI(program: Program, userInstruction: String) {
+        if (userInstruction.isBlank()) {
+            sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
+            return
+        }
+        viewModelScope.launch {
+            updateState { it.copy(aiEditLoading = true, aiEditError = null) }
+
+            val baseExercises = uiState.value.exercises.ifEmpty {
+                programRepository.getAllExercises().getOrNull() ?: emptyList()
+            }
+            val exerciseList = baseExercises.take(120).joinToString(", ") { ex ->
+                if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
+                    "${ex.name} (${ex.nameEn})" else ex.name
+            }
+
+            // Mevcut programı JSON olarak serileştir
+            val currentProgramJson = buildString {
+                append("""{"name":"${program.name}","days":[""")
+                program.days.forEachIndexed { i, day ->
+                    if (i > 0) append(",")
+                    append("""{"title":"${day.title}","isRestDay":${day.isRestDay}""")
+                    if (!day.isRestDay && day.exercises.isNotEmpty()) {
+                        append(""","exercises":[""")
+                        day.exercises.sortedBy { it.orderIndex }.forEachIndexed { j, ex ->
+                            if (j > 0) append(",")
+                            append("""{"exerciseName":"${ex.exerciseName}","sets":${ex.sets},"reps":${ex.reps},"restSeconds":${ex.restSeconds}}""")
+                        }
+                        append("]")
+                    }
+                    append("}")
+                }
+                append("]}")
+            }
+
+            val geminiPrompt = """
+Mevcut antrenman programı:
+$currentProgramJson
+
+Kullanıcının düzenleme isteği: $userInstruction
+
+Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
+$exerciseList
+
+Kural: Listede olmayan bir egzersiz kullanman gerekirse, "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ve "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını mutlaka ekle.
+Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
+
+ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
+FORMAT:
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
+            """.trimIndent()
+
+            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
+
+            val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+            val rawJson = result.getOrNull()
+            if (rawJson == null) {
+                updateState { it.copy(aiEditLoading = false, aiEditError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
+                return@launch
+            }
+
+            val cleaned = rawJson
+                .replace(Regex("```[a-zA-Z]*\\s*"), "")
+                .replace("```", "")
+                .trim()
+            val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value
+            if (jsonCandidate == null) {
+                updateState { it.copy(aiEditLoading = false, aiEditError = "Geçersiz yanıt, tekrar dene.") }
+                return@launch
+            }
+
+            val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull()
+            if (rootObj == null) {
+                updateState { it.copy(aiEditLoading = false, aiEditError = "Program ayrıştırılamadı, tekrar dene.") }
+                return@launch
+            }
+
+            val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: program.name
+            val daysArray = rootObj["days"] as? JsonArray
+            if (daysArray == null) {
+                updateState { it.copy(aiEditLoading = false, aiEditError = "Program günleri bulunamadı.") }
+                return@launch
+            }
+
+            // Egzersiz eşleştirme
+            val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
+                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
+
+            fun findExercise(aiName: String): ExerciseItem? {
+                val key = aiName.trim().lowercase()
+                currentMap[key]?.let { return it }
+                currentMapEn[key]?.let { return it }
+                currentMap.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
+                currentMapEn.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
+                val words = key.split(" ", "-").filter { it.length > 2 }.toSet()
+                if (words.size >= 2) {
+                    currentMap.entries.firstOrNull { (dbKey, _) ->
+                        val dbWords = dbKey.split(" ", "-").filter { it.length > 2 }.toSet()
+                        (words intersect dbWords).size >= 2
+                    }?.value?.let { return it }
+                }
+                return null
+            }
+
+            val editedDays = daysArray.map { dayEl ->
+                val dayObj = dayEl.jsonObject
+                val title  = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
+                val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
+
+                if (isRest) {
+                    AiEditDayResult(title = title, isRestDay = true)
+                } else {
+                    val exArray = dayObj["exercises"] as? JsonArray
+                    val matched = exArray?.mapNotNull { exEl ->
+                        val exObj        = exEl.jsonObject
+                        val exName       = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                        val sets         = flexInt(exObj, "sets", 3)
+                        val reps         = flexInt(exObj, "reps", 10)
+                        val rest         = flexInt(exObj, "restSeconds", 90)
+                        val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
+                        val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
+
+                        var exercise = findExercise(exName)
+                        if (exercise == null) {
+                            exercise = programRepository.addExercise(
+                                name         = exName,
+                                nameEn       = "",
+                                targetMuscle = targetMuscle,
+                                category     = category,
+                                setsDefault  = sets,
+                                repsDefault  = reps
+                            ).getOrNull()
+                            exercise?.let { newEx ->
+                                currentMap[newEx.name.trim().lowercase()] = newEx
+                            }
+                        }
+
+                        exercise?.let {
+                            AiEditExerciseResult(
+                                exerciseId   = it.id,
+                                name         = it.name,
+                                targetMuscle = targetMuscle,
+                                sets         = sets,
+                                reps         = reps,
+                                restSeconds  = rest
+                            )
+                        }
+                    } ?: emptyList()
+                    AiEditDayResult(title = title, isRestDay = false, exercises = matched)
+                }
+            }
+
+            updateState { it.copy(aiEditLoading = false, aiEditResult = Pair(newName, editedDays)) }
+        }
+    }
+
+    fun clearAiEditResult() { updateState { it.copy(aiEditResult = null) } }
+    fun clearAiEditError()  { updateState { it.copy(aiEditError  = null) } }
 
     private fun flexInt(obj: kotlinx.serialization.json.JsonObject, key: String, default: Int): Int {
         val el = obj[key]?.jsonPrimitive ?: return default
