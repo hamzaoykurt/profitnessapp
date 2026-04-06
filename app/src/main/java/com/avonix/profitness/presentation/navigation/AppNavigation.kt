@@ -51,10 +51,14 @@ fun AppNavigation(
     // her yerden AUTH rotasına yönlendiriyoruz (AuthScreen zaten NewPassword state'inde olacak).
     LaunchedEffect(authViewModel) {
         authViewModel.events.collect { event ->
-            if (event is AuthEvent.NavigateToAuthForRecovery) {
-                navController.navigate(Routes.AUTH) {
-                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            when (event) {
+                is AuthEvent.NavigateToAuthForRecovery,
+                is AuthEvent.NavigateToAuth -> {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
                 }
+                else -> Unit
             }
         }
     }
@@ -96,10 +100,7 @@ fun AppNavigation(
             DashboardScreen(
                 onThemeChange = onThemeChange,
                 onLogout = {
-                    authViewModel.logout()
-                    navController.navigate(Routes.AUTH) {
-                        popUpTo(Routes.DASHBOARD) { inclusive = true }
-                    }
+                    authViewModel.logout() // signOut biter bitmez NavigateToAuth event'i atılır
                 }
             )
         }

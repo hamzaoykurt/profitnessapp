@@ -53,6 +53,8 @@ sealed class AuthEvent {
     object NavigateToOnboarding : AuthEvent()
     /** Recovery deep linki alındı — şu an dashboard'da olsa bile AUTH rotasına git */
     object NavigateToAuthForRecovery : AuthEvent()
+    /** Çıkış yapıldı — signOut tamamlandıktan sonra auth ekranına yönlendir */
+    object NavigateToAuth : AuthEvent()
 }
 
 @HiltViewModel
@@ -261,7 +263,12 @@ class AuthViewModel @Inject constructor(
     fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
 
     fun logout() {
-        viewModelScope.launch { authRepository.signOut() }
+        // signOut tamamlanmadan navigate edilirse yeni AuthViewModel session'ı hala geçerli
+        // görüp NavigateToDashboard atıyor — önce bekle, sonra event gönder.
+        viewModelScope.launch {
+            authRepository.signOut()
+            sendEvent(AuthEvent.NavigateToAuth)
+        }
     }
 
     fun clearError() {
