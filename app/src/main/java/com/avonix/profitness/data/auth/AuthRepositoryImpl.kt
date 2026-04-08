@@ -122,6 +122,7 @@ class AuthRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 supabase.auth.exchangeCodeForSession(code)
+                Unit
             }
         }
 
