@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import com.avonix.profitness.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -597,16 +599,14 @@ private fun AuthScaffold(
         ) {
             Spacer(Modifier.height(100.dp))
 
-            // Monogram
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(AmberCore),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("P", color = Color.Black, fontSize = 38.sp, fontWeight = FontWeight.Black)
-            }
+            // App Logo
+            Image(
+                painter            = painterResource(R.drawable.ic_app_logo),
+                contentDescription = "Profitness",
+                modifier           = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+            )
 
             Spacer(Modifier.height(28.dp))
 
