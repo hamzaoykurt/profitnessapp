@@ -13,6 +13,9 @@ import javax.inject.Singleton
  * Repository'ler Supabase'den çekilen verileri buraya yazar,
  * uygulama yeniden açıldığında önce buradan okur — network'e gitmeden anında gösterir.
  * Veri değiştiğinde (create/update/delete) ilgili cache silinir.
+ *
+ * CACHE_VERSION: Bu sabiti artır → bir sonraki açılışta tüm cache otomatik temizlenir.
+ * Race condition fix'i (v2) ile birlikte kullanıcıların bozuk disk cache'i temizlenir.
  */
 @Singleton
 class DiskCache @Inject constructor(
@@ -20,6 +23,27 @@ class DiskCache @Inject constructor(
 ) {
     @PublishedApi internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
     @PublishedApi internal val dir by lazy { File(context.filesDir, "data_cache").also { it.mkdirs() } }
+
+    private val prefs by lazy {
+        context.getSharedPreferences("disk_cache_meta", Context.MODE_PRIVATE)
+    }
+
+    companion object {
+        private const val CACHE_VERSION = 2
+        private const val KEY_VERSION   = "cache_version"
+    }
+
+    init {
+        migrateIfNeeded()
+    }
+
+    /** Versiyon uyuşmuyorsa tüm cache dosyalarını sil (tek seferlik migrasyon). */
+    private fun migrateIfNeeded() {
+        if (prefs.getInt(KEY_VERSION, 0) != CACHE_VERSION) {
+            dir.listFiles()?.forEach { it.delete() }
+            prefs.edit().putInt(KEY_VERSION, CACHE_VERSION).apply()
+        }
+    }
 
     inline fun <reified T> get(key: String): T? {
         val file = File(dir, "$key.json")

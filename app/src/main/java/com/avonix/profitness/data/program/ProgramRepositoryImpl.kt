@@ -34,6 +34,11 @@ class ProgramRepositoryImpl @Inject constructor(
     @Volatile private var _activeLoaded = false   // null program vs not-loaded ayrımı
     @Volatile private var _exercises: List<ExerciseItem>? = null
 
+    override fun invalidateActiveCache() {
+        _active = null; _activeUid = null; _activeLoaded = false
+        disk.removeByPrefix("active_")
+    }
+
     private fun invalidatePrograms() {
         _programs = null; _programsUid = null
         _active = null; _activeUid = null; _activeLoaded = false
@@ -130,7 +135,6 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override suspend fun createFromTemplate(userId: String, templateKey: String): Result<Program> =
         withContext(Dispatchers.IO) {
-            invalidatePrograms()
             runCatching {
                 val template = findTemplate(templateKey)
                     ?: error("Template bulunamadı: $templateKey")
@@ -214,7 +218,7 @@ class ProgramRepositoryImpl @Inject constructor(
                 }
 
                 programDto.toDomain().copy(days = createdDays)
-            }
+            }.also { r -> if (r.isSuccess) invalidatePrograms() }
         }
 
     // ── Create Manual ─────────────────────────────────────────────────────────
@@ -225,7 +229,6 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> =
         withContext(Dispatchers.IO) {
-            invalidatePrograms()
             runCatching {
                 deactivateAll(userId)
 
@@ -290,14 +293,13 @@ class ProgramRepositoryImpl @Inject constructor(
                 }
 
                 programDto.toDomain().copy(days = createdDays)
-            }
+            }.also { r -> if (r.isSuccess) invalidatePrograms() }
         }
 
     // ── Set Active ────────────────────────────────────────────────────────────
 
     override suspend fun setActive(programId: String, userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
-            invalidatePrograms()
             runCatching {
                 deactivateAll(userId)
                 supabase.postgrest["programs"]
@@ -305,7 +307,7 @@ class ProgramRepositoryImpl @Inject constructor(
                         filter { eq("id", programId) }
                     }
                 Unit
-            }
+            }.also { r -> if (r.isSuccess) invalidatePrograms() }
         }
 
     // ── Get Exercises ─────────────────────────────────────────────────────────
@@ -328,7 +330,6 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override suspend fun updateProgramName(programId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
-            invalidatePrograms()
             runCatching {
                 supabase.postgrest["programs"]
                     .update({ set("name", name) }) {
@@ -343,7 +344,6 @@ class ProgramRepositoryImpl @Inject constructor(
         name     : String,
         days     : List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
-        invalidatePrograms()
         runCatching {
             // 1) Program adını güncelle
             supabase.postgrest["programs"]
@@ -360,6 +360,16 @@ class ProgramRepositoryImpl @Inject constructor(
                 runCatching {
                     supabase.postgrest["program_exercises"]
                         .delete { filter { eq("program_day_id", dayId) } }
+                }
+            }
+
+            // 3b) workout_logs'daki referansı NULL yap — geçmişi koruyoruz, bağlantıyı koparıyoruz
+            for (dayId in oldDayIds) {
+                runCatching {
+                    supabase.postgrest["workout_logs"]
+                        .update({ set("program_day_id", null as String?) }) {
+                            filter { eq("program_day_id", dayId) }
+                        }
                 }
             }
 
@@ -398,7 +408,9 @@ class ProgramRepositoryImpl @Inject constructor(
                         })
                 }
 
-                dayDto.toDomain()
+                // Tüm egzersizleri DB'den çek — döndürülen Program nesnesi doğru olsun
+                val exercises = fetchExercises(dayDto.id)
+                dayDto.toDomain().copy(exercises = exercises)
             }
 
             // 6) Güncel programı döndür
@@ -407,12 +419,11 @@ class ProgramRepositoryImpl @Inject constructor(
                 .decodeSingle<ProgramDto>()
 
             programDto.toDomain().copy(days = createdDays)
-        }
+        }.also { r -> if (r.isSuccess) invalidatePrograms() }
     }
 
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
-            invalidatePrograms()
             runCatching {
                 // 1) program_days ID'lerini çek
                 val dayIds = supabase.postgrest["program_days"]
@@ -421,8 +432,7 @@ class ProgramRepositoryImpl @Inject constructor(
                     .map { it.id }
 
                 if (dayIds.isNotEmpty()) {
-                    // 2) workout_logs'daki program_day_id referansını NULL yap —
-                    //    WORKOUT GEÇMİŞİNİ KORUYORUZ, seri ve başarımlar sıfırlanmasın
+                    // 2) workout_logs'daki program_day_id referansını NULL yap — geçmiş korunuyor
                     for (dayId in dayIds) {
                         runCatching {
                             supabase.postgrest["workout_logs"]
@@ -449,7 +459,7 @@ class ProgramRepositoryImpl @Inject constructor(
                 supabase.postgrest["programs"]
                     .delete { filter { eq("id", programId) } }
                 Unit
-            }
+            }.also { r -> if (r.isSuccess) invalidatePrograms() }
         }
 
     // ── Add Exercise ──────────────────────────────────────────────────────────

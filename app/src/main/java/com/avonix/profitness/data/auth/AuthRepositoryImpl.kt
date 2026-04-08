@@ -1,6 +1,5 @@
 package com.avonix.profitness.data.auth
 
-import android.net.Uri
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
@@ -119,34 +118,10 @@ class AuthRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun restoreSessionFromUrl(url: String): Result<Unit> =
+    override suspend fun exchangeRecoveryCode(code: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val uri = Uri.parse(url)
-                android.util.Log.d("Recovery", "URL: $url | code=${uri.getQueryParameter("code")} | fragment=${uri.fragment}")
-
-                // PKCE akışı: Supabase ?code=xxx ile yönlendirir (varsayılan yeni proje davranışı)
-                val code = uri.getQueryParameter("code")
-                if (code != null) {
-                    supabase.auth.exchangeCodeForSession(code)
-                    return@runCatching
-                }
-
-                // Implicit akış (eski): #access_token=X&refresh_token=Y&type=recovery
-                val fragment = uri.fragment
-                    ?: throw IllegalArgumentException("Geçersiz şifre sıfırlama bağlantısı.")
-                val params = fragment.split("&").mapNotNull { part ->
-                    val idx = part.indexOf('=')
-                    if (idx > 0) part.substring(0, idx) to Uri.decode(part.substring(idx + 1)) else null
-                }.toMap()
-
-                val type = params["type"] ?: ""
-                if (type != "recovery") throw IllegalArgumentException("Bu bir şifre sıfırlama linki değil.")
-
-                val accessToken  = params["access_token"]  ?: throw IllegalArgumentException("access_token bulunamadı.")
-                val refreshToken = params["refresh_token"] ?: throw IllegalArgumentException("refresh_token bulunamadı.")
-
-                supabase.auth.importAuthToken(accessToken, refreshToken, autoRefresh = true)
+                supabase.auth.exchangeCodeForSession(code)
             }
         }
 

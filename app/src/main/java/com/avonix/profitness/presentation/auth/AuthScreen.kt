@@ -53,10 +53,9 @@ fun AuthScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                AuthEvent.NavigateToDashboard     -> onNavigateToDashboard()
-                AuthEvent.NavigateToOnboarding    -> onNavigateToOnboarding()
-                AuthEvent.NavigateToAuthForRecovery -> { /* AppNavigation halleder; burada ek eylem yok */ }
-                AuthEvent.NavigateToAuth            -> { /* Zaten auth ekranındayız; ek eylem yok */ }
+                AuthEvent.NavigateToDashboard  -> onNavigateToDashboard()
+                AuthEvent.NavigateToOnboarding -> onNavigateToOnboarding()
+                AuthEvent.NavigateToAuth       -> { /* Zaten auth ekranındayız; ek eylem yok */ }
             }
         }
     }
@@ -86,7 +85,6 @@ fun AuthScreen(
             is AuthFlowScreen.ForgotPassword -> ForgotPasswordScreen(screen.prefillEmail, state, viewModel)
             is AuthFlowScreen.OtpVerify      -> OtpVerifyScreen(screen.email, state, viewModel)
             is AuthFlowScreen.EmailSent      -> EmailSentScreen(screen.email, screen.type, state, viewModel)
-            is AuthFlowScreen.NewPassword    -> NewPasswordScreen(state, viewModel)
         }
     }
 }
@@ -573,133 +571,6 @@ private fun EmailSentScreen(
     }
 }
 
-// ── New Password Screen ───────────────────────────────────────────────────────
-
-@Composable
-private fun NewPasswordScreen(
-    state    : AuthState,
-    viewModel: AuthViewModel
-) {
-    val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-
-    var password        by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var showPass        by remember { mutableStateOf(false) }
-    var showConfirmPass by remember { mutableStateOf(false) }
-    val confirmFocus    = remember { FocusRequester() }
-    val keyboard        = LocalSoftwareKeyboardController.current
-
-    val alphaAnim = remember { Animatable(0f) }
-    val yAnim     = remember { Animatable(24f) }
-    LaunchedEffect(Unit) {
-        alphaAnim.animateTo(1f, tween(420))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow))
-    }
-
-    // Loading sırasında (session geri yüklenirken) sade bir gösterge
-    if (state.isLoading) {
-        Box(
-            modifier         = Modifier.fillMaxSize().background(theme.bg0),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(color = accent)
-                Spacer(Modifier.height(16.dp))
-                Text("Bağlantı doğrulanıyor…", color = theme.text2, fontSize = 14.sp)
-            }
-        }
-        return
-    }
-
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // İkon
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(accent.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.LockReset, null, tint = accent, modifier = Modifier.size(40.dp))
-            }
-
-            Spacer(Modifier.height(28.dp))
-            Text(
-                "Yeni şifre belirle",
-                color      = ObsidianText,
-                fontSize   = 24.sp,
-                fontWeight = FontWeight.Black
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Hesabın için güçlü bir şifre seç.",
-                color    = ObsidianSub,
-                fontSize = 14.sp
-            )
-
-            Spacer(Modifier.height(36.dp))
-
-            AuthLiquidField(
-                value         = password,
-                onValueChange = { password = it },
-                label         = "YENİ ŞİFRE",
-                icon          = Icons.Rounded.Lock,
-                isPassword    = true,
-                showPass      = showPass,
-                onTogglePass  = { showPass = !showPass },
-                imeAction     = ImeAction.Next,
-                onImeAction   = { confirmFocus.requestFocus() }
-            )
-
-            if (password.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                PasswordStrengthBar(password = password)
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            AuthLiquidField(
-                value         = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label         = "ŞİFRE TEKRAR",
-                icon          = Icons.Rounded.Lock,
-                isPassword    = true,
-                showPass      = showConfirmPass,
-                onTogglePass  = { showConfirmPass = !showConfirmPass },
-                imeAction     = ImeAction.Done,
-                onImeAction   = {
-                    keyboard?.hide()
-                    viewModel.onNewPasswordSubmit(password, confirmPassword)
-                },
-                modifier      = Modifier.focusRequester(confirmFocus)
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            ObsidianButton(
-                text     = "ŞİFREYİ GÜNCELLE",
-                onClick  = {
-                    keyboard?.hide()
-                    viewModel.onNewPasswordSubmit(password, confirmPassword)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            AuthFeedback(error = state.error, hint = null, onHintAction = {})
-        }
-    }
-}
-
 // ── Shared layout scaffold ────────────────────────────────────────────────────
 
 @Composable
@@ -766,7 +637,7 @@ private fun BackRow(onBack: () -> Unit) {
 }
 
 @Composable
-private fun AuthFeedback(
+internal fun AuthFeedback(
     error       : String?,
     hint        : AuthHint?,
     onHintAction: (AuthHint) -> Unit
@@ -827,7 +698,7 @@ private fun AuthSwitchRow(message: String, actionText: String, onClick: () -> Un
 }
 
 @Composable
-private fun PasswordStrengthBar(password: String) {
+internal fun PasswordStrengthBar(password: String) {
     val accent = MaterialTheme.colorScheme.primary
     val strength = when {
         password.length < 6  -> 0

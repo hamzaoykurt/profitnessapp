@@ -49,6 +49,9 @@ interface ProgramRepository {
     /** Programı siler. */
     suspend fun deleteProgram(programId: String): Result<Unit>
 
+    /** Aktif program cache'ini temizler — forceReload için. */
+    fun invalidateActiveCache()
+
     /** Listede olmayan bir hareket için talep gönderir. */
     suspend fun requestExercise(
         userId: String,

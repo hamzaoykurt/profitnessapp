@@ -12,49 +12,34 @@ sealed class AuthFlowScreen {
     object Login         : AuthFlowScreen()
     object Register      : AuthFlowScreen()
     data class ForgotPassword(val prefillEmail: String = "") : AuthFlowScreen()
-    /** OTP ekranı — kayıt sonrası 6 haneli kod doğrulaması */
     data class OtpVerify(val email: String) : AuthFlowScreen()
     data class EmailSent(val email: String, val type: EmailSentType) : AuthFlowScreen()
-    /** Şifre sıfırlama deep link ile gelindi — yeni şifre girme ekranı */
-    object NewPassword : AuthFlowScreen()
 }
 
 enum class EmailSentType { PasswordReset }
 
-/**
- * Contextual action hint shown below the error message.
- * Guides the user toward the correct next step instead of leaving them stuck.
- */
 sealed class AuthHint {
-    /** "Bu email zaten kayıtlı → Giriş yap" */
-    object SwitchToLogin : AuthHint()
-    /** "Bu email bulunamadı → Kayıt ol" */
+    object SwitchToLogin    : AuthHint()
     object SwitchToRegister : AuthHint()
-    /** "Şifreni mi unuttun?" — after wrong credentials */
-    object ForgotPassword : AuthHint()
+    object ForgotPassword   : AuthHint()
 }
 
 data class AuthState(
-    val screen            : AuthFlowScreen = AuthFlowScreen.Login,
-    val isLoading         : Boolean        = false,
-    val otpLoading        : Boolean        = false,
-    val error             : String?        = null,
-    val hint              : AuthHint?      = null,
-    val resendCooldown    : Boolean        = false,
+    val screen         : AuthFlowScreen = AuthFlowScreen.Login,
+    val isLoading      : Boolean        = false,
+    val otpLoading     : Boolean        = false,
+    val error          : String?        = null,
+    val hint           : AuthHint?      = null,
+    val resendCooldown : Boolean        = false,
     /** Supabase diskten session yüklenirken true — bu sürede auth UI gösterilmez. */
-    val isSessionLoading  : Boolean        = true,
-    /** Şifre sıfırlama deep linki işlenirken true — session init akışını bypass eder. */
-    val isRecoveryPending : Boolean        = false,
+    val isSessionLoading: Boolean       = true,
 )
 
 sealed class AuthEvent {
-    object NavigateToDashboard : AuthEvent()
-    /** İlk kayıtta OTP doğrulaması sonrası — kullanıcı onboarding'e yönlendirilir */
+    object NavigateToDashboard  : AuthEvent()
     object NavigateToOnboarding : AuthEvent()
-    /** Recovery deep linki alındı — şu an dashboard'da olsa bile AUTH rotasına git */
-    object NavigateToAuthForRecovery : AuthEvent()
     /** Çıkış yapıldı — signOut tamamlandıktan sonra auth ekranına yönlendir */
-    object NavigateToAuth : AuthEvent()
+    object NavigateToAuth       : AuthEvent()
 }
 
 @HiltViewModel
@@ -63,11 +48,8 @@ class AuthViewModel @Inject constructor(
 ) : BaseViewModel<AuthState, AuthEvent>(AuthState()) {
 
     init {
-        // Supabase session'ı diskten async yükler; bitince giriş yapıldıysa dashboard'a yönlendir.
-        // Recovery deep linki işleniyorsa bu akış atlanır — recovery kendi yönlendirmesini yapar.
         viewModelScope.launch {
             val loggedIn = authRepository.awaitSessionLoaded()
-            if (uiState.value.isRecoveryPending) return@launch
             if (loggedIn) {
                 sendEvent(AuthEvent.NavigateToDashboard)
             } else {
@@ -97,7 +79,7 @@ class AuthViewModel @Inject constructor(
                 }
                 .onFailure { err ->
                     val msg = err.message ?: ""
-                    val (errorText, hint) = resolveLoginFailure(msg, trimmed)
+                    val (errorText, hint) = resolveLoginFailure(msg)
                     updateState { it.copy(isLoading = false, error = errorText, hint = hint) }
                 }
         }
@@ -117,8 +99,6 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.signUp(trimmed, password)
                 .onSuccess {
-                    // Supabase email template must use {{ .Token }} to send a 6-digit OTP.
-                    // Dashboard: Authentication → Email Templates → Confirm signup → use {{ .Token }}
                     updateState {
                         it.copy(
                             isLoading = false,
@@ -187,8 +167,6 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.sendPasswordReset(trimmed)
                 .onSuccess {
-                    // Supabase always returns success here regardless of whether email exists
-                    // (prevents email enumeration). We mirror this — user sees the same screen.
                     updateState {
                         it.copy(
                             isLoading = false,
@@ -203,69 +181,11 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-
-    // ── Password Recovery (Deep Link) ─────────────────────────────────────────
-
-    /**
-     * Şifre sıfırlama e-postasındaki linke tıklanınca Android bu URL'i MainActivity'ye iletir.
-     * Önce AUTH rotasına yönlendirme eventi gönderilir (kullanıcı dashboard'da olabilir),
-     * ardından recovery session geri yüklenerek NewPassword ekranına geçilir.
-     */
-    fun onRecoveryLink(url: String) {
-        // isRecoveryPending flag'ini ÖNCE set et (setContent öncesi çağrılır).
-        // isSessionLoading true kalır → boş Box gösterilir, login ekranı yanıp sönmez.
-        // init bloğu awaitSessionLoaded() sonrasında bu flag'i görür ve Dashboard'a yönlendirmez.
-        updateState { it.copy(isRecoveryPending = true, error = null, hint = null) }
-        sendEvent(AuthEvent.NavigateToAuthForRecovery)
-        viewModelScope.launch {
-            authRepository.restoreSessionFromUrl(url)
-                .onSuccess {
-                    // isSessionLoading ve screen aynı anda güncellenir → NewPassword ekranı doğrudan açılır
-                    updateState { it.copy(isSessionLoading = false, screen = AuthFlowScreen.NewPassword) }
-                }
-                .onFailure { err ->
-                    android.util.Log.e("Recovery", "restoreSessionFromUrl hata: ${err.message}", err)
-                    updateState {
-                        it.copy(
-                            isSessionLoading  = false,
-                            isRecoveryPending = false,
-                            screen            = AuthFlowScreen.Login,
-                            error             = "Hata: ${err.message}"
-                        )
-                    }
-                }
-        }
-    }
-
-    fun onNewPasswordSubmit(password: String, confirmPassword: String) {
-        if (password.length < 6) {
-            updateState { it.copy(error = "Şifre en az 6 karakter olmalı.") }
-            return
-        }
-        if (password != confirmPassword) {
-            updateState { it.copy(error = "Şifreler eşleşmiyor.") }
-            return
-        }
-        updateState { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            authRepository.updatePassword(password)
-                .onSuccess {
-                    updateState { it.copy(isLoading = false) }
-                    sendEvent(AuthEvent.NavigateToDashboard)
-                }
-                .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = parseUpdatePasswordError(err.message)) }
-                }
-        }
-    }
-
     // ── Session ────────────────────────────────────────────────────────────────
 
     fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
 
     fun logout() {
-        // signOut tamamlanmadan navigate edilirse yeni AuthViewModel session'ı hala geçerli
-        // görüp NavigateToDashboard atıyor — önce bekle, sonra event gönder.
         viewModelScope.launch {
             authRepository.signOut()
             sendEvent(AuthEvent.NavigateToAuth)
@@ -296,13 +216,7 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Returns a user-facing error string and optional contextual hint for login failures.
-     * Security note: we intentionally do NOT distinguish "wrong password" from "unknown email"
-     * to prevent email enumeration. The hint for ForgotPassword is safe to show on any
-     * credential failure since it only sends a reset link if the email exists.
-     */
-    private fun resolveLoginFailure(message: String, email: String): Pair<String, AuthHint?> {
+    private fun resolveLoginFailure(message: String): Pair<String, AuthHint?> {
         return when {
             message.contains("Email not confirmed", ignoreCase = true) ->
                 "Email adresiniz doğrulanmamış. Gelen kutunuzu kontrol edin." to null
@@ -344,16 +258,6 @@ class AuthViewModel @Inject constructor(
         message.contains("timeout", ignoreCase = true) ->
             "İnternet bağlantısını kontrol edin."
         else -> "Kod doğrulanamadı. Tekrar dene."
-    }
-
-    private fun parseUpdatePasswordError(message: String?): String = when {
-        message == null -> "Şifre güncellenemedi."
-        message.contains("network", ignoreCase = true) ||
-        message.contains("timeout", ignoreCase = true) ->
-            "İnternet bağlantısını kontrol edin."
-        message.contains("weak", ignoreCase = true) ->
-            "Şifre çok zayıf. En az 6 karakter kullanın."
-        else -> "Şifre güncellenemedi. Tekrar dene."
     }
 
     private fun parseNetworkError(message: String?): String = when {

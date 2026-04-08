@@ -51,9 +51,10 @@ class WorkoutViewModel @Inject constructor(
         loadActiveProgram()
     }
 
-    /** Program değişikliğinden sonra cache'i atlayıp zorla yeniler. */
+    /** Program değişikliğinden sonra disk cache'i de temizleyip zorla yeniler. */
     fun forceReload() {
         lastLoadMs = 0L
+        programRepository.invalidateActiveCache()
         updateState { it.copy(isLoading = true) }
         loadActiveProgram()
     }

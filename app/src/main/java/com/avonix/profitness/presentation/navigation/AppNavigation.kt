@@ -4,26 +4,30 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.avonix.profitness.core.theme.AppThemeState
 import com.avonix.profitness.presentation.auth.AuthEvent
 import com.avonix.profitness.presentation.auth.AuthScreen
 import com.avonix.profitness.presentation.auth.AuthViewModel
 import com.avonix.profitness.presentation.dashboard.DashboardScreen
 import com.avonix.profitness.presentation.onboarding.OnboardingScreen
+import com.avonix.profitness.presentation.resetpassword.ResetPasswordScreen
+import kotlinx.coroutines.flow.StateFlow
 
 private val DURATION = 420
 
-/** Cinematic shared-axis forward slide */
 private fun slideEnter() = slideInHorizontally(
     initialOffsetX = { it / 4 },
     animationSpec  = tween(DURATION, easing = FastOutSlowInEasing)
 ) + fadeIn(animationSpec = tween(DURATION, easing = FastOutSlowInEasing))
 
-/** Cinematic shared-axis backward fade */
 private fun slideExit() = slideOutHorizontally(
     targetOffsetX = { -it / 6 },
     animationSpec = tween(DURATION, easing = FastOutSlowInEasing)
@@ -42,17 +46,25 @@ private fun slidePopExit() = slideOutHorizontally(
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    recoveryCode : StateFlow<String?>,
     onThemeChange: (AppThemeState) -> Unit
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
-    val startDestination = Routes.AUTH
+    val code by recoveryCode.collectAsState()
 
-    // Recovery deep link geldiğinde kullanıcı dashboard'da olabilir;
-    // her yerden AUTH rotasına yönlendiriyoruz (AuthScreen zaten NewPassword state'inde olacak).
+    // Deep link ile recovery code geldiğinde reset_password route'una yönlendir.
+    // StateFlow olduğu için compose başlamadan önce set edilse bile kaçmaz.
+    LaunchedEffect(code) {
+        val c = code ?: return@LaunchedEffect
+        navController.navigate(Routes.resetPassword(c)) {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
+    // Çıkış event'i: signOut tamamlandıktan sonra gelir.
     LaunchedEffect(authViewModel) {
         authViewModel.events.collect { event ->
             when (event) {
-                is AuthEvent.NavigateToAuthForRecovery,
                 is AuthEvent.NavigateToAuth -> {
                     navController.navigate(Routes.AUTH) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
@@ -65,7 +77,7 @@ fun AppNavigation(
 
     NavHost(
         navController    = navController,
-        startDestination = startDestination,
+        startDestination = Routes.AUTH,
         enterTransition  = { slideEnter() },
         exitTransition   = { slideExit() },
         popEnterTransition  = { slidePopEnter() },
@@ -82,7 +94,8 @@ fun AppNavigation(
                     navController.navigate(Routes.ONBOARDING) {
                         popUpTo(Routes.AUTH) { inclusive = true }
                     }
-                }
+                },
+                viewModel = authViewModel
             )
         }
 
@@ -99,8 +112,21 @@ fun AppNavigation(
         composable(Routes.DASHBOARD) {
             DashboardScreen(
                 onThemeChange = onThemeChange,
-                onLogout = {
-                    authViewModel.logout() // signOut biter bitmez NavigateToAuth event'i atılır
+                onLogout      = { authViewModel.logout() }
+            )
+        }
+
+        composable(
+            route     = Routes.RESET_PASSWORD,
+            arguments = listOf(navArgument("code") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val recoveryCodeArg = backStackEntry.arguments?.getString("code") ?: ""
+            ResetPasswordScreen(
+                code   = recoveryCodeArg,
+                onDone = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
                 }
             )
         }

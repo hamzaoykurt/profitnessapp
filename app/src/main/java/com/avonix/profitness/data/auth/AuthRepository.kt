@@ -13,10 +13,10 @@ interface AuthRepository {
     /** OTP kodunu yeniden gönder. */
     suspend fun resendOtp(email: String): Result<Unit>
     /**
-     * Şifre sıfırlama deep link URL'inden recovery session'ı geri yükler.
-     * URL formatı: profitness://reset-password#access_token=...&type=recovery
+     * Supabase PKCE akışından gelen tek kullanımlık kodu session'a çevirir.
+     * Şifre sıfırlama e-postasındaki deep link'ten çıkarılan code parametresi.
      */
-    suspend fun restoreSessionFromUrl(url: String): Result<Unit>
+    suspend fun exchangeRecoveryCode(code: String): Result<Unit>
     /** Recovery session aktifken kullanıcının şifresini günceller. */
     suspend fun updatePassword(newPassword: String): Result<Unit>
 }
