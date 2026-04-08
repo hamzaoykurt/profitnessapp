@@ -73,6 +73,45 @@ class ProgramViewModel @Inject constructor(
 
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    /**
+     * 0.0 (tamamen farklı) ile 1.0 (aynı) arasında benzerlik skoru döner.
+     * Levenshtein edit distance'a dayalı: similarity = 1 - distance / maxLen
+     */
+    private fun similarity(a: String, b: String): Double {
+        if (a == b) return 1.0
+        val la = a.length; val lb = b.length
+        if (la == 0 || lb == 0) return 0.0
+        val dp = Array(la + 1) { IntArray(lb + 1) }
+        for (i in 0..la) dp[i][0] = i
+        for (j in 0..lb) dp[0][j] = j
+        for (i in 1..la) for (j in 1..lb) {
+            dp[i][j] = if (a[i - 1] == b[j - 1]) dp[i - 1][j - 1]
+            else 1 + minOf(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        }
+        return 1.0 - dp[la][lb].toDouble() / maxOf(la, lb)
+    }
+
+    private fun findExerciseByName(
+        aiName: String,
+        trMap: Map<String, ExerciseItem>,
+        enMap: Map<String, ExerciseItem>,
+        threshold: Double = 0.82
+    ): ExerciseItem? {
+        val key = aiName.trim().lowercase()
+
+        // 1. Tam eşleşme
+        trMap[key]?.let { return it }
+        enMap[key]?.let { return it }
+
+        // 2. Levenshtein benzerlik — eşik üzerindeki en iyi sonuç
+        val allEntries = (trMap.entries + enMap.entries)
+        return allEntries
+            .map { it.value to similarity(key, it.key) }
+            .filter { it.second >= threshold }
+            .maxByOrNull { it.second }
+            ?.first
+    }
+
     private fun currentUserId(): String? =
         supabase.auth.currentSessionOrNull()?.user?.id
 
@@ -159,13 +198,9 @@ class ProgramViewModel @Inject constructor(
         viewModelScope.launch {
             updateState { it.copy(aiLoading = true, aiError = null) }
 
-            // 1. Egzersiz listesini hazırla
+            // 1. Egzersiz listesini hazırla (eşleştirme için — prompt'a gönderilmez)
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
-            }
-            val exerciseList = baseExercises.joinToString(", ") { ex ->
-                if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
-                    "${ex.name} (${ex.nameEn})" else ex.name
             }
 
             // 2. Metin tabanlı dosyalar (HTML, TXT vb.) inline_data yerine text olarak gönderilmeli
@@ -207,17 +242,16 @@ $userInstruction"""
             val geminiPrompt = """
 $mediaAnalysisBlock
 
-Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
-$exerciseList
-
-Kural: Egzersiz seçerken ÖNCE yukarıdaki listeden ara ve tam adını kullan. Listede varsa HİÇBİR ZAMAN farklı bir egzersizle değiştirme. Listede kesinlikle yoksa, kullanıcının istediği egzersizin tam adını yaz ve "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ile "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını ekle.
+Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+"targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
+"category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. Egzersiz listesinde olan bir hareketi asla başka bir hareketle değiştirme. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
+            val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
 
             val result = if (effectiveHasMedia) {
                 geminiRepository.chatWithMedia(effectiveBase64!!, effectiveMime!!, geminiPrompt, systemPrompt)
@@ -255,26 +289,10 @@ FORMAT:
                 return@launch
             }
 
-            // 4. Egzersiz eşleştirme — mutable map, yeni eklenenler de aranabilir
+            // 4. Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
             val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
             val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
                 .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
-
-            fun findExercise(aiName: String): ExerciseItem? {
-                val key = aiName.trim().lowercase()
-                currentMap[key]?.let { return it }
-                currentMapEn[key]?.let { return it }
-                currentMap.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
-                currentMapEn.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
-                val words = key.split(" ", "-").filter { it.length > 2 }.toSet()
-                if (words.size >= 2) {
-                    currentMap.entries.firstOrNull { (dbKey, _) ->
-                        val dbWords = dbKey.split(" ", "-").filter { it.length > 2 }.toSet()
-                        (words intersect dbWords).size >= 2
-                    }?.value?.let { return it }
-                }
-                return null
-            }
 
             val days = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -294,9 +312,8 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExercise(exName)
+                        var exercise = findExerciseByName(exName, currentMap, currentMapEn)
 
-                        // Bulunamadıysa veritabanına ekle — diğer kullanıcılar da erişebilsin
                         if (exercise == null) {
                             exercise = programRepository.addExercise(
                                 name         = exName,
@@ -364,11 +381,6 @@ FORMAT:
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseList = baseExercises.joinToString(", ") { ex ->
-                if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
-                    "${ex.name} (${ex.nameEn})" else ex.name
-            }
-
             // Güncel Composable state'ini JSON olarak serileştir (egzersiz adını DB'den al)
             val exerciseNameMap = baseExercises.associateBy { it.id }
             val currentProgramJson = buildString {
@@ -396,10 +408,9 @@ $currentProgramJson
 
 Kullanıcının düzenleme isteği: $userInstruction
 
-Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
-$exerciseList
-
-Kural: Egzersiz seçerken ÖNCE yukarıdaki listeden ara ve tam adını kullan. Listede varsa HİÇBİR ZAMAN farklı bir egzersizle değiştirme. Listede kesinlikle yoksa, kullanıcının istediği egzersizin tam adını yaz ve "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ile "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını ekle.
+Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+"targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
+"category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
@@ -407,7 +418,7 @@ FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. Egzersiz listesinde olan bir hareketi asla başka bir hareketle değiştirme. SADECE ham JSON döndür, başka hiçbir şey yazma."
+            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
 
             val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
             val rawJson = result.getOrNull()
@@ -439,26 +450,10 @@ FORMAT:
                 return@launch
             }
 
-            // Egzersiz eşleştirme
-            val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
-            val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
+            // Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
+            val editMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val editMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
                 .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
-
-            fun findExercise(aiName: String): ExerciseItem? {
-                val key = aiName.trim().lowercase()
-                currentMap[key]?.let { return it }
-                currentMapEn[key]?.let { return it }
-                currentMap.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
-                currentMapEn.entries.firstOrNull { it.key.contains(key) || key.contains(it.key) }?.value?.let { return it }
-                val words = key.split(" ", "-").filter { it.length > 2 }.toSet()
-                if (words.size >= 2) {
-                    currentMap.entries.firstOrNull { (dbKey, _) ->
-                        val dbWords = dbKey.split(" ", "-").filter { it.length > 2 }.toSet()
-                        (words intersect dbWords).size >= 2
-                    }?.value?.let { return it }
-                }
-                return null
-            }
 
             val editedDays = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -478,7 +473,7 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExercise(exName)
+                        var exercise = findExerciseByName(exName, editMap, editMapEn)
                         if (exercise == null) {
                             exercise = programRepository.addExercise(
                                 name         = exName,
@@ -489,7 +484,7 @@ FORMAT:
                                 repsDefault  = reps
                             ).getOrNull()
                             exercise?.let { newEx ->
-                                currentMap[newEx.name.trim().lowercase()] = newEx
+                                editMap[newEx.name.trim().lowercase()] = newEx
                             }
                         }
 
