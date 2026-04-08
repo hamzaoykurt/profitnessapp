@@ -114,16 +114,19 @@ class ProfileRepositoryImpl @Inject constructor(
                 runCatching { supabase.storage.from("profile-photos").delete(path) }
                 // Yukle
                 supabase.storage.from("profile-photos").upload(path, imageBytes, upsert = true)
-                // Public URL al
+                // Public URL al — temiz URL DB'ye kaydedilir
                 val url = supabase.storage.from("profile-photos").publicUrl(path)
-                // avatar_url'i guncelle
+                val now = System.currentTimeMillis()
+                // avatar_url ve avatar_updated_at güncelle
                 supabase.postgrest["profiles"].upsert(
                     buildJsonObject {
-                        put("user_id",   userId)
-                        put("avatar_url", url)
+                        put("user_id",           userId)
+                        put("avatar_url",         url)
+                        put("avatar_updated_at",  now)
                     }
                 )
-                url
+                // UI'a cache-busting URL döndür
+                "$url?t=$now"
             }
         }
 

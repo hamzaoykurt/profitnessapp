@@ -177,7 +177,13 @@ fun EditProfileScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             val currentAvatar = state.avatar
-                            if (currentAvatar.startsWith("http")) {
+                            if (state.isSaving) {
+                                CircularProgressIndicator(
+                                    color = accent,
+                                    modifier = Modifier.size(32.dp),
+                                    strokeWidth = 3.dp
+                                )
+                            } else if (currentAvatar.startsWith("http")) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context).data(currentAvatar).crossfade(true).build(),
                                     contentDescription = "Avatar",

@@ -16,6 +16,13 @@ import javax.inject.Inject
 
 // ── Rank Sistemi ──────────────────────────────────────────────────────────────
 
+/** DB'deki temiz URL + avatar_updated_at birleştirerek Coil'e cache-busting URL üretir. */
+fun buildAvatarDisplayUrl(avatarUrl: String?, updatedAt: Long?): String {
+    if (avatarUrl.isNullOrBlank()) return "🏋️"
+    if (!avatarUrl.startsWith("http")) return avatarUrl
+    return if (updatedAt != null) "$avatarUrl?t=$updatedAt" else avatarUrl
+}
+
 fun computeRank(xp: Int): String = when {
     xp >= 50000 -> "Diamond"
     xp >= 15000 -> "Platinum"
@@ -179,7 +186,7 @@ class ProfileViewModel @Inject constructor(
             updateState {
                 it.copy(
                     displayName         = profile?.display_name.orEmpty(),
-                    avatar              = profile?.avatar_url?.ifBlank { "🏋️" } ?: "🏋️",
+                    avatar              = buildAvatarDisplayUrl(profile?.avatar_url, profile?.avatar_updated_at),
                     rank                = computedRank,
                     level               = lvl,
                     xp                  = currentXp,
