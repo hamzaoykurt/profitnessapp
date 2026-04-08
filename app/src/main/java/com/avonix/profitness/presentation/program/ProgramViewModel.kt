@@ -163,7 +163,7 @@ class ProgramViewModel @Inject constructor(
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseList = baseExercises.take(120).joinToString(", ") { ex ->
+            val exerciseList = baseExercises.joinToString(", ") { ex ->
                 if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
                     "${ex.name} (${ex.nameEn})" else ex.name
             }
@@ -210,14 +210,14 @@ $mediaAnalysisBlock
 Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
 $exerciseList
 
-Kural: Listede olmayan bir egzersiz kullanman gerekirse, o egzersiz için "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ve "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını mutlaka ekle.
+Kural: Egzersiz seçerken ÖNCE yukarıdaki listeden ara ve tam adını kullan. Listede varsa HİÇBİR ZAMAN farklı bir egzersizle değiştirme. Listede kesinlikle yoksa, kullanıcının istediği egzersizin tam adını yaz ve "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ile "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını ekle.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
+            val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. Egzersiz listesinde olan bir hareketi asla başka bir hareketle değiştirme. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
 
             val result = if (effectiveHasMedia) {
                 geminiRepository.chatWithMedia(effectiveBase64!!, effectiveMime!!, geminiPrompt, systemPrompt)
@@ -364,7 +364,7 @@ FORMAT:
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseList = baseExercises.take(120).joinToString(", ") { ex ->
+            val exerciseList = baseExercises.joinToString(", ") { ex ->
                 if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name)
                     "${ex.name} (${ex.nameEn})" else ex.name
             }
@@ -399,7 +399,7 @@ Kullanıcının düzenleme isteği: $userInstruction
 Mevcut egzersiz listesi (önce buradan seç, tam adı kullan):
 $exerciseList
 
-Kural: Listede olmayan bir egzersiz kullanman gerekirse, "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ve "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını mutlaka ekle.
+Kural: Egzersiz seçerken ÖNCE yukarıdaki listeden ara ve tam adını kullan. Listede varsa HİÇBİR ZAMAN farklı bir egzersizle değiştirme. Listede kesinlikle yoksa, kullanıcının istediği egzersizin tam adını yaz ve "targetMuscle" (Göğüs/Sırt/Omuz/Bacak/Kol/Karın/Genel) ile "category" (Serbest Ağırlık/Makine/Kardiyo/Vücut Ağırlığı) alanlarını ekle.
 Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
@@ -407,7 +407,7 @@ FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
+            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. Egzersiz listesinde olan bir hareketi asla başka bir hareketle değiştirme. SADECE ham JSON döndür, başka hiçbir şey yazma."
 
             val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
             val rawJson = result.getOrNull()
