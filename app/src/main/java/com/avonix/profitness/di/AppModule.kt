@@ -63,9 +63,9 @@ abstract class AppModule {
                 .fallbackToDestructiveMigration()
                 .build()
 
-        @Provides fun provideProgramDao(db: AppDatabase): ProgramDao = db.programDao()
-        @Provides fun provideExerciseDao(db: AppDatabase): ExerciseDao = db.exerciseDao()
-        @Provides fun provideWorkoutDao(db: AppDatabase): WorkoutDao = db.workoutDao()
+        @Provides @Singleton fun provideProgramDao(db: AppDatabase): ProgramDao = db.programDao()
+        @Provides @Singleton fun provideExerciseDao(db: AppDatabase): ExerciseDao = db.exerciseDao()
+        @Provides @Singleton fun provideWorkoutDao(db: AppDatabase): WorkoutDao = db.workoutDao()
 
         // ── Supabase ─────────────────────────────────────────────────────────
 

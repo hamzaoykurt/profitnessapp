@@ -24,6 +24,7 @@ import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -42,13 +43,19 @@ class ProgramRepositoryImpl @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     override fun observeActiveProgram(userId: String): Flow<Program?> =
-        programDao.observeActiveProgram(userId).map { it?.toDomain() }
+        programDao.observeActiveProgram(userId)
+            .map { it?.toDomain() }
+            .flowOn(Dispatchers.IO)
 
     override fun observeUserPrograms(userId: String): Flow<List<Program>> =
-        programDao.observeUserPrograms(userId).map { list -> list.map { it.toDomain() } }
+        programDao.observeUserPrograms(userId)
+            .map { list -> list.map { it.toDomain() } }
+            .flowOn(Dispatchers.IO)
 
     override fun observeExercises(): Flow<List<ExerciseItem>> =
-        exerciseDao.observeAll().map { list -> list.map { it.toDomain() } }
+        exerciseDao.observeAll()
+            .map { list -> list.map { it.toDomain() } }
+            .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
     //  ONE-SHOT READS — Room'dan (anında)

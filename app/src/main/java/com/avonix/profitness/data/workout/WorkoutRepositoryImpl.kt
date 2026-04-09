@@ -9,6 +9,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -32,17 +33,19 @@ class WorkoutRepositoryImpl @Inject constructor(
         userId: String,
         weekStart: String
     ): Flow<Map<String, Set<String>>> =
-        workoutDao.observeWeeklyCompletionPairs(userId, weekStart).map { pairs ->
-            pairs.groupBy(
-                keySelector = { it.program_day_id },
-                valueTransform = { it.exercise_id }
-            ).mapValues { it.value.toSet() }
-        }
+        workoutDao.observeWeeklyCompletionPairs(userId, weekStart)
+            .map { pairs ->
+                pairs.groupBy(
+                    keySelector = { it.program_day_id },
+                    valueTransform = { it.exercise_id }
+                ).mapValues { it.value.toSet() }
+            }
+            .flowOn(Dispatchers.IO)
 
     override fun observeStreak(userId: String): Flow<Int> =
-        workoutDao.observeWorkoutDates(userId).map { dates ->
-            calculateStreak(dates)
-        }
+        workoutDao.observeWorkoutDates(userId)
+            .map { dates -> calculateStreak(dates) }
+            .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
     //  WRITE — Room-first, Supabase async

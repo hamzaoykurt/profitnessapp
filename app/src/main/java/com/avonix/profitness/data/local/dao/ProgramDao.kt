@@ -48,7 +48,7 @@ interface ProgramDao {
         WHERE pe.program_day_id IN (:dayIds)
         ORDER BY pe.order_index
     """)
-    fun getExercisesForDays(dayIds: List<String>): List<ProgramExerciseWithName>
+    suspend fun getExercisesForDays(dayIds: List<String>): List<ProgramExerciseWithName>
 
     @Query("""
         SELECT pe.id, pe.program_day_id, pe.exercise_id, pe.sets, pe.reps,
