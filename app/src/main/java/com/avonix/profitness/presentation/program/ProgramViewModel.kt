@@ -115,35 +115,44 @@ class ProgramViewModel @Inject constructor(
     private fun currentUserId(): String? =
         supabase.auth.currentSessionOrNull()?.user?.id
 
-    private var lastProgramLoadMs = 0L
-
     init {
-        loadUserPrograms()
-        loadExercises()
+        observeData()
     }
 
-    // ── Load ──────────────────────────────────────────────────────────────────
+    // ── Reactive Observation ─────────────────────────────────────────────────
 
-    /** Tab geçişleri için — 3 dakika geçmediyse ve programlar varsa atla */
+    private fun observeData() {
+        val uid = currentUserId() ?: return
+
+        // Room Flow: programlar değişince otomatik güncellenir
+        viewModelScope.launch {
+            programRepository.observeUserPrograms(uid).collect { programs ->
+                updateState { it.copy(isLoading = false, userPrograms = programs) }
+            }
+        }
+
+        // Room Flow: egzersiz listesi değişince otomatik güncellenir
+        viewModelScope.launch {
+            programRepository.observeExercises().collect { list ->
+                updateState { it.copy(exercises = list) }
+            }
+        }
+
+        // İlk yüklemede Supabase'den sync et
+        viewModelScope.launch {
+            programRepository.syncFromRemote(uid)
+        }
+    }
+
+    /** Tab geçişleri veya geri dönüş için — artık sadece sync tetikler, Flow otomatik günceller. */
     fun reloadIfStale() {
-        if (System.currentTimeMillis() - lastProgramLoadMs < 3 * 60_000L &&
-            uiState.value.userPrograms.isNotEmpty()) return
-        loadUserPrograms()
+        val uid = currentUserId() ?: return
+        viewModelScope.launch { programRepository.syncFromRemote(uid) }
     }
 
     fun loadUserPrograms() {
         val uid = currentUserId() ?: return
-        viewModelScope.launch {
-            updateState { it.copy(isLoading = uiState.value.userPrograms.isEmpty()) }
-            programRepository.getUserPrograms(uid)
-                .onSuccess { programs ->
-                    lastProgramLoadMs = System.currentTimeMillis()
-                    updateState { it.copy(isLoading = false, userPrograms = programs) }
-                }
-                .onFailure {
-                    updateState { it.copy(isLoading = false) }
-                }
-        }
+        viewModelScope.launch { programRepository.syncFromRemote(uid) }
     }
 
     fun loadExercises() {

@@ -5,12 +5,14 @@ import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.workout.WorkoutRepository
+import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -23,167 +25,119 @@ data class WorkoutScreenState(
     val isLoading: Boolean = true,
     val hasProgramLoaded: Boolean = false,
     val currentProgramId: String = "",
-    val currentStreak: Int = 0,
-    // workoutLogId'ler gün bazında tutulur — Map<dayIdx, logId>
-    val workoutLogIds: Map<Int, String> = emptyMap()
+    val currentStreak: Int = 0
 )
 
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
-    private val programRepository : ProgramRepository,
-    private val workoutRepository : WorkoutRepository,
-    private val profileRepository : ProfileRepository,
-    private val supabase          : SupabaseClient
+    private val programRepository: ProgramRepository,
+    private val workoutRepository: WorkoutRepository,
+    private val profileRepository: ProfileRepository,
+    private val supabase: SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
 
-    private var lastLoadMs = 0L
+    private var observeJob: Job? = null
 
     init {
-        loadActiveProgram()
+        startObserving()
     }
 
-    fun reload() {
-        val now = System.currentTimeMillis()
-        // Yükleme zaten devam ediyorsa ya da data tazeyse atla — startup çift yüklemesini ve tab patlamasını önler
-        if (uiState.value.isLoading) return
-        if (uiState.value.hasProgramLoaded && now - lastLoadMs < 30_000) return
-        updateState { it.copy(isLoading = !uiState.value.hasProgramLoaded) }
-        loadActiveProgram()
-    }
+    // ═════════════════════════════════════════════════════════════════════════
+    //  REACTIVE OBSERVATION — Room Flow'ları combine eder
+    // ═════════════════════════════════════════════════════════════════════════
 
-    /** Program değişikliğinden sonra disk cache'i de temizleyip zorla yeniler. */
-    fun forceReload() {
-        lastLoadMs = 0L
-        programRepository.invalidateActiveCache()
-        updateState { it.copy(isLoading = true) }
-        loadActiveProgram()
-    }
-
-    private fun loadActiveProgram() {
-        viewModelScope.launch {
-            val userId = supabase.auth.currentSessionOrNull()?.user?.id
-            if (userId == null) {
-                updateState {
-                    it.copy(
-                        isLoading = false,
-                        hasProgramLoaded = false,
-                        dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }
-                    )
-                }
-                return@launch
+    private fun startObserving() {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id
+        if (userId == null) {
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    hasProgramLoaded = false,
+                    dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }
+                )
             }
+            return
+        }
 
-            programRepository.getActiveProgram(userId)
-                .onSuccess { program ->
-                    if (program == null || program.days.isEmpty()) {
-                        updateState {
-                            it.copy(
-                                isLoading = false,
-                                hasProgramLoaded = false,
-                                dayStates = emptyList()
-                            )
-                        }
-                        return@onSuccess
-                    }
+        // İlk seferde arka planda sync başlat
+        viewModelScope.launch {
+            runCatching {
+                programRepository.syncFromRemote(userId)
+                workoutRepository.syncFromRemote(userId)
+            }
+        }
 
-                    val sortedDays = program.days.sortedBy { it.dayIndex }
-                    val dayByIndex = sortedDays.associateBy { it.dayIndex }
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            val weekStart = LocalDate.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .toString()
 
-                    // Her zaman 7 gün göster — program günü yoksa DİNLENME doldur
-                    val dayStates = (0..6).map { weekdayIdx ->
-                        val day = dayByIndex[weekdayIdx]
-                        if (day != null) {
-                            val workoutDay = WorkoutDay(
-                                day = DAY_LABELS[weekdayIdx],
-                                title = day.title,
-                                isRestDay = day.isRestDay,
-                                programDayId = day.id,
-                                exercises = day.exercises.map { pe ->
-                                    Exercise(
-                                        id = pe.id,
-                                        name = pe.exerciseName,
-                                        target = pe.targetMuscle,
-                                        sets = pe.sets,
-                                        reps = pe.reps.toString(),
-                                        image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
-                                        category = pe.category.ifBlank { "Strength" },
-                                        restSeconds = pe.restSeconds,
-                                        exerciseTableId = pe.exerciseId
-                                    )
-                                }
-                            )
-                            WorkoutDayState(workoutDay)
-                        } else {
-                            WorkoutDayState(
-                                WorkoutDay(
-                                    day = DAY_LABELS[weekdayIdx],
-                                    title = "DİNLENME",
-                                    isRestDay = true,
-                                    exercises = emptyList()
-                                )
-                            )
-                        }
-                    }
-
-                    val todayIdx = LocalDate.now().dayOfWeek.value - 1
-
-                    // Bu haftanın Pazartesisini hesapla — pazartesi 00:00'da reset
-                    val weekStart = LocalDate.now()
-                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                        .toString()
-
-                    // DB'den haftalık tamamlamalar ve seri paralel çek
-                    val (weeklyCompletions, dbStreak) = coroutineScope {
-                        val completionsDeferred = async {
-                            workoutRepository.getWeeklyCompletions(userId, weekStart).getOrDefault(emptyMap())
-                        }
-                        val streakDeferred = async {
-                            workoutRepository.getStreak(userId).getOrDefault(0)
-                        }
-                        completionsDeferred.await() to streakDeferred.await()
-                    }
-
-                    // completedIds'i DB'den gelen verilerle doldur
-                    // DB'de exercises.id saklanır ama UI'da program_exercises.id kullanılır
-                    // exercises.id → program_exercises.id mapping yapılmalı
-                    val previousState = uiState.value
-                    val sameProgram = previousState.currentProgramId == program.id
-                    val finalDayStates = dayStates.mapIndexed { idx, newDs ->
-                        val programDay = sortedDays.firstOrNull { it.dayIndex == idx }
-                        val dbExerciseIds = programDay?.let { weeklyCompletions[it.id] } ?: emptySet()
-
-                        // exercises.id (DB) → program_exercises.id (UI) çevirisi
-                        val exerciseIdToPeId = programDay?.exercises
-                            ?.associate { it.exerciseId to it.id }
-                            ?: emptyMap()
-                        val dbCompleted = dbExerciseIds.mapNotNull { exerciseIdToPeId[it] }.toSet()
-
-                        val memCompleted = if (sameProgram) previousState.dayStates.getOrNull(idx)?.completedIds ?: emptySet() else emptySet()
-                        newDs.copy(completedIds = dbCompleted + memCompleted)
-                    }
-
-                    lastLoadMs = System.currentTimeMillis()
-                    updateState {
-                        it.copy(
-                            isLoading = false,
-                            hasProgramLoaded = true,
-                            dayStates = finalDayStates,
-                            selectedDayIdx = todayIdx,
-                            currentProgramId = program.id,
-                            currentStreak = dbStreak,
-                            workoutLogIds = emptyMap()
-                        )
-                    }
-                }
-                .onFailure {
+            combine(
+                programRepository.observeActiveProgram(userId),
+                workoutRepository.observeWeeklyCompletions(userId, weekStart),
+                workoutRepository.observeStreak(userId)
+            ) { program, completions, streak ->
+                Triple(program, completions, streak)
+            }
+            .distinctUntilChanged()
+            .collect { (program, completions, streak) ->
+                if (program == null || program.days.isEmpty()) {
                     updateState {
                         it.copy(
                             isLoading = false,
                             hasProgramLoaded = false,
-                            dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }
+                            dayStates = emptyList(),
+                            currentStreak = streak
                         )
                     }
+                    return@collect
                 }
+
+                val dayStates = buildDayStates(program, completions)
+                val todayIdx = LocalDate.now().dayOfWeek.value - 1
+
+                updateState { prev ->
+                    prev.copy(
+                        isLoading = false,
+                        hasProgramLoaded = true,
+                        dayStates = dayStates,
+                        // İlk yükleme veya program değişikliğinde bugünü seç
+                        selectedDayIdx = if (prev.currentProgramId != program.id) todayIdx else prev.selectedDayIdx,
+                        currentProgramId = program.id,
+                        currentStreak = streak
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Ekran resume veya tab geçişinde çağrılır.
+     * Arka planda Supabase'den güncel veri çeker.
+     * Room Flow zaten dinleniyor — yeni veri gelince UI otomatik güncellenir.
+     */
+    fun refresh() {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        // Observe zaten aktifse tekrar başlatma — sadece sync tetikle
+        if (observeJob?.isActive != true) startObserving()
+        viewModelScope.launch {
+            runCatching {
+                workoutRepository.syncFromRemote(userId)
+                programRepository.syncFromRemote(userId)
+            }
+        }
+    }
+
+    /** Program değişikliğinden sonra zorla sync. */
+    fun forceRefresh() {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        if (observeJob?.isActive != true) startObserving()
+        viewModelScope.launch {
+            runCatching {
+                programRepository.syncFromRemote(userId)
+                workoutRepository.syncFromRemote(userId)
+            }
         }
     }
 
@@ -191,74 +145,129 @@ class WorkoutViewModel @Inject constructor(
         updateState { it.copy(selectedDayIdx = idx) }
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    //  TOGGLE EXERCISE — Room-first, anında UI yansıması
+    // ═════════════════════════════════════════════════════════════════════════
+
     fun toggleExercise(dayIdx: Int, exerciseId: String) {
         viewModelScope.launch {
             val currentState = uiState.value
-            val dayStates = currentState.dayStates.toMutableList()
-            val current = dayStates[dayIdx]
-            val newIds = current.completedIds.toMutableSet()
-            val isCompleting = exerciseId !in newIds
-            if (isCompleting) newIds.add(exerciseId) else newIds.remove(exerciseId)
-            dayStates[dayIdx] = current.copy(completedIds = newIds)
-            updateState { it.copy(dayStates = dayStates.toList()) }
+            val dayState = currentState.dayStates.getOrNull(dayIdx) ?: return@launch
+            val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return@launch
+            val programDayId = dayState.day.programDayId
+            if (programDayId.isBlank()) return@launch
 
-            // Log to Supabase when completing (not un-completing)
+            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
+            val isCompleting = exerciseId !in dayState.completedIds
+
             if (isCompleting) {
-                val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
-                val exercise = current.day.exercises.find { it.id == exerciseId } ?: return@launch
-                val programDayId = current.day.programDayId
-                if (programDayId.isBlank()) return@launch
-
-                // Lazy workout log oluşturma — seçili gün için log yoksa oluştur
-                val logId = currentState.workoutLogIds[dayIdx]
-                    ?: workoutRepository.startWorkout(userId, programDayId).getOrNull()
-                    ?: return@launch
-
-                // Yeni log ID'yi cache'le
-                if (dayIdx !in currentState.workoutLogIds) {
-                    updateState { it.copy(workoutLogIds = it.workoutLogIds + (dayIdx to logId)) }
-                }
-
-                workoutRepository.logExercise(
-                    workoutLogId = logId,
+                // Room'a yaz — Flow otomatik günceller UI'ı
+                // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
+                workoutRepository.completeExercise(
+                    userId = userId,
+                    programDayId = programDayId,
                     exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
                     setsCompleted = exercise.sets,
                     repsCompleted = exercise.reps.toIntOrNull() ?: 0
                 )
-                workoutRepository.updateStreak(userId)
-                profileRepository.invalidateStatsCache()
 
-                val updatedStreak = workoutRepository.getStreak(userId).getOrDefault(0)
-                updateState { it.copy(currentStreak = updatedStreak) }
-
-                // Başarım/XP kontrolü ayrı coroutine'de — ana tamamlama akışını bloklamaz
+                // Stats güncelle (Supabase, arka plan)
                 viewModelScope.launch {
-                    val updatedDay = uiState.value.dayStates.getOrNull(dayIdx)
-                    if (updatedDay != null && !updatedDay.day.isRestDay) {
-                        val allDone = updatedDay.day.exercises.isNotEmpty() &&
-                            updatedDay.day.exercises.all { it.id in updatedDay.completedIds }
-                        if (allDone) {
-                            workoutRepository.addXp(userId, 50)
-                        }
-                    }
+                    workoutRepository.updateStreak(userId)
+                    profileRepository.invalidateStatsCache()
+                }
+
+                // Başarım/XP kontrolü
+                viewModelScope.launch {
+                    checkDayCompletion(dayIdx, userId)
                     checkAndUnlockAchievements(userId)
                 }
+            } else {
+                workoutRepository.uncompleteExercise(
+                    userId = userId,
+                    programDayId = programDayId,
+                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+                )
             }
         }
     }
 
-    /** Egzersiz tamamlanınca başarımları ve rank'ı güncelle */
+    // ═════════════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun buildDayStates(
+        program: Program,
+        completions: Map<String, Set<String>>
+    ): List<WorkoutDayState> {
+        val sortedDays = program.days.sortedBy { it.dayIndex }
+        val dayByIndex = sortedDays.associateBy { it.dayIndex }
+
+        return (0..6).map { weekdayIdx ->
+            val day = dayByIndex[weekdayIdx]
+            if (day != null) {
+                val workoutDay = WorkoutDay(
+                    day = DAY_LABELS[weekdayIdx],
+                    title = day.title,
+                    isRestDay = day.isRestDay,
+                    programDayId = day.id,
+                    exercises = day.exercises.map { pe ->
+                        Exercise(
+                            id = pe.id,
+                            name = pe.exerciseName,
+                            target = pe.targetMuscle,
+                            sets = pe.sets,
+                            reps = pe.reps.toString(),
+                            image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
+                            category = pe.category.ifBlank { "Strength" },
+                            restSeconds = pe.restSeconds,
+                            exerciseTableId = pe.exerciseId
+                        )
+                    }
+                )
+
+                // DB'deki completions exercises.id kullanır.
+                // UI'daki exercise.id = program_exercises.id.
+                // Mapping: exercises.id → program_exercises.id
+                val dbExerciseIds = completions[day.id] ?: emptySet()
+                val exerciseIdToPeId = day.exercises.associate { it.exerciseId to it.id }
+                val completedPeIds = dbExerciseIds.mapNotNull { exerciseIdToPeId[it] }.toSet()
+
+                WorkoutDayState(workoutDay, completedIds = completedPeIds)
+            } else {
+                WorkoutDayState(
+                    WorkoutDay(
+                        day = DAY_LABELS[weekdayIdx],
+                        title = "DİNLENME",
+                        isRestDay = true,
+                        exercises = emptyList()
+                    )
+                )
+            }
+        }
+    }
+
+    private suspend fun checkDayCompletion(dayIdx: Int, userId: String) {
+        val dayState = uiState.value.dayStates.getOrNull(dayIdx) ?: return
+        if (dayState.day.isRestDay) return
+        val allDone = dayState.day.exercises.isNotEmpty() &&
+            dayState.day.exercises.all { it.id in dayState.completedIds }
+        if (allDone) {
+            workoutRepository.addXp(userId, 50)
+        }
+    }
+
     private suspend fun checkAndUnlockAchievements(userId: String) {
-        val stats       = profileRepository.getUserStats(userId).getOrNull() ?: return
-        val allAch      = profileRepository.getAllAchievements().getOrNull() ?: return
-        val unlockedKeys= profileRepository.getUnlockedAchievementKeys(userId).getOrNull() ?: return
+        val stats = profileRepository.getUserStats(userId).getOrNull() ?: return
+        val allAch = profileRepository.getAllAchievements().getOrNull() ?: return
+        val unlockedKeys = profileRepository.getUnlockedAchievementKeys(userId).getOrNull() ?: return
 
         val toCheck = mapOf(
-            "xp"              to stats.xp,
-            "level"           to stats.level,
-            "volume"          to stats.total_workouts,
-            "streak"          to stats.current_streak,
-            "milestone"       to stats.total_workouts,
+            "xp" to stats.xp,
+            "level" to stats.level,
+            "volume" to stats.total_workouts,
+            "streak" to stats.current_streak,
+            "milestone" to stats.total_workouts,
             "total_exercises" to stats.total_exercises
         )
 
@@ -271,7 +280,6 @@ class WorkoutViewModel @Inject constructor(
                 }
             }
 
-        // Rank güncelleme
         val newRank = computeRank(stats.xp)
         val profile = profileRepository.getProfile(userId).getOrNull()
         if (profile != null && profile.current_rank != newRank) {

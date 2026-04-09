@@ -119,6 +119,11 @@ dependencies {
     // DataStore (theme persistence)
     implementation(libs.androidx.datastore.preferences)
 
+    // Room (local database — single source of truth)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     // Supabase
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.gotrue)

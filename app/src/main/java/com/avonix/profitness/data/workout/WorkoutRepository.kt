@@ -1,40 +1,68 @@
 package com.avonix.profitness.data.workout
 
-interface WorkoutRepository {
-    /** Creates a workout_log for today's session. Returns the log ID. */
-    suspend fun startWorkout(userId: String, programDayId: String): Result<String>
+import kotlinx.coroutines.flow.Flow
 
-    /** Appends a completed exercise to exercise_logs. */
-    suspend fun logExercise(
-        workoutLogId: String,
+interface WorkoutRepository {
+
+    // ── Reactive observe (Room Flow) ─────────────────────────────────────────
+
+    /**
+     * Bu haftanın tamamlanan egzersizlerini reaktif izler.
+     * Map<programDayId, Set<exerciseId>> — her program gününün tamamlanmış egzersizleri.
+     * Room'daki exercise_logs değişince otomatik emit eder.
+     */
+    fun observeWeeklyCompletions(userId: String, weekStart: String): Flow<Map<String, Set<String>>>
+
+    /**
+     * Ardışık antrenman serisini (streak) reaktif izler.
+     * workout_logs tarihlerinden hesaplanır.
+     */
+    fun observeStreak(userId: String): Flow<Int>
+
+    // ── Write (Room-first, Supabase async sync) ──────────────────────────────
+
+    /**
+     * Egzersiz tamamlanmasını Room'a anında yazar.
+     * Arka planda Supabase'e sync eder.
+     * @return workout_log ID
+     */
+    suspend fun completeExercise(
+        userId: String,
+        programDayId: String,
         exerciseId: String,
         setsCompleted: Int,
         repsCompleted: Int,
         durationSeconds: Int = 0
+    ): Result<String>
+
+    /**
+     * Tamamlanmış egzersizi geri alır (Room'dan siler).
+     */
+    suspend fun uncompleteExercise(
+        userId: String,
+        programDayId: String,
+        exerciseId: String
     ): Result<Unit>
 
-    /** Marks the workout_log as finished. */
+    /** workout_log'u bitirildi olarak işaretler. */
     suspend fun finishWorkout(workoutLogId: String): Result<Unit>
 
-    /**
-     * Updates user_stats streak for today.
-     * - If user has no stats yet: inserts with streak = 1.
-     * - If last update was yesterday: increments streak.
-     * - If last update was today: only increments total_exercises.
-     * - Otherwise (gap > 1 day): resets streak to 1.
-     */
+    // ── Stats ────────────────────────────────────────────────────────────────
+
+    /** user_stats'ı günceller (XP, total_exercises). */
     suspend fun updateStreak(userId: String): Result<Unit>
 
-    /** Reads current_streak from user_stats. Returns 0 if no record exists. */
+    /** Bonus XP ekler. */
+    suspend fun addXp(userId: String, xpAmount: Int): Result<Unit>
+
+    /** Mevcut streak'i one-shot okur. */
     suspend fun getStreak(userId: String): Result<Int>
 
-    /**
-     * Bu haftanın Pazartesi'sinden itibaren tamamlanan egzersizleri döner.
-     * Map<programDayId, Set<exerciseId>> — günün tamamlanmış egzersiz ID'leri.
-     * Pazartesi 00:00'da yeni haftaya geçer.
-     */
-    suspend fun getWeeklyCompletions(userId: String, weekStart: String): Result<Map<String, Set<String>>>
+    // ── Sync ─────────────────────────────────────────────────────────────────
 
-    /** Kullanıcıya bonus XP ekler (gün tamamlama, seri, program bitişi vb.) */
-    suspend fun addXp(userId: String, xpAmount: Int): Result<Unit>
+    /** Supabase'den workout verilerini çekip Room'a yazar. */
+    suspend fun syncFromRemote(userId: String)
+
+    /** Room'daki unsynced kayıtları Supabase'e yazar. */
+    suspend fun syncToRemote()
 }

@@ -149,13 +149,13 @@ fun WorkoutScreen(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    // ON_RESUME: her tab girişinde aktif programı yenile
-    // (program eklendi/silindi/değiştirildi ise güncel program gösterilir)
+    // ON_RESUME: arka planda Supabase sync tetikle.
+    // Room Flow zaten dinleniyor — yeni veri gelince UI otomatik güncellenir.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.reload()
+                viewModel.refresh()
             }
         }
         lifecycle.addObserver(observer)

@@ -71,14 +71,14 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
 
-    // Sadece Program tab'ından dönerken zorla yenile (program değişmiş olabilir).
-    // Diğer geçişlerde soft reload — cache geçerliyse DB'ye gitme.
+    // Program tab'ından dönerken zorla sync — program değişmiş olabilir.
+    // Diğer geçişlerde soft refresh — Room Flow zaten dinleniyor, sadece sync tetikler.
     LaunchedEffect(selectedTab) {
         if (selectedTab == DashboardTab.Workout) {
             if (previousTab == DashboardTab.Program) {
-                workoutViewModel.forceReload()
+                workoutViewModel.forceRefresh()
             } else {
-                workoutViewModel.reload()
+                workoutViewModel.refresh()
             }
         }
         previousTab = selectedTab
