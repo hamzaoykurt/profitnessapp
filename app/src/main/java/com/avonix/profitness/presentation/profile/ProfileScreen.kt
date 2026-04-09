@@ -337,7 +337,18 @@ private fun ProfileHeroBanner(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Column {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(theme.bg1.copy(0.75f))
+                        .border(1.dp, theme.stroke, CircleShape)
+                        .clickable(onClick = onSettingsClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
+                }
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "PROFITNESS",
                         color         = theme.text0.copy(0.5f),
@@ -351,17 +362,6 @@ private fun ProfileHeroBanner(
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg1.copy(0.75f))
-                        .border(1.dp, theme.stroke, CircleShape)
-                        .clickable(onClick = onSettingsClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
                 }
             }
 

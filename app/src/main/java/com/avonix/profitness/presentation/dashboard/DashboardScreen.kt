@@ -195,9 +195,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         val restTimer = workoutState.restTimer
         AnimatedVisibility(
             visible  = restTimer.isRunning || restTimer.isDone,
-            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) { -it } + fadeIn(tween(200)),
-            exit     = slideOutVertically(tween(200)) { -it } + fadeOut(tween(150)),
-            modifier = Modifier.align(Alignment.TopCenter).zIndex(150f)
+            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) { -it } + fadeIn(tween(250)),
+            exit     = slideOutVertically(tween(220)) { -it } + fadeOut(tween(180)),
+            modifier = Modifier.align(Alignment.TopEnd).zIndex(150f)
         ) {
             RestTimerBanner(
                 timer     = restTimer,
@@ -249,114 +249,205 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 }
 
 // ── Global Rest Timer Banner ───────────────────────────────────────────────────
+// Açılışta geniş, 2.5 sn sonra sağ üstte küçük pill'e küçülür.
+// Pill'e tıklayınca tekrar genişler.
 @Composable
 private fun RestTimerBanner(
     timer: RestTimerState,
     onStop: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    val isDone = timer.isDone
+    val accent  = MaterialTheme.colorScheme.primary
+    val isDone  = timer.isDone
+    val bgColor = if (isDone) Amber else accent
 
-    val bgColor  = if (isDone) Amber else accent
-    val progress = timer.progress
+    // Expanded → collapsed geçiş: ilk görünümde geniş aç, 2.5sn sonra küçül
+    var isExpanded by remember { mutableStateOf(true) }
 
-    // Pulse animation when running
-    val pulseScale = remember { androidx.compose.animation.core.Animatable(1f) }
-    LaunchedEffect(timer.isRunning) {
-        if (timer.isRunning) {
-            while (true) {
-                pulseScale.animateTo(1.03f, tween(600))
-                pulseScale.animateTo(1f, tween(600))
-            }
-        } else {
-            pulseScale.snapTo(1f)
+    // Timer değişince (yeni egzersiz tamamlandı) genişlet
+    LaunchedEffect(timer.totalSeconds) {
+        isExpanded = true
+        kotlinx.coroutines.delay(2500)
+        isExpanded = false
+    }
+    // Süre bitince de genişlet
+    LaunchedEffect(isDone) {
+        if (isDone) {
+            isExpanded = true
+            kotlinx.coroutines.delay(3000)
+            isExpanded = false
         }
     }
 
+    // Arc progress — kalan süre / toplam süre
+    val animatedProgress by animateFloatAsState(
+        targetValue   = if (isDone) 1f else 1f - timer.progress,
+        animationSpec = tween(900, easing = LinearEasing),
+        label         = "arc"
+    )
+
+    // Collapsed: küçük yuvarlak pill sağ üstte
+    // Expanded: tam genişlik banner
+    val cornerRadius by animateDpAsState(
+        targetValue   = if (isExpanded) 20.dp else 28.dp,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        label         = "corner"
+    )
+
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 48.dp)
-            .scale(pulseScale.value)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(bgColor.copy(0.95f), bgColor.copy(0.85f))
-                )
-            )
-            .clickable { if (isDone) onDismiss() else onStop() }
-            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .padding(end = 16.dp, top = 52.dp)
+            .wrapContentSize()
     ) {
-        // Progress bar at bottom
-        if (!isDone) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth(progress)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(0.4f))
-            )
-        }
+        AnimatedContent(
+            targetState  = isExpanded,
+            transitionSpec = {
+                if (targetState) {
+                    // Küçükten büyüğe — enter: expand, exit: shrink
+                    (fadeIn(tween(200)) + expandHorizontally(
+                        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
+                        expandFrom = Alignment.End
+                    )) togetherWith (fadeOut(tween(120)) + shrinkHorizontally(
+                        tween(150), shrinkTowards = Alignment.End
+                    ))
+                } else {
+                    // Büyükten küçüğe — enter: expand (pill), exit: shrink (banner)
+                    (fadeIn(tween(200)) + expandHorizontally(
+                        tween(180), expandFrom = Alignment.End
+                    )) togetherWith (fadeOut(tween(150)) + shrinkHorizontally(
+                        spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium),
+                        shrinkTowards = Alignment.End
+                    ))
+                }
+            },
+            label = "timer_expand"
+        ) { expanded ->
+            if (expanded) {
+                // ── Geniş banner ──────────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .clip(RoundedCornerShape(cornerRadius))
+                        .background(
+                            Brush.horizontalGradient(listOf(bgColor, bgColor.copy(0.82f)))
+                        )
+                        .clickable { isExpanded = false }
+                ) {
+                    // Arc progress bar (alt)
+                    if (!isDone) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth(animatedProgress)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = 0.dp))
+                                .background(androidx.compose.ui.graphics.Color.White.copy(0.35f))
+                        )
+                    }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
-                    contentDescription = null,
-                    tint = androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Dairesel arc progress ikonu
+                        Box(
+                            modifier = Modifier.size(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                                val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 3.dp.toPx(),
+                                    cap   = StrokeCap.Round
+                                )
+                                drawArc(
+                                    color      = androidx.compose.ui.graphics.Color.White.copy(0.25f),
+                                    startAngle = -90f,
+                                    sweepAngle = 360f,
+                                    useCenter  = false,
+                                    style      = stroke
+                                )
+                                if (!isDone) {
+                                    drawArc(
+                                        color      = androidx.compose.ui.graphics.Color.White,
+                                        startAngle = -90f,
+                                        sweepAngle = animatedProgress * 360f,
+                                        useCenter  = false,
+                                        style      = stroke
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
+                                contentDescription = null,
+                                tint     = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
 
-            Spacer(Modifier.width(14.dp))
+                        Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
-                    color = androidx.compose.ui.graphics.Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = if (isDone) "Bir sonraki seti başlatabilirsin" else "Dinlenme süresi • ${timer.exerciseName}",
-                    color = androidx.compose.ui.graphics.Color.White.copy(0.8f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text       = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
+                                color      = androidx.compose.ui.graphics.Color.White,
+                                fontSize   = 18.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text       = if (isDone) "Sonraki seti başlatabilirsin" else timer.exerciseName,
+                                color      = androidx.compose.ui.graphics.Color.White.copy(0.75f),
+                                fontSize   = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines   = 1,
+                                overflow   = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
 
-            Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
 
-            // Action button
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f))
-                    .clickable { if (isDone) onDismiss() else onStop() }
-                    .padding(10.dp, 6.dp)
-            ) {
-                Text(
-                    text = if (isDone) "TAMAM" else "DURDUR",
-                    color = androidx.compose.ui.graphics.Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
-                )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(androidx.compose.ui.graphics.Color.White.copy(0.22f))
+                                .clickable { if (isDone) onDismiss() else onStop() }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text          = if (isDone) "TAMAM" else "DURDUR",
+                                color         = androidx.compose.ui.graphics.Color.White,
+                                fontSize      = 10.sp,
+                                fontWeight    = FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                // ── Küçük pill — sağ üstte ────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(bgColor)
+                        .clickable { isExpanded = true }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
+                            contentDescription = null,
+                            tint     = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            text       = if (isDone) "✓" else "${timer.secondsLeft}s",
+                            color      = androidx.compose.ui.graphics.Color.White,
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
             }
         }
     }
