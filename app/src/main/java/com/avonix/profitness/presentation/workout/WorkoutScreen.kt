@@ -358,11 +358,18 @@ private fun WorkoutContent(
             itemsIndexed(currentDay.exercises, key = { _, ex -> ex.id }) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
+                val doneSetIndices = if (isCompleted) {
+                    (0 until exercise.sets).toSet()
+                } else {
+                    state.setCompletions[exercise.id] ?: emptySet()
+                }
                 CinematicExerciseCard(
-                    exercise    = exercise,
-                    index       = idx,
-                    isCompleted = isCompleted,
-                    onComplete  = {
+                    exercise       = exercise,
+                    index          = idx,
+                    isCompleted    = isCompleted,
+                    doneSetIndices = doneSetIndices,
+                    onToggleSet    = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
+                    onComplete     = {
                         viewModel.toggleExercise(selectedDayIdx, exercise.id)
                     },
                     onShowDetail = { showDetail = true },

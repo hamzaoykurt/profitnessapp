@@ -25,7 +25,8 @@ data class WorkoutScreenState(
     val isLoading: Boolean = true,
     val hasProgramLoaded: Boolean = false,
     val currentProgramId: String = "",
-    val currentStreak: Int = 0
+    val currentStreak: Int = 0,
+    val setCompletions: Map<String, Set<Int>> = emptyMap()  // exerciseId → tamamlanan set indexleri
 )
 
 @HiltViewModel
@@ -98,6 +99,14 @@ class WorkoutViewModel @Inject constructor(
                 val todayIdx = LocalDate.now().dayOfWeek.value - 1
 
                 updateState { prev ->
+                    val updatedSetCompletions = prev.setCompletions.toMutableMap()
+                    dayStates.forEach { dayState ->
+                        dayState.day.exercises.forEach { ex ->
+                            if (ex.id in dayState.completedIds && ex.id !in updatedSetCompletions) {
+                                updatedSetCompletions[ex.id] = (0 until ex.sets).toSet()
+                            }
+                        }
+                    }
                     prev.copy(
                         isLoading = false,
                         hasProgramLoaded = true,
@@ -105,7 +114,8 @@ class WorkoutViewModel @Inject constructor(
                         // İlk yükleme veya program değişikliğinde bugünü seç
                         selectedDayIdx = if (prev.currentProgramId != program.id) todayIdx else prev.selectedDayIdx,
                         currentProgramId = program.id,
-                        currentStreak = streak
+                        currentStreak = streak,
+                        setCompletions = updatedSetCompletions
                     )
                 }
             }
@@ -145,6 +155,14 @@ class WorkoutViewModel @Inject constructor(
         updateState { it.copy(selectedDayIdx = idx) }
     }
 
+    fun toggleSet(exerciseId: String, setIndex: Int) {
+        updateState { state ->
+            val current = state.setCompletions[exerciseId] ?: emptySet()
+            val updated = if (setIndex in current) current - setIndex else current + setIndex
+            state.copy(setCompletions = state.setCompletions + (exerciseId to updated))
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     //  TOGGLE EXERCISE — Room-first, anında UI yansıması
     // ═════════════════════════════════════════════════════════════════════════
@@ -159,8 +177,10 @@ class WorkoutViewModel @Inject constructor(
 
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
             val isCompleting = exerciseId !in dayState.completedIds
+            val allSetIndices = (0 until exercise.sets).toSet()
 
             if (isCompleting) {
+                updateState { s -> s.copy(setCompletions = s.setCompletions + (exerciseId to allSetIndices)) }
                 // Room'a yaz — Flow otomatik günceller UI'ı
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(
@@ -183,6 +203,7 @@ class WorkoutViewModel @Inject constructor(
                     checkAndUnlockAchievements(userId)
                 }
             } else {
+                updateState { s -> s.copy(setCompletions = s.setCompletions - exerciseId) }
                 workoutRepository.uncompleteExercise(
                     userId = userId,
                     programDayId = programDayId,

@@ -39,6 +39,8 @@ fun CinematicExerciseCard(
     exercise: Exercise,
     index: Int,
     isCompleted: Boolean = false,
+    doneSetIndices: Set<Int> = emptySet(),
+    onToggleSet: (setIndex: Int) -> Unit = {},
     onComplete: () -> Unit = {},
     onShowDetail: (() -> Unit)? = null,
     onExpandChanged: ((Boolean) -> Unit)? = null
@@ -47,13 +49,6 @@ fun CinematicExerciseCard(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
-    val setsDone = remember(exercise.id) { mutableStateListOf(*Array(exercise.sets) { false }) }
-
-    LaunchedEffect(isCompleted) {
-        if (isCompleted) {
-            for (i in setsDone.indices) setsDone[i] = true
-        }
-    }
 
     var timerSeconds by remember(exercise.id) { mutableStateOf(exercise.restSeconds) }
     var timerRunning by remember { mutableStateOf(false) }
@@ -205,7 +200,7 @@ fun CinematicExerciseCard(
                                 }
                                 Text(text = exercise.target, color = Mist, style = MaterialTheme.typography.bodySmall)
                             }
-                            val doneCount = setsDone.count { it }
+                            val doneCount = doneSetIndices.size
                             StatBadge(sets = exercise.sets, reps = exercise.reps, done = doneCount)
                         }
                     }
@@ -221,14 +216,14 @@ fun CinematicExerciseCard(
                             .padding(20.dp)
                     ) {
                         Spacer(Modifier.height(4.dp))
-                        setsDone.forEachIndexed { i, done ->
+                        repeat(exercise.sets) { i ->
                             SetRow(
                                 setNumber = i + 1,
                                 reps      = exercise.reps,
-                                isDone    = done,
-                                onToggle  = { setsDone[i] = !setsDone[i] }
+                                isDone    = i in doneSetIndices,
+                                onToggle  = { onToggleSet(i) }
                             )
-                            if (i < setsDone.lastIndex) Spacer(Modifier.height(6.dp))
+                            if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
                         }
 
                         Spacer(Modifier.height(14.dp))
