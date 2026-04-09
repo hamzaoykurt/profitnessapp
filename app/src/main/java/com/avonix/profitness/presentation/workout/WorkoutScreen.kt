@@ -282,6 +282,17 @@ private fun WorkoutContent(
         }
     }
 
+    // Timer başladığında o egzersizin kartını otomatik aç ve scroll et
+    val timer = state.restTimer
+    LaunchedEffect(timer.isRunning, timer.exerciseName) {
+        if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
+            val exIdx = currentDay.exercises.indexOfFirst { it.name == timer.exerciseName }
+            if (exIdx >= 0) {
+                expandedExIdx = exIdx
+            }
+        }
+    }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),

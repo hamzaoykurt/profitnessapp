@@ -56,6 +56,14 @@ fun CinematicExerciseCard(
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
 
+    // Timer bu egzersiz için başladığında kartı otomatik aç
+    LaunchedEffect(timerRunning) {
+        if (timerRunning && !isExpanded) {
+            isExpanded = true
+            onExpandChanged?.invoke(true)
+        }
+    }
+
     // Press scale — snappy spring
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -210,7 +218,12 @@ fun CinematicExerciseCard(
                                 setNumber = i + 1,
                                 reps      = exercise.reps,
                                 isDone    = i in doneSetIndices,
-                                onToggle  = { onToggleSet(i) }
+                                onToggle  = {
+                                    val wasAlreadyDone = i in doneSetIndices
+                                    onToggleSet(i)
+                                    // Set yeni tamamlandıysa (işaretlendiyse) timer'ı otomatik başlat
+                                    if (!wasAlreadyDone) onStartTimer()
+                                }
                             )
                             if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
                         }

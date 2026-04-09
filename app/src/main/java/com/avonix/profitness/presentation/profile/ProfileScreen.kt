@@ -42,6 +42,7 @@ fun ProfileScreen(
     onNavigateToAchievements   : () -> Unit = {},
     onLogout                   : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
+    timerExtraPad              : androidx.compose.ui.unit.Dp = 0.dp,
     viewModel                  : ProfileViewModel = hiltViewModel()
 ) {
     val theme   = LocalAppTheme.current
@@ -72,7 +73,7 @@ fun ProfileScreen(
         PageAccentBloom()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 140.dp)
+            contentPadding = PaddingValues(bottom = 140.dp + timerExtraPad)
         ) {
             item {
                 ProfileHeroBanner(
@@ -348,21 +349,7 @@ private fun ProfileHeroBanner(
                 ) {
                     Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "PROFITNESS",
-                        color         = theme.text0.copy(0.5f),
-                        fontSize      = 9.sp,
-                        fontWeight    = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        "Fitness Koçun",
-                        color      = accent.copy(0.8f),
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Spacer(Modifier.width(0.dp))
             }
 
             Spacer(Modifier.height(24.dp))

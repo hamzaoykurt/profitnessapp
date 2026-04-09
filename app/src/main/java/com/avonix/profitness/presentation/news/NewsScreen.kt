@@ -68,7 +68,7 @@ private const val PAGE_SIZE = 20
 // ── Screen Entry ─────────────────────────────────────────────────────────────
 
 @Composable
-fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
+fun NewsScreen(newsViewModel: NewsViewModel = viewModel(), timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp) {
     val uiState          by newsViewModel.uiState.collectAsState()
     val detailState      by newsViewModel.detailState.collectAsState()
     val savedIds         by newsViewModel.savedIds.collectAsState()
@@ -110,7 +110,8 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
             onArticleClick   = { newsViewModel.openArticle(it, appLang) },
             onRefresh        = { newsViewModel.refresh() },
             onLoadMore       = { newsViewModel.loadMore() },
-            onSave           = { newsViewModel.toggleSave(it) }
+            onSave           = { newsViewModel.toggleSave(it) },
+            timerExtraPad    = timerExtraPad
         )
 
         // Detail ekranı üzerine slide-in olarak biniyor
@@ -121,14 +122,15 @@ fun NewsScreen(newsViewModel: NewsViewModel = viewModel()) {
         ) {
             detailState?.let { detail ->
                 MuseReader(
-                    detailState = detail,
-                    isSaved     = detail.article.id in savedIds,
-                    onBack      = { newsViewModel.closeArticle() },
-                    onSave      = { newsViewModel.toggleSave(detail.article.id) },
-                    onReport    = {
+                    detailState   = detail,
+                    isSaved       = detail.article.id in savedIds,
+                    onBack        = { newsViewModel.closeArticle() },
+                    onSave        = { newsViewModel.toggleSave(detail.article.id) },
+                    onReport      = {
                         newsViewModel.reportArticle(detail.article.id)
                         snackbarHost.currentSnackbarData?.dismiss()
-                    }
+                    },
+                    timerExtraPad = timerExtraPad
                 )
             }
         }
@@ -182,7 +184,8 @@ private fun NewsFeed(
     onArticleClick: (Article) -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String) -> Unit,
+    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedCategory by remember { mutableStateOf("TÜMÜ") }
     val theme   = LocalAppTheme.current
@@ -249,7 +252,7 @@ private fun NewsFeed(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 140.dp)
+        contentPadding = PaddingValues(bottom = 140.dp + timerExtraPad)
     ) {
         // ── Header ─────────────────────────────────────────────────────────────
         item {
@@ -987,11 +990,12 @@ private fun LiveDot() {
 
 @Composable
 private fun MuseReader(
-    detailState: ArticleDetailState,
-    isSaved: Boolean,
-    onBack: () -> Unit,
-    onSave: () -> Unit,
-    onReport: () -> Unit
+    detailState  : ArticleDetailState,
+    isSaved      : Boolean,
+    onBack       : () -> Unit,
+    onSave       : () -> Unit,
+    onReport     : () -> Unit,
+    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val article     = detailState.article
     val context     = LocalContext.current
@@ -1003,7 +1007,7 @@ private fun MuseReader(
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
-        Column(modifier = Modifier.verticalScroll(scrollState).navigationBarsPadding()) {
+        Column(modifier = Modifier.verticalScroll(scrollState).navigationBarsPadding().padding(bottom = timerExtraPad)) {
 
             // ── Hero image ─────────────────────────────────────────────────────
             Box(modifier = Modifier.fillMaxWidth().height(480.dp)) {

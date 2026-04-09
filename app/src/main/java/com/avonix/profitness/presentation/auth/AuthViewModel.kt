@@ -188,6 +188,7 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             authRepository.signOut()
+            updateState { it.copy(isSessionLoading = false) }
             sendEvent(AuthEvent.NavigateToAuth)
         }
     }

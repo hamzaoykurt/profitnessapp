@@ -96,6 +96,13 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
 
+    // Timer banner görünür mü? — diğer tablarda içerik padding'i artır
+    val workoutStateEarly by workoutViewModel.uiState.collectAsState()
+    val timerBannerVisible = (workoutStateEarly.restTimer.isRunning || workoutStateEarly.restTimer.isDone) && selectedTab != DashboardTab.Workout
+    val timerBannerHeight   = 72.dp  // banner yaklaşık yüksekliği
+    val timerExtraPad       = if (timerBannerVisible) timerBannerHeight + 8.dp else 0.dp
+    val contentPadWithTimer = contentPad + timerExtraPad
+
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers
     var swipeAccum by remember { mutableStateOf(0f) }
     val draggableState = rememberDraggableState { delta -> swipeAccum += delta }
@@ -169,16 +176,17 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     LaunchedEffect(capturedMode) {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Choose
                     }
-                    ProgramBuilderScreen(initialMode = capturedMode)
+                    ProgramBuilderScreen(initialMode = capturedMode, timerExtraPad = timerExtraPad)
                 }
-                DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPad)
-                DashboardTab.News    -> NewsScreen()
+                DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPadWithTimer)
+                DashboardTab.News    -> NewsScreen(timerExtraPad = timerExtraPad)
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange            = onThemeChange,
                     onNavigateToPerformance  = { showPerformanceDetail = true },
                     onNavigateToAchievements = { showAchievementsDetail = true },
                     onLogout                 = onLogout,
-                    onEditProfile            = { showEditProfile = true }
+                    onEditProfile            = { showEditProfile = true },
+                    timerExtraPad            = timerExtraPad
                 )
             }
         }
@@ -190,14 +198,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 
-        // ── Global Rest Timer Banner ──────────────────────────────────────
-        val workoutState by workoutViewModel.uiState.collectAsState()
-        val restTimer = workoutState.restTimer
+        // ── Global Rest Timer Banner — sadece Workout dışı tablarda göster ──
+        val restTimer = workoutStateEarly.restTimer
         AnimatedVisibility(
-            visible  = restTimer.isRunning || restTimer.isDone,
-            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) { -it } + fadeIn(tween(250)),
-            exit     = slideOutVertically(tween(220)) { -it } + fadeOut(tween(180)),
-            modifier = Modifier.align(Alignment.TopEnd).zIndex(150f)
+            visible  = (restTimer.isRunning || restTimer.isDone) && selectedTab != DashboardTab.Workout,
+            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(250)),
+            exit     = slideOutVertically(tween(220)) { it } + fadeOut(tween(180)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = navBarHeight + navBarBottom + 8.dp)
+                .zIndex(150f)
         ) {
             RestTimerBanner(
                 timer     = restTimer,
@@ -261,193 +271,105 @@ private fun RestTimerBanner(
     val isDone  = timer.isDone
     val bgColor = if (isDone) Amber else accent
 
-    // Expanded → collapsed geçiş: ilk görünümde geniş aç, 2.5sn sonra küçül
-    var isExpanded by remember { mutableStateOf(true) }
-
-    // Timer değişince (yeni egzersiz tamamlandı) genişlet
-    LaunchedEffect(timer.totalSeconds) {
-        isExpanded = true
-        kotlinx.coroutines.delay(2500)
-        isExpanded = false
-    }
-    // Süre bitince de genişlet
-    LaunchedEffect(isDone) {
-        if (isDone) {
-            isExpanded = true
-            kotlinx.coroutines.delay(3000)
-            isExpanded = false
-        }
-    }
-
-    // Arc progress — kalan süre / toplam süre
     val animatedProgress by animateFloatAsState(
         targetValue   = if (isDone) 1f else 1f - timer.progress,
         animationSpec = tween(900, easing = LinearEasing),
         label         = "arc"
     )
 
-    // Collapsed: küçük yuvarlak pill sağ üstte
-    // Expanded: tam genişlik banner
-    val cornerRadius by animateDpAsState(
-        targetValue   = if (isExpanded) 20.dp else 28.dp,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "corner"
-    )
-
     Box(
         modifier = Modifier
-            .padding(end = 16.dp, top = 52.dp)
-            .wrapContentSize()
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
     ) {
-        AnimatedContent(
-            targetState  = isExpanded,
-            transitionSpec = {
-                if (targetState) {
-                    // Küçükten büyüğe — enter: expand, exit: shrink
-                    (fadeIn(tween(200)) + expandHorizontally(
-                        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
-                        expandFrom = Alignment.End
-                    )) togetherWith (fadeOut(tween(120)) + shrinkHorizontally(
-                        tween(150), shrinkTowards = Alignment.End
-                    ))
-                } else {
-                    // Büyükten küçüğe — enter: expand (pill), exit: shrink (banner)
-                    (fadeIn(tween(200)) + expandHorizontally(
-                        tween(180), expandFrom = Alignment.End
-                    )) togetherWith (fadeOut(tween(150)) + shrinkHorizontally(
-                        spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium),
-                        shrinkTowards = Alignment.End
-                    ))
-                }
-            },
-            label = "timer_expand"
-        ) { expanded ->
-            if (expanded) {
-                // ── Geniş banner ──────────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .width(280.dp)
-                        .clip(RoundedCornerShape(cornerRadius))
-                        .background(
-                            Brush.horizontalGradient(listOf(bgColor, bgColor.copy(0.82f)))
-                        )
-                        .clickable { isExpanded = false }
-                ) {
-                    // Arc progress bar (alt)
+        // İlerleme çubuğu — alt kenar
+        if (!isDone) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth(animatedProgress)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(bottomStart = 20.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(0.35f))
+            )
+        }
+
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Arc progress ikonu
+            Box(
+                modifier = Modifier.size(38.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 2.5.dp.toPx(),
+                        cap   = StrokeCap.Round
+                    )
+                    drawArc(
+                        color      = androidx.compose.ui.graphics.Color.White.copy(0.2f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter  = false,
+                        style      = stroke
+                    )
                     if (!isDone) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth(animatedProgress)
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = 0.dp))
-                                .background(androidx.compose.ui.graphics.Color.White.copy(0.35f))
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Dairesel arc progress ikonu
-                        Box(
-                            modifier = Modifier.size(44.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                                val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
-                                    width = 3.dp.toPx(),
-                                    cap   = StrokeCap.Round
-                                )
-                                drawArc(
-                                    color      = androidx.compose.ui.graphics.Color.White.copy(0.25f),
-                                    startAngle = -90f,
-                                    sweepAngle = 360f,
-                                    useCenter  = false,
-                                    style      = stroke
-                                )
-                                if (!isDone) {
-                                    drawArc(
-                                        color      = androidx.compose.ui.graphics.Color.White,
-                                        startAngle = -90f,
-                                        sweepAngle = animatedProgress * 360f,
-                                        useCenter  = false,
-                                        style      = stroke
-                                    )
-                                }
-                            }
-                            Icon(
-                                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
-                                contentDescription = null,
-                                tint     = androidx.compose.ui.graphics.Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Spacer(Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text       = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
-                                color      = androidx.compose.ui.graphics.Color.White,
-                                fontSize   = 18.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                            Text(
-                                text       = if (isDone) "Sonraki seti başlatabilirsin" else timer.exerciseName,
-                                color      = androidx.compose.ui.graphics.Color.White.copy(0.75f),
-                                fontSize   = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines   = 1,
-                                overflow   = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(androidx.compose.ui.graphics.Color.White.copy(0.22f))
-                                .clickable { if (isDone) onDismiss() else onStop() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text          = if (isDone) "TAMAM" else "DURDUR",
-                                color         = androidx.compose.ui.graphics.Color.White,
-                                fontSize      = 10.sp,
-                                fontWeight    = FontWeight.ExtraBold,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                    }
-                }
-            } else {
-                // ── Küçük pill — sağ üstte ────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(bgColor)
-                        .clickable { isExpanded = true }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
-                            contentDescription = null,
-                            tint     = androidx.compose.ui.graphics.Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            text       = if (isDone) "✓" else "${timer.secondsLeft}s",
+                        drawArc(
                             color      = androidx.compose.ui.graphics.Color.White,
-                            fontSize   = 13.sp,
-                            fontWeight = FontWeight.Black
+                            startAngle = -90f,
+                            sweepAngle = animatedProgress * 360f,
+                            useCenter  = false,
+                            style      = stroke
                         )
                     }
                 }
+                Icon(
+                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
+                    contentDescription = null,
+                    tint     = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text       = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
+                    color      = androidx.compose.ui.graphics.Color.White,
+                    fontSize   = 16.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text       = if (isDone) "Sonraki seti başlatabilirsin" else timer.exerciseName,
+                    color      = androidx.compose.ui.graphics.Color.White.copy(0.72f),
+                    fontSize   = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines   = 1,
+                    overflow   = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f))
+                    .clickable { if (isDone) onDismiss() else onStop() }
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text          = if (isDone) "TAMAM" else "DURDUR",
+                    color         = androidx.compose.ui.graphics.Color.White,
+                    fontSize      = 11.sp,
+                    fontWeight    = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
             }
         }
     }

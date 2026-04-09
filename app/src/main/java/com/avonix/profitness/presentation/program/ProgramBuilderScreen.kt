@@ -261,8 +261,9 @@ sealed class BuilderMode {
 
 @Composable
 fun ProgramBuilderScreen(
-    initialMode: BuilderMode = BuilderMode.Choose,
-    viewModel: ProgramViewModel = hiltViewModel()
+    initialMode  : BuilderMode = BuilderMode.Choose,
+    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp,
+    viewModel    : ProgramViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf<BuilderMode>(initialMode) }
@@ -295,20 +296,24 @@ fun ProgramBuilderScreen(
                     onSelectTemplate = { viewModel.selectTemplate(it) },
                     onSetActive     = { viewModel.setActive(it) },
                     onDeleteProgram = { viewModel.deleteProgram(it) },
-                    onEditProgram   = { prog -> mode = BuilderMode.Edit(prog) }
+                    onEditProgram   = { prog -> mode = BuilderMode.Edit(prog) },
+                    timerExtraPad   = timerExtraPad
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
-                    viewModel = viewModel,
-                    onBack    = { mode = BuilderMode.Choose }
+                    viewModel     = viewModel,
+                    onBack        = { mode = BuilderMode.Choose },
+                    timerExtraPad = timerExtraPad
                 )
                 is BuilderMode.Manual -> ManualBuilderScreen(
-                    viewModel = viewModel,
-                    onBack    = { mode = BuilderMode.Choose }
+                    viewModel     = viewModel,
+                    onBack        = { mode = BuilderMode.Choose },
+                    timerExtraPad = timerExtraPad
                 )
                 is BuilderMode.Edit -> EditProgramScreen(
-                    program   = m.program,
-                    viewModel = viewModel,
-                    onBack    = { mode = BuilderMode.Choose }
+                    program       = m.program,
+                    viewModel     = viewModel,
+                    onBack        = { mode = BuilderMode.Choose },
+                    timerExtraPad = timerExtraPad
                 )
             }
         }
@@ -366,7 +371,8 @@ private fun BuilderChooseScreen(
     onSelectTemplate: (String) -> Unit,
     onSetActive    : (String) -> Unit,
     onDeleteProgram: (String) -> Unit,
-    onEditProgram  : (Program) -> Unit
+    onEditProgram  : (Program) -> Unit,
+    timerExtraPad  : androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
@@ -388,7 +394,7 @@ private fun BuilderChooseScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 140.dp)
+        contentPadding = PaddingValues(bottom = 140.dp + timerExtraPad)
     ) {
         // ── Header ────────────────────────────────────────────────────────────
         item {
@@ -1202,7 +1208,7 @@ private fun DialogStat(icon: ImageVector, value: String, label: String, accent: 
 // ── AI Builder Screen ─────────────────────────────────────────────────────────
 
 @Composable
-private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
+private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp) {
     val uiState   by viewModel.uiState.collectAsStateWithLifecycle()
     var prompt    by remember { mutableStateOf("") }
     val aiTheme    = LocalAppTheme.current
@@ -1239,7 +1245,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = contentPad + 80.dp)
+                .padding(bottom = contentPad + 80.dp + timerExtraPad)
                 .verticalScroll(scrollState)
         ) {
             DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
@@ -1368,7 +1374,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit) {
                         endY = 60f
                     )
                 )
-                .padding(start = 24.dp, end = 24.dp, bottom = contentPad, top = 16.dp)
+                .padding(start = 24.dp, end = 24.dp, bottom = contentPad + timerExtraPad, top = 16.dp)
         ) {
             Button(
                 onClick = {
@@ -1417,9 +1423,10 @@ private data class DraftExercise(
 
 @Composable
 private fun EditProgramScreen(
-    program  : com.avonix.profitness.domain.model.Program,
-    viewModel: ProgramViewModel,
-    onBack   : () -> Unit
+    program      : com.avonix.profitness.domain.model.Program,
+    viewModel    : ProgramViewModel,
+    onBack       : () -> Unit,
+    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val uiState   by viewModel.uiState.collectAsStateWithLifecycle()
     val exercises  = uiState.exercises
@@ -1561,7 +1568,7 @@ private fun EditProgramScreen(
                         onValueChange = { aiPrompt = it },
                         enabled       = !uiState.aiEditLoading,
                         textStyle     = MaterialTheme.typography.bodyMedium.copy(color = editTheme.text0),
-                        modifier      = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                        modifier      = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 180.dp).verticalScroll(rememberScrollState()),
                         decorationBox = { inner ->
                             if (aiPrompt.isEmpty()) {
                                 Text(
@@ -1652,7 +1659,7 @@ private fun EditProgramScreen(
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp + timerExtraPad)) {
             DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack)
 
             // Program adı
@@ -1725,9 +1732,10 @@ private fun EditProgramScreen(
 
         // Alt aksiyon butonları
         val isLoading = uiState.isLoading
+        Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+        // Gradient sadece buton alanını kapsar, altı transparan
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
@@ -1735,7 +1743,7 @@ private fun EditProgramScreen(
                         startY = 0f, endY = 60f
                     )
                 )
-                .padding(start = 24.dp, end = 24.dp, bottom = contentPad, top = 16.dp)
+                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp, top = 16.dp)
         ) {
             Row(
                 modifier            = Modifier.fillMaxWidth(),
@@ -1808,6 +1816,9 @@ private fun EditProgramScreen(
                 }
             }
         }
+        // Navbar + timer alanı — transparan boşluk, arka plan yok
+        Spacer(Modifier.height(contentPad + timerExtraPad))
+        } // Column
     }
 }
 
@@ -1815,8 +1826,9 @@ private fun EditProgramScreen(
 
 @Composable
 private fun ManualBuilderScreen(
-    viewModel: ProgramViewModel,
-    onBack   : () -> Unit
+    viewModel    : ProgramViewModel,
+    onBack       : () -> Unit,
+    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val uiState    by viewModel.uiState.collectAsStateWithLifecycle()
     val exercises   = uiState.exercises
@@ -1847,7 +1859,10 @@ private fun ManualBuilderScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = 100.dp)) {
+    val navBarHeight = 78.dp
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val contentPad   = navBarHeight + navBarBottom + 8.dp
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + timerExtraPad)) {
         DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
 
         // ── Program name input ────────────────────────────────────────────────

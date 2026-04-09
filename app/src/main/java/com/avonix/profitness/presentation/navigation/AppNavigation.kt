@@ -67,7 +67,7 @@ fun AppNavigation(
             when (event) {
                 is AuthEvent.NavigateToAuth -> {
                     navController.navigate(Routes.AUTH) {
-                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = false }
                     }
                 }
                 else -> Unit
