@@ -1437,6 +1437,8 @@ private fun EditProgramScreen(
     var showPickerForDay by remember { mutableStateOf<Int?>(null) }
     var showAiEditDialog by remember { mutableStateOf(false) }
     var aiPrompt         by remember { mutableStateOf("") }
+    // Pair<dayIndex, exerciseIndex>
+    var editingExercise  by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     // Mevcut programın günlerini pre-populate et
     val days = remember {
@@ -1460,6 +1462,20 @@ private fun EditProgramScreen(
                 list.add(m)
             }
             if (list.isEmpty()) list.add(MutableManualDay())
+        }
+    }
+
+    editingExercise?.let { (dayIdx, exIdx) ->
+        val ex = days.getOrNull(dayIdx)?.exercises?.getOrNull(exIdx)
+        if (ex != null) {
+            ExerciseEditDialog(
+                exercise  = ex,
+                onDismiss = { editingExercise = null },
+                onConfirm = { newSets, newReps, newRest ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                    editingExercise = null
+                }
+            )
         }
     }
 
@@ -1707,7 +1723,8 @@ private fun EditProgramScreen(
                         dayNumber        = index + 1,
                         onAddExercise    = { showPickerForDay = index },
                         onRemoveExercise = { exIdx -> day.exercises.removeAt(exIdx) },
-                        onRemoveDay      = { if (days.size > 1) days.removeAt(index) }
+                        onRemoveDay      = { if (days.size > 1) days.removeAt(index) },
+                        onEditExercise   = { exIdx -> editingExercise = Pair(index, exIdx) }
                     )
                 }
                 item {
@@ -1838,6 +1855,21 @@ private fun ManualBuilderScreen(
     var programName       by remember { mutableStateOf("") }
     val days              = remember { mutableStateListOf<MutableManualDay>().also { it.add(MutableManualDay()) } }
     var showPickerForDay  by remember { mutableStateOf<Int?>(null) }
+    var editingExercise   by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    editingExercise?.let { (dayIdx, exIdx) ->
+        val ex = days.getOrNull(dayIdx)?.exercises?.getOrNull(exIdx)
+        if (ex != null) {
+            ExerciseEditDialog(
+                exercise  = ex,
+                onDismiss = { editingExercise = null },
+                onConfirm = { newSets, newReps, newRest ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                    editingExercise = null
+                }
+            )
+        }
+    }
 
     // Exercise picker bottom sheet
     showPickerForDay?.let { dayIndex ->
@@ -1906,11 +1938,12 @@ private fun ManualBuilderScreen(
         ) {
             itemsIndexed(days) { index, day ->
                 ManualDayCard(
-                    day      = day,
-                    dayNumber = index + 1,
-                    onAddExercise = { showPickerForDay = index },
+                    day              = day,
+                    dayNumber        = index + 1,
+                    onAddExercise    = { showPickerForDay = index },
                     onRemoveExercise = { exIdx -> day.exercises.removeAt(exIdx) },
-                    onRemoveDay = { if (days.size > 1) days.removeAt(index) }
+                    onRemoveDay      = { if (days.size > 1) days.removeAt(index) },
+                    onEditExercise   = { exIdx -> editingExercise = Pair(index, exIdx) }
                 )
             }
 
@@ -1982,7 +2015,8 @@ private fun ManualDayCard(
     dayNumber       : Int,
     onAddExercise   : () -> Unit,
     onRemoveExercise: (Int) -> Unit,
-    onRemoveDay     : () -> Unit
+    onRemoveDay     : () -> Unit,
+    onEditExercise  : (Int) -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
     val accent = if (day.isRestDay) Mist else CardCyan
@@ -2084,6 +2118,7 @@ private fun ManualDayCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable { onEditExercise(i) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -2101,6 +2136,9 @@ private fun ManualDayCard(
                                 color = theme.text2,
                                 fontSize = 10.sp
                             )
+                        }
+                        IconButton(onClick = { onEditExercise(i) }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Rounded.Edit, null, tint = accent.copy(0.5f), modifier = Modifier.size(13.dp))
                         }
                         IconButton(onClick = { onRemoveExercise(i) }, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Rounded.Close, null, tint = theme.text2.copy(0.4f), modifier = Modifier.size(14.dp))
@@ -2126,6 +2164,152 @@ private fun ManualDayCard(
             }
         } else {
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+// ── Exercise Edit Dialog ──────────────────────────────────────────────────────
+
+@Composable
+private fun ExerciseEditDialog(
+    exercise : DraftExercise,
+    onDismiss: () -> Unit,
+    onConfirm: (sets: Int, reps: Int, restSeconds: Int) -> Unit
+) {
+    var sets by remember { mutableIntStateOf(exercise.sets) }
+    var reps by remember { mutableIntStateOf(exercise.reps) }
+    var rest by remember { mutableIntStateOf(exercise.restSeconds) }
+    val theme = LocalAppTheme.current
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "Hareketi Düzenle",
+                    color = theme.text2,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    exercise.name,
+                    color = theme.text0,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                EditCounterField(
+                    label       = "SET",
+                    value       = sets,
+                    onDecrement = { if (sets > 1) sets-- },
+                    onIncrement = { if (sets < 10) sets++ },
+                    accent      = CardCyan,
+                    modifier    = Modifier.weight(1f)
+                )
+                EditCounterField(
+                    label       = "TEKRAR",
+                    value       = reps,
+                    onDecrement = { if (reps > 1) reps-- },
+                    onIncrement = { if (reps < 100) reps++ },
+                    accent      = CardCyan,
+                    modifier    = Modifier.weight(1f)
+                )
+                EditCounterField(
+                    label           = "DİNLENME",
+                    value           = rest,
+                    onDecrement     = { if (rest > 15) rest -= 15 },
+                    onIncrement     = { if (rest < 300) rest += 15 },
+                    accent          = CardCyan,
+                    modifier        = Modifier.weight(1f),
+                    displayOverride = "${rest}s"
+                )
+            }
+            Row(
+                modifier            = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(
+                    onClick  = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("İptal", color = theme.text2)
+                }
+                Button(
+                    onClick  = { onConfirm(sets, reps, rest) },
+                    modifier = Modifier.weight(1f),
+                    colors   = ButtonDefaults.buttonColors(containerColor = CardCyan)
+                ) {
+                    Text("Kaydet", color = Snow, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditCounterField(
+    label          : String,
+    value          : Int,
+    onDecrement    : () -> Unit,
+    onIncrement    : () -> Unit,
+    accent         : Color,
+    modifier       : Modifier = Modifier,
+    displayOverride: String?  = null
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(theme.bg3)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(label, color = theme.text2, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment      = Alignment.CenterVertically,
+            horizontalArrangement  = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.15f))
+                    .clickable(onClick = onDecrement),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(12.dp))
+            }
+            Text(
+                displayOverride ?: value.toString(),
+                color      = theme.text0,
+                fontWeight = FontWeight.Black,
+                fontSize   = 14.sp,
+                modifier   = Modifier.widthIn(min = 28.dp),
+                textAlign  = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.15f))
+                    .clickable(onClick = onIncrement),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(12.dp))
+            }
         }
     }
 }
