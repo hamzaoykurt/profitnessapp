@@ -47,7 +47,11 @@ import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
 
@@ -186,6 +190,22 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 
+        // ── Global Rest Timer Banner ──────────────────────────────────────
+        val workoutState by workoutViewModel.uiState.collectAsState()
+        val restTimer = workoutState.restTimer
+        AnimatedVisibility(
+            visible  = restTimer.isRunning || restTimer.isDone,
+            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) { -it } + fadeIn(tween(200)),
+            exit     = slideOutVertically(tween(200)) { -it } + fadeOut(tween(150)),
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(150f)
+        ) {
+            RestTimerBanner(
+                timer     = restTimer,
+                onStop    = { workoutViewModel.stopRestTimer() },
+                onDismiss = { workoutViewModel.dismissRestTimer() }
+            )
+        }
+
         // Shared spring spec for full-screen overlays — feels instant yet smooth
         val overlayEnterSpec = spring<IntOffset>(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -224,6 +244,120 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             EditProfileScreen(onBack = { showEditProfile = false })
+        }
+    }
+}
+
+// ── Global Rest Timer Banner ───────────────────────────────────────────────────
+@Composable
+private fun RestTimerBanner(
+    timer: RestTimerState,
+    onStop: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val isDone = timer.isDone
+
+    val bgColor  = if (isDone) Amber else accent
+    val progress = timer.progress
+
+    // Pulse animation when running
+    val pulseScale = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(timer.isRunning) {
+        if (timer.isRunning) {
+            while (true) {
+                pulseScale.animateTo(1.03f, tween(600))
+                pulseScale.animateTo(1f, tween(600))
+            }
+        } else {
+            pulseScale.snapTo(1f)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 48.dp)
+            .scale(pulseScale.value)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(bgColor.copy(0.95f), bgColor.copy(0.85f))
+                )
+            )
+            .clickable { if (isDone) onDismiss() else onStop() }
+            .padding(horizontal = 20.dp, vertical = 14.dp)
+    ) {
+        // Progress bar at bottom
+        if (!isDone) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth(progress)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(0.4f))
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
+                    contentDescription = null,
+                    tint = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = if (isDone) "Bir sonraki seti başlatabilirsin" else "Dinlenme süresi • ${timer.exerciseName}",
+                    color = androidx.compose.ui.graphics.Color.White.copy(0.8f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Action button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f))
+                    .clickable { if (isDone) onDismiss() else onStop() }
+                    .padding(10.dp, 6.dp)
+            ) {
+                Text(
+                    text = if (isDone) "TAMAM" else "DURDUR",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+            }
         }
     }
 }

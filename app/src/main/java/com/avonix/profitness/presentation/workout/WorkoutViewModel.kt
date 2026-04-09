@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -19,6 +20,16 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
+data class RestTimerState(
+    val isRunning: Boolean = false,
+    val isDone: Boolean = false,
+    val secondsLeft: Int = 0,
+    val totalSeconds: Int = 0,
+    val exerciseName: String = ""
+) {
+    val progress get() = if (totalSeconds > 0) secondsLeft.toFloat() / totalSeconds else 0f
+}
+
 data class WorkoutScreenState(
     val dayStates: List<WorkoutDayState> = emptyList(),
     val selectedDayIdx: Int = 0,
@@ -26,7 +37,8 @@ data class WorkoutScreenState(
     val hasProgramLoaded: Boolean = false,
     val currentProgramId: String = "",
     val currentStreak: Int = 0,
-    val setCompletions: Map<String, Set<Int>> = emptyMap()  // exerciseId → tamamlanan set indexleri
+    val setCompletions: Map<String, Set<Int>> = emptyMap(),
+    val restTimer: RestTimerState = RestTimerState()
 )
 
 @HiltViewModel
@@ -38,9 +50,42 @@ class WorkoutViewModel @Inject constructor(
 ) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
 
     private var observeJob: Job? = null
+    private var timerJob: Job? = null
 
     init {
         startObserving()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  REST TIMER — ViewModel'de yaşar, tab/ekran değişiminden etkilenmez
+    // ═════════════════════════════════════════════════════════════════════════
+
+    fun startRestTimer(restSeconds: Int, exerciseName: String) {
+        timerJob?.cancel()
+        updateState { it.copy(restTimer = RestTimerState(
+            isRunning = true, isDone = false,
+            secondsLeft = restSeconds, totalSeconds = restSeconds,
+            exerciseName = exerciseName
+        ))}
+        timerJob = viewModelScope.launch {
+            var remaining = restSeconds
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+                updateState { it.copy(restTimer = it.restTimer.copy(secondsLeft = remaining)) }
+            }
+            updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false, isDone = true, secondsLeft = 0)) }
+        }
+    }
+
+    fun stopRestTimer() {
+        timerJob?.cancel()
+        updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false)) }
+    }
+
+    fun dismissRestTimer() {
+        timerJob?.cancel()
+        updateState { it.copy(restTimer = RestTimerState()) }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -184,6 +229,12 @@ class WorkoutViewModel @Inject constructor(
             val isCompleting = exerciseId !in dayState.completedIds
 
             if (isCompleting) {
+                // Rest timer otomatik başlat
+                startRestTimer(
+                    restSeconds = exercise.restSeconds.takeIf { it > 0 } ?: 90,
+                    exerciseName = exercise.name
+                )
+
                 // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller
                 workoutRepository.fillExerciseSetCompletions(
                     userId = userId,

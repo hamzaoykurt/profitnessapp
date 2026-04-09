@@ -363,19 +363,23 @@ private fun WorkoutContent(
                 } else {
                     state.setCompletions[exercise.id] ?: emptySet()
                 }
+                // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
+                val timer = state.restTimer
+                val isThisExTimer = timer.exerciseName == exercise.name
                 CinematicExerciseCard(
                     exercise       = exercise,
                     index          = idx,
                     isCompleted    = isCompleted,
                     doneSetIndices = doneSetIndices,
                     onToggleSet    = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
-                    onComplete     = {
-                        viewModel.toggleExercise(selectedDayIdx, exercise.id)
-                    },
-                    onShowDetail = { showDetail = true },
-                    onExpandChanged = { expanded ->
-                        expandedExIdx = if (expanded) idx else -1
-                    }
+                    onComplete     = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
+                    onShowDetail   = { showDetail = true },
+                    onExpandChanged = { expanded -> expandedExIdx = if (expanded) idx else -1 },
+                    timerSeconds   = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
+                    timerRunning   = isThisExTimer && timer.isRunning,
+                    timerDone      = isThisExTimer && timer.isDone,
+                    onStartTimer   = { viewModel.startRestTimer(exercise.restSeconds.takeIf { it > 0 } ?: 90, exercise.name) },
+                    onStopTimer    = { viewModel.stopRestTimer() }
                 )
                 if (showDetail) {
                     ExerciseDetailSheet(

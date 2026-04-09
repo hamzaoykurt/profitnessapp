@@ -43,29 +43,18 @@ fun CinematicExerciseCard(
     onToggleSet: (setIndex: Int) -> Unit = {},
     onComplete: () -> Unit = {},
     onShowDetail: (() -> Unit)? = null,
-    onExpandChanged: ((Boolean) -> Unit)? = null
+    onExpandChanged: ((Boolean) -> Unit)? = null,
+    // Timer — ViewModel'den gelir, lokal state yok
+    timerSeconds: Int = 0,
+    timerRunning: Boolean = false,
+    timerDone: Boolean = false,
+    onStartTimer: () -> Unit = {},
+    onStopTimer: () -> Unit = {}
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
-
-    var timerSeconds by remember(exercise.id) { mutableStateOf(exercise.restSeconds) }
-    var timerRunning by remember { mutableStateOf(false) }
-    var timerDone    by remember { mutableStateOf(false) }
-
-    LaunchedEffect(timerRunning) {
-        if (timerRunning) {
-            while (timerSeconds > 0 && timerRunning) {
-                delay(1000L)
-                timerSeconds--
-            }
-            if (timerSeconds == 0) {
-                timerRunning = false
-                timerDone    = true
-            }
-        }
-    }
 
     // Press scale — snappy spring
     val interactionSource = remember { MutableInteractionSource() }
@@ -240,12 +229,8 @@ fun CinematicExerciseCard(
                                 isRunning      = timerRunning,
                                 isDone         = timerDone,
                                 defaultSeconds = exercise.restSeconds,
-                                onStart        = {
-                                    timerSeconds = exercise.restSeconds
-                                    timerDone    = false
-                                    timerRunning = true
-                                },
-                                onStop = { timerRunning = false }
+                                onStart        = onStartTimer,
+                                onStop         = onStopTimer
                             )
 
                             Button(
