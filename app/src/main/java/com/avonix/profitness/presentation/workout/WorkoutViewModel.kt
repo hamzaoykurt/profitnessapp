@@ -77,19 +77,22 @@ class WorkoutViewModel @Inject constructor(
             combine(
                 programRepository.observeActiveProgram(userId),
                 workoutRepository.observeWeeklyCompletions(userId, weekStart),
-                workoutRepository.observeStreak(userId)
-            ) { program, completions, streak ->
-                Triple(program, completions, streak)
+                workoutRepository.observeStreak(userId),
+                workoutRepository.observeSetCompletions(userId, weekStart)
+            ) { program, completions, streak, setCompletions ->
+                Triple(Triple(program, completions, streak), setCompletions, Unit)
             }
             .distinctUntilChanged()
-            .collect { (program, completions, streak) ->
+            .collect { (innerTriple, setCompletions, _) ->
+                val (program, completions, streak) = innerTriple
                 if (program == null || program.days.isEmpty()) {
                     updateState {
                         it.copy(
                             isLoading = false,
                             hasProgramLoaded = false,
                             dayStates = emptyList(),
-                            currentStreak = streak
+                            currentStreak = streak,
+                            setCompletions = setCompletions
                         )
                     }
                     return@collect
@@ -99,14 +102,6 @@ class WorkoutViewModel @Inject constructor(
                 val todayIdx = LocalDate.now().dayOfWeek.value - 1
 
                 updateState { prev ->
-                    val updatedSetCompletions = prev.setCompletions.toMutableMap()
-                    dayStates.forEach { dayState ->
-                        dayState.day.exercises.forEach { ex ->
-                            if (ex.id in dayState.completedIds && ex.id !in updatedSetCompletions) {
-                                updatedSetCompletions[ex.id] = (0 until ex.sets).toSet()
-                            }
-                        }
-                    }
                     prev.copy(
                         isLoading = false,
                         hasProgramLoaded = true,
@@ -115,7 +110,7 @@ class WorkoutViewModel @Inject constructor(
                         selectedDayIdx = if (prev.currentProgramId != program.id) todayIdx else prev.selectedDayIdx,
                         currentProgramId = program.id,
                         currentStreak = streak,
-                        setCompletions = updatedSetCompletions
+                        setCompletions = setCompletions
                     )
                 }
             }
@@ -156,10 +151,20 @@ class WorkoutViewModel @Inject constructor(
     }
 
     fun toggleSet(exerciseId: String, setIndex: Int) {
-        updateState { state ->
-            val current = state.setCompletions[exerciseId] ?: emptySet()
-            val updated = if (setIndex in current) current - setIndex else current + setIndex
-            state.copy(setCompletions = state.setCompletions + (exerciseId to updated))
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val currentState = uiState.value
+        val dayState = currentState.dayStates.getOrNull(currentState.selectedDayIdx) ?: return
+        val programDayId = dayState.day.programDayId
+        if (programDayId.isBlank()) return
+
+        val isCurrentlyDone = setIndex in (currentState.setCompletions[exerciseId] ?: emptySet())
+
+        viewModelScope.launch {
+            if (isCurrentlyDone) {
+                workoutRepository.removeSetCompletion(userId, exerciseId, programDayId, setIndex)
+            } else {
+                workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex)
+            }
         }
     }
 
@@ -177,11 +182,15 @@ class WorkoutViewModel @Inject constructor(
 
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
             val isCompleting = exerciseId !in dayState.completedIds
-            val allSetIndices = (0 until exercise.sets).toSet()
 
             if (isCompleting) {
-                updateState { s -> s.copy(setCompletions = s.setCompletions + (exerciseId to allSetIndices)) }
-                // Room'a yaz — Flow otomatik günceller UI'ı
+                // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller
+                workoutRepository.fillExerciseSetCompletions(
+                    userId = userId,
+                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
+                    programDayId = programDayId,
+                    totalSets = exercise.sets
+                )
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(
                     userId = userId,
@@ -203,7 +212,12 @@ class WorkoutViewModel @Inject constructor(
                     checkAndUnlockAchievements(userId)
                 }
             } else {
-                updateState { s -> s.copy(setCompletions = s.setCompletions - exerciseId) }
+                // Tüm setleri Room'dan sil — Flow otomatik UI'ı günceller
+                workoutRepository.clearExerciseSetCompletions(
+                    userId = userId,
+                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
+                    programDayId = programDayId
+                )
                 workoutRepository.uncompleteExercise(
                     userId = userId,
                     programDayId = programDayId,

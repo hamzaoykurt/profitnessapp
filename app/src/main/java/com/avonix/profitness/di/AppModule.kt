@@ -10,6 +10,7 @@ import com.avonix.profitness.data.auth.AuthRepositoryImpl
 import com.avonix.profitness.data.local.AppDatabase
 import com.avonix.profitness.data.local.dao.ExerciseDao
 import com.avonix.profitness.data.local.dao.ProgramDao
+import com.avonix.profitness.data.local.dao.SetCompletionDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.ProfileRepositoryImpl
@@ -60,12 +61,13 @@ abstract class AppModule {
         @Provides @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
-                .fallbackToDestructiveMigration()
+                .addMigrations(AppDatabase.MIGRATION_1_2)
                 .build()
 
         @Provides @Singleton fun provideProgramDao(db: AppDatabase): ProgramDao = db.programDao()
         @Provides @Singleton fun provideExerciseDao(db: AppDatabase): ExerciseDao = db.exerciseDao()
         @Provides @Singleton fun provideWorkoutDao(db: AppDatabase): WorkoutDao = db.workoutDao()
+        @Provides @Singleton fun provideSetCompletionDao(db: AppDatabase): SetCompletionDao = db.setCompletionDao()
 
         // ── Supabase ─────────────────────────────────────────────────────────
 

@@ -1,7 +1,9 @@
 package com.avonix.profitness.data.workout
 
+import com.avonix.profitness.data.local.dao.SetCompletionDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
 import com.avonix.profitness.data.local.entity.ExerciseLogEntity
+import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.local.entity.WorkoutLogEntity
 import com.avonix.profitness.data.sync.SyncManager
 import com.avonix.profitness.data.workout.dto.UserStatsDto
@@ -22,6 +24,7 @@ import javax.inject.Inject
 class WorkoutRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val workoutDao: WorkoutDao,
+    private val setCompletionDao: SetCompletionDao,
     private val syncManager: SyncManager
 ) : WorkoutRepository {
 
@@ -45,6 +48,14 @@ class WorkoutRepositoryImpl @Inject constructor(
     override fun observeStreak(userId: String): Flow<Int> =
         workoutDao.observeWorkoutDates(userId)
             .map { dates -> calculateStreak(dates) }
+            .flowOn(Dispatchers.IO)
+
+    override fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<String, Set<Int>>> =
+        setCompletionDao.observeForWeek(userId, weekStart)
+            .map { list ->
+                list.groupBy { it.exerciseId }
+                    .mapValues { entry -> entry.value.map { it.setIndex }.toSet() }
+            }
             .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -208,6 +219,48 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun syncToRemote() {
         syncManager.pushUnsyncedWorkouts()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  SET COMPLETION
+    // ═════════════════════════════════════════════════════════════════════════
+
+    override suspend fun addSetCompletion(
+        userId: String, exerciseId: String, programDayId: String, setIndex: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today))
+        }
+    }
+
+    override suspend fun removeSetCompletion(
+        userId: String, exerciseId: String, programDayId: String, setIndex: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.delete(userId, exerciseId, programDayId, setIndex, today)
+        }
+    }
+
+    override suspend fun clearExerciseSetCompletions(
+        userId: String, exerciseId: String, programDayId: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.deleteAllForExercise(userId, exerciseId, programDayId, today)
+        }
+    }
+
+    override suspend fun fillExerciseSetCompletions(
+        userId: String, exerciseId: String, programDayId: String, totalSets: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            repeat(totalSets) { i ->
+                setCompletionDao.insert(SetCompletionEntity(userId, exerciseId, programDayId, i, today))
+            }
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════

@@ -19,6 +19,12 @@ interface WorkoutRepository {
      */
     fun observeStreak(userId: String): Flow<Int>
 
+    /**
+     * Set tamamlamalarını reaktif izler.
+     * Map<exerciseId, Set<setIndex>> — her egzersizin tamamlanan set indexleri.
+     */
+    fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<String, Set<Int>>>
+
     // ── Write (Room-first, Supabase async sync) ──────────────────────────────
 
     /**
@@ -65,4 +71,18 @@ interface WorkoutRepository {
 
     /** Room'daki unsynced kayıtları Supabase'e yazar. */
     suspend fun syncToRemote()
+
+    // ── Set Completion ────────────────────────────────────────────────────────
+
+    /** Tek bir set'i tamamlandı olarak Room'a ekler. */
+    suspend fun addSetCompletion(userId: String, exerciseId: String, programDayId: String, setIndex: Int): Result<Unit>
+
+    /** Tek bir set'in tamamlanmasını Room'dan kaldırır. */
+    suspend fun removeSetCompletion(userId: String, exerciseId: String, programDayId: String, setIndex: Int): Result<Unit>
+
+    /** Bir egzersizin bugünkü tüm set tamamlamalarını Room'dan siler. */
+    suspend fun clearExerciseSetCompletions(userId: String, exerciseId: String, programDayId: String): Result<Unit>
+
+    /** Bir egzersizin tüm setlerini (0..totalSets-1) tamamlandı olarak Room'a yazar. */
+    suspend fun fillExerciseSetCompletions(userId: String, exerciseId: String, programDayId: String, totalSets: Int): Result<Unit>
 }
