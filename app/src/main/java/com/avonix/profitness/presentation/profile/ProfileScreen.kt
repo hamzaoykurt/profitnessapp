@@ -1635,7 +1635,7 @@ fun WeightTrackingCard(
                 Text(
                     if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
                     else "Ölçümlerini kaydet, AI koçun analiz etsin",
-                    color    = theme.text3,
+                    color    = theme.text2,
                     fontSize = 11.sp
                 )
             }

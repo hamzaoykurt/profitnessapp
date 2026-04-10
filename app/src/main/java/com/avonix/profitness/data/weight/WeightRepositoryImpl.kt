@@ -64,6 +64,7 @@ class WeightRepositoryImpl @Inject constructor(
                 supabase.from("weight_logs")
                     .delete { filter { eq("id", id); eq("user_id", userId) } }
             } catch (_: Exception) { /* sessizce geç */ }
+            Unit
         }
     }
 
