@@ -40,6 +40,7 @@ fun ProfileScreen(
     onThemeChange              : (AppThemeState) -> Unit,
     onNavigateToPerformance    : () -> Unit = {},
     onNavigateToAchievements   : () -> Unit = {},
+    onNavigateToWeightTracking : () -> Unit = {},
     onLogout                   : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
     timerExtraPad              : androidx.compose.ui.unit.Dp = 0.dp,
@@ -110,6 +111,14 @@ fun ProfileScreen(
                     bodyFatPct = state.bodyFatPct,
                     accent     = accent,
                     theme      = theme
+                )
+            }
+            item {
+                WeightTrackingCard(
+                    accent    = accent,
+                    theme     = theme,
+                    weightKg  = state.weightKg,
+                    onClick   = onNavigateToWeightTracking
                 )
             }
             item {
@@ -1570,6 +1579,73 @@ private fun BodyMetricTile(
             Text(unit, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
             Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 0.5.sp)
+        }
+    }
+}
+
+// ── Weight Tracking Card (Profile → detail navigation) ───────────────────────
+
+@Composable
+fun WeightTrackingCard(
+    accent   : Color,
+    theme    : AppThemeState,
+    weightKg : Double,
+    onClick  : () -> Unit
+) {
+    Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp)) {
+        Text(
+            "AĞIRLIK TAKİBİ",
+            style         = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+            color         = accent,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .glassCard(accent, theme)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // İkon
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.MonitorWeight,
+                    contentDescription = null,
+                    tint     = accent,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Kilo Takip Et",
+                    color      = theme.text0,
+                    fontSize   = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
+                    else "Ölçümlerini kaydet, AI koçun analiz etsin",
+                    color    = theme.text3,
+                    fontSize = 11.sp
+                )
+            }
+
+            Icon(
+                Icons.Rounded.ArrowForwardIos,
+                null,
+                tint     = accent.copy(0.6f),
+                modifier = Modifier.size(14.dp)
+            )
         }
     }
 }

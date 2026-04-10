@@ -46,6 +46,7 @@ import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
 import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
+import com.avonix.profitness.presentation.weight.WeightTrackingScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -90,6 +91,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var showPerformanceDetail   by remember { mutableStateOf(false) }
     var showAchievementsDetail  by remember { mutableStateOf(false) }
     var showEditProfile         by remember { mutableStateOf(false) }
+    var showWeightTracking      by remember { mutableStateOf(false) }
 
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -181,12 +183,13 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPadWithTimer)
                 DashboardTab.News    -> NewsScreen(timerExtraPad = timerExtraPad)
                 DashboardTab.Profile -> ProfileScreen(
-                    onThemeChange            = onThemeChange,
-                    onNavigateToPerformance  = { showPerformanceDetail = true },
-                    onNavigateToAchievements = { showAchievementsDetail = true },
-                    onLogout                 = onLogout,
-                    onEditProfile            = { showEditProfile = true },
-                    timerExtraPad            = timerExtraPad
+                    onThemeChange              = onThemeChange,
+                    onNavigateToPerformance    = { showPerformanceDetail = true },
+                    onNavigateToAchievements   = { showAchievementsDetail = true },
+                    onNavigateToWeightTracking = { showWeightTracking = true },
+                    onLogout                   = onLogout,
+                    onEditProfile              = { showEditProfile = true },
+                    timerExtraPad              = timerExtraPad
                 )
             }
         }
@@ -254,6 +257,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             EditProfileScreen(onBack = { showEditProfile = false })
+        }
+
+        // ── Weight Tracking Overlay ───────────────────────────────────────────
+        AnimatedVisibility(
+            visible  = showWeightTracking,
+            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
+            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            modifier = Modifier.zIndex(200f)
+        ) {
+            WeightTrackingScreen(onBack = { showWeightTracking = false })
         }
     }
 }

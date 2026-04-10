@@ -11,12 +11,15 @@ import com.avonix.profitness.data.local.AppDatabase
 import com.avonix.profitness.data.local.dao.ExerciseDao
 import com.avonix.profitness.data.local.dao.ProgramDao
 import com.avonix.profitness.data.local.dao.SetCompletionDao
+import com.avonix.profitness.data.local.dao.WeightLogDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.ProfileRepositoryImpl
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.program.ProgramRepositoryImpl
 import com.avonix.profitness.data.sync.SyncManager
+import com.avonix.profitness.data.weight.WeightRepository
+import com.avonix.profitness.data.weight.WeightRepositoryImpl
 import com.avonix.profitness.data.workout.WorkoutRepository
 import com.avonix.profitness.data.workout.WorkoutRepositoryImpl
 import dagger.Binds
@@ -54,6 +57,9 @@ abstract class AppModule {
     @Binds @Singleton
     abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
 
+    @Binds @Singleton
+    abstract fun bindWeightRepository(impl: WeightRepositoryImpl): WeightRepository
+
     companion object {
 
         // ── Room Database ────────────────────────────────────────────────────
@@ -61,13 +67,14 @@ abstract class AppModule {
         @Provides @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
-                .addMigrations(AppDatabase.MIGRATION_1_2)
+                .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
                 .build()
 
         @Provides @Singleton fun provideProgramDao(db: AppDatabase): ProgramDao = db.programDao()
         @Provides @Singleton fun provideExerciseDao(db: AppDatabase): ExerciseDao = db.exerciseDao()
         @Provides @Singleton fun provideWorkoutDao(db: AppDatabase): WorkoutDao = db.workoutDao()
         @Provides @Singleton fun provideSetCompletionDao(db: AppDatabase): SetCompletionDao = db.setCompletionDao()
+        @Provides @Singleton fun provideWeightLogDao(db: AppDatabase): WeightLogDao = db.weightLogDao()
 
         // ── Supabase ─────────────────────────────────────────────────────────
 
