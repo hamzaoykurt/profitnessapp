@@ -1530,139 +1530,154 @@ private fun EditProgramScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(editTheme.bg1)
-                    .border(1.dp, editTheme.stroke, RoundedCornerShape(20.dp))
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .border(1.dp, editTheme.stroke, RoundedCornerShape(24.dp))
             ) {
-                // Başlık
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(listOf(CardPurple, CardCyan))
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            tint = Snow,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            "AI ile Düzenle",
-                            color      = editTheme.text0,
-                            fontWeight = FontWeight.Bold,
-                            fontSize   = 16.sp
-                        )
-                        Text(
-                            "Değişikliği açıkla",
-                            color    = editTheme.text2,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                // Prompt alanı
+                // Gradient header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(editTheme.bg0)
-                        .border(1.dp, editTheme.stroke, RoundedCornerShape(12.dp))
-                        .padding(14.dp)
-                ) {
-                    BasicTextField(
-                        value         = aiPrompt,
-                        onValueChange = { aiPrompt = it },
-                        enabled       = !uiState.aiEditLoading,
-                        textStyle     = MaterialTheme.typography.bodyMedium.copy(color = editTheme.text0),
-                        modifier      = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 180.dp).verticalScroll(rememberScrollState()),
-                        decorationBox = { inner ->
-                            if (aiPrompt.isEmpty()) {
-                                Text(
-                                    "Örn: Bacak günü ekle, karın egzersizlerini çıkar, dinlenme süresini azalt...",
-                                    color    = editTheme.text2,
-                                    fontSize = 14.sp
-                                )
-                            }
-                            inner()
-                        }
-                    )
-                }
-
-                // Hata
-                if (uiState.aiEditError != null) {
-                    Text(
-                        uiState.aiEditError!!,
-                        color    = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                }
-
-                // Butonlar
-                Row(
-                    modifier            = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick  = {
-                            showAiEditDialog = false
-                            viewModel.clearAiEditError()
-                        },
-                        enabled  = !uiState.aiEditLoading,
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp),
-                        border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke)
-                    ) {
-                        Text("İptal", color = editTheme.text1)
-                    }
-                    Button(
-                        onClick  = {
-                            val currentDrafts = days.mapIndexed { i, d ->
-                                ManualDayDraft(
-                                    title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
-                                    isRestDay = d.isRestDay,
-                                    selectedExercises = d.exercises.mapIndexed { ei, ex ->
-                                        com.avonix.profitness.data.program.ManualExerciseInput(
-                                            exerciseId  = ex.exerciseId,
-                                            sets        = ex.sets,
-                                            reps        = ex.reps,
-                                            restSeconds = ex.restSeconds,
-                                            orderIndex  = ei
-                                        )
-                                    }
-                                )
-                            }
-                            viewModel.editWithAI(
-                                programId       = program.id,
-                                currentName     = programName,
-                                currentDays     = currentDrafts,
-                                userInstruction = aiPrompt
-                            )
-                        },
-                        enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp),
-                        colors   = ButtonDefaults.buttonColors(
-                            containerColor = CardPurple
+                        .background(
+                            Brush.linearGradient(listOf(CardPurple.copy(0.35f), CardCyan.copy(0.2f)))
                         )
-                    ) {
-                        if (uiState.aiEditLoading) {
-                            CircularProgressIndicator(
-                                color    = Snow,
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(CardPurple, CardCyan))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Rounded.AutoAwesome,
+                                contentDescription = null,
+                                tint     = Snow,
+                                modifier = Modifier.size(22.dp)
                             )
-                        } else {
-                            Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                "AI ile Düzenle",
+                                color      = Snow,
+                                fontWeight = FontWeight.Black,
+                                fontSize   = 18.sp
+                            )
+                            Text(
+                                "Programı nasıl değiştireyim?",
+                                color    = Snow.copy(0.65f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                // İçerik
+                Column(
+                    modifier            = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Prompt alanı
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(editTheme.bg0)
+                            .border(1.dp, editTheme.stroke, RoundedCornerShape(14.dp))
+                            .padding(16.dp)
+                    ) {
+                        BasicTextField(
+                            value         = aiPrompt,
+                            onValueChange = { aiPrompt = it },
+                            enabled       = !uiState.aiEditLoading,
+                            textStyle     = MaterialTheme.typography.bodyMedium.copy(
+                                color    = editTheme.text0,
+                                fontSize = 15.sp
+                            ),
+                            modifier      = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 200.dp).verticalScroll(rememberScrollState()),
+                            decorationBox = { inner ->
+                                if (aiPrompt.isEmpty()) {
+                                    Text(
+                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, dinlenme süresini azalt...",
+                                        color      = editTheme.text2,
+                                        fontSize   = 14.sp,
+                                        lineHeight = 20.sp
+                                    )
+                                }
+                                inner()
+                            }
+                        )
+                    }
+
+                    // Hata
+                    if (uiState.aiEditError != null) {
+                        Text(
+                            uiState.aiEditError!!,
+                            color    = MaterialTheme.colorScheme.error,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    // Butonlar
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick  = {
+                                showAiEditDialog = false
+                                viewModel.clearAiEditError()
+                            },
+                            enabled  = !uiState.aiEditLoading,
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape    = RoundedCornerShape(14.dp),
+                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke)
+                        ) {
+                            Text("İptal", color = editTheme.text1, fontWeight = FontWeight.Medium)
+                        }
+                        Button(
+                            onClick  = {
+                                val currentDrafts = days.mapIndexed { i, d ->
+                                    ManualDayDraft(
+                                        title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                                        isRestDay = d.isRestDay,
+                                        selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                                            com.avonix.profitness.data.program.ManualExerciseInput(
+                                                exerciseId  = ex.exerciseId,
+                                                sets        = ex.sets,
+                                                reps        = ex.reps,
+                                                restSeconds = ex.restSeconds,
+                                                orderIndex  = ei
+                                            )
+                                        }
+                                    )
+                                }
+                                viewModel.editWithAI(
+                                    programId       = program.id,
+                                    currentName     = programName,
+                                    currentDays     = currentDrafts,
+                                    userInstruction = aiPrompt
+                                )
+                            },
+                            enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape    = RoundedCornerShape(14.dp),
+                            colors   = ButtonDefaults.buttonColors(containerColor = CardPurple)
+                        ) {
+                            if (uiState.aiEditLoading) {
+                                CircularProgressIndicator(
+                                    color       = Snow,
+                                    modifier    = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -1769,29 +1784,37 @@ private fun EditProgramScreen(
             ) {
                 // AI ile Düzenle butonu
                 OutlinedButton(
-                    onClick  = { showAiEditDialog = true },
-                    enabled  = !isLoading && !uiState.aiEditLoading,
-                    modifier = Modifier.height(64.dp),
-                    shape    = RoundedCornerShape(16.dp),
-                    border   = androidx.compose.foundation.BorderStroke(
+                    onClick         = { showAiEditDialog = true },
+                    enabled         = !isLoading && !uiState.aiEditLoading,
+                    modifier        = Modifier.height(64.dp),
+                    shape           = RoundedCornerShape(16.dp),
+                    contentPadding  = PaddingValues(horizontal = 16.dp),
+                    colors          = ButtonDefaults.outlinedButtonColors(
+                        containerColor = CardPurple.copy(0.18f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
                         1.dp,
                         Brush.linearGradient(listOf(CardPurple, CardCyan))
                     )
                 ) {
-                    Icon(
-                        Icons.Rounded.AutoAwesome,
-                        contentDescription = null,
-                        tint     = CardPurple,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "AI",
-                        color      = CardPurple,
-                        fontWeight = FontWeight.Black,
-                        fontSize   = 14.sp,
-                        letterSpacing = 0.5.sp
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint     = CardPurple,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            "AI",
+                            color         = Snow,
+                            fontWeight    = FontWeight.Black,
+                            fontSize      = 11.sp,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
 
                 // Kaydet butonu
@@ -2114,34 +2137,82 @@ private fun ManualDayCard(
                     color = theme.stroke,
                     thickness = 0.5.dp
                 )
-                day.exercises.forEachIndexed { i, ex ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onEditExercise(i) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    day.exercises.forEachIndexed { i, ex ->
+                        Row(
                             modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(accent)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(ex.name, color = theme.text0, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                            Text(
-                                "${ex.sets}×${ex.reps}  •  ${ex.restSeconds}s",
-                                color = theme.text2,
-                                fontSize = 10.sp
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(theme.bg2)
+                                .clickable { onEditExercise(i) }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(accent)
                             )
-                        }
-                        IconButton(onClick = { onEditExercise(i) }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Rounded.Edit, null, tint = accent.copy(0.5f), modifier = Modifier.size(13.dp))
-                        }
-                        IconButton(onClick = { onRemoveExercise(i) }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Rounded.Close, null, tint = theme.text2.copy(0.4f), modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(ex.name, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Spacer(Modifier.height(4.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    // Set badge
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(accent.copy(0.15f))
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("${ex.sets} SET", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    // Rep badge
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(accent.copy(0.10f))
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("${ex.reps} TEK", color = accent.copy(0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    // Rest badge
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(theme.stroke)
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("${ex.restSeconds}s", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(accent.copy(0.2f))
+                                    .clickable { onEditExercise(i) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(theme.bg3)
+                                    .clickable { onRemoveExercise(i) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Close, null, tint = theme.text1, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
@@ -2179,79 +2250,105 @@ private fun ExerciseEditDialog(
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
     var rest by remember { mutableIntStateOf(exercise.restSeconds) }
-    val theme = LocalAppTheme.current
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(24.dp))
                 .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .border(1.dp, theme.stroke, RoundedCornerShape(24.dp))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    "Hareketi Düzenle",
-                    color = theme.text2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    exercise.name,
-                    color = theme.text0,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            // Header
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(accent.copy(0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "HAREKETI DÜZENLE",
+                        color         = accent,
+                        fontSize      = 9.sp,
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text(
+                        exercise.name,
+                        color      = theme.text0,
+                        fontWeight = FontWeight.Bold,
+                        fontSize   = 15.sp
+                    )
+                }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+            // Counter fields
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(theme.bg2)
+                    .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp)
             ) {
                 EditCounterField(
                     label       = "SET",
                     value       = sets,
                     onDecrement = { if (sets > 1) sets-- },
                     onIncrement = { if (sets < 10) sets++ },
-                    accent      = CardCyan,
-                    modifier    = Modifier.weight(1f)
+                    accent      = accent
                 )
+                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                 EditCounterField(
                     label       = "TEKRAR",
                     value       = reps,
                     onDecrement = { if (reps > 1) reps-- },
                     onIncrement = { if (reps < 100) reps++ },
-                    accent      = CardCyan,
-                    modifier    = Modifier.weight(1f)
+                    accent      = accent
                 )
+                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                 EditCounterField(
                     label           = "DİNLENME",
                     value           = rest,
                     onDecrement     = { if (rest > 15) rest -= 15 },
                     onIncrement     = { if (rest < 300) rest += 15 },
-                    accent          = CardCyan,
-                    modifier        = Modifier.weight(1f),
+                    accent          = accent,
                     displayOverride = "${rest}s"
                 )
             }
+
+            // Action buttons
             Row(
-                modifier            = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                TextButton(
+                OutlinedButton(
                     onClick  = onDismiss,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape    = RoundedCornerShape(14.dp),
+                    border   = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text2)
+                    Text("İptal", color = theme.text1, fontWeight = FontWeight.Medium)
                 }
                 Button(
                     onClick  = { onConfirm(sets, reps, rest) },
-                    modifier = Modifier.weight(1f),
-                    colors   = ButtonDefaults.buttonColors(containerColor = CardCyan)
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = accent),
+                    shape    = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Kaydet", color = Snow, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Kaydet", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2269,47 +2366,49 @@ private fun EditCounterField(
     displayOverride: String?  = null
 ) {
     val theme = LocalAppTheme.current
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(theme.bg3)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier          = modifier
+            .fillMaxWidth()
+            .padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = theme.text2, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-        Spacer(Modifier.height(6.dp))
-        Row(
-            verticalAlignment      = Alignment.CenterVertically,
-            horizontalArrangement  = Arrangement.spacedBy(4.dp)
+        Text(
+            label,
+            color         = accent,
+            fontSize      = 13.sp,
+            fontWeight    = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp,
+            modifier      = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.15f))
+                .border(1.dp, accent.copy(0.35f), CircleShape)
+                .clickable(onClick = onDecrement),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.15f))
-                    .clickable(onClick = onDecrement),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(12.dp))
-            }
-            Text(
-                displayOverride ?: value.toString(),
-                color      = theme.text0,
-                fontWeight = FontWeight.Black,
-                fontSize   = 14.sp,
-                modifier   = Modifier.widthIn(min = 28.dp),
-                textAlign  = androidx.compose.ui.text.style.TextAlign.Center
-            )
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.15f))
-                    .clickable(onClick = onIncrement),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(12.dp))
-            }
+            Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            displayOverride ?: value.toString(),
+            color      = theme.text0,
+            fontWeight = FontWeight.Black,
+            fontSize   = 22.sp,
+            textAlign  = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier   = Modifier.widthIn(min = 60.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.15f))
+                .border(1.dp, accent.copy(0.35f), CircleShape)
+                .clickable(onClick = onIncrement),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
         }
     }
 }

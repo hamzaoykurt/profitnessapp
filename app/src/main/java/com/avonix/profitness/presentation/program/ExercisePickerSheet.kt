@@ -6,6 +6,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -297,26 +298,30 @@ fun ExercisePickerSheet(
                                 HorizontalDivider(color = accent.copy(0.15f), thickness = 1.dp)
                                 Spacer(Modifier.height(12.dp))
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(theme.bg2)
+                                        .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 14.dp)
                                 ) {
                                     CounterField(
                                         label = "SET",
                                         value = sets,
                                         onDecrement = { if (sets > 1) sets-- },
                                         onIncrement = { if (sets < 10) sets++ },
-                                        accent = accent,
-                                        modifier = Modifier.weight(1f)
+                                        accent = accent
                                     )
+                                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                                     CounterField(
-                                        label = "TEKrar",
+                                        label = "TEKRAR",
                                         value = reps,
                                         onDecrement = { if (reps > 1) reps-- },
                                         onIncrement = { if (reps < 100) reps++ },
-                                        accent = accent,
-                                        modifier = Modifier.weight(1f)
+                                        accent = accent
                                     )
+                                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                                     CounterField(
                                         label = "DİNLENME",
                                         value = restSeconds,
@@ -324,8 +329,7 @@ fun ExercisePickerSheet(
                                         onDecrement = { if (restSeconds > 15) restSeconds -= 15 },
                                         onIncrement = { if (restSeconds < 300) restSeconds += 15 },
                                         displayOverride = "${restSeconds}s",
-                                        accent = accent,
-                                        modifier = Modifier.weight(1f)
+                                        accent = accent
                                     )
                                 }
 
@@ -589,53 +593,49 @@ private fun CounterField(
     displayOverride: String? = null
 ) {
     val theme = LocalAppTheme.current
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(theme.bg3)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier          = modifier
+            .fillMaxWidth()
+            .padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             label,
-            color = theme.text2,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp
+            color         = accent,
+            fontSize      = 13.sp,
+            fontWeight    = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp,
+            modifier      = Modifier.weight(1f)
         )
-        Spacer(Modifier.height(6.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.15f))
+                .border(1.dp, accent.copy(0.35f), CircleShape)
+                .clickable(onClick = onDecrement),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.15f))
-                    .clickable(onClick = onDecrement),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(12.dp))
-            }
-            Text(
-                displayOverride ?: value.toString(),
-                color = theme.text0,
-                fontWeight = FontWeight.Black,
-                fontSize = 14.sp,
-                modifier = Modifier.widthIn(min = 28.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.15f))
-                    .clickable(onClick = onIncrement),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(12.dp))
-            }
+            Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            displayOverride ?: value.toString(),
+            color      = theme.text0,
+            fontWeight = FontWeight.Black,
+            fontSize   = 22.sp,
+            textAlign  = TextAlign.Center,
+            modifier   = Modifier.widthIn(min = 60.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.15f))
+                .border(1.dp, accent.copy(0.35f), CircleShape)
+                .clickable(onClick = onIncrement),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
         }
     }
 }
