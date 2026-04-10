@@ -1618,7 +1618,7 @@ fun WeightTrackingCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Rounded.MonitorWeight,
+                    Icons.Rounded.ShowChart,
                     contentDescription = null,
                     tint     = accent,
                     modifier = Modifier.size(24.dp)

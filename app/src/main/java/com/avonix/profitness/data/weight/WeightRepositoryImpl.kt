@@ -36,34 +36,34 @@ class WeightRepositoryImpl @Inject constructor(
 
     // ── Write ─────────────────────────────────────────────────────────────────
 
-    override suspend fun addEntry(entry: WeightLogEntity) = withContext(Dispatchers.IO) {
+    override suspend fun addEntry(entry: WeightLogEntity): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             dao.upsert(entry)
-            // Optimistic remote push — başarısız olursa synced=false kalır, daha sonra pushPending ile yeniden denenir
-            runCatching {
+            // Optimistic remote push — başarısız olursa synced=false kalır, pushPending ile yeniden denenir
+            try {
                 supabase.from("weight_logs").upsert(entry.toDto())
                 dao.markSynced(listOf(entry.id))
-            }
+            } catch (_: Exception) { /* sessizce geç */ }
         }
     }
 
-    override suspend fun updateEntry(entry: WeightLogEntity) = withContext(Dispatchers.IO) {
+    override suspend fun updateEntry(entry: WeightLogEntity): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             dao.upsert(entry.copy(synced = false))
-            runCatching {
+            try {
                 supabase.from("weight_logs").upsert(entry.toDto())
                 dao.markSynced(listOf(entry.id))
-            }
+            } catch (_: Exception) { /* sessizce geç */ }
         }
     }
 
-    override suspend fun deleteEntry(id: String, userId: String) = withContext(Dispatchers.IO) {
+    override suspend fun deleteEntry(id: String, userId: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             dao.delete(id, userId)
-            runCatching {
+            try {
                 supabase.from("weight_logs")
                     .delete { filter { eq("id", id); eq("user_id", userId) } }
-            }
+            } catch (_: Exception) { /* sessizce geç */ }
         }
     }
 

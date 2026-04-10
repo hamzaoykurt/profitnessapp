@@ -309,7 +309,4 @@ class WeightTrackingViewModel @Inject constructor(
         return WeeklySummary(thisAvg, lastAvg, delta)
     }
 
-    private fun sendEvent(event: WeightTrackingEvent) {
-        viewModelScope.launch { _events.emit(event) }
-    }
 }
