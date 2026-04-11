@@ -49,6 +49,7 @@ import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
 import com.avonix.profitness.presentation.weight.WeightTrackingScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
+import com.avonix.profitness.presentation.store.StoreScreen
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
@@ -94,6 +95,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var showEditProfile             by remember { mutableStateOf(false) }
     var showWeightTracking          by remember { mutableStateOf(false) }
     var showExerciseProgression     by remember { mutableStateOf(false) }
+    var showStore                   by remember { mutableStateOf(false) }
 
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -180,9 +182,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     LaunchedEffect(capturedMode) {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Choose
                     }
-                    ProgramBuilderScreen(initialMode = capturedMode, timerExtraPad = timerExtraPad)
+                    ProgramBuilderScreen(
+                        initialMode       = capturedMode,
+                        timerExtraPad     = timerExtraPad,
+                        onNavigateToStore = { showStore = true }
+                    )
                 }
-                DashboardTab.AICoach -> AICoachScreen(bottomPadding = contentPadWithTimer)
+                DashboardTab.AICoach -> AICoachScreen(
+                    bottomPadding      = contentPadWithTimer,
+                    onNavigateToStore  = { showStore = true }
+                )
                 DashboardTab.News    -> NewsScreen(timerExtraPad = timerExtraPad)
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange                   = onThemeChange,
@@ -192,6 +201,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onNavigateToExerciseProgression = { showExerciseProgression = true },
                     onLogout                        = onLogout,
                     onEditProfile                   = { showEditProfile = true },
+                    onNavigateToStore               = { showStore = true },
                     timerExtraPad                   = timerExtraPad
                 )
             }
@@ -280,6 +290,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             ExerciseProgressionScreen(onBack = { showExerciseProgression = false })
+        }
+
+        // ── Store Overlay ─────────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible  = showStore,
+            enter    = slideInVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(200)),
+            exit     = slideOutVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) { it } + fadeOut(tween(150)),
+            modifier = Modifier.zIndex(300f)
+        ) {
+            StoreScreen(onBack = { showStore = false })
         }
     }
 }

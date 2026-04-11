@@ -32,6 +32,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.presentation.components.glassCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun ProfileScreen(
     onNavigateToExerciseProgression  : () -> Unit = {},
     onLogout                         : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
+    onNavigateToStore          : () -> Unit = {},
     timerExtraPad              : androidx.compose.ui.unit.Dp = 0.dp,
     viewModel                  : ProfileViewModel = hiltViewModel()
 ) {
@@ -86,6 +88,8 @@ fun ProfileScreen(
                     xp              = state.xp,
                     xpPerLevel      = state.xpPerLevel,
                     fitnessGoal     = state.fitnessGoal,
+                    userPlan        = state.userPlan,
+                    aiCredits       = state.aiCredits,
                     accent          = accent,
                     theme           = theme,
                     onSettingsClick = { showAppearance = true },
@@ -144,6 +148,15 @@ fun ProfileScreen(
                     strings      = strings,
                     achievements = state.achievements,
                     onSeeAll     = onNavigateToAchievements
+                )
+            }
+            item {
+                PremiumBannerCard(
+                    plan       = state.userPlan,
+                    credits    = state.aiCredits,
+                    accent     = accent,
+                    theme      = theme,
+                    onClick    = onNavigateToStore
                 )
             }
             item {
@@ -325,6 +338,8 @@ private fun ProfileHeroBanner(
     xp             : Int,
     xpPerLevel     : Int,
     fitnessGoal    : String = "",
+    userPlan       : UserPlan = UserPlan.FREE,
+    aiCredits      : Int = 0,
     accent         : Color,
     theme          : AppThemeState,
     onSettingsClick: () -> Unit,
@@ -366,7 +381,32 @@ private fun ProfileHeroBanner(
                 ) {
                     Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
                 }
-                Spacer(Modifier.width(0.dp))
+
+                // Kredi / Plan chip — sağ üst köşe
+                val isPaid = userPlan != UserPlan.FREE
+                val chipColor = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.15f) else accent.copy(alpha = 0.12f)
+                val chipBorder = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.5f) else accent.copy(alpha = 0.4f)
+                val chipIcon = if (isPaid) Icons.Rounded.WorkspacePremium else Icons.Rounded.Bolt
+                val chipText = if (isPaid) userPlan.displayName else "$aiCredits Kredi"
+                val chipTint = if (isPaid) Color(0xFFFFD700) else accent
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(chipColor)
+                        .border(1.dp, chipBorder, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(chipIcon, null, tint = chipTint, modifier = Modifier.size(14.dp))
+                    Text(
+                        chipText,
+                        color      = chipTint,
+                        fontSize   = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -1715,6 +1755,100 @@ fun ExerciseProgressionCard(
                 null,
                 tint     = accent.copy(0.6f),
                 modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+// ── Premium Banner Card ───────────────────────────────────────────────────────
+
+@Composable
+private fun PremiumBannerCard(
+    plan   : UserPlan,
+    credits: Int,
+    accent : Color,
+    theme  : AppThemeState,
+    onClick: () -> Unit
+) {
+    val isFree     = plan == UserPlan.FREE
+    val cardAccent = when (plan) {
+        UserPlan.FREE  -> Forge500
+        UserPlan.PRO   -> Forge500
+        UserPlan.ELITE -> CardPurple
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = if (isFree)
+                        listOf(Color(0xFF1A1200), Color(0xFF0F0A00))
+                    else
+                        listOf(cardAccent.copy(0.18f), theme.bg2),
+                    start = Offset(0f, 0f),
+                    end   = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            )
+            .border(1.dp, cardAccent.copy(0.35f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier         = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(cardAccent.copy(0.15f))
+                    .border(1.dp, cardAccent.copy(0.3f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.WorkspacePremium, null,
+                    tint     = cardAccent,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                if (isFree) {
+                    Text(
+                        "Premium'a Geç",
+                        color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "$credits AI kredin kaldı · Sınırsız için yükselt",
+                        color = theme.text2, fontSize = 12.sp
+                    )
+                } else {
+                    Text(
+                        "${plan.displayName} Plan",
+                        color = cardAccent, fontSize = 15.sp, fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Sınırsız AI Coach & Program · Kredi satın al",
+                        color = theme.text2, fontSize = 12.sp
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.Rounded.ArrowForwardIos, null,
+                tint     = cardAccent,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        if (isFree) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(
+                        Brush.horizontalGradient(listOf(cardAccent.copy(0.7f), cardAccent.copy(0.1f)))
+                    )
             )
         }
     }

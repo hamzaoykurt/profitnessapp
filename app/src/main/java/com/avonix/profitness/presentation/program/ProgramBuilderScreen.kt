@@ -261,10 +261,13 @@ sealed class BuilderMode {
 
 @Composable
 fun ProgramBuilderScreen(
-    initialMode  : BuilderMode = BuilderMode.Choose,
-    timerExtraPad: androidx.compose.ui.unit.Dp = 0.dp,
-    viewModel    : ProgramViewModel = hiltViewModel()
+    initialMode      : BuilderMode = BuilderMode.Choose,
+    timerExtraPad    : androidx.compose.ui.unit.Dp = 0.dp,
+    onNavigateToStore: () -> Unit = {},
+    viewModel        : ProgramViewModel = hiltViewModel()
 ) {
+    var showPaywall by remember { mutableStateOf(false) }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf<BuilderMode>(initialMode) }
     var snackbarMsg by remember { mutableStateOf<String?>(null) }
@@ -279,6 +282,7 @@ fun ProgramBuilderScreen(
             when (event) {
                 is ProgramEvent.ShowSnackbar -> snackbarMsg = event.message
                 ProgramEvent.NavigateBack    -> mode = BuilderMode.Choose
+                ProgramEvent.ShowPaywall     -> showPaywall = true
             }
         }
     }
@@ -290,14 +294,19 @@ fun ProgramBuilderScreen(
         Crossfade(targetState = mode, label = "builder_fade") { m ->
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
-                    userPrograms    = uiState.userPrograms,
-                    isLoading       = uiState.isLoading,
-                    onMode          = { mode = it },
+                    userPrograms     = uiState.userPrograms,
+                    isLoading        = uiState.isLoading,
+                    onMode           = { newMode ->
+                        // AI Builder → ViewModel'in checkAiAccess'ini çağır;
+                        // yetersizse ProgramEvent.ShowPaywall fırlatır.
+                        if (newMode == BuilderMode.AI && !viewModel.checkAiAccess()) return@BuilderChooseScreen
+                        mode = newMode
+                    },
                     onSelectTemplate = { viewModel.selectTemplate(it) },
-                    onSetActive     = { viewModel.setActive(it) },
-                    onDeleteProgram = { viewModel.deleteProgram(it) },
-                    onEditProgram   = { prog -> mode = BuilderMode.Edit(prog) },
-                    timerExtraPad   = timerExtraPad
+                    onSetActive      = { viewModel.setActive(it) },
+                    onDeleteProgram  = { viewModel.deleteProgram(it) },
+                    onEditProgram    = { prog -> mode = BuilderMode.Edit(prog) },
+                    timerExtraPad    = timerExtraPad
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
                     viewModel     = viewModel,
@@ -334,6 +343,17 @@ fun ProgramBuilderScreen(
             ) {
                 Text(msg, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
+        }
+
+        // Paywall dialog
+        if (showPaywall) {
+            com.avonix.profitness.presentation.store.PaywallDialog(
+                onDismiss   = { showPaywall = false },
+                onGoToStore = {
+                    showPaywall = false
+                    onNavigateToStore()
+                }
+            )
         }
     }
 }

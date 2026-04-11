@@ -6,6 +6,8 @@ import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.program.ManualDayInput
 import com.avonix.profitness.data.program.ManualExerciseInput
 import com.avonix.profitness.data.program.ProgramRepository
+import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.data.store.UserPlanRepository
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,12 +52,17 @@ data class ProgramUiState(
     val aiEditError  : String?          = null,
     val aiEditResult : Pair<String, List<AiEditDayResult>>? = null,
     // Exercise request
-    val requestLoading: Boolean         = false
+    val requestLoading: Boolean         = false,
+    // Plan & credits (reactive)
+    val userPlan     : UserPlan         = UserPlan.FREE,
+    val aiCredits    : Int              = UserPlanRepository.FREE_STARTER_CREDITS
 )
 
 sealed class ProgramEvent {
     data class ShowSnackbar(val message: String) : ProgramEvent()
     object NavigateBack : ProgramEvent()
+    /** AI Builder'a erişim için kredi/plan yetersiz. */
+    object ShowPaywall : ProgramEvent()
 }
 
 data class ManualDayDraft(
@@ -68,10 +75,34 @@ data class ManualDayDraft(
 class ProgramViewModel @Inject constructor(
     private val programRepository : ProgramRepository,
     private val geminiRepository  : GeminiRepository,
+    private val planRepository    : UserPlanRepository,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ProgramUiState, ProgramEvent>(ProgramUiState()) {
 
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    init {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                planRepository.planFlow,
+                planRepository.creditsFlow
+            ) { plan, credits -> plan to credits }
+                .collect { (plan, credits) ->
+                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+                }
+        }
+    }
+
+    /**
+     * AI Builder'a erişim kapısı — UI bu fonksiyonu çağırır,
+     * yetersizse [ProgramEvent.ShowPaywall] eventi fırlatılır.
+     * @return true → erişim verildi, false → paywall gönderildi
+     */
+    fun checkAiAccess(): Boolean {
+        val canUse = uiState.value.userPlan != UserPlan.FREE || uiState.value.aiCredits > 0
+        if (!canUse) sendEvent(ProgramEvent.ShowPaywall)
+        return canUse
+    }
 
     /**
      * 0.0 (tamamen farklı) ile 1.0 (aynı) arasında benzerlik skoru döner.

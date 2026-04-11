@@ -13,6 +13,8 @@ import com.avonix.profitness.data.ai.StoredMessage
 import com.avonix.profitness.data.program.ManualDayInput
 import com.avonix.profitness.data.program.ManualExerciseInput
 import com.avonix.profitness.data.program.ProgramRepository
+import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.data.store.UserPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
@@ -50,8 +52,17 @@ data class AICoachState(
     val sessions         : List<ChatSession> = emptyList(),
     val currentSessionId : String            = UUID.randomUUID().toString(),
     val sessionCreatedAt : Long              = System.currentTimeMillis(),
-    val programStatus    : ProgramStatus     = ProgramStatus.Idle
+    val programStatus    : ProgramStatus     = ProgramStatus.Idle,
+    val userPlan         : UserPlan          = UserPlan.FREE,
+    val aiCredits        : Int               = UserPlanRepository.FREE_STARTER_CREDITS
 )
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+sealed class AICoachEvent {
+    /** Kredi bitti / plan yetersiz → Paywall göster. */
+    data object ShowPaywall : AICoachEvent()
+}
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
@@ -59,9 +70,10 @@ data class AICoachState(
 class AICoachViewModel @Inject constructor(
     private val geminiRepository  : GeminiRepository,
     private val programRepository : ProgramRepository,
+    private val planRepository    : UserPlanRepository,
     private val supabase          : SupabaseClient,
     @ApplicationContext private val context: Context
-) : BaseViewModel<AICoachState, Nothing>(AICoachState()) {
+) : BaseViewModel<AICoachState, AICoachEvent>(AICoachState()) {
 
     private val prefsManager   = AICoachPrefsManager(context)
     private val sessionManager = ChatSessionManager(context)
@@ -74,6 +86,16 @@ class AICoachViewModel @Inject constructor(
     init {
         if (!currentPrefs.onboardingCompleted) {
             updateState { it.copy(showOnboarding = true) }
+        }
+        // Plan ve kredi değişikliklerini reaktif dinle
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                planRepository.planFlow,
+                planRepository.creditsFlow
+            ) { plan, credits -> plan to credits }
+                .collect { (plan, credits) ->
+                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+                }
         }
     }
 
@@ -108,15 +130,20 @@ class AICoachViewModel @Inject constructor(
     fun sendMessage(userText: String) {
         if (userText.isBlank() || uiState.value.isLoading) return
 
-        val userMessage = ChatMessage(
-            id     = System.currentTimeMillis().toString(),
-            text   = userText,
-            isUser = true
-        )
-        updateState { it.copy(messages = it.messages + userMessage, isLoading = true) }
-        persistCurrentSession()   // Kullanıcı mesajı hemen kaydet — uygulama kapansa bile kaybolmaz
-
         viewModelScope.launch {
+            // Kredi kontrolü — FREE plan + 0 kredi → paywall, devam etme
+            if (!planRepository.consumeCredit()) {
+                sendEvent(AICoachEvent.ShowPaywall)
+                return@launch
+            }
+
+            val userMessage = ChatMessage(
+                id     = System.currentTimeMillis().toString(),
+                text   = userText,
+                isUser = true
+            )
+            updateState { it.copy(messages = it.messages + userMessage, isLoading = true) }
+            persistCurrentSession()   // Kullanıcı mesajı hemen kaydet — uygulama kapansa bile kaybolmaz
             val systemPrompt = buildSystemPrompt()
             val result = geminiRepository.chat(
                 history      = conversationHistory.toList(),

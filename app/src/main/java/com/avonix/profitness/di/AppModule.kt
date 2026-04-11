@@ -18,6 +18,8 @@ import com.avonix.profitness.data.profile.ProfileRepositoryImpl
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.program.ProgramRepositoryImpl
 import com.avonix.profitness.data.sync.SyncManager
+import com.avonix.profitness.data.store.UserPlanRepository
+import com.avonix.profitness.data.store.UserPlanRepositoryImpl
 import com.avonix.profitness.data.weight.WeightRepository
 import com.avonix.profitness.data.weight.WeightRepositoryImpl
 import com.avonix.profitness.data.workout.WorkoutRepository
@@ -59,6 +61,9 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindWeightRepository(impl: WeightRepositoryImpl): WeightRepository
+
+    @Binds @Singleton
+    abstract fun bindUserPlanRepository(impl: UserPlanRepositoryImpl): UserPlanRepository
 
     companion object {
 

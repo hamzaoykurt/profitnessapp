@@ -1,0 +1,36 @@
+package com.avonix.profitness.data.store
+
+import kotlinx.coroutines.flow.Flow
+
+enum class UserPlan(val displayName: String) {
+    FREE("Ücretsiz"),
+    PRO("Pro"),
+    ELITE("Elite")
+}
+
+interface UserPlanRepository {
+    /** Aktif plan değişikliklerini reaktif olarak yayar. */
+    val planFlow: Flow<UserPlan>
+
+    /** Kalan AI kredi değişikliklerini reaktif olarak yayar. */
+    val creditsFlow: Flow<Int>
+
+    /** Planı günceller; Pro/Elite → krediyi sıfırlar (artık sınırsız). */
+    suspend fun upgradePlan(plan: UserPlan)
+
+    /** Satın alınan krediyi mevcut bakiyeye ekler. */
+    suspend fun addCredits(amount: Int)
+
+    /**
+     * Bir AI işlemi için kredi harcar.
+     * - Pro/Elite plan → her zaman `true` döner (sınırsız).
+     * - FREE plan + yeterli kredi → `true`, krediyi azaltır.
+     * - FREE plan + kredi = 0 → `false` döner (UI paywall göstermeli).
+     */
+    suspend fun consumeCredit(): Boolean
+
+    companion object {
+        /** Yeni FREE hesaplar bu kadar krediyle başlar. */
+        const val FREE_STARTER_CREDITS = 5
+    }
+}

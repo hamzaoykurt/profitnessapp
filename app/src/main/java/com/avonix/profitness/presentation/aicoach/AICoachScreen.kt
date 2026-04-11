@@ -42,6 +42,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.ai.ChatSession
+import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.presentation.store.PaywallDialog
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.time.LocalTime
@@ -65,14 +67,26 @@ data class ChatMessage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AICoachScreen(
-    bottomPadding: Dp = 0.dp,
-    viewModel: AICoachViewModel = hiltViewModel()
+    bottomPadding    : Dp = 0.dp,
+    onNavigateToStore: () -> Unit = {},
+    viewModel        : AICoachViewModel = hiltViewModel()
 ) {
     val theme     = LocalAppTheme.current
     val strings   = theme.strings
     val isEnglish = theme.language == AppLanguage.ENGLISH
 
-    val state     by viewModel.uiState.collectAsStateWithLifecycle()
+    var showPaywall by remember { mutableStateOf(false) }
+
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Tek-seferlik event'leri dinle (paywall tetikleyici)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                AICoachEvent.ShowPaywall -> showPaywall = true
+            }
+        }
+    }
 
     // İlk açılış veya ayarlar → onboarding/prefs ekranı
     if (state.showOnboarding) {
@@ -243,8 +257,47 @@ fun AICoachScreen(
                 )
             }
 
-            // Sağ: Yeni Sohbet + Ayarlar
-            Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+            // Sağ: Kredi rozeti + Yeni Sohbet + Ayarlar
+            Row(
+                modifier          = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Kredi / plan badge
+                val hasPlan = state.userPlan != UserPlan.FREE
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (hasPlan) CardPurple.copy(0.15f) else Forge500.copy(0.15f)
+                        )
+                        .border(
+                            1.dp,
+                            if (hasPlan) CardPurple.copy(0.4f) else Forge500.copy(0.3f),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .clickable { onNavigateToStore() }
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Row(
+                        verticalAlignment      = Alignment.CenterVertically,
+                        horizontalArrangement  = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            if (hasPlan) Icons.Rounded.AllInclusive else Icons.Rounded.Bolt,
+                            null,
+                            tint     = if (hasPlan) CardPurple else Forge500,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            if (hasPlan) state.userPlan.displayName.uppercase()
+                            else "${state.aiCredits}",
+                            color         = if (hasPlan) CardPurple else Forge500,
+                            fontSize      = 10.sp,
+                            fontWeight    = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
                 IconButton(onClick = {
                     viewModel.startNewSession()
                     viewModel.initWelcome(strings.oracleWelcome)
@@ -264,6 +317,17 @@ fun AICoachScreen(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+            }
+
+            // Paywall Dialog
+            if (showPaywall) {
+                PaywallDialog(
+                    onDismiss   = { showPaywall = false },
+                    onGoToStore = {
+                        showPaywall = false
+                        onNavigateToStore()
+                    }
+                )
             }
         }
 

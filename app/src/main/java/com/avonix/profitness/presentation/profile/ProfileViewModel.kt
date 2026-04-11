@@ -4,6 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.dto.AchievementDto
+import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.data.store.UserPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -71,7 +73,9 @@ data class ProfileState(
     val birthDate            : String               = "",
     val totalCalories        : Int                  = 0,
     val isLoading            : Boolean              = true,
-    val isSaving             : Boolean              = false
+    val isSaving             : Boolean              = false,
+    val userPlan             : UserPlan             = UserPlan.FREE,
+    val aiCredits            : Int                  = UserPlanRepository.FREE_STARTER_CREDITS
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -86,12 +90,24 @@ sealed class ProfileEvent {
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
+    private val planRepository   : UserPlanRepository,
     private val supabase         : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
 
     private var lastLoadMs = 0L
 
-    init { loadProfile() }
+    init {
+        loadProfile()
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                planRepository.planFlow,
+                planRepository.creditsFlow
+            ) { plan, credits -> plan to credits }
+                .collect { (plan, credits) ->
+                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+                }
+        }
+    }
 
     /** Tab geçişleri ve ON_RESUME için — 5 dakika geçmediyse ve veri varsa atla */
     fun reloadIfStale() {
