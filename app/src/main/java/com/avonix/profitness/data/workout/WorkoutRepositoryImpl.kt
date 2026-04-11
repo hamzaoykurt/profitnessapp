@@ -1,5 +1,6 @@
 package com.avonix.profitness.data.workout
 
+import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
 import com.avonix.profitness.data.local.dao.SetCompletionDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
 import com.avonix.profitness.data.local.entity.ExerciseLogEntity
@@ -226,11 +227,14 @@ class WorkoutRepositoryImpl @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     override suspend fun addSetCompletion(
-        userId: String, exerciseId: String, programDayId: String, setIndex: Int
+        userId: String, exerciseId: String, programDayId: String, setIndex: Int,
+        weightKg: Float?, repsActual: Int?
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            setCompletionDao.insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today))
+            setCompletionDao.insert(
+                SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual)
+            )
         }
     }
 
@@ -262,6 +266,33 @@ class WorkoutRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  PROGRESSIVE OVERLOAD
+    // ═════════════════════════════════════════════════════════════════════════
+
+    override suspend fun getLastSessionSets(
+        userId: String, exerciseId: String
+    ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.getLastSessionSets(userId, exerciseId, today)
+        }
+    }
+
+    override suspend fun getExerciseWeightHistory(
+        userId: String, exerciseId: String, weeks: Int
+    ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val since = LocalDate.now().minusWeeks(weeks.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.getHistoryForExercise(userId, exerciseId, since)
+        }
+    }
+
+    override suspend fun getTrackedExerciseSummaries(userId: String): Result<List<ExerciseProgressSummary>> =
+        withContext(Dispatchers.IO) {
+            runCatching { setCompletionDao.getTrackedExerciseSummaries(userId) }
+        }
 
     // ═════════════════════════════════════════════════════════════════════════
     //  HELPERS

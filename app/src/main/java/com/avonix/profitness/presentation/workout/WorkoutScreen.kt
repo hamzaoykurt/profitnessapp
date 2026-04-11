@@ -57,7 +57,8 @@ data class Exercise(
     val isCompleted: Boolean = false,
     val category: String = "Strength",
     val restSeconds: Int = 90,
-    val exerciseTableId: String = "" // FK to exercises table — used for DB logging
+    val exerciseTableId: String = "", // FK to exercises table — used for DB logging
+    val weightKg: Float = 0f          // programdan gelen planlı ağırlık
 )
 
 data class WorkoutDay(
@@ -378,24 +379,39 @@ private fun WorkoutContent(
                 val timer = state.restTimer
                 val isThisExTimer = timer.exerciseName == exercise.name
                 CinematicExerciseCard(
-                    exercise       = exercise,
-                    index          = idx,
-                    isCompleted    = isCompleted,
-                    doneSetIndices = doneSetIndices,
-                    onToggleSet    = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
-                    onComplete     = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
-                    onShowDetail   = { showDetail = true },
-                    onExpandChanged = { expanded -> expandedExIdx = if (expanded) idx else -1 },
-                    timerSeconds   = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
-                    timerRunning   = isThisExTimer && timer.isRunning,
-                    timerDone      = isThisExTimer && timer.isDone,
-                    onStartTimer   = { viewModel.startRestTimer(exercise.restSeconds.takeIf { it > 0 } ?: 90, exercise.name) },
-                    onStopTimer    = { viewModel.stopRestTimer() }
+                    exercise          = exercise,
+                    index             = idx,
+                    isCompleted       = isCompleted,
+                    doneSetIndices    = doneSetIndices,
+                    onToggleSet       = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
+                    onComplete        = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
+                    onShowDetail      = { showDetail = true },
+                    onExpandChanged   = { expanded ->
+                        expandedExIdx = if (expanded) idx else -1
+                        if (expanded) viewModel.loadLastSession(exercise.id)
+                    },
+                    setWeights        = state.setWeights[exercise.id] ?: emptyMap(),
+                    setReps           = state.setReps[exercise.id] ?: emptyMap(),
+                    lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
+                    onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
+                    onSetRepsChanged   = { si, v -> viewModel.updateSetReps(exercise.id, si, v) },
+                    timerSeconds      = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
+                    timerRunning      = isThisExTimer && timer.isRunning,
+                    timerDone         = isThisExTimer && timer.isDone,
+                    onStartTimer      = { viewModel.startRestTimer(exercise.restSeconds.takeIf { it > 0 } ?: 90, exercise.name) },
+                    onStopTimer       = { viewModel.stopRestTimer() }
                 )
                 if (showDetail) {
+                    LaunchedEffect(exercise.id) {
+                        viewModel.loadExerciseHistory(exercise.id)
+                    }
                     ExerciseDetailSheet(
-                        exercise  = exercise,
-                        onDismiss = { showDetail = false }
+                        exercise          = exercise,
+                        onDismiss         = { showDetail = false },
+                        weightHistory     = state.exerciseHistory[exercise.id] ?: emptyList(),
+                        aiInsight         = state.exerciseAiInsight[exercise.id] ?: "",
+                        isAiLoading       = exercise.id in state.exerciseAiLoading,
+                        onRequestAiInsight = { viewModel.analyzeProgression(exercise.id, exercise.name) }
                     )
                 }
             }

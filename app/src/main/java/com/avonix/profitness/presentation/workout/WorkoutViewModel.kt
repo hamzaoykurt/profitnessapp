@@ -2,6 +2,8 @@ package com.avonix.profitness.presentation.workout
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.GeminiRepository
+import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.workout.WorkoutRepository
@@ -38,7 +40,15 @@ data class WorkoutScreenState(
     val currentProgramId: String = "",
     val currentStreak: Int = 0,
     val setCompletions: Map<String, Set<Int>> = emptyMap(),
-    val restTimer: RestTimerState = RestTimerState()
+    val restTimer: RestTimerState = RestTimerState(),
+    // Progressive overload — per-set weight & reps input
+    val setWeights: Map<String, Map<Int, String>> = emptyMap(),
+    val setReps: Map<String, Map<Int, String>> = emptyMap(),
+    val lastSessionData: Map<String, Map<Int, Pair<Float?, Int?>>> = emptyMap(),
+    // ExerciseDetailSheet — progresyon
+    val exerciseHistory: Map<String, List<SetCompletionEntity>> = emptyMap(),
+    val exerciseAiInsight: Map<String, String> = emptyMap(),
+    val exerciseAiLoading: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -46,6 +56,7 @@ class WorkoutViewModel @Inject constructor(
     private val programRepository: ProgramRepository,
     private val workoutRepository: WorkoutRepository,
     private val profileRepository: ProfileRepository,
+    private val geminiRepository: GeminiRepository,
     private val supabase: SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
 
@@ -208,7 +219,143 @@ class WorkoutViewModel @Inject constructor(
             if (isCurrentlyDone) {
                 workoutRepository.removeSetCompletion(userId, exerciseId, programDayId, setIndex)
             } else {
-                workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex)
+                val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                val reps = currentState.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
+                workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex, weight, reps)
+            }
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  PROGRESSIVE OVERLOAD — set bazlı ağırlık/tekrar girişi
+    // ═════════════════════════════════════════════════════════════════════════
+
+    fun updateSetWeight(exerciseId: String, setIndex: Int, value: String) {
+        updateState { state ->
+            val exerciseMap = state.setWeights[exerciseId].orEmpty().toMutableMap()
+            exerciseMap[setIndex] = value
+            state.copy(setWeights = state.setWeights + (exerciseId to exerciseMap))
+        }
+        // Set zaten işaretliyse anında Room'a yaz (uygulama kapanınca kaybolmasın)
+        persistWeightIfDone(exerciseId, setIndex)
+    }
+
+    fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
+        updateState { state ->
+            val exerciseMap = state.setReps[exerciseId].orEmpty().toMutableMap()
+            exerciseMap[setIndex] = value
+            state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
+        }
+        persistWeightIfDone(exerciseId, setIndex)
+    }
+
+    private fun persistWeightIfDone(exerciseId: String, setIndex: Int) {
+        val state = uiState.value
+        val isDone = setIndex in (state.setCompletions[exerciseId] ?: emptySet())
+        if (!isDone) return
+
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
+        val programDayId = dayState.day.programDayId
+        if (programDayId.isBlank()) return
+
+        viewModelScope.launch {
+            val weight = state.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+            val reps   = state.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
+            workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex, weight, reps)
+        }
+    }
+
+    fun loadLastSession(exerciseId: String) {
+        // Zaten yüklenmişse tekrar yükleme
+        if (uiState.value.lastSessionData.containsKey(exerciseId)) return
+
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        viewModelScope.launch {
+            workoutRepository.getLastSessionSets(userId, exerciseId).onSuccess { sets ->
+                if (sets.isEmpty()) return@onSuccess
+                val dataMap = sets.associate { it.setIndex to (it.weightKg to it.repsActual) }
+                updateState { state ->
+                    state.copy(lastSessionData = state.lastSessionData + (exerciseId to dataMap))
+                }
+                // Henüz kullanıcı girişi yoksa önceki ağırlıkları ön-doldur
+                val currentWeights = uiState.value.setWeights[exerciseId]
+                if (currentWeights.isNullOrEmpty()) {
+                    val prefill = sets
+                        .filter { it.weightKg != null }
+                        .associate { it.setIndex to it.weightKg!!.toString() }
+                    if (prefill.isNotEmpty()) {
+                        updateState { state ->
+                            state.copy(setWeights = state.setWeights + (exerciseId to prefill))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun loadExerciseHistory(exerciseId: String) {
+        if (uiState.value.exerciseHistory.containsKey(exerciseId)) return
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        viewModelScope.launch {
+            workoutRepository.getExerciseWeightHistory(userId, exerciseId).onSuccess { history ->
+                updateState { it.copy(exerciseHistory = it.exerciseHistory + (exerciseId to history)) }
+            }
+        }
+    }
+
+    fun analyzeProgression(exerciseId: String, exerciseName: String) {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        if (exerciseId in uiState.value.exerciseAiLoading) return
+
+        updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
+
+        viewModelScope.launch {
+            val history = uiState.value.exerciseHistory[exerciseId] ?: run {
+                workoutRepository.getExerciseWeightHistory(userId, exerciseId)
+                    .getOrNull() ?: emptyList()
+            }
+
+            if (history.isEmpty()) {
+                updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
+                return@launch
+            }
+
+            val summary = history
+                .filter { it.weightKg != null }
+                .groupBy { it.date }
+                .entries
+                .sortedBy { it.key }
+                .joinToString("\n") { (date, sets) ->
+                    val maxKg = sets.maxOf { it.weightKg!! }
+                    val totalSets = sets.size
+                    "$date: ${maxKg}kg x $totalSets set"
+                }
+
+            val systemPrompt = "Sen bir fitness koçusun. Kısa ve öz (3-4 cümle) Türkçe analiz yap."
+            val userMessage = """
+                Egzersiz: $exerciseName
+                Tarih bazlı max ağırlık ve set sayısı:
+                $summary
+
+                Gelişim trendi nasıl? Bir sonraki antrenman için somut öneri ver (kg bazında).
+            """.trimIndent()
+
+            val result = geminiRepository.chat(emptyList(), userMessage, systemPrompt)
+            result.onSuccess { response ->
+                updateState { state ->
+                    state.copy(
+                        exerciseAiInsight = state.exerciseAiInsight + (exerciseId to response),
+                        exerciseAiLoading = state.exerciseAiLoading - exerciseId
+                    )
+                }
+            }.onFailure {
+                updateState { state ->
+                    state.copy(
+                        exerciseAiInsight = state.exerciseAiInsight + (exerciseId to "Analiz yüklenemedi. Tekrar deneyin."),
+                        exerciseAiLoading = state.exerciseAiLoading - exerciseId
+                    )
+                }
             }
         }
     }
@@ -307,7 +454,8 @@ class WorkoutViewModel @Inject constructor(
                             image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
                             category = pe.category.ifBlank { "Strength" },
                             restSeconds = pe.restSeconds,
-                            exerciseTableId = pe.exerciseId
+                            exerciseTableId = pe.exerciseId,
+                            weightKg = pe.weightKg
                         )
                     }
                 )

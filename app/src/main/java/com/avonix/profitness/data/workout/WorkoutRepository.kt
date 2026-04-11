@@ -1,5 +1,7 @@
 package com.avonix.profitness.data.workout
 
+import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
+import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
 interface WorkoutRepository {
@@ -74,8 +76,11 @@ interface WorkoutRepository {
 
     // ── Set Completion ────────────────────────────────────────────────────────
 
-    /** Tek bir set'i tamamlandı olarak Room'a ekler. */
-    suspend fun addSetCompletion(userId: String, exerciseId: String, programDayId: String, setIndex: Int): Result<Unit>
+    /** Tek bir set'i tamamlandı olarak Room'a ekler (ağırlık ve gerçek tekrar opsiyonel). */
+    suspend fun addSetCompletion(
+        userId: String, exerciseId: String, programDayId: String, setIndex: Int,
+        weightKg: Float? = null, repsActual: Int? = null
+    ): Result<Unit>
 
     /** Tek bir set'in tamamlanmasını Room'dan kaldırır. */
     suspend fun removeSetCompletion(userId: String, exerciseId: String, programDayId: String, setIndex: Int): Result<Unit>
@@ -85,4 +90,15 @@ interface WorkoutRepository {
 
     /** Bir egzersizin tüm setlerini (0..totalSets-1) tamamlandı olarak Room'a yazar. */
     suspend fun fillExerciseSetCompletions(userId: String, exerciseId: String, programDayId: String, totalSets: Int): Result<Unit>
+
+    // ── Progressive Overload ─────────────────────────────────────────────────
+
+    /** Önceki antrenmanın set verilerini getirir (ağırlık ön-doldurma için). */
+    suspend fun getLastSessionSets(userId: String, exerciseId: String): Result<List<SetCompletionEntity>>
+
+    /** Egzersiz bazlı ağırlık geçmişi (progresyon grafiği için). */
+    suspend fun getExerciseWeightHistory(userId: String, exerciseId: String, weeks: Int = 8): Result<List<SetCompletionEntity>>
+
+    /** Ağırlık takibi yapılmış egzersizlerin özet listesi. */
+    suspend fun getTrackedExerciseSummaries(userId: String): Result<List<ExerciseProgressSummary>>
 }

@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -76,6 +76,16 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("""
                     CREATE INDEX IF NOT EXISTS index_weight_logs_user_recorded
                     ON weight_logs (user_id, recorded_at)
+                """)
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN weight_kg REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN reps_actual INTEGER DEFAULT NULL")
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_set_completions_user_exercise_date
+                    ON set_completions (user_id, exercise_id, date)
                 """)
             }
         }

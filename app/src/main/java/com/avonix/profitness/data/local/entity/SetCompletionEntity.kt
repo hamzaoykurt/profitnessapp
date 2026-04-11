@@ -14,5 +14,7 @@ data class SetCompletionEntity(
     @ColumnInfo(name = "exercise_id")    val exerciseId: String,
     @ColumnInfo(name = "program_day_id") val programDayId: String,
     @ColumnInfo(name = "set_index")      val setIndex: Int,
-    val date: String
+    val date: String,
+    @ColumnInfo(name = "weight_kg")      val weightKg: Float?  = null,
+    @ColumnInfo(name = "reps_actual")    val repsActual: Int?   = null
 )

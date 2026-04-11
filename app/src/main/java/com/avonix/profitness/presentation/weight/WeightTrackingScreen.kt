@@ -3,7 +3,6 @@
 package com.avonix.profitness.presentation.weight
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.ExperimentalAnimationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,9 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.avonix.profitness.core.theme.AppThemeState
-import com.avonix.profitness.core.theme.LocalAppTheme
-import com.avonix.profitness.core.theme.PageAccentBloom
+import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.local.entity.WeightLogEntity
 import com.avonix.profitness.presentation.components.glassCard
 import java.time.LocalDate

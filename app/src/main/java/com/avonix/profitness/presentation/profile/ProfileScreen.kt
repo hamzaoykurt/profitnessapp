@@ -40,8 +40,9 @@ fun ProfileScreen(
     onThemeChange              : (AppThemeState) -> Unit,
     onNavigateToPerformance    : () -> Unit = {},
     onNavigateToAchievements   : () -> Unit = {},
-    onNavigateToWeightTracking : () -> Unit = {},
-    onLogout                   : () -> Unit = {},
+    onNavigateToWeightTracking       : () -> Unit = {},
+    onNavigateToExerciseProgression  : () -> Unit = {},
+    onLogout                         : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
     timerExtraPad              : androidx.compose.ui.unit.Dp = 0.dp,
     viewModel                  : ProfileViewModel = hiltViewModel()
@@ -119,6 +120,13 @@ fun ProfileScreen(
                     theme     = theme,
                     weightKg  = state.weightKg,
                     onClick   = onNavigateToWeightTracking
+                )
+            }
+            item {
+                ExerciseProgressionCard(
+                    accent  = accent,
+                    theme   = theme,
+                    onClick = onNavigateToExerciseProgression
                 )
             }
             item {
@@ -1640,6 +1648,68 @@ fun WeightTrackingCard(
                 )
             }
 
+            Icon(
+                Icons.Rounded.ArrowForwardIos,
+                null,
+                tint     = accent.copy(0.6f),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+// ── Exercise Progression Card (Profile → detail navigation) ──────────────────
+
+@Composable
+fun ExerciseProgressionCard(
+    accent  : Color,
+    theme   : AppThemeState,
+    onClick : () -> Unit
+) {
+    Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) {
+        Text(
+            "ANTRENMAN GELİŞİMİ",
+            style         = MaterialTheme.typography.labelSmall,
+            color         = accent,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .glassCard(accent, theme)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.TrendingUp,
+                    contentDescription = null,
+                    tint     = accent,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Egzersiz Gelişimi",
+                    color      = theme.text0,
+                    fontSize   = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Set başına ağırlık · Grafik · AI Analiz",
+                    color    = theme.text2,
+                    fontSize = 11.sp
+                )
+            }
             Icon(
                 Icons.Rounded.ArrowForwardIos,
                 null,

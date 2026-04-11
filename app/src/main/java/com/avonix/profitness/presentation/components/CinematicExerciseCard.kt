@@ -24,9 +24,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
@@ -44,6 +49,12 @@ fun CinematicExerciseCard(
     onComplete: () -> Unit = {},
     onShowDetail: (() -> Unit)? = null,
     onExpandChanged: ((Boolean) -> Unit)? = null,
+    // Progressive overload — per-set weight & reps
+    setWeights: Map<Int, String> = emptyMap(),
+    setReps: Map<Int, String> = emptyMap(),
+    lastSessionData: Map<Int, Pair<Float?, Int?>> = emptyMap(),
+    onSetWeightChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
+    onSetRepsChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
     // Timer — ViewModel'den gelir, lokal state yok
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
@@ -138,6 +149,26 @@ fun CinematicExerciseCard(
                             )
                     )
 
+                    // Info button — top-right corner
+                    if (onShowDetail != null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(12.dp)
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(0.45f))
+                                .clickable { onShowDetail() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Rounded.Info, null,
+                                tint = Snow.copy(0.9f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -179,14 +210,6 @@ fun CinematicExerciseCard(
                                         lineHeight = 28.sp,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    if (onShowDetail != null) {
-                                        Icon(
-                                            Icons.Rounded.Info, null,
-                                            tint = Snow.copy(0.5f),
-                                            modifier = Modifier.size(18.dp).clickable { onShowDetail() }
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                    }
                                     if (isCompleted) {
                                         Icon(
                                             Icons.Rounded.CheckCircle, null,
@@ -214,14 +237,21 @@ fun CinematicExerciseCard(
                     ) {
                         Spacer(Modifier.height(4.dp))
                         repeat(exercise.sets) { i ->
+                            val lastData = lastSessionData[i]
                             SetRow(
-                                setNumber = i + 1,
-                                reps      = exercise.reps,
-                                isDone    = i in doneSetIndices,
-                                onToggle  = {
+                                setNumber       = i + 1,
+                                reps            = exercise.reps,
+                                isDone          = i in doneSetIndices,
+                                weightValue     = setWeights[i] ?: "",
+                                repsValue       = setReps[i] ?: "",
+                                lastWeightKg    = lastData?.first,
+                                lastRepsActual  = lastData?.second,
+                                plannedWeightKg = exercise.weightKg,
+                                onWeightChanged = { onSetWeightChanged(i, it) },
+                                onRepsChanged   = { onSetRepsChanged(i, it) },
+                                onToggle        = {
                                     val wasAlreadyDone = i in doneSetIndices
                                     onToggleSet(i)
-                                    // Set yeni tamamlandıysa (işaretlendiyse) timer'ı otomatik başlat
                                     if (!wasAlreadyDone) onStartTimer()
                                 }
                             )
@@ -279,64 +309,168 @@ fun CinematicExerciseCard(
     }
 }
 
-// ── Set Row ──────────────────────────────────────────────────────────────────
+// ── Set Row — ağırlık & tekrar girişli ───────────────────────────────────────
 @Composable
 private fun SetRow(
     setNumber: Int,
     reps: String,
     isDone: Boolean,
+    weightValue: String,
+    repsValue: String,
+    lastWeightKg: Float?,
+    lastRepsActual: Int?,
+    plannedWeightKg: Float,
+    onWeightChanged: (String) -> Unit,
+    onRepsChanged: (String) -> Unit,
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val rowScale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
-        label         = "row_scale"
-    )
     val bgAlpha by animateFloatAsState(
         if (isDone) 0.15f else 0.08f,
         tween(250),
         label = "set_bg"
     )
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(rowScale)
             .clip(RoundedCornerShape(10.dp))
             .background(if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.5f))
-            .clickable(
-                interactionSource = interactionSource,
-                indication        = null
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onToggle()
+            .padding(12.dp, 8.dp)
+    ) {
+        // Üst satır: checkbox + set no + ağırlık input + tekrar input
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Checkbox
+            Icon(
+                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (isDone) accent else TextMuted,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggle()
+                    }
+            )
+            Spacer(Modifier.width(8.dp))
+
+            // Set number
+            Text(
+                text = "Set $setNumber",
+                color = if (isDone) accent else TextPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(42.dp)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            // Ağırlık input
+            WeightInputField(
+                value = weightValue,
+                onValueChange = onWeightChanged,
+                placeholder = if (plannedWeightKg > 0) "${"%.0f".format(plannedWeightKg)}" else "kg",
+                isDone = isDone,
+                accent = accent,
+                suffix = "kg",
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(Modifier.width(6.dp))
+
+            // Tekrar input
+            WeightInputField(
+                value = repsValue,
+                onValueChange = onRepsChanged,
+                placeholder = reps,
+                isDone = isDone,
+                accent = accent,
+                suffix = "rep",
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Alt satır: önceki antrenman bilgisi
+        if (lastWeightKg != null || lastRepsActual != null) {
+            Spacer(Modifier.height(3.dp))
+            val lastText = buildString {
+                append("Son: ")
+                if (lastWeightKg != null) append("${"%.1f".format(lastWeightKg)}kg")
+                if (lastWeightKg != null && lastRepsActual != null) append(" x ")
+                if (lastRepsActual != null) append("${lastRepsActual}rep")
             }
-            .padding(12.dp, 8.dp),
+            Text(
+                text = lastText,
+                color = TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 26.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeightInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    isDone: Boolean,
+    accent: Color,
+    suffix: String,
+    keyboardType: KeyboardType,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Surface3.copy(0.6f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (isDone) accent else TextMuted,
-            modifier = Modifier.size(18.dp)
+        BasicTextField(
+            value = value,
+            onValueChange = { newVal ->
+                // Sadece sayısal karakter ve nokta/virgül izin ver
+                val filtered = newVal.filter { it.isDigit() || it == '.' || it == ',' }
+                onValueChange(filtered)
+            },
+            textStyle = TextStyle(
+                color = if (isDone) accent else Snow,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            decorationBox = { inner ->
+                Box(contentAlignment = Alignment.Center) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    inner()
+                }
+            }
         )
-        Spacer(Modifier.width(10.dp))
         Text(
-            text = "Set $setNumber",
-            color = if (isDone) accent else TextPrimary,
-            fontSize = 13.sp,
+            text = suffix,
+            color = if (isDone) accent.copy(0.6f) else TextMuted,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = "$reps tekrar",
-            color = if (isDone) accent.copy(0.7f) else TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            modifier = Modifier.padding(start = 2.dp)
         )
     }
 }
