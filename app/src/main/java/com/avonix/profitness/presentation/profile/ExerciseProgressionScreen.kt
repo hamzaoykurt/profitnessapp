@@ -60,12 +60,17 @@ data class ExerciseProgressionState(
     val isLoading       : Boolean                         = true
 )
 
+sealed class ExerciseProgressionEvent {
+    data object ShowPaywall : ExerciseProgressionEvent()
+}
+
 @HiltViewModel
 class ExerciseProgressionViewModel @Inject constructor(
     private val workoutRepository : WorkoutRepository,
     private val geminiRepository  : GeminiRepository,
+    private val planRepository    : com.avonix.profitness.data.store.UserPlanRepository,
     private val supabase          : SupabaseClient
-) : BaseViewModel<ExerciseProgressionState, Nothing>(ExerciseProgressionState()) {
+) : BaseViewModel<ExerciseProgressionState, ExerciseProgressionEvent>(ExerciseProgressionState()) {
 
     init { load() }
 
@@ -94,6 +99,10 @@ class ExerciseProgressionViewModel @Inject constructor(
     fun analyzeProgression(exerciseId: String, exerciseName: String) {
         if (uiState.value.aiLoadingSet.contains(exerciseId)) return
         viewModelScope.launch {
+            if (!planRepository.consumeCredit()) {
+                sendEvent(ExerciseProgressionEvent.ShowPaywall)
+                return@launch
+            }
             updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
             val history = uiState.value.historyMap[exerciseId] ?: emptyList()
             val summary = buildString {
@@ -128,12 +137,29 @@ private val SHORT_DATE_FMT = DateTimeFormatter.ofPattern("d MMM")
 
 @Composable
 fun ExerciseProgressionScreen(
-    onBack    : () -> Unit,
-    viewModel : ExerciseProgressionViewModel = hiltViewModel()
+    onBack            : () -> Unit,
+    onNavigateToStore : () -> Unit = {},
+    viewModel         : ExerciseProgressionViewModel = hiltViewModel()
 ) {
     val theme   = LocalAppTheme.current
     val accent  = MaterialTheme.colorScheme.primary
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
+    var showPaywall by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ExerciseProgressionEvent.ShowPaywall -> showPaywall = true
+            }
+        }
+    }
+
+    if (showPaywall) {
+        com.avonix.profitness.presentation.store.PaywallDialog(
+            onDismiss   = { showPaywall = false },
+            onGoToStore = { showPaywall = false; onNavigateToStore() }
+        )
+    }
 
     Column(
         modifier = Modifier

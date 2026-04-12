@@ -51,14 +51,19 @@ data class WorkoutScreenState(
     val exerciseAiLoading: Set<String> = emptySet()
 )
 
+sealed class WorkoutEvent {
+    data object ShowPaywall : WorkoutEvent()
+}
+
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
     private val programRepository: ProgramRepository,
     private val workoutRepository: WorkoutRepository,
     private val profileRepository: ProfileRepository,
-    private val geminiRepository: GeminiRepository,
-    private val supabase: SupabaseClient
-) : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScreenState()) {
+    private val geminiRepository : GeminiRepository,
+    private val planRepository   : com.avonix.profitness.data.store.UserPlanRepository,
+    private val supabase         : SupabaseClient
+) : BaseViewModel<WorkoutScreenState, WorkoutEvent>(WorkoutScreenState()) {
 
     private var observeJob: Job? = null
     private var timerJob: Job? = null
@@ -308,9 +313,13 @@ class WorkoutViewModel @Inject constructor(
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         if (exerciseId in uiState.value.exerciseAiLoading) return
 
-        updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
-
         viewModelScope.launch {
+            if (!planRepository.consumeCredit()) {
+                sendEvent(WorkoutEvent.ShowPaywall)
+                return@launch
+            }
+
+            updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
             val history = uiState.value.exerciseHistory[exerciseId] ?: run {
                 workoutRepository.getExerciseWeightHistory(userId, exerciseId)
                     .getOrNull() ?: emptyList()

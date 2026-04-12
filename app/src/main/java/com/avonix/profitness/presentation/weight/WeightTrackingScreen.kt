@@ -96,21 +96,32 @@ private val FULL_DATE_FMT  = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm")
 
 @Composable
 fun WeightTrackingScreen(
-    onBack    : () -> Unit,
-    viewModel : WeightTrackingViewModel = hiltViewModel()
+    onBack            : () -> Unit,
+    onNavigateToStore : () -> Unit = {},
+    viewModel         : WeightTrackingViewModel = hiltViewModel()
 ) {
     val theme             = LocalAppTheme.current
     val accent            = androidx.compose.material3.MaterialTheme.colorScheme.primary
     val state             by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showPaywall       by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is WeightTrackingEvent.ShowSnackbar ->
                     snackbarHostState.showSnackbar(event.message)
+                is WeightTrackingEvent.ShowPaywall ->
+                    showPaywall = true
             }
         }
+    }
+
+    if (showPaywall) {
+        com.avonix.profitness.presentation.store.PaywallDialog(
+            onDismiss   = { showPaywall = false },
+            onGoToStore = { showPaywall = false; onNavigateToStore() }
+        )
     }
 
     Scaffold(

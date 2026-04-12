@@ -174,7 +174,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onNavigateToManualBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Manual
                         selectedTab = DashboardTab.Program
-                    }
+                    },
+                    onNavigateToStore = { showStore = true }
                 )
                 DashboardTab.Program -> {
                     val capturedMode = programInitialMode
@@ -279,7 +280,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
             modifier = Modifier.zIndex(200f)
         ) {
-            WeightTrackingScreen(onBack = { showWeightTracking = false })
+            WeightTrackingScreen(
+                onBack            = { showWeightTracking = false },
+                onNavigateToStore = { showStore = true }
+            )
         }
 
         // ── Exercise Progression Overlay ─────────────────────────────────────
@@ -289,7 +293,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
             modifier = Modifier.zIndex(200f)
         ) {
-            ExerciseProgressionScreen(onBack = { showExerciseProgression = false })
+            ExerciseProgressionScreen(
+                onBack            = { showExerciseProgression = false },
+                onNavigateToStore = { showStore = true }
+            )
         }
 
         // ── Store Overlay ─────────────────────────────────────────────────────

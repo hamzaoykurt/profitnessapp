@@ -64,6 +64,7 @@ data class WeightTrackingState(
 
 sealed class WeightTrackingEvent {
     data class ShowSnackbar(val message: String) : WeightTrackingEvent()
+    data object ShowPaywall : WeightTrackingEvent()
 }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ sealed class WeightTrackingEvent {
 class WeightTrackingViewModel @Inject constructor(
     private val weightRepository: WeightRepository,
     private val geminiRepository : GeminiRepository,
+    private val planRepository   : com.avonix.profitness.data.store.UserPlanRepository,
     private val supabase         : SupabaseClient
 ) : BaseViewModel<WeightTrackingState, WeightTrackingEvent>(WeightTrackingState()) {
 
@@ -227,6 +229,10 @@ class WeightTrackingViewModel @Inject constructor(
         if (entries.size < 2) return
         aiInsightJob?.cancel()
         aiInsightJob = viewModelScope.launch {
+            if (!planRepository.consumeCredit()) {
+                sendEvent(WeightTrackingEvent.ShowPaywall)
+                return@launch
+            }
             updateState { it.copy(isAiLoading = true, aiInsight = "") }
 
             // Son 30 kaydı AI'a gönder (token limiti gözetilerek)

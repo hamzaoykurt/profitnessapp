@@ -141,14 +141,30 @@ data class WorkoutDayState(
 
 @Composable
 fun WorkoutScreen(
-    bottomPadding: Dp = 0.dp,
-    onNavigateToAIBuilder: () -> Unit = {},
+    bottomPadding           : Dp = 0.dp,
+    onNavigateToAIBuilder   : () -> Unit = {},
     onNavigateToManualBuilder: () -> Unit = {},
-    viewModel: WorkoutViewModel = hiltViewModel()
+    onNavigateToStore       : () -> Unit = {},
+    viewModel               : WorkoutViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val theme   = LocalAppTheme.current
     val strings = theme.strings
+
+    var showPaywall by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is WorkoutEvent.ShowPaywall -> showPaywall = true
+            }
+        }
+    }
+    if (showPaywall) {
+        com.avonix.profitness.presentation.store.PaywallDialog(
+            onDismiss   = { showPaywall = false },
+            onGoToStore = { showPaywall = false; onNavigateToStore() }
+        )
+    }
 
     // ON_RESUME: arka planda Supabase sync tetikle.
     // Room Flow zaten dinleniyor — yeni veri gelince UI otomatik güncellenir.

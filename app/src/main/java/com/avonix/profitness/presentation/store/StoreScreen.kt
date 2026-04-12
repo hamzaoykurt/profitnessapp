@@ -720,12 +720,13 @@ private fun PlanTab(
     val accent = if (isSelected) Lime else theme.stroke
     val price  = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
 
+    val selColor = tier.accentColor.takeIf { tier.plan != UserPlan.FREE } ?: Lime
     val bgColor by animateColorAsState(
-        if (isSelected) Lime.copy(0.1f) else theme.bg1,
+        if (isSelected) selColor.copy(0.1f) else theme.bg1,
         tween(180), label = "bg"
     )
     val borderColor by animateColorAsState(
-        if (isSelected) Lime.copy(0.55f) else theme.stroke.copy(0.4f),
+        if (isSelected) selColor.copy(0.55f) else theme.stroke.copy(0.4f),
         tween(180), label = "border"
     )
 
@@ -743,12 +744,12 @@ private fun PlanTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Badge satırı — sabit yükseklikte tutulur
+        // Badge satırı
         Box(modifier = Modifier.height(14.dp), contentAlignment = Alignment.Center) {
             if (tier.badge != null) {
                 Text(
                     tier.badge,
-                    color         = if (isSelected) Lime else theme.text2,
+                    color         = if (isSelected) selColor else theme.text2,
                     fontSize      = 8.sp,
                     fontWeight    = FontWeight.ExtraBold,
                     letterSpacing = 0.5.sp
@@ -759,7 +760,7 @@ private fun PlanTab(
         // Plan adı
         Text(
             tier.label,
-            color      = if (isSelected) Lime else theme.text1,
+            color      = if (isSelected) selColor else theme.text1,
             fontSize   = 13.sp,
             fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium
         )
@@ -811,7 +812,7 @@ private fun PlanDetailCard(
             .background(theme.bg1)
             .border(
                 width = if (isCurrent) 1.5.dp else 1.dp,
-                color = if (isCurrent) Lime.copy(0.45f) else theme.stroke.copy(0.4f),
+                color = if (isCurrent) accent.copy(0.5f) else theme.stroke.copy(0.4f),
                 shape = RoundedCornerShape(20.dp)
             )
             .padding(20.dp)
@@ -1041,7 +1042,7 @@ private fun CtaButton(
                         Brush.linearGradient(listOf(Surface3, Surface3))
                     else
                         Brush.linearGradient(
-                            listOf(Lime, Lime.copy(0.85f)),
+                            listOf(accentColor, accentColor.copy(0.8f)),
                             start = Offset(0f, 0f),
                             end   = Offset(Float.POSITIVE_INFINITY, 0f)
                         )
@@ -1074,7 +1075,7 @@ private fun CtaButton(
             } else {
                 Text(
                     "$price$period ile Başla",
-                    color      = LimeText,
+                    color      = if (accentColor == Lime) LimeText else Color.White,
                     fontWeight = FontWeight.Black,
                     fontSize   = 15.sp
                 )
