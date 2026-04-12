@@ -7,7 +7,10 @@ import androidx.room.Index
 @Entity(
     tableName = "set_completions",
     primaryKeys = ["user_id", "exercise_id", "program_day_id", "set_index", "date"],
-    indices = [Index(value = ["user_id", "program_day_id", "date"])]
+    indices = [
+        Index(value = ["user_id", "program_day_id", "date"]),
+        Index(value = ["user_id", "exercise_id", "date"])
+    ]
 )
 data class SetCompletionEntity(
     @ColumnInfo(name = "user_id")        val userId: String,
