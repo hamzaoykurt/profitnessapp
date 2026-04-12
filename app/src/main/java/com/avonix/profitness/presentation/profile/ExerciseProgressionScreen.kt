@@ -120,7 +120,7 @@ class ExerciseProgressionViewModel @Inject constructor(
             val systemPrompt = "Sen bir fitness koçusun. Kısa, motive edici ve net Türkçe tavsiye ver."
             val userMessage = "$exerciseName egzersizi için ağırlık geçmişim:\n$summary\nGelişimimi değerlendir, öneri ver. 3-4 cümle yeterli."
             val result = geminiRepository.chat(emptyList(), userMessage, systemPrompt)
-            val insight = result.getOrElse { "Analiz yapılamadı." }
+            val insight = result.getOrElse { planRepository.refundCredit(); "Analiz yapılamadı." }
             updateState {
                 it.copy(
                     aiInsightMap = it.aiInsightMap + (exerciseId to insight),

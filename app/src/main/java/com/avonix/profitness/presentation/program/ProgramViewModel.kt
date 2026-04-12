@@ -236,6 +236,10 @@ class ProgramViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            if (!planRepository.consumeCredit()) {
+                sendEvent(ProgramEvent.ShowPaywall)
+                return@launch
+            }
             updateState { it.copy(aiLoading = true, aiError = null) }
 
             // 1. Egzersiz listesini hazırla (eşleştirme için — prompt'a gönderilmez)
@@ -416,6 +420,10 @@ FORMAT:
             return
         }
         viewModelScope.launch {
+            if (!planRepository.consumeCredit()) {
+                sendEvent(ProgramEvent.ShowPaywall)
+                return@launch
+            }
             updateState { it.copy(aiEditLoading = true, aiEditError = null) }
 
             val baseExercises = uiState.value.exercises.ifEmpty {

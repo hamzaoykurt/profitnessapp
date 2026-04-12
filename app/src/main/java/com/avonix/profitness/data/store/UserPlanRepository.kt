@@ -29,6 +29,12 @@ interface UserPlanRepository {
      */
     suspend fun consumeCredit(): Boolean
 
+    /**
+     * AI çağrısı başarısız olduğunda tüketilen krediyi iade eder.
+     * Pro/Elite plan → no-op (zaten sonsuz).
+     */
+    suspend fun refundCredit()
+
     companion object {
         /** Yeni FREE hesaplar bu kadar krediyle başlar. */
         const val FREE_STARTER_CREDITS = 5

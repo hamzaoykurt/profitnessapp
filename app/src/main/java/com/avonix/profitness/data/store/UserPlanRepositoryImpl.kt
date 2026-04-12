@@ -67,4 +67,13 @@ class UserPlanRepositoryImpl @Inject constructor(
         }
         return consumed
     }
+
+    override suspend fun refundCredit() {
+        val currentPlan = planFlow.first()
+        if (currentPlan != UserPlan.FREE) return   // no-op for paid plans
+        context.planDataStore.edit { prefs ->
+            val current = prefs[Keys.CREDITS] ?: 0
+            prefs[Keys.CREDITS] = current + 1
+        }
+    }
 }

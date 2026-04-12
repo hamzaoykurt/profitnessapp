@@ -359,6 +359,7 @@ class WorkoutViewModel @Inject constructor(
                     )
                 }
             }.onFailure {
+                planRepository.refundCredit()
                 updateState { state ->
                     state.copy(
                         exerciseAiInsight = state.exerciseAiInsight + (exerciseId to "Analiz yüklenemedi. Tekrar deneyin."),

@@ -273,7 +273,7 @@ class WeightTrackingViewModel @Inject constructor(
 
             updateState { st ->
                 st.copy(
-                    aiInsight   = result.getOrElse { "Trend analizi şu an mevcut değil." },
+                    aiInsight   = result.getOrElse { planRepository.refundCredit(); "Trend analizi şu an mevcut değil." },
                     isAiLoading = false
                 )
             }

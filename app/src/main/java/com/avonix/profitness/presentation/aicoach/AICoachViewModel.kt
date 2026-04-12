@@ -165,6 +165,7 @@ class AICoachViewModel @Inject constructor(
                     persistCurrentSession()   // AI yanıtından sonra tekrar kaydet
                 },
                 onFailure = {
+                    planRepository.refundCredit()
                     val errorMessage = ChatMessage(
                         id     = (System.currentTimeMillis() + 1).toString(),
                         text   = "Bağlantı hatası. Lütfen tekrar dene.",
