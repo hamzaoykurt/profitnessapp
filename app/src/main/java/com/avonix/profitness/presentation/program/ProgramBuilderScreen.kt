@@ -48,6 +48,7 @@ import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.program.autoTitle
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramType
+import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
@@ -1270,7 +1271,18 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 .verticalScroll(scrollState)
         ) {
             DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(16.dp))
+
+            // Kredi bilgisi
+            AiCreditInfoRow(
+                isFree  = uiState.userPlan == UserPlan.FREE,
+                credits = uiState.aiCredits,
+                costLabel = "1 kredi / program",
+                theme   = aiTheme,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(Modifier.height(16.dp))
 
             // Metin giriş kutusu
             Box(

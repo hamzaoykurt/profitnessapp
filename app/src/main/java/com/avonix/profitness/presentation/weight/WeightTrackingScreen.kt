@@ -88,6 +88,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.local.entity.WeightLogEntity
+import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.glassCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -175,6 +176,15 @@ fun WeightTrackingScreen(
                         item {
                             WeightLineChart(points = state.chartPoints, accent = accent, theme = theme)
                         }
+                    }
+                    item {
+                        AiCreditInfoRow(
+                            isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                            credits   = state.aiCredits,
+                            costLabel = "1 kredi / AI analiz",
+                            theme     = theme,
+                            modifier  = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                        )
                     }
                     item {
                         AiInsightCard(

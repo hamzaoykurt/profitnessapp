@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
+import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -124,6 +125,13 @@ fun ExerciseDetailSheet(
             // ── AI Insight ──────────────────────────────────────────────────
             if (weightHistory.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
+                AiCreditInfoRow(
+                    isFree    = isFree,
+                    credits   = aiCredits,
+                    costLabel = "1 kredi / AI analiz",
+                    theme     = theme
+                )
+                Spacer(Modifier.height(8.dp))
                 AiProgressionCard(
                     insight = aiInsight,
                     isLoading = isAiLoading,

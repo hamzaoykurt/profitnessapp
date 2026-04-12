@@ -38,6 +38,7 @@ import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
@@ -238,6 +239,14 @@ fun ExerciseProgressionScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    item(key = "credit_info") {
+                        AiCreditInfoRow(
+                            isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                            credits   = state.aiCredits,
+                            costLabel = "1 kredi / egzersiz analizi",
+                            theme     = theme
+                        )
+                    }
                     items(state.summaries, key = { it.exerciseId }) { summary ->
                         ExerciseProgressionCard(
                             summary      = summary,

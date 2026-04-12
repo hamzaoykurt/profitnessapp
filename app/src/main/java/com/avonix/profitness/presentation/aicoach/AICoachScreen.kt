@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.ai.ChatSession
 import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.store.PaywallDialog
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -154,6 +155,17 @@ fun AICoachScreen(
             contentPadding  = PaddingValues(top = 116.dp, bottom = inputAreaHeight),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            if (state.userPlan == UserPlan.FREE) {
+                item(key = "credit_info") {
+                    AiCreditInfoRow(
+                        isFree    = true,
+                        credits   = state.aiCredits,
+                        costLabel = "1 kredi / mesaj",
+                        theme     = theme,
+                        modifier  = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+            }
             items(state.messages, key = { it.id }) { msg ->
                 SanctuaryMessage(
                     msg            = msg,
