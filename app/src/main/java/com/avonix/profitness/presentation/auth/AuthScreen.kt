@@ -16,14 +16,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -41,6 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.avonix.profitness.core.theme.*
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 // ── Entry composable — routes between auth screens ────────────────────────────
 
@@ -62,32 +69,58 @@ fun AuthScreen(
         }
     }
 
-    // Session diskten yüklenirken boş ekran göster; login sayfası yanıp sönmez.
+    // Session diskten yüklenirken splash göster
     if (state.isSessionLoading) {
-        Box(modifier = Modifier.fillMaxSize())
+        AuthLoadingSplash()
         return
     }
 
     AnimatedContent(
         targetState  = state.screen,
         transitionSpec = {
-            val enter  = slideInHorizontally(
-                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)
-            ) { it / 2 } + fadeIn(tween(200))
-            val exit   = slideOutHorizontally(
-                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
-            ) { -it / 3 } + fadeOut(tween(160))
+            val enter = fadeIn(tween(360)) + scaleIn(
+                tween(360), initialScale = 0.96f
+            )
+            val exit = fadeOut(tween(240)) + scaleOut(
+                tween(240), targetScale = 1.03f
+            )
             enter togetherWith exit
         },
         label = "auth_flow"
     ) { screen ->
         when (screen) {
-            is AuthFlowScreen.Login          -> LoginScreen(state, viewModel)
-            is AuthFlowScreen.Register       -> RegisterScreen(state, viewModel)
+            is AuthFlowScreen.Login         -> LoginScreen(state, viewModel)
+            is AuthFlowScreen.Register      -> RegisterScreen(state, viewModel)
             is AuthFlowScreen.ForgotPassword -> ForgotPasswordScreen(screen.prefillEmail, state, viewModel)
-            is AuthFlowScreen.OtpVerify      -> OtpVerifyScreen(screen.email, state, viewModel)
-            is AuthFlowScreen.EmailSent      -> EmailSentScreen(screen.email, screen.type, state, viewModel)
+            is AuthFlowScreen.OtpVerify     -> OtpVerifyScreen(screen.email, state, viewModel)
+            is AuthFlowScreen.EmailSent     -> EmailSentScreen(screen.email, screen.type, state, viewModel)
         }
+    }
+}
+
+// ── Loading Splash ───────────────────────────────────────────────────────────
+
+@Composable
+private fun AuthLoadingSplash() {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
+        initialValue = 0.6f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
+        label = "pulse_alpha"
+    )
+    Box(
+        modifier = Modifier.fillMaxSize().background(theme.bg0),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_app_logo),
+            contentDescription = "Profitness",
+            modifier = Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .alpha(pulse)
+        )
     }
 }
 
@@ -98,23 +131,26 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
     var email    by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPass by remember { mutableStateOf(false) }
-    val theme    = LocalAppTheme.current
     val passFocus = remember { FocusRequester() }
 
-    AuthScaffold(title = "Tekrar\nhoş geldin.") {
-        AuthLiquidField(
-            value        = email,
+    AuthScaffold(
+        heroTitle    = "Tekrar\nhoş geldin.",
+        heroSubtitle = "Hedeflerine kaldığın yerden devam et."
+    ) {
+        GlassInputField(
+            value         = email,
             onValueChange = { email = it },
-            label        = "EMAIL",
-            icon         = Icons.Rounded.Email,
-            imeAction    = ImeAction.Next,
-            onImeAction  = { passFocus.requestFocus() }
+            placeholder   = "Email adresi",
+            icon          = Icons.Rounded.Email,
+            keyboardType  = KeyboardType.Email,
+            imeAction     = ImeAction.Next,
+            onImeAction   = { passFocus.requestFocus() }
         )
-        Spacer(Modifier.height(20.dp))
-        AuthLiquidField(
+        Spacer(Modifier.height(14.dp))
+        GlassInputField(
             value         = password,
             onValueChange = { password = it },
-            label         = "ŞİFRE",
+            placeholder   = "Şifre",
             icon          = Icons.Rounded.Lock,
             isPassword    = true,
             showPass      = showPass,
@@ -124,24 +160,26 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
             modifier      = Modifier.focusRequester(passFocus)
         )
 
-        // "Şifremi Unuttum" link — right-aligned, subtle
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+        // "Şifremi Unuttum" link
+        Box(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.CenterEnd) {
             TextButton(onClick = {
                 viewModel.navigateTo(AuthFlowScreen.ForgotPassword(email.trim()))
             }) {
                 Text(
                     "Şifremi Unuttum",
-                    color = ObsidianMuted,
-                    style = MaterialTheme.typography.labelSmall
+                    color    = ObsidianMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
-        ObsidianButton(
-            text     = if (state.isLoading) "Giriş yapılıyor..." else "GİRİŞ YAP",
+        AccentGradientButton(
+            text     = if (state.isLoading) "Giriş yapılıyor..." else "Giriş Yap",
             onClick  = { if (!state.isLoading) viewModel.onLoginClick(email, password) },
+            isLoading = state.isLoading,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -150,13 +188,13 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
             hint  = state.hint,
             onHintAction = { hint ->
                 when (hint) {
-                    AuthHint.ForgotPassword  -> viewModel.navigateTo(AuthFlowScreen.ForgotPassword(email.trim()))
-                    else                     -> Unit
+                    AuthHint.ForgotPassword -> viewModel.navigateTo(AuthFlowScreen.ForgotPassword(email.trim()))
+                    else -> Unit
                 }
             }
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         AuthSwitchRow(
             message    = "Hesabın yok mu?",
             actionText = "Kayıt Ol",
@@ -174,24 +212,27 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
     var confirmPassword by remember { mutableStateOf("") }
     var showPass        by remember { mutableStateOf(false) }
     var showConfirmPass by remember { mutableStateOf(false) }
-    val theme           = LocalAppTheme.current
     val passFocus       = remember { FocusRequester() }
     val confirmFocus    = remember { FocusRequester() }
 
-    AuthScaffold(title = "Gücü\nserbest bırak.") {
-        AuthLiquidField(
+    AuthScaffold(
+        heroTitle    = "Gücü\nserbest bırak.",
+        heroSubtitle = "Hesabını oluştur, antrenmanlarına başla."
+    ) {
+        GlassInputField(
             value         = email,
             onValueChange = { email = it },
-            label         = "EMAIL",
+            placeholder   = "Email adresi",
             icon          = Icons.Rounded.Email,
+            keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Next,
             onImeAction   = { passFocus.requestFocus() }
         )
-        Spacer(Modifier.height(20.dp))
-        AuthLiquidField(
+        Spacer(Modifier.height(14.dp))
+        GlassInputField(
             value         = password,
             onValueChange = { password = it },
-            label         = "ŞİFRE",
+            placeholder   = "Şifre",
             icon          = Icons.Rounded.Lock,
             isPassword    = true,
             showPass      = showPass,
@@ -200,16 +241,15 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onImeAction   = { confirmFocus.requestFocus() },
             modifier      = Modifier.focusRequester(passFocus)
         )
-        // Password strength bar
         if (password.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             PasswordStrengthBar(password = password)
         }
-        Spacer(Modifier.height(20.dp))
-        AuthLiquidField(
+        Spacer(Modifier.height(14.dp))
+        GlassInputField(
             value         = confirmPassword,
             onValueChange = { confirmPassword = it },
-            label         = "ŞİFRE TEKRAR",
+            placeholder   = "Şifre tekrar",
             icon          = Icons.Rounded.LockOpen,
             isPassword    = true,
             showPass      = showConfirmPass,
@@ -218,12 +258,13 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onImeAction   = { viewModel.onRegisterClick(email, password, confirmPassword) },
             modifier      = Modifier.focusRequester(confirmFocus)
         )
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(28.dp))
 
-        ObsidianButton(
-            text     = if (state.isLoading) "Hesap oluşturuluyor..." else "KAYIT OL",
-            onClick  = { if (!state.isLoading) viewModel.onRegisterClick(email, password, confirmPassword) },
-            modifier = Modifier.fillMaxWidth()
+        AccentGradientButton(
+            text      = if (state.isLoading) "Hesap oluşturuluyor..." else "Kayıt Ol",
+            onClick   = { if (!state.isLoading) viewModel.onRegisterClick(email, password, confirmPassword) },
+            isLoading = state.isLoading,
+            modifier  = Modifier.fillMaxWidth()
         )
 
         AuthFeedback(
@@ -232,12 +273,12 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onHintAction = { hint ->
                 when (hint) {
                     AuthHint.SwitchToLogin -> viewModel.navigateTo(AuthFlowScreen.Login)
-                    else                   -> Unit
+                    else -> Unit
                 }
             }
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         AuthSwitchRow(
             message    = "Zaten üye misin?",
             actionText = "Giriş Yap",
@@ -255,35 +296,30 @@ private fun ForgotPasswordScreen(
     viewModel: AuthViewModel
 ) {
     var email = remember { mutableStateOf(prefillEmail) }
-    val theme = LocalAppTheme.current
 
-    AuthScaffold(title = "Şifreni\nsıfırla.") {
-        // Back row
+    AuthScaffold(
+        heroTitle    = "Şifreni\nsıfırla.",
+        heroSubtitle = "Kayıtlı email adresini gir, link gönderelim."
+    ) {
         BackRow(onBack = { viewModel.navigateTo(AuthFlowScreen.Login) })
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
-        Text(
-            "Kayıtlı email adresini gir, şifre sıfırlama linkini gönderelim.",
-            color      = ObsidianSub,
-            fontSize   = 14.sp,
-            lineHeight = 22.sp
-        )
-        Spacer(Modifier.height(32.dp))
-
-        AuthLiquidField(
+        GlassInputField(
             value         = email.value,
             onValueChange = { email.value = it },
-            label         = "EMAIL",
+            placeholder   = "Email adresi",
             icon          = Icons.Rounded.Email,
+            keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Done,
             onImeAction   = { viewModel.onForgotPasswordClick(email.value) }
         )
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(28.dp))
 
-        ObsidianButton(
-            text     = if (state.isLoading) "Gönderiliyor..." else "LINK GÖNDER",
-            onClick  = { if (!state.isLoading) viewModel.onForgotPasswordClick(email.value) },
-            modifier = Modifier.fillMaxWidth()
+        AccentGradientButton(
+            text      = if (state.isLoading) "Gönderiliyor..." else "Link Gönder",
+            onClick   = { if (!state.isLoading) viewModel.onForgotPasswordClick(email.value) },
+            isLoading = state.isLoading,
+            modifier  = Modifier.fillMaxWidth()
         )
 
         AuthFeedback(error = state.error, hint = null, onHintAction = {})
@@ -294,126 +330,106 @@ private fun ForgotPasswordScreen(
 
 @Composable
 private fun OtpVerifyScreen(
-    email     : String,
-    state     : AuthState,
-    viewModel : AuthViewModel
+    email    : String,
+    state    : AuthState,
+    viewModel: AuthViewModel
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     var code   by remember { mutableStateOf("") }
 
-    val alphaAnim = remember { Animatable(0f) }
-    val yAnim     = remember { Animatable(30f) }
-    LaunchedEffect(Unit) {
-        alphaAnim.animateTo(1f, tween(500))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
-    }
+    AuthCenteredScaffold {
+        // Back
+        Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(onClick = { viewModel.navigateTo(AuthFlowScreen.Register) }) {
+                Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = theme.text1)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
-        Column(
+        // Icon
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp)
-                .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .size(80.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(accent.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center
         ) {
-            // Back
-            Box(modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { viewModel.navigateTo(AuthFlowScreen.Register) }) {
-                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = theme.text1)
+            Icon(
+                Icons.Rounded.MarkEmailRead,
+                contentDescription = null,
+                tint     = accent,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "Email'ini kontrol et",
+            color      = theme.text0,
+            fontSize   = 24.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text       = "$email\nadresine 6 haneli doğrulama kodu gönderdik.",
+            color      = theme.text1,
+            fontSize   = 14.sp,
+            textAlign  = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Spacer(Modifier.height(36.dp))
+
+        OtpInputRow(
+            code         = code,
+            onCodeChange = { new ->
+                if (new.length <= 6 && new.all { it.isDigit() }) {
+                    code = new
+                    if (new.length == 6) viewModel.onVerifyOtp(email, new)
                 }
+            },
+            accent = accent,
+            theme  = theme
+        )
+
+        AnimatedVisibility(state.error != null) {
+            state.error?.let {
+                Spacer(Modifier.height(14.dp))
+                Text(it, color = CriticalRed, fontSize = 13.sp, textAlign = TextAlign.Center)
             }
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(28.dp))
 
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(accent.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.MarkEmailRead,
-                    contentDescription = null,
-                    tint     = accent,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+        AccentGradientButton(
+            text      = if (state.otpLoading) "Doğrulanıyor..." else "Onayla",
+            onClick   = { if (!state.otpLoading) viewModel.onVerifyOtp(email, code) },
+            isLoading = state.otpLoading,
+            modifier  = Modifier.fillMaxWidth()
+        )
 
-            Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(16.dp))
 
+        TextButton(
+            onClick = { viewModel.onResendOtp(email) },
+            enabled = !state.resendCooldown
+        ) {
             Text(
-                "Email'ini kontrol et",
-                color      = ObsidianText,
-                fontSize   = 24.sp,
-                fontWeight = FontWeight.Black
+                text     = if (state.resendCooldown) "Kod gönderildi (30sn bekle)" else "Kodu tekrar gönder",
+                color    = if (state.resendCooldown) ObsidianMuted else accent,
+                fontSize = 14.sp
             )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text      = "$email\nadresine 6 haneli doğrulama kodu gönderdik.",
-                color     = ObsidianSub,
-                fontSize  = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 22.sp
-            )
+        }
 
-            Spacer(Modifier.height(40.dp))
-
-            // OTP kutular
-            OtpInputRow(
-                code         = code,
-                onCodeChange = { new ->
-                    if (new.length <= 6 && new.all { it.isDigit() }) {
-                        code = new
-                        if (new.length == 6) viewModel.onVerifyOtp(email, new)
-                    }
-                },
-                accent = accent,
-                theme  = theme
-            )
-
-            // Hata
-            AnimatedVisibility(state.error != null) {
-                state.error?.let {
-                    Spacer(Modifier.height(14.dp))
-                    Text(it, color = CriticalRed, fontSize = 13.sp, textAlign = TextAlign.Center)
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            ObsidianButton(
-                text     = if (state.otpLoading) "Doğrulanıyor..." else "ONAYLA",
-                onClick  = { if (!state.otpLoading) viewModel.onVerifyOtp(email, code) },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            TextButton(
-                onClick = { viewModel.onResendOtp(email) },
-                enabled = !state.resendCooldown
-            ) {
-                Text(
-                    text  = if (state.resendCooldown) "Kod gönderildi (30sn bekle)" else "Kodu tekrar gönder",
-                    color = if (state.resendCooldown) ObsidianMuted else accent,
-                    fontSize = 14.sp
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
-            }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(13.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
         }
     }
 }
@@ -423,7 +439,7 @@ private fun OtpInputRow(
     code        : String,
     onCodeChange: (String) -> Unit,
     accent      : Color,
-    theme       : com.avonix.profitness.core.theme.AppThemeState
+    theme       : AppThemeState
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard       = LocalSoftwareKeyboardController.current
@@ -434,7 +450,6 @@ private fun OtpInputRow(
     }
 
     Box(contentAlignment = Alignment.Center) {
-        // Gerçek input — görünmez, klavyeyi tetikler
         BasicTextField(
             value           = code,
             onValueChange   = onCodeChange,
@@ -455,23 +470,23 @@ private fun OtpInputRow(
                 Box(
                     modifier = Modifier
                         .size(width = 46.dp, height = 58.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(theme.bg2)
                         .border(
                             width = if (isFocused) 2.dp else 1.dp,
                             color = when {
-                                isFocused  -> accent
-                                char != null -> accent.copy(alpha = 0.5f)
+                                isFocused   -> accent
+                                char != null -> accent.copy(alpha = 0.4f)
                                 else         -> theme.stroke
                             },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (char != null) {
                         Text(
                             text       = char.toString(),
-                            color      = ObsidianText,
+                            color      = theme.text0,
                             fontSize   = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -494,145 +509,452 @@ private fun OtpInputRow(
     }
 }
 
-// ── Email Sent Screen (sadece şifre sıfırlama için) ───────────────────────────
+// ── Email Sent Screen ─────────────────────────────────────────────────────────
 
 @Composable
 private fun EmailSentScreen(
-    email     : String,
-    type      : EmailSentType,
-    state     : AuthState,
-    viewModel : AuthViewModel
+    email    : String,
+    type     : EmailSentType,
+    state    : AuthState,
+    viewModel: AuthViewModel
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
+    val scaleAnim = remember { Animatable(0.85f) }
+    LaunchedEffect(Unit) {
+        scaleAnim.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow))
+    }
+
+    AuthCenteredScaffold {
+        Box(
+            modifier = Modifier
+                .graphicsLayer(scaleX = scaleAnim.value, scaleY = scaleAnim.value)
+                .size(88.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(accent.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.LockReset, null, tint = accent, modifier = Modifier.size(44.dp))
+        }
+
+        Spacer(Modifier.height(28.dp))
+        Text(
+            "Link gönderildi",
+            color      = theme.text0,
+            fontSize   = 26.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "$email adresine şifre sıfırlama linki gönderdik.\n\nLinke tıklayarak yeni şifreni belirle.",
+            color      = theme.text1,
+            fontSize   = 15.sp,
+            lineHeight = 24.sp,
+            textAlign  = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(40.dp))
+
+        AccentGradientButton(
+            text     = "Giriş Sayfasına Dön",
+            onClick  = { viewModel.navigateTo(AuthFlowScreen.Login) },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── LAYOUT SCAFFOLDS ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Ana auth scaffold — logo + hero başlık + glassmorphism kart içinde form alanları.
+ */
+@Composable
+private fun AuthScaffold(
+    heroTitle   : String,
+    heroSubtitle: String,
+    content     : @Composable ColumnScope.() -> Unit
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
     val alphaAnim = remember { Animatable(0f) }
-    val scaleAnim = remember { Animatable(0.88f) }
+    val yAnim     = remember { Animatable(40f) }
     LaunchedEffect(Unit) {
-        alphaAnim.animateTo(1f, tween(500))
-        scaleAnim.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow))
+        alphaAnim.animateTo(1f, tween(500, easing = EaseOutCubic))
+        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+        // Ambient glow orbs
+        AmbientGlowBackground(accent)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp)
+                .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
+            horizontalAlignment = Alignment.Start
         ) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer(alpha = alphaAnim.value, scaleX = scaleAnim.value, scaleY = scaleAnim.value)
-                    .size(88.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(accent.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.LockReset, null, tint = accent, modifier = Modifier.size(44.dp))
-            }
+            Spacer(Modifier.height(72.dp))
+
+            // Logo
+            Image(
+                painter            = painterResource(R.drawable.ic_app_logo),
+                contentDescription = "Profitness",
+                modifier           = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(14.dp))
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Hero title
+            Text(
+                text       = heroTitle,
+                style      = MaterialTheme.typography.displayLarge,
+                color      = theme.text0,
+                lineHeight = 48.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text     = heroSubtitle,
+                color    = theme.text1,
+                fontSize = 15.sp,
+                lineHeight = 22.sp
+            )
 
             Spacer(Modifier.height(32.dp))
 
-            Text(
-                "Link gönderildi",
-                color      = ObsidianText,
-                fontSize   = 26.sp,
-                fontWeight = FontWeight.Black,
-                modifier   = Modifier.graphicsLayer(alpha = alphaAnim.value)
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "$email adresine şifre sıfırlama linki gönderdik.\n\nLinke tıklayarak yeni şifreni belirle.",
-                color      = ObsidianSub,
-                fontSize   = 15.sp,
-                lineHeight = 24.sp,
-                textAlign  = TextAlign.Center,
-                modifier   = Modifier.graphicsLayer(alpha = alphaAnim.value)
-            )
+            // Glass card with form
+            GlassCard {
+                content()
+            }
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+}
 
-            ObsidianButton(
-                text     = "Giriş Sayfasına Dön",
-                onClick  = { viewModel.navigateTo(AuthFlowScreen.Login) },
-                modifier = Modifier.fillMaxWidth().graphicsLayer(alpha = alphaAnim.value)
+/**
+ * Merkez hizalı scaffold — OTP ve EmailSent gibi tek odaklı ekranlar için.
+ */
+@Composable
+private fun AuthCenteredScaffold(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
+    val alphaAnim = remember { Animatable(0f) }
+    val yAnim     = remember { Animatable(30f) }
+    LaunchedEffect(Unit) {
+        alphaAnim.animateTo(1f, tween(500))
+        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
+        AmbientGlowBackground(accent)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp)
+                .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Spacer(Modifier.height(80.dp))
+            GlassCard(horizontalAlignment = Alignment.CenterHorizontally) {
+                content()
+            }
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── DESIGN SYSTEM COMPONENTS ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Glassmorphism kart — yarı saydam arka plan, ince border, blur efekti hissi.
+ */
+@Composable
+private fun GlassCard(
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val cardBg = if (theme.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f)
+    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(cardBg)
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .padding(24.dp),
+        horizontalAlignment = horizontalAlignment,
+        content = content
+    )
+}
+
+/**
+ * Ambient glow arka plan — accent renginde yumuşak ışıma orb'ları.
+ */
+@Composable
+private fun AmbientGlowBackground(accent: Color) {
+    val theme = LocalAppTheme.current
+    val orbAlpha = if (theme.isDark) 0.12f else 0.06f
+
+    Spacer(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val orb1 = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to accent.copy(alpha = orbAlpha),
+                        0.5f to accent.copy(alpha = orbAlpha * 0.3f),
+                        1.0f to Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.85f, size.height * 0.08f),
+                    radius = size.width * 1.2f
+                )
+                val orb2 = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to accent.copy(alpha = orbAlpha * 0.5f),
+                        0.6f to accent.copy(alpha = orbAlpha * 0.1f),
+                        1.0f to Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.1f, size.height * 0.7f),
+                    radius = size.width * 0.9f
+                )
+                onDrawBehind {
+                    drawRect(orb1)
+                    drawRect(orb2)
+                }
+            }
+    )
+}
+
+/**
+ * Modern input field — yumuşak arka plan, ince border, focus animasyonu.
+ */
+@Composable
+fun GlassInputField(
+    value        : String,
+    onValueChange: (String) -> Unit,
+    placeholder  : String,
+    icon         : ImageVector,
+    isPassword   : Boolean = false,
+    showPass     : Boolean = false,
+    onTogglePass : () -> Unit = {},
+    keyboardType : KeyboardType = KeyboardType.Text,
+    imeAction    : ImeAction = ImeAction.Next,
+    onImeAction  : () -> Unit = {},
+    modifier     : Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val borderColor by animateColorAsState(
+        if (isFocused) accent.copy(alpha = 0.6f)
+        else if (theme.isDark) Color.White.copy(alpha = 0.08f)
+        else Color.Black.copy(alpha = 0.06f),
+        animationSpec = tween(200),
+        label = "field_border"
+    )
+    val iconColor by animateColorAsState(
+        if (isFocused) accent else ObsidianMuted,
+        animationSpec = tween(200),
+        label = "field_icon"
+    )
+    val fieldBg = if (theme.isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.04f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(fieldBg)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .then(modifier),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = null,
+                tint               = iconColor,
+                modifier           = Modifier.size(20.dp)
             )
-
-            Spacer(Modifier.height(20.dp))
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
+            Spacer(Modifier.width(12.dp))
+            TextField(
+                value               = value,
+                onValueChange       = onValueChange,
+                placeholder         = { Text(placeholder, color = ObsidianMuted, fontSize = 15.sp) },
+                visualTransformation = if (isPassword && !showPass)
+                    PasswordVisualTransformation() else VisualTransformation.None,
+                keyboardOptions     = KeyboardOptions(
+                    keyboardType = if (isPassword) KeyboardType.Password else keyboardType,
+                    imeAction    = imeAction
+                ),
+                keyboardActions     = KeyboardActions(onAny = { onImeAction() }),
+                interactionSource   = interactionSource,
+                singleLine          = true,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor    = Color.Transparent,
+                    unfocusedContainerColor  = Color.Transparent,
+                    focusedIndicatorColor    = Color.Transparent,
+                    unfocusedIndicatorColor  = Color.Transparent,
+                    focusedTextColor         = theme.text0,
+                    unfocusedTextColor       = theme.text0,
+                    cursorColor              = accent
+                ),
+                textStyle = LocalTextStyle.current.copy(fontSize = 15.sp),
+                modifier  = Modifier.weight(1f)
+            )
+            if (isPassword) {
+                IconButton(onClick = onTogglePass, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        if (showPass) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        null, tint = ObsidianMuted, modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
 }
 
-// ── Shared layout scaffold ────────────────────────────────────────────────────
-
+/**
+ * Gradient accent button — accent renginde gradient dolgu, press animasyonu.
+ */
 @Composable
-private fun AuthScaffold(
-    title   : String,
-    content : @Composable ColumnScope.() -> Unit
+fun AccentGradientButton(
+    text     : String,
+    onClick  : () -> Unit,
+    modifier : Modifier = Modifier,
+    isLoading: Boolean = false,
+    accent   : Color = Color.Unspecified
 ) {
-    val theme     = LocalAppTheme.current
-    val alphaAnim = remember { Animatable(0f) }
-    val yAnim     = remember { Animatable(32f) }
-    LaunchedEffect(Unit) {
-        alphaAnim.animateTo(1f, tween(600, easing = EaseOutExpo))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
-    }
+    val resolvedAccent   = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else accent
+    val resolvedOnAccent = MaterialTheme.colorScheme.onPrimary
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (isPressed) 0.97f else 1f,
+        spring(Spring.DampingRatioMediumBouncy),
+        label = "btn_scale"
+    )
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp, 0.dp)
-                .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Spacer(Modifier.height(100.dp))
+    val gradientBrush = Brush.horizontalGradient(
+        listOf(
+            resolvedAccent,
+            resolvedAccent.copy(alpha = 0.85f)
+        )
+    )
 
-            // App Logo
-            Image(
-                painter            = painterResource(R.drawable.ic_app_logo),
-                contentDescription = "Profitness",
-                modifier           = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(16.dp))
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .height(56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(gradientBrush)
+            .clickable(interactionSource, null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier  = Modifier.size(22.dp),
+                color     = resolvedOnAccent,
+                strokeWidth = 2.5.dp
             )
-
-            Spacer(Modifier.height(28.dp))
-
+        } else {
             Text(
-                text      = title,
-                style     = MaterialTheme.typography.displayLarge,
-                color     = ObsidianText,
-                lineHeight = 52.sp
+                text          = text,
+                color         = resolvedOnAccent,
+                fontSize      = 15.sp,
+                fontWeight    = FontWeight.Bold,
+                letterSpacing = 0.5.sp
             )
-
-            Spacer(Modifier.height(40.dp))
-
-            content()
         }
     }
+}
+
+// ── Backward-compatible aliases ──────────────────────────────────────────────
+
+@Composable
+fun ObsidianButton(
+    text    : String,
+    onClick : () -> Unit,
+    modifier: Modifier = Modifier,
+    accent  : Color = Color.Unspecified
+) {
+    AccentGradientButton(text = text, onClick = onClick, modifier = modifier, accent = accent)
+}
+
+@Composable
+fun AuthLiquidField(
+    value        : String,
+    onValueChange: (String) -> Unit,
+    label        : String,
+    icon         : ImageVector,
+    isPassword   : Boolean = false,
+    showPass     : Boolean = false,
+    onTogglePass : () -> Unit = {},
+    imeAction    : ImeAction = ImeAction.Next,
+    onImeAction  : () -> Unit = {},
+    modifier     : Modifier = Modifier
+) {
+    GlassInputField(
+        value         = value,
+        onValueChange = onValueChange,
+        placeholder   = label.lowercase().replaceFirstChar { it.uppercase() },
+        icon          = icon,
+        isPassword    = isPassword,
+        showPass      = showPass,
+        onTogglePass  = onTogglePass,
+        imeAction     = imeAction,
+        onImeAction   = onImeAction,
+        modifier      = modifier
+    )
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
 @Composable
 private fun BackRow(onBack: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = ObsidianSub)
-        }
-        Text("Giriş sayfasına dön", color = ObsidianSub, fontSize = 13.sp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onBack)
+            .padding(vertical = 4.dp, horizontal = 2.dp)
+    ) {
+        Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = ObsidianSub, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Giriş sayfasına dön", color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -650,12 +972,26 @@ internal fun AuthFeedback(
         ) {
             error?.let {
                 Spacer(Modifier.height(14.dp))
-                Text(
-                    text  = it,
-                    color = CriticalRed,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(4.dp, 0.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CriticalRed.copy(alpha = 0.1f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.ErrorOutline, null,
+                        tint = CriticalRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text  = it,
+                        color = CriticalRed,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
 
@@ -685,14 +1021,20 @@ private fun hintContent(hint: AuthHint): Pair<String, ImageVector> = when (hint)
 
 @Composable
 private fun AuthSwitchRow(message: String, actionText: String, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Text(message, color = ObsidianMuted, style = MaterialTheme.typography.labelMedium)
+        Text(message, color = ObsidianMuted, fontSize = 14.sp)
         TextButton(onClick = onClick) {
-            Text(actionText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(
+                actionText,
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color      = accent
+            )
         }
     }
 }
@@ -721,131 +1063,11 @@ internal fun PasswordStrengthBar(password: String) {
                     .weight(1f)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (i < strength) color else color.copy(0.2f))
+                    .background(if (i < strength) color else color.copy(0.15f))
             )
             if (i < 3) Spacer(Modifier.width(4.dp))
         }
         Spacer(Modifier.width(10.dp))
         Text(label, color = color, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-// ── AuthLiquidField ───────────────────────────────────────────────────────────
-
-@Composable
-fun AuthLiquidField(
-    value        : String,
-    onValueChange: (String) -> Unit,
-    label        : String,
-    icon         : ImageVector,
-    isPassword   : Boolean = false,
-    showPass     : Boolean = false,
-    onTogglePass : () -> Unit = {},
-    imeAction    : ImeAction = ImeAction.Next,
-    onImeAction  : () -> Unit = {},
-    modifier     : Modifier = Modifier
-) {
-    val accent = MaterialTheme.colorScheme.primary
-    val theme  = LocalAppTheme.current
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = accent, letterSpacing = 2.sp)
-        Spacer(Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(theme.bg2)
-                .drawWithCache {
-                    val rimBrush = Brush.horizontalGradient(
-                        listOf(Color.Transparent, accent.copy(0.3f), Color.Transparent)
-                    )
-                    val rimHeight = 1.dp.toPx()
-                    onDrawBehind {
-                        drawRect(brush = rimBrush, size = Size(size.width, rimHeight))
-                    }
-                }
-                .then(modifier),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp, 0.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector        = icon,
-                    contentDescription = null,
-                    tint               = ObsidianMuted,
-                    modifier           = Modifier.size(20.dp)
-                )
-                TextField(
-                    value               = value,
-                    onValueChange       = onValueChange,
-                    visualTransformation = if (isPassword && !showPass)
-                        PasswordVisualTransformation() else VisualTransformation.None,
-                    keyboardOptions     = KeyboardOptions(
-                        keyboardType = if (isPassword) KeyboardType.Password else KeyboardType.Email,
-                        imeAction    = imeAction
-                    ),
-                    keyboardActions = KeyboardActions(onAny = { onImeAction() }),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor    = Color.Transparent,
-                        unfocusedContainerColor  = Color.Transparent,
-                        focusedIndicatorColor    = Color.Transparent,
-                        unfocusedIndicatorColor  = Color.Transparent,
-                        focusedTextColor         = ObsidianText,
-                        unfocusedTextColor       = ObsidianText
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                if (isPassword) {
-                    IconButton(onClick = onTogglePass) {
-                        Icon(
-                            if (showPass) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                            null, tint = ObsidianMuted
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── ObsidianButton ────────────────────────────────────────────────────────────
-
-@Composable
-fun ObsidianButton(
-    text    : String,
-    onClick : () -> Unit,
-    modifier: Modifier = Modifier,
-    accent  : Color = Color.Unspecified
-) {
-    val resolvedAccent   = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else accent
-    val resolvedOnAccent = MaterialTheme.colorScheme.onPrimary
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        if (isPressed) 0.97f else 1f,
-        spring(Spring.DampingRatioMediumBouncy),
-        label = "btn_scale"
-    )
-
-    Box(
-        modifier = modifier
-            .scale(scale)
-            .height(60.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(resolvedAccent)
-            .clickable(interactionSource, null, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text          = text,
-            color         = resolvedOnAccent,
-            fontSize      = 15.sp,
-            fontWeight    = FontWeight.Black,
-            letterSpacing = 2.sp
-        )
     }
 }
