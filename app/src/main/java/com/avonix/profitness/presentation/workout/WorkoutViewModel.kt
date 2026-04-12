@@ -48,7 +48,9 @@ data class WorkoutScreenState(
     // ExerciseDetailSheet — progresyon
     val exerciseHistory: Map<String, List<SetCompletionEntity>> = emptyMap(),
     val exerciseAiInsight: Map<String, String> = emptyMap(),
-    val exerciseAiLoading: Set<String> = emptySet()
+    val exerciseAiLoading: Set<String> = emptySet(),
+    val userPlan         : com.avonix.profitness.data.store.UserPlan = com.avonix.profitness.data.store.UserPlan.FREE,
+    val aiCredits        : Int = com.avonix.profitness.data.store.UserPlanRepository.FREE_STARTER_CREDITS
 )
 
 sealed class WorkoutEvent {
@@ -70,6 +72,10 @@ class WorkoutViewModel @Inject constructor(
 
     init {
         startObserving()
+        viewModelScope.launch {
+            combine(planRepository.planFlow, planRepository.creditsFlow) { plan, credits -> plan to credits }
+                .collect { (plan, credits) -> updateState { it.copy(userPlan = plan, aiCredits = credits) } }
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════

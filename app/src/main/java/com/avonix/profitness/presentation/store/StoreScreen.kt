@@ -41,8 +41,7 @@ private data class PlanTier(
     val yearlyPerMonth: String,
     val discountBadge : String,
     val accentColor   : Color,
-    val badge         : String?,
-    val features      : List<Pair<ImageVector, String>>
+    val badge         : String?
 )
 
 private data class CreditPackage(
@@ -53,6 +52,36 @@ private data class CreditPackage(
     val accentColor: Color
 )
 
+/** Hangi plandan itibaren bu özellik açık? */
+private data class MasterFeature(
+    val icon   : ImageVector,
+    val text   : String,
+    val minPlan: UserPlan   // bu plan ve üstünde açık
+)
+
+private val ALL_FEATURES = listOf(
+    MasterFeature(Icons.Rounded.FitnessCenter,    "Antrenman takibi",                   UserPlan.FREE),
+    MasterFeature(Icons.Rounded.BarChart,          "Temel analitik",                     UserPlan.FREE),
+    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",           UserPlan.FREE),
+    MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Coach (kredi tabanlı)",           UserPlan.FREE),
+    MasterFeature(Icons.Rounded.AllInclusive,      "Sınırsız AI Coach sohbeti",          UserPlan.PRO),
+    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program oluşturma",           UserPlan.PRO),
+    MasterFeature(Icons.Rounded.TrendingUp,        "Gelişmiş performans analizi",        UserPlan.PRO),
+    MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri (AI)",  UserPlan.PRO),
+    MasterFeature(Icons.Rounded.MonitorWeight,     "Ağırlık takibi + AI trend analizi",  UserPlan.PRO),
+    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",        UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                   UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",           UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Diamond,           "Tüm özellikler dahil",               UserPlan.ELITE)
+)
+
+// Plan sıralaması: FREE < PRO < ELITE
+private fun UserPlan.ordinal() = when (this) {
+    UserPlan.FREE  -> 0
+    UserPlan.PRO   -> 1
+    UserPlan.ELITE -> 2
+}
+
 private val PLANS = listOf(
     PlanTier(
         plan          = UserPlan.FREE,
@@ -62,13 +91,7 @@ private val PLANS = listOf(
         yearlyPerMonth= "",
         discountBadge = "",
         accentColor   = TextSecondary,
-        badge         = null,
-        features      = listOf(
-            Icons.Rounded.ChatBubbleOutline to "5 AI mesaj (başlangıç kredisi)",
-            Icons.Rounded.FitnessCenter      to "Manuel program oluşturma",
-            Icons.Rounded.CheckCircle        to "Antrenman takibi",
-            Icons.Rounded.BarChart           to "Temel analitik"
-        )
+        badge         = null
     ),
     PlanTier(
         plan          = UserPlan.PRO,
@@ -78,14 +101,7 @@ private val PLANS = listOf(
         yearlyPerMonth= "≈₺83/ay",
         discountBadge = "%44 indirim",
         accentColor   = Forge500,
-        badge         = "POPÜLER",
-        features      = listOf(
-            Icons.Rounded.AllInclusive  to "Sınırsız AI Coach sohbeti",
-            Icons.Rounded.AutoAwesome   to "AI program oluşturma",
-            Icons.Rounded.TrendingUp    to "Gelişmiş performans analizi",
-            Icons.Rounded.ShowChart     to "Egzersiz ilerleme grafikleri",
-            Icons.Rounded.MonitorWeight to "Ağırlık takibi + AI trend analizi"
-        )
+        badge         = "POPÜLER"
     ),
     PlanTier(
         plan          = UserPlan.ELITE,
@@ -95,14 +111,7 @@ private val PLANS = listOf(
         yearlyPerMonth= "≈₺150/ay",
         discountBadge = "%40 indirim",
         accentColor   = CardPurple,
-        badge         = "EN İYİ",
-        features      = listOf(
-            Icons.Rounded.AllInclusive      to "Sınırsız AI Coach + program",
-            Icons.Rounded.Person            to "Kişisel AI antrenör profili",
-            Icons.Rounded.Support           to "Öncelikli destek",
-            Icons.Rounded.NewReleases       to "Erken erişim özellikleri",
-            Icons.Rounded.WorkspacePremium  to "Tüm Pro özellikleri dahil"
-        )
+        badge         = "EN İYİ"
     )
 )
 
@@ -243,7 +252,7 @@ fun StoreScreen(
                 onDismiss = { showCancelDialog = false },
                 onConfirm = {
                     showCancelDialog = false
-                    viewModel.purchasePlan(UserPlan.FREE)
+                    viewModel.cancelPlan()
                 }
             )
         }
@@ -799,10 +808,11 @@ private fun PlanDetailCard(
     isCurrent: Boolean,
     theme    : AppThemeState
 ) {
-    val accent = tier.accentColor
-    val isFree = tier.plan == UserPlan.FREE
-    val price  = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
-    val period = when { isFree -> ""; isYearly -> "/yıl"; else -> "/ay" }
+    val accent    = tier.accentColor
+    val isFree    = tier.plan == UserPlan.FREE
+    val price     = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
+    val period    = when { isFree -> ""; isYearly -> "/yıl"; else -> "/ay" }
+    val tierLevel = tier.plan.ordinal()
 
     Column(
         modifier = Modifier
@@ -826,9 +836,7 @@ private fun PlanDetailCard(
                 Row(verticalAlignment = Alignment.Bottom) {
                     AnimatedContent(
                         targetState = price,
-                        transitionSpec = {
-                            fadeIn(tween(180)) togetherWith fadeOut(tween(140))
-                        },
+                        transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) },
                         label = "price_anim"
                     ) { p ->
                         Text(p, color = theme.text0, fontSize = 36.sp, fontWeight = FontWeight.Black)
@@ -859,7 +867,6 @@ private fun PlanDetailCard(
                     }
                 }
             }
-
             if (!isFree) {
                 Box(
                     modifier = Modifier
@@ -882,34 +889,79 @@ private fun PlanDetailCard(
         HorizontalDivider(color = theme.stroke.copy(0.3f), thickness = 0.5.dp)
         Spacer(Modifier.height(14.dp))
 
-        // Feature list
-        tier.features.forEach { (icon, text) ->
+        // Master feature list — açık ✓ / kilitli 🔒
+        ALL_FEATURES.forEach { feature ->
+            val unlocked = tierLevel >= feature.minPlan.ordinal()
+            val rowAccent = when {
+                !unlocked             -> theme.stroke
+                feature.minPlan == UserPlan.ELITE -> CardPurple
+                feature.minPlan == UserPlan.PRO   -> Forge500
+                else                              -> Lime.copy(0.7f)
+            }
+
             Row(
                 modifier              = Modifier.padding(vertical = 5.dp),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Icon kutusu
                 Box(
                     modifier = Modifier
                         .size(30.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isFree) theme.bg2
-                            else accent.copy(0.1f)
-                        ),
+                        .background(if (unlocked) rowAccent.copy(0.12f) else theme.bg2),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, null,
-                        tint     = if (isFree) theme.text2 else accent,
-                        modifier = Modifier.size(15.dp))
+                    Icon(
+                        if (unlocked) feature.icon else Icons.Rounded.Lock,
+                        null,
+                        tint     = rowAccent,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
+
+                // Metin
                 Text(
-                    text,
-                    color      = if (isFree) theme.text2 else theme.text1,
+                    feature.text,
+                    color      = if (unlocked) theme.text1 else theme.text2.copy(0.45f),
                     fontSize   = 13.sp,
                     lineHeight = 18.sp,
-                    modifier   = Modifier.weight(1f)
+                    modifier   = Modifier.weight(1f),
+                    textDecoration = if (!unlocked) androidx.compose.ui.text.style.TextDecoration.None else null
                 )
+
+                // Sağ: hangi planla açılır chip (kilitliyse)
+                if (!unlocked) {
+                    val unlockAccent = when (feature.minPlan) {
+                        UserPlan.ELITE -> CardPurple
+                        UserPlan.PRO   -> Forge500
+                        else           -> Lime
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(unlockAccent.copy(0.1f))
+                            .border(1.dp, unlockAccent.copy(0.25f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            feature.minPlan.displayName,
+                            color      = unlockAccent,
+                            fontSize   = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else if (unlocked && feature.minPlan == tier.plan && feature.minPlan != UserPlan.FREE) {
+                    // Bu planla yeni açılan özellik
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(rowAccent.copy(0.1f))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text("YENİ", color = rowAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
             }
         }
     }

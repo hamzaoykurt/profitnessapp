@@ -63,6 +63,20 @@ class StoreViewModel @Inject constructor(
         }
     }
 
+    fun cancelPlan() {
+        viewModelScope.launch {
+            updateState { it.copy(isLoading = true) }
+            runCatching { planRepository.downgradeFree() }
+                .onSuccess {
+                    sendEvent(StoreEvent.ShowToast("Abonelik iptal edildi. Ücretsiz plana geçildi."))
+                }
+                .onFailure {
+                    sendEvent(StoreEvent.ShowToast("Bir hata oluştu, tekrar dene."))
+                }
+            updateState { it.copy(isLoading = false) }
+        }
+    }
+
     fun purchaseCredits(amount: Int) {
         viewModelScope.launch {
             updateState { it.copy(isLoading = true) }

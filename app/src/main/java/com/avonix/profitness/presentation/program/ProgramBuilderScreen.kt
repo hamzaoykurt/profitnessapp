@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.program.ManualExerciseInput
+import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.program.autoTitle
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramType
@@ -1396,6 +1397,28 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 )
                 .padding(start = 24.dp, end = 24.dp, bottom = contentPad + timerExtraPad, top = 16.dp)
         ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+            if (uiState.userPlan == UserPlan.FREE) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text("1 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Kalan: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
+                    }
+                }
+            }
             Button(
                 onClick = {
                     viewModel.clearAiError()
@@ -1418,6 +1441,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     )
                 }
             }
+            } // Column
         }
     }
 }
@@ -1697,6 +1721,20 @@ private fun EditProgramScreen(
                                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                                if (uiState.userPlan == UserPlan.FREE) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(Snow.copy(alpha = 0.20f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Rounded.Bolt, null, tint = Snow, modifier = Modifier.size(9.dp))
+                                        Spacer(Modifier.width(2.dp))
+                                        Text("1 kredi", color = Snow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     }

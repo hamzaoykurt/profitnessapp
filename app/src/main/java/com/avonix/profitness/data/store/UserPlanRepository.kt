@@ -15,8 +15,11 @@ interface UserPlanRepository {
     /** Kalan AI kredi değişikliklerini reaktif olarak yayar. */
     val creditsFlow: Flow<Int>
 
-    /** Planı günceller; Pro/Elite → krediyi sıfırlar (artık sınırsız). */
+    /** Planı yükseltir; Pro/Elite → krediyi sıfırlar (artık sınırsız). */
     suspend fun upgradePlan(plan: UserPlan)
+
+    /** Ücretli planı iptal edip FREE'ye geçer; başlangıç kredisini geri yükler. */
+    suspend fun downgradeFree()
 
     /** Satın alınan krediyi mevcut bakiyeye ekler. */
     suspend fun addCredits(amount: Int)

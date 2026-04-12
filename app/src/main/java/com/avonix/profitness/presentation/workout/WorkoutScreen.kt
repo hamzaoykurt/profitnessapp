@@ -427,6 +427,8 @@ private fun WorkoutContent(
                         weightHistory     = state.exerciseHistory[exercise.id] ?: emptyList(),
                         aiInsight         = state.exerciseAiInsight[exercise.id] ?: "",
                         isAiLoading       = exercise.id in state.exerciseAiLoading,
+                        isFree            = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                        aiCredits         = state.aiCredits,
                         onRequestAiInsight = { viewModel.analyzeProgression(exercise.id, exercise.name) }
                     )
                 }

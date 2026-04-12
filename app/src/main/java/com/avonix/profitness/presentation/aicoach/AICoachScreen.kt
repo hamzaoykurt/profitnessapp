@@ -209,7 +209,9 @@ fun AICoachScreen(
                 value         = inputText,
                 onValueChange = { inputText = it },
                 onSend        = { sendMessage(inputText) },
-                isTyping      = state.isLoading
+                isTyping      = state.isLoading,
+                isFree        = state.userPlan == UserPlan.FREE,
+                credits       = state.aiCredits
             )
         }
 
@@ -690,7 +692,9 @@ private fun SanctuaryInput(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
-    isTyping: Boolean
+    isTyping: Boolean,
+    isFree: Boolean = true,
+    credits: Int = 0
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -704,6 +708,25 @@ private fun SanctuaryInput(
         )
     )
 
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (isFree) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 16.dp, bottom = 4.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(accent.copy(alpha = 0.12f))
+                    .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(11.dp))
+                Spacer(Modifier.width(3.dp))
+                Text("1 kredi / mesaj", color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(6.dp))
+                Text("Kalan: $credits", color = theme.text2, fontSize = 10.sp)
+            }
+        }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -793,6 +816,7 @@ private fun SanctuaryInput(
             )
         }
     }
+    } // Column
 }
 
 // ── Geçmiş Sohbetler Sheet ────────────────────────────────────────────────────

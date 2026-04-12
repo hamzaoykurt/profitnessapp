@@ -45,6 +45,7 @@ import com.avonix.profitness.data.workout.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -57,7 +58,9 @@ data class ExerciseProgressionState(
     val historyMap      : Map<String, List<SetCompletionEntity>> = emptyMap(),
     val aiInsightMap    : Map<String, String>             = emptyMap(),
     val aiLoadingSet    : Set<String>                     = emptySet(),
-    val isLoading       : Boolean                         = true
+    val isLoading       : Boolean                         = true,
+    val userPlan        : com.avonix.profitness.data.store.UserPlan = com.avonix.profitness.data.store.UserPlan.FREE,
+    val aiCredits       : Int                             = com.avonix.profitness.data.store.UserPlanRepository.FREE_STARTER_CREDITS
 )
 
 sealed class ExerciseProgressionEvent {
@@ -72,7 +75,13 @@ class ExerciseProgressionViewModel @Inject constructor(
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ExerciseProgressionState, ExerciseProgressionEvent>(ExerciseProgressionState()) {
 
-    init { load() }
+    init {
+        load()
+        viewModelScope.launch {
+            combine(planRepository.planFlow, planRepository.creditsFlow) { plan, credits -> plan to credits }
+                .collect { (plan, credits) -> updateState { it.copy(userPlan = plan, aiCredits = credits) } }
+        }
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -237,6 +246,8 @@ fun ExerciseProgressionScreen(
                             isAiLoading  = summary.exerciseId in state.aiLoadingSet,
                             accent       = accent,
                             theme        = theme,
+                            isFree       = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                            aiCredits    = state.aiCredits,
                             onExpand     = { viewModel.loadHistory(summary.exerciseId) },
                             onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name) }
                         )
@@ -257,6 +268,8 @@ private fun ExerciseProgressionCard(
     isAiLoading : Boolean,
     accent      : Color,
     theme       : AppThemeState,
+    isFree      : Boolean = true,
+    aiCredits   : Int = 0,
     onExpand    : () -> Unit,
     onRequestAi : () -> Unit
 ) {
@@ -361,6 +374,8 @@ private fun ExerciseProgressionCard(
                     isLoading   = isAiLoading,
                     accent      = accent,
                     theme       = theme,
+                    isFree      = isFree,
+                    credits     = aiCredits,
                     onRefresh   = onRequestAi
                 )
             }
@@ -483,6 +498,8 @@ private fun AiInsightCard(
     isLoading : Boolean,
     accent    : Color,
     theme     : AppThemeState,
+    isFree    : Boolean = true,
+    credits   : Int = 0,
     onRefresh : () -> Unit
 ) {
     Column(
@@ -506,6 +523,23 @@ private fun AiInsightCard(
                 Text("AI KOÇ", color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             Spacer(Modifier.weight(1f))
+            if (isFree && !isLoading) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(accent.copy(alpha = 0.12f))
+                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(4.dp))
+                    Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
+                }
+                Spacer(Modifier.width(6.dp))
+            }
             if (!isLoading) {
                 Box(
                     modifier = Modifier

@@ -10,6 +10,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -57,7 +58,9 @@ data class WeightTrackingState(
     /** Sheet'teki geçici girdi */
     val sheetWeightInput : String                = "",
     val sheetNoteInput   : String                = "",
-    val isSaving         : Boolean               = false
+    val isSaving         : Boolean               = false,
+    val userPlan         : com.avonix.profitness.data.store.UserPlan = com.avonix.profitness.data.store.UserPlan.FREE,
+    val aiCredits        : Int                   = com.avonix.profitness.data.store.UserPlanRepository.FREE_STARTER_CREDITS
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -80,7 +83,13 @@ class WeightTrackingViewModel @Inject constructor(
     private var observeJob   : Job? = null
     private var aiInsightJob : Job? = null
 
-    init { loadData() }
+    init {
+        loadData()
+        viewModelScope.launch {
+            combine(planRepository.planFlow, planRepository.creditsFlow) { plan, credits -> plan to credits }
+                .collect { (plan, credits) -> updateState { it.copy(userPlan = plan, aiCredits = credits) } }
+        }
+    }
 
     // ── İlk yükleme ───────────────────────────────────────────────────────────
 

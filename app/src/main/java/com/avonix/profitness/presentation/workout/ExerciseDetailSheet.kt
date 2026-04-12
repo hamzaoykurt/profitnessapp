@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.ShowChart
@@ -45,6 +46,8 @@ fun ExerciseDetailSheet(
     weightHistory: List<SetCompletionEntity> = emptyList(),
     aiInsight: String = "",
     isAiLoading: Boolean = false,
+    isFree: Boolean = true,
+    aiCredits: Int = 0,
     onRequestAiInsight: () -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
@@ -126,6 +129,8 @@ fun ExerciseDetailSheet(
                     isLoading = isAiLoading,
                     accent = accent,
                     theme = theme,
+                    isFree = isFree,
+                    credits = aiCredits,
                     onRefresh = onRequestAiInsight
                 )
             }
@@ -330,6 +335,8 @@ private fun AiProgressionCard(
     isLoading: Boolean,
     accent: Color,
     theme: AppThemeState,
+    isFree: Boolean = true,
+    credits: Int = 0,
     onRefresh: () -> Unit
 ) {
     Column(
@@ -353,6 +360,23 @@ private fun AiProgressionCard(
                 Text("AI KOÇ", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             Spacer(Modifier.weight(1f))
+            if (isFree && !isLoading) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(accent.copy(alpha = 0.12f))
+                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(4.dp))
+                    Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
+                }
+                Spacer(Modifier.width(6.dp))
+            }
             if (!isLoading) {
                 Box(
                     modifier = Modifier
