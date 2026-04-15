@@ -3,6 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Bildirim izni (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Ön plan servis izinleri -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- Titreşim -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".ProfitnessApplication"
@@ -35,6 +42,12 @@
                 <data android:scheme="profitness" android:host="reset-password" />
             </intent-filter>
         </activity>
+
+        <!-- Antrenman ön plan servisi: timer bildirimleri + arka plan çalışma -->
+        <service
+            android:name=".service.WorkoutForegroundService"
+            android:foregroundServiceType="health"
+            android:exported="false" />
     </application>
 
 </manifest>

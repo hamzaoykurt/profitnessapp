@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.workout
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.core.notification.WorkoutNotificationManager
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.profile.ProfileRepository
@@ -12,11 +13,13 @@ import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -59,12 +62,13 @@ sealed class WorkoutEvent {
 
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
-    private val programRepository: ProgramRepository,
-    private val workoutRepository: WorkoutRepository,
-    private val profileRepository: ProfileRepository,
-    private val geminiRepository : GeminiRepository,
-    private val planRepository   : com.avonix.profitness.data.store.UserPlanRepository,
-    private val supabase         : SupabaseClient
+    private val programRepository  : ProgramRepository,
+    private val workoutRepository  : WorkoutRepository,
+    private val profileRepository  : ProfileRepository,
+    private val geminiRepository   : GeminiRepository,
+    private val planRepository     : com.avonix.profitness.data.store.UserPlanRepository,
+    private val notificationManager: WorkoutNotificationManager,
+    private val supabase           : SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, WorkoutEvent>(WorkoutScreenState()) {
 
     private var observeJob: Job? = null
@@ -89,25 +93,40 @@ class WorkoutViewModel @Inject constructor(
             secondsLeft = restSeconds, totalSeconds = restSeconds,
             exerciseName = exerciseName
         ))}
+
+        // Ön plan servisi başlat — uygulama arka plandayken de bildirim gösterir
+        notificationManager.startWorkoutSession(exerciseName)
+        notificationManager.updateRestTimer(exerciseName, restSeconds, restSeconds)
+
         timerJob = viewModelScope.launch {
             var remaining = restSeconds
             while (remaining > 0) {
                 delay(1000L)
                 remaining--
                 updateState { it.copy(restTimer = it.restTimer.copy(secondsLeft = remaining)) }
+                // Her saniye bildirimi güncelle (IO thread'inde servis intent'i gönder)
+                withContext(Dispatchers.IO) {
+                    notificationManager.updateRestTimer(exerciseName, remaining, restSeconds)
+                }
             }
             updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false, isDone = true, secondsLeft = 0)) }
+            // Ses + "Hazırsın!" bildirimi
+            withContext(Dispatchers.IO) {
+                notificationManager.notifyTimerDone(exerciseName)
+            }
         }
     }
 
     fun stopRestTimer() {
         timerJob?.cancel()
         updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false)) }
+        notificationManager.stopWorkoutSession()
     }
 
     fun dismissRestTimer() {
         timerJob?.cancel()
         updateState { it.copy(restTimer = RestTimerState()) }
+        notificationManager.stopWorkoutSession()
     }
 
     // ═════════════════════════════════════════════════════════════════════════

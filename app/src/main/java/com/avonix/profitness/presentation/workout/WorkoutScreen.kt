@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -34,14 +36,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
+import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
@@ -150,6 +160,24 @@ fun WorkoutScreen(
     val state by viewModel.uiState.collectAsState()
     val theme   = LocalAppTheme.current
     val strings = theme.strings
+    val context = LocalContext.current
+
+    // ── Bildirim izni (Android 13+) ───────────────────────────────────────────
+    var notifPermissionDenied by remember { mutableStateOf(false) }
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> notifPermissionDenied = !granted }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     var showPaywall by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -182,6 +210,7 @@ fun WorkoutScreen(
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
 
+        // ── İçerik ────────────────────────────────────────────────────────────
         when {
             state.isLoading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -200,6 +229,160 @@ fun WorkoutScreen(
                     state = state,
                     viewModel = viewModel,
                     bottomPadding = bottomPadding
+                )
+            }
+        }
+
+        // ── Dynamic Island — rest timer overlay ──────────────────────────────
+        val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        DynamicIslandTimer(
+            timer     = state.restTimer,
+            topOffset = statusBarPad + 8.dp,
+            onStop    = { viewModel.stopRestTimer() },
+            onDismiss = { viewModel.dismissRestTimer() }
+        )
+
+        // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
+        AnimatedVisibility(
+            visible = notifPermissionDenied,
+            enter   = slideInVertically { -it } + fadeIn(tween(280)),
+            exit    = slideOutVertically { -it } + fadeOut(tween(200)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            NotificationPermissionBanner(
+                onRequest = {
+                    notifPermissionDenied = false
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                onDismiss = { notifPermissionDenied = false }
+            )
+        }
+    }
+}
+
+// ── Bildirim İzni Banner — Neon Forge glass kart ─────────────────────────────
+@Composable
+private fun NotificationPermissionBanner(
+    onRequest: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val theme  = LocalAppTheme.current
+    val haptic = LocalHapticFeedback.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp, 0.dp, 20.dp, 24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            theme.bg2.copy(0.97f),
+                            theme.bg1.copy(0.97f)
+                        )
+                    )
+                )
+                .border(
+                    1.dp,
+                    Brush.linearGradient(
+                        listOf(
+                            accent.copy(0.45f),
+                            theme.stroke.copy(0.35f),
+                            accent.copy(0.20f)
+                        )
+                    ),
+                    RoundedCornerShape(18.dp)
+                )
+                .drawWithCache {
+                    onDrawBehind {
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color.Transparent, accent.copy(0.35f), Color.Transparent)
+                            ),
+                            size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())
+                        )
+                    }
+                }
+                .padding(16.dp, 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.NotificationsOff,
+                    contentDescription = null,
+                    tint     = accent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Bildirim izni gerekli",
+                    color      = TextPrimary,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Timer sesi + arka plan bildirimleri",
+                    color    = TextSecondary,
+                    fontSize = 11.sp
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // İzin ver butonu
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent)
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onRequest()
+                    }
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    "İZİN VER",
+                    color      = theme.effectiveOnAccentColor,
+                    fontSize   = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Kapat
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(theme.bg3)
+                    .clickable { onDismiss() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    null,
+                    tint     = TextMuted,
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }

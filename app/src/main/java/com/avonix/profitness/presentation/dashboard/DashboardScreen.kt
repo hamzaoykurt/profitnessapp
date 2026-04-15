@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
@@ -102,12 +103,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
 
-    // Timer banner görünür mü? — diğer tablarda içerik padding'i artır
     val workoutStateEarly by workoutViewModel.uiState.collectAsState()
-    val timerBannerVisible = (workoutStateEarly.restTimer.isRunning || workoutStateEarly.restTimer.isDone) && selectedTab != DashboardTab.Workout
-    val timerBannerHeight   = 72.dp  // banner yaklaşık yüksekliği
-    val timerExtraPad       = if (timerBannerVisible) timerBannerHeight + 8.dp else 0.dp
-    val contentPadWithTimer = contentPad + timerExtraPad
+    // Dynamic Island üstte yüzer, alt padding gerektirmez
+    val timerExtraPad       = 0.dp
+    val contentPadWithTimer = contentPad
 
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers
     var swipeAccum by remember { mutableStateOf(0f) }
@@ -215,19 +214,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 
-        // ── Global Rest Timer Banner — sadece Workout dışı tablarda göster ──
+        // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
         val restTimer = workoutStateEarly.restTimer
-        AnimatedVisibility(
-            visible  = (restTimer.isRunning || restTimer.isDone) && selectedTab != DashboardTab.Workout,
-            enter    = slideInVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(250)),
-            exit     = slideOutVertically(tween(220)) { it } + fadeOut(tween(180)),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = navBarHeight + navBarBottom + 8.dp)
-                .zIndex(150f)
-        ) {
-            RestTimerBanner(
+        if (selectedTab != DashboardTab.Workout) {
+            DynamicIslandTimer(
                 timer     = restTimer,
+                topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
                 onStop    = { workoutViewModel.stopRestTimer() },
                 onDismiss = { workoutViewModel.dismissRestTimer() }
             )
@@ -312,122 +304,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 }
 
 // ── Global Rest Timer Banner ───────────────────────────────────────────────────
-// Açılışta geniş, 2.5 sn sonra sağ üstte küçük pill'e küçülür.
-// Pill'e tıklayınca tekrar genişler.
-@Composable
-private fun RestTimerBanner(
-    timer: RestTimerState,
-    onStop: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val accent  = MaterialTheme.colorScheme.primary
-    val isDone  = timer.isDone
-    val bgColor = if (isDone) Amber else accent
-
-    val animatedProgress by animateFloatAsState(
-        targetValue   = if (isDone) 1f else 1f - timer.progress,
-        animationSpec = tween(900, easing = LinearEasing),
-        label         = "arc"
-    )
-
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(bgColor)
-    ) {
-        // İlerleme çubuğu — alt kenar
-        if (!isDone) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth(animatedProgress)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(bottomStart = 20.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(0.35f))
-            )
-        }
-
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Arc progress ikonu
-            Box(
-                modifier = Modifier.size(38.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
-                        width = 2.5.dp.toPx(),
-                        cap   = StrokeCap.Round
-                    )
-                    drawArc(
-                        color      = androidx.compose.ui.graphics.Color.White.copy(0.2f),
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter  = false,
-                        style      = stroke
-                    )
-                    if (!isDone) {
-                        drawArc(
-                            color      = androidx.compose.ui.graphics.Color.White,
-                            startAngle = -90f,
-                            sweepAngle = animatedProgress * 360f,
-                            useCenter  = false,
-                            style      = stroke
-                        )
-                    }
-                }
-                Icon(
-                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.Timer,
-                    contentDescription = null,
-                    tint     = androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text       = if (isDone) "DİNLENDİN! ✓" else "${timer.secondsLeft}s",
-                    color      = androidx.compose.ui.graphics.Color.White,
-                    fontSize   = 16.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text       = if (isDone) "Sonraki seti başlatabilirsin" else timer.exerciseName,
-                    color      = androidx.compose.ui.graphics.Color.White.copy(0.72f),
-                    fontSize   = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines   = 1,
-                    overflow   = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(Modifier.width(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(0.2f))
-                    .clickable { if (isDone) onDismiss() else onStop() }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text          = if (isDone) "TAMAM" else "DURDUR",
-                    color         = androidx.compose.ui.graphics.Color.White,
-                    fontSize      = 11.sp,
-                    fontWeight    = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
-                )
-            }
-        }
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 //  APP BACKGROUND
 // ═══════════════════════════════════════════════════════════════════════════
