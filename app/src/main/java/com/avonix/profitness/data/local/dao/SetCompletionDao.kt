@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -21,15 +22,66 @@ data class ExerciseProgressSummary(
 @Dao
 interface SetCompletionDao {
 
-    /** Belirli bir haftanın tüm set completions'larını reaktif izle */
+    /**
+     * Belirli bir haftanın TAMAMLANMIŞ setlerini reaktif izle.
+     * reps_actual NULL → "draft" (ağırlık girilmiş ama tik atılmamış), UI'da tick gösterilmez.
+     */
     @Query("""
         SELECT * FROM set_completions
-        WHERE user_id = :userId AND date >= :weekStart
+        WHERE user_id = :userId AND date >= :weekStart AND reps_actual IS NOT NULL
     """)
     fun observeForWeek(userId: String, weekStart: String): Flow<List<SetCompletionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: SetCompletionEntity)
+
+    /** Partial update — sadece weight_kg'yi günceller, reps_actual'a dokunmaz. */
+    @Query("""
+        UPDATE set_completions
+        SET weight_kg = :weightKg
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+    """)
+    suspend fun updateWeight(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, weightKg: Float?
+    ): Int
+
+    /** Partial update — sadece reps_actual'ı günceller, weight_kg'ye dokunmaz. */
+    @Query("""
+        UPDATE set_completions
+        SET reps_actual = :repsActual
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+    """)
+    suspend fun updateRepsActual(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, repsActual: Int?
+    ): Int
+
+    /** Upsert weight — kayıt varsa sadece ağırlığı günceller, yoksa yeni draft oluşturur. */
+    @Transaction
+    suspend fun upsertWeight(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, weightKg: Float?
+    ) {
+        val rows = updateWeight(userId, exerciseId, programDayId, setIndex, date, weightKg)
+        if (rows == 0) {
+            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null))
+        }
+    }
+
+    /** Upsert reps_actual — kayıt varsa sadece reps_actual'ı günceller, yoksa yeni kayıt oluşturur. */
+    @Transaction
+    suspend fun upsertRepsActual(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, repsActual: Int?
+    ) {
+        val rows = updateRepsActual(userId, exerciseId, programDayId, setIndex, date, repsActual)
+        if (rows == 0) {
+            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual))
+        }
+    }
 
     @Query("""
         DELETE FROM set_completions

@@ -73,6 +73,8 @@ class WorkoutViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var timerJob: Job? = null
+    // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
+    private val draftPersistJobs = mutableMapOf<String, Job>()
 
     init {
         startObserving()
@@ -247,11 +249,19 @@ class WorkoutViewModel @Inject constructor(
 
         viewModelScope.launch {
             if (isCurrentlyDone) {
-                workoutRepository.removeSetCompletion(userId, exerciseId, programDayId, setIndex)
+                // Tik'i kaldır: reps_actual'ı null yap (weight draft olarak korunur)
+                workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, null)
             } else {
-                val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                // Tik ekle: kullanıcı reps girmemişse planlanan reps'i kullan
+                val plannedReps = dayState.day.exercises.find { it.id == exerciseId }?.reps?.toIntOrNull()
                 val reps = currentState.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
-                workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex, weight, reps)
+                    ?: plannedReps?.takeIf { it > 0 } ?: 1
+                // Önce weight draft'ı persist et (state'te varsa), sonra reps_actual ile "done" işaretle
+                val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                if (weight != null) {
+                    workoutRepository.upsertSetWeightDraft(userId, exerciseId, programDayId, setIndex, weight)
+                }
+                workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, reps)
             }
         }
     }
@@ -266,8 +276,8 @@ class WorkoutViewModel @Inject constructor(
             exerciseMap[setIndex] = value
             state.copy(setWeights = state.setWeights + (exerciseId to exerciseMap))
         }
-        // Set zaten işaretliyse anında Room'a yaz (uygulama kapanınca kaybolmasın)
-        persistWeightIfDone(exerciseId, setIndex)
+        // Set tik atılmış olsa da olmasa da Room'a draft olarak yaz (debounced).
+        scheduleDraftPersist(exerciseId, setIndex, weight = true, reps = false)
     }
 
     fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
@@ -276,24 +286,52 @@ class WorkoutViewModel @Inject constructor(
             exerciseMap[setIndex] = value
             state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
         }
-        persistWeightIfDone(exerciseId, setIndex)
+        scheduleDraftPersist(exerciseId, setIndex, weight = false, reps = true)
     }
 
-    private fun persistWeightIfDone(exerciseId: String, setIndex: Int) {
-        val state = uiState.value
-        val isDone = setIndex in (state.setCompletions[exerciseId] ?: emptySet())
-        if (!isDone) return
-
+    /**
+     * Debounced draft persist — her tuş vuruşunda Room'a yazmak yerine 500ms bekler.
+     * weight=true → sadece weight_kg güncellenir, reps_actual'a dokunulmaz (tik durumu korunur).
+     * reps=true → kullanıcı tikli bir setin reps'ini değiştiriyorsa reps_actual da güncellenir.
+     */
+    private fun scheduleDraftPersist(exerciseId: String, setIndex: Int, weight: Boolean, reps: Boolean) {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val state = uiState.value
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
 
-        viewModelScope.launch {
-            val weight = state.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
-            val reps   = state.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
-            workoutRepository.addSetCompletion(userId, exerciseId, programDayId, setIndex, weight, reps)
+        val key = "$exerciseId:$setIndex:${if (weight) "w" else "r"}"
+        draftPersistJobs[key]?.cancel()
+        draftPersistJobs[key] = viewModelScope.launch {
+            delay(500L)
+            val latest = uiState.value
+            if (weight) {
+                val w = latest.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                workoutRepository.upsertSetWeightDraft(userId, exerciseId, programDayId, setIndex, w)
+            }
+            if (reps) {
+                // Sadece set zaten tikliyse reps_actual güncellenir — tikli olmayan set draft kalmalı.
+                val isDone = setIndex in (latest.setCompletions[exerciseId] ?: emptySet())
+                if (isDone) {
+                    val r = latest.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
+                    if (r != null) {
+                        workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, r)
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Seçili günün tüm egzersizleri için önceki oturum verisini yükler.
+     * Kart açılmadan da önceki haftanın ağırlık/reps değerleri setWeights'e pre-fill olur.
+     */
+    fun loadLastSessionForSelectedDay() {
+        val state = uiState.value
+        val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
+        if (dayState.day.isRestDay) return
+        dayState.day.exercises.forEach { ex -> loadLastSession(ex.id) }
     }
 
     fun loadLastSession(exerciseId: String) {
@@ -417,12 +455,15 @@ class WorkoutViewModel @Inject constructor(
                     exerciseName = exercise.name
                 )
 
-                // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller
+                // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller.
+                // Planlanan reps, reps_actual default'u olarak kullanılır (observer "tick" göstermesi için şart).
+                val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
                 workoutRepository.fillExerciseSetCompletions(
                     userId = userId,
                     exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
                     programDayId = programDayId,
-                    totalSets = exercise.sets
+                    totalSets = exercise.sets,
+                    defaultRepsActual = plannedReps
                 )
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(

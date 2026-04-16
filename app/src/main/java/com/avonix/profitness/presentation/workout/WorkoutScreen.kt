@@ -509,6 +509,12 @@ private fun WorkoutContent(
         label         = "timer_top_pad"
     )
 
+    // Gün değiştiğinde ya da egzersiz listesi ilk yüklendiğinde önceki oturumun
+    // ağırlık/reps değerlerini tüm egzersizler için pre-fill et (kart açılmasını beklemeden).
+    LaunchedEffect(selectedDayIdx, currentDay.exercises.map { it.id }) {
+        viewModel.loadLastSessionForSelectedDay()
+    }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),

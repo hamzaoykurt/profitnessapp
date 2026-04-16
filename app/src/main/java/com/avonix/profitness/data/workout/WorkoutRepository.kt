@@ -89,7 +89,26 @@ interface WorkoutRepository {
     suspend fun clearExerciseSetCompletions(userId: String, exerciseId: String, programDayId: String): Result<Unit>
 
     /** Bir egzersizin tüm setlerini (0..totalSets-1) tamamlandı olarak Room'a yazar. */
-    suspend fun fillExerciseSetCompletions(userId: String, exerciseId: String, programDayId: String, totalSets: Int): Result<Unit>
+    suspend fun fillExerciseSetCompletions(
+        userId: String, exerciseId: String, programDayId: String,
+        totalSets: Int, defaultRepsActual: Int = 1
+    ): Result<Unit>
+
+    /**
+     * Draft ağırlık kaydı — kullanıcı ağırlık girer ama seti tamamlamaz.
+     * reps_actual = null olarak tutulur, observer "tick" olarak göstermez,
+     * ancak progresyon ekranında ve bir sonraki oturumun ön-dolgusunda görünür.
+     */
+    suspend fun upsertSetWeightDraft(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, weightKg: Float?
+    ): Result<Unit>
+
+    /** Tek bir setin reps_actual değerini günceller (weight_kg'ye dokunmaz). */
+    suspend fun upsertSetRepsActual(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, repsActual: Int?
+    ): Result<Unit>
 
     // ── Progressive Overload ─────────────────────────────────────────────────
 
