@@ -5,7 +5,8 @@ data class TemplateExercise(
     val exerciseName: String,
     val sets: Int,
     val reps: Int,           // INT — zaman bazlı egzersizler için saniye cinsinden (ör. Plank = 60)
-    val restSeconds: Int = 90
+    val restSeconds: Int = 60,           // set arası dinlenme
+    val exerciseRestSeconds: Int = 180   // son set / egzersiz sonu dinlenmesi
 )
 
 data class TemplateDay(

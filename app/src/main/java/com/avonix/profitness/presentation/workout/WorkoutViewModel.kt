@@ -411,9 +411,9 @@ class WorkoutViewModel @Inject constructor(
             val isCompleting = exerciseId !in dayState.completedIds
 
             if (isCompleting) {
-                // Rest timer otomatik başlat
+                // Egzersiz tamamlandı — sonraki harekete geçmeden önce uzun dinlenme
                 startRestTimer(
-                    restSeconds = exercise.restSeconds.takeIf { it > 0 } ?: 90,
+                    restSeconds = exercise.exerciseRestSeconds.takeIf { it > 0 } ?: 180,
                     exerciseName = exercise.name
                 )
 
@@ -489,6 +489,7 @@ class WorkoutViewModel @Inject constructor(
                             image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
                             category = pe.category.ifBlank { "Strength" },
                             restSeconds = pe.restSeconds,
+                            exerciseRestSeconds = pe.exerciseRestSeconds,
                             exerciseTableId = pe.exerciseId,
                             weightKg = pe.weightKg
                         )

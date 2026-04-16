@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Ön plan servis izinleri -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Titreşim -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -46,7 +46,7 @@
         <!-- Antrenman ön plan servisi: timer bildirimleri + arka plan çalışma -->
         <service
             android:name=".service.WorkoutForegroundService"
-            android:foregroundServiceType="health"
+            android:foregroundServiceType="specialUse"
             android:exported="false" />
     </application>
 

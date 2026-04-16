@@ -59,7 +59,7 @@ fun CinematicExerciseCard(
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
     timerDone: Boolean = false,
-    onStartTimer: () -> Unit = {},
+    onStartTimer: (seconds: Int) -> Unit = {},
     onStopTimer: () -> Unit = {}
 ) {
     val accent   = MaterialTheme.colorScheme.primary
@@ -252,7 +252,7 @@ fun CinematicExerciseCard(
                                 onToggle        = {
                                     val wasAlreadyDone = i in doneSetIndices
                                     onToggleSet(i)
-                                    if (!wasAlreadyDone) onStartTimer()
+                                    if (!wasAlreadyDone) onStartTimer(exercise.restSeconds)
                                 }
                             )
                             if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
@@ -272,7 +272,7 @@ fun CinematicExerciseCard(
                                 isRunning      = timerRunning,
                                 isDone         = timerDone,
                                 defaultSeconds = exercise.restSeconds,
-                                onStart        = onStartTimer,
+                                onStart        = { onStartTimer(exercise.restSeconds) },
                                 onStop         = onStopTimer
                             )
 

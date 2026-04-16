@@ -36,7 +36,8 @@ data class ProgramExercise(
     val sets: Int,
     val reps: Int,
     val weightKg: Float = 0f,
-    val restSeconds: Int = 90,
+    val restSeconds: Int = 60,           // set arası dinlenme
+    val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu dinlenmesi
     val orderIndex: Int,
     val category: String = "",
     val imageUrl: String = ""

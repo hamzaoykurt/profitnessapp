@@ -104,8 +104,15 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val haptic = LocalHapticFeedback.current
 
     val workoutStateEarly by workoutViewModel.uiState.collectAsState()
-    // Dynamic Island üstte yüzer, alt padding gerektirmez
-    val timerExtraPad       = 0.dp
+    // Timer aktifken diğer ekranlardaki içerik aşağı kayar
+    val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val timerActive   = workoutStateEarly.restTimer.isRunning || workoutStateEarly.restTimer.isDone
+    val timerExtraPad by animateDpAsState(
+        targetValue   = if (timerActive && selectedTab != DashboardTab.Workout)
+                            (statusBarPad + 60.dp) else 0.dp,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label         = "dash_timer_pad"
+    )
     val contentPadWithTimer = contentPad
 
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers

@@ -66,7 +66,8 @@ data class Exercise(
     val image: String,
     val isCompleted: Boolean = false,
     val category: String = "Strength",
-    val restSeconds: Int = 90,
+    val restSeconds: Int = 60,           // set arası dinlenme
+    val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu — sonraki harekete geçmeden önce
     val exerciseTableId: String = "", // FK to exercises table — used for DB logging
     val weightKg: Float = 0f          // programdan gelen planlı ağırlık
 )
@@ -207,6 +208,11 @@ fun WorkoutScreen(
         onDispose { lifecycle.removeObserver(observer) }
     }
 
+    // Timer değişkenleri — hem overlay hem içerik için kullanılır
+    val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val timerActive  = state.restTimer.isRunning || state.restTimer.isDone
+    val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
+
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
 
@@ -228,19 +234,20 @@ fun WorkoutScreen(
                 WorkoutContent(
                     state = state,
                     viewModel = viewModel,
-                    bottomPadding = bottomPadding
+                    bottomPadding = bottomPadding,
+                    timerActive = timerActive,
+                    timerBannerH = timerBannerH
                 )
             }
         }
 
         // ── Dynamic Island — rest timer overlay ──────────────────────────────
-        val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         DynamicIslandTimer(
             timer     = state.restTimer,
             topOffset = statusBarPad + 8.dp,
             onStop    = { viewModel.stopRestTimer() },
             onDismiss = { viewModel.dismissRestTimer() }
-        )
+         )
 
         // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
         AnimatedVisibility(
@@ -460,7 +467,9 @@ private fun NoProgramView(
 private fun WorkoutContent(
     state: WorkoutScreenState,
     viewModel: WorkoutViewModel,
-    bottomPadding: Dp
+    bottomPadding: Dp,
+    timerActive: Boolean = false,
+    timerBannerH: Dp = 0.dp
 ) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
@@ -493,10 +502,17 @@ private fun WorkoutContent(
         }
     }
 
+    // Timer aktifken içerik pill'in altına kayar, kapanınca geri döner
+    val extraTopPad by animateDpAsState(
+        targetValue   = if (timerActive) (timerBannerH - 60.dp).coerceAtLeast(0.dp) else 0.dp,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label         = "timer_top_pad"
+    )
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(0.dp, 0.dp, 0.dp, bottomPadding + 16.dp)
+        contentPadding = PaddingValues(top = extraTopPad, bottom = bottomPadding + 16.dp)
     ) {
         // ── Streak Banner ─────────────────────────────────────────────────
         item {
@@ -597,7 +613,7 @@ private fun WorkoutContent(
                     timerSeconds      = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
-                    onStartTimer      = { viewModel.startRestTimer(exercise.restSeconds.takeIf { it > 0 } ?: 90, exercise.name) },
+                    onStartTimer      = { secs -> viewModel.startRestTimer(secs.takeIf { it > 0 } ?: 60, exercise.name) },
                     onStopTimer       = { viewModel.stopRestTimer() }
                 )
                 if (showDetail) {

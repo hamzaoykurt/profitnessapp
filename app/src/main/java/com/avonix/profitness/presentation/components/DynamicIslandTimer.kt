@@ -167,18 +167,7 @@ private fun CompactPill(
         else            -> accent
     }
 
-    Box(
-        modifier = Modifier
-            .wrapContentSize()
-            // Glow halo
-            .drawBehind {
-                drawCircle(
-                    color  = pillColor.copy(alpha = glowAlpha * 0.45f),
-                    radius = size.maxDimension * 0.85f,
-                    center = center
-                )
-            }
-    ) {
+    Box(modifier = Modifier.wrapContentSize()) {
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(22.dp))
@@ -206,13 +195,6 @@ private fun CompactPill(
             verticalAlignment    = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Küçük arc indicator
-            MiniArcIndicator(
-                progress = if (timer.totalSeconds > 0) 1f - timer.progress else 0f,
-                color    = pillColor,
-                size     = 22.dp
-            )
-
             if (timer.isDone) {
                 Text(
                     "💪  Hazırsın!",
