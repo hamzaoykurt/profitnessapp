@@ -257,13 +257,35 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun fillExerciseSetCompletions(
-        userId: String, exerciseId: String, programDayId: String, totalSets: Int
+        userId: String, exerciseId: String, programDayId: String,
+        totalSets: Int, defaultRepsActual: Int
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            // Mevcut kayıtları koru: weight_kg'yi bozmadan sadece reps_actual'ı set et.
             repeat(totalSets) { i ->
-                setCompletionDao.insert(SetCompletionEntity(userId, exerciseId, programDayId, i, today))
+                setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, i, today, defaultRepsActual)
             }
+        }
+    }
+
+    override suspend fun upsertSetWeightDraft(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, weightKg: Float?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.upsertWeight(userId, exerciseId, programDayId, setIndex, today, weightKg)
+        }
+    }
+
+    override suspend fun upsertSetRepsActual(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, repsActual: Int?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
         }
     }
 
