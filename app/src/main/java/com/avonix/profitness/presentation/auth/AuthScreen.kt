@@ -103,23 +103,40 @@ fun AuthScreen(
 @Composable
 private fun AuthLoadingSplash() {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
-        initialValue = 0.6f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
-        label = "pulse_alpha"
+
+    // Giriş animasyonu: siyah ekrandan spring ile fırlayarak çıkış
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+
+    val iconScale by animateFloatAsState(
+        targetValue   = if (entered) 1f else 0.5f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness    = Spring.StiffnessMediumLow
+        ),
+        label = "icon_scale"
     )
+    val iconAlpha by animateFloatAsState(
+        targetValue   = if (entered) 1f else 0f,
+        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        label         = "icon_alpha"
+    )
+
     Box(
-        modifier = Modifier.fillMaxSize().background(theme.bg0),
+        modifier         = Modifier.fillMaxSize().background(theme.bg0),
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_app_logo),
+            painter            = painterResource(R.drawable.ic_app_logo),
             contentDescription = "Profitness",
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .alpha(pulse)
+            modifier           = Modifier
+                .size(80.dp)
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                    alpha  = iconAlpha
+                }
+                .clip(RoundedCornerShape(20.dp))
         )
     }
 }
