@@ -19,8 +19,8 @@ fun ProfitnessTheme(
 ) {
     val colorScheme = if (themeState.isDark) {
         darkColorScheme(
-            primary        = themeState.accent.color,
-            onPrimary      = themeState.accent.onColor,
+            primary        = themeState.effectiveAccentColor,
+            onPrimary      = themeState.effectiveOnAccentColor,
             secondary      = Lava500,
             tertiary       = Forge300,
             background     = themeState.bg0,
