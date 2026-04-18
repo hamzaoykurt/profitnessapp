@@ -4,6 +4,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -44,6 +48,7 @@ fun ProfileScreen(
     onNavigateToAchievements   : () -> Unit = {},
     onNavigateToWeightTracking       : () -> Unit = {},
     onNavigateToExerciseProgression  : () -> Unit = {},
+    onNavigateToLeaderboard          : (com.avonix.profitness.presentation.leaderboard.LeaderboardTab) -> Unit = {},
     onLogout                         : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
     onNavigateToStore          : () -> Unit = {},
@@ -141,6 +146,14 @@ fun ProfileScreen(
                     theme          = theme,
                     strings        = strings,
                     weeklyActivity = state.weeklyActivity
+                )
+            }
+            item {
+                LeaderboardPreviewCard(
+                    accent              = accent,
+                    theme               = theme,
+                    onOpenXp            = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
+                    onOpenAchievements  = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -1129,60 +1142,225 @@ private fun SettingsRow(
 
 // ── Appearance / Theme Settings Sheet ────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ThemeSettingsSheet(
     current: AppThemeState,
     strings: AppStrings,
     onApply: (AppThemeState) -> Unit
 ) {
-    var isDark  by remember { mutableStateOf(current.isDark) }
-    var accent  by remember { mutableStateOf(current.accent) }
-    val theme   = LocalAppTheme.current
-    val primary = MaterialTheme.colorScheme.primary
+    val isDark          = current.isDark
+    var accent          by remember { mutableStateOf(current.accent) }
+    var surfaceStyle    by remember { mutableStateOf(current.surfaceStyle) }
+    var intensity       by remember { mutableStateOf(current.intensity) }
+    val theme           = LocalAppTheme.current
+
+    // Live preview state — her değişimde anında güncellenir
+    val preview = current.copy(
+        accent       = accent,
+        surfaceStyle = surfaceStyle,
+        intensity    = intensity
+    )
+    val previewAccent    = preview.effectiveAccentColor
+    val previewOnAccent  = preview.effectiveOnAccentColor
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp, 8.dp, 24.dp, 32.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
         SheetHandle(theme)
 
         Text(
             strings.appearanceTitle,
             style         = MaterialTheme.typography.labelSmall,
-            color         = primary,
+            color         = previewAccent,
             letterSpacing = 3.sp,
             fontWeight    = FontWeight.Black
         )
 
+        // ── Live Preview Card ─────────────────────────────────────────────────
+        SectionLabel(strings.previewLabel, theme)
+        PreviewCard(preview = preview)
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(strings.accentColorLabel, color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                AccentPreset.entries.forEach { preset ->
-                    ColorSwatch(
-                        preset     = preset,
-                        isSelected = accent == preset,
-                        onClick    = { accent = preset }
-                    )
-                }
+        // ── Accent Color ──────────────────────────────────────────────────────
+        SectionLabel(strings.accentColorLabel, theme)
+        FlowRow(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement   = Arrangement.spacedBy(10.dp)
+        ) {
+            AccentPreset.entries.forEach { preset ->
+                ColorSwatch(
+                    preset     = preset,
+                    isSelected = accent == preset,
+                    onClick    = { accent = preset }
+                )
             }
         }
 
+        // ── Background Tone (sadece dark) ────────────────────────────────────
+        if (isDark) {
+            SectionLabel(strings.backgroundToneLabel, theme)
+            SegmentedSelector(
+                options = listOf(
+                    SurfaceStyle.CLASSIC  to strings.surfaceClassicLabel,
+                    SurfaceStyle.OLED     to strings.surfaceOledLabel,
+                    SurfaceStyle.GRAPHITE to strings.surfaceGraphiteLabel
+                ),
+                selected  = surfaceStyle,
+                accent    = previewAccent,
+                onAccent  = previewOnAccent,
+                theme     = theme,
+                onSelect  = { surfaceStyle = it }
+            )
+        }
+
+        // ── Accent Intensity ──────────────────────────────────────────────────
+        SectionLabel(strings.intensityLabel, theme)
+        SegmentedSelector(
+            options = listOf(
+                AccentIntensity.NEON   to strings.intensityNeonLabel,
+                AccentIntensity.PASTEL to strings.intensityPastelLabel
+            ),
+            selected  = intensity,
+            accent    = previewAccent,
+            onAccent  = previewOnAccent,
+            theme     = theme,
+            onSelect  = { intensity = it }
+        )
+
         Button(
-            onClick  = { onApply(current.copy(isDark = isDark, accent = accent)) },
+            onClick  = {
+                onApply(
+                    current.copy(
+                        isDark       = isDark,
+                        accent       = accent,
+                        surfaceStyle = surfaceStyle,
+                        intensity    = intensity
+                    )
+                )
+            },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape    = RoundedCornerShape(14.dp),
             colors   = ButtonDefaults.buttonColors(
-                containerColor = primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                containerColor = previewAccent,
+                contentColor   = previewOnAccent
             )
         ) {
             Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, theme: AppThemeState) {
+    Text(
+        text,
+        color         = theme.text1,
+        fontSize      = 11.sp,
+        fontWeight    = FontWeight.Bold,
+        letterSpacing = 2.sp
+    )
+}
+
+/** Ayarların canlı önizlemesi: kart yüzeyi + başlık + mini buton. */
+@Composable
+private fun PreviewCard(preview: AppThemeState) {
+    val acc = preview.effectiveAccentColor
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(preview.bg1)
+            .border(1.dp, preview.stroke, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(acc)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                preview.accent.label,
+                color         = acc,
+                fontSize      = 12.sp,
+                fontWeight    = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+        Text(
+            "Profitness",
+            color      = preview.text0,
+            fontSize   = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            preview.strings.helloAthlete,
+            color    = preview.text1,
+            fontSize = 12.sp
+        )
+        Box(
+            Modifier
+                .padding(top = 4.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(acc)
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            Text(
+                preview.strings.applyLabel,
+                color         = preview.effectiveOnAccentColor,
+                fontSize      = 11.sp,
+                fontWeight    = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+    }
+}
+
+/** Genel amaçlı segmented selector — 2+ seçenek için. */
+@Composable
+private fun <T> SegmentedSelector(
+    options : List<Pair<T, String>>,
+    selected: T,
+    accent  : Color,
+    onAccent: Color,
+    theme   : AppThemeState,
+    onSelect: (T) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg2)
+            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .padding(4.dp)
+    ) {
+        options.forEach { (value, label) ->
+            val isSel = value == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (isSel) accent else Color.Transparent)
+                    .clickable { onSelect(value) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    label,
+                    color         = if (isSel) onAccent else theme.text1,
+                    fontSize      = 11.sp,
+                    fontWeight    = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
         }
     }
 }
@@ -1759,6 +1937,125 @@ fun ExerciseProgressionCard(
                 modifier = Modifier.size(14.dp)
             )
         }
+    }
+}
+
+// ── Leaderboard Preview Card ─────────────────────────────────────────────────
+
+@Composable
+private fun LeaderboardPreviewCard(
+    accent             : Color,
+    theme              : AppThemeState,
+    onOpenXp           : () -> Unit,
+    onOpenAchievements : () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .glassCard(accent, theme)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.15f))
+                    .border(1.dp, accent.copy(0.35f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Leaderboard, null,
+                    tint     = accent,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "SIRALAMA",
+                    color         = theme.text0,
+                    fontSize      = 13.sp,
+                    fontWeight    = FontWeight.Black,
+                    letterSpacing = 1.5.sp
+                )
+                Text(
+                    "Diğer kullanıcılarla kıyasla",
+                    color    = theme.text2,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            RankModeTile(
+                title    = "XP",
+                subtitle = "Deneyim puanı",
+                icon     = Icons.Rounded.Bolt,
+                accent   = accent,
+                theme    = theme,
+                onClick  = onOpenXp,
+                modifier = Modifier.weight(1f)
+            )
+            RankModeTile(
+                title    = "Başarım",
+                subtitle = "Kazanılan rozetler",
+                icon     = Icons.Rounded.EmojiEvents,
+                accent   = accent,
+                theme    = theme,
+                onClick  = onOpenAchievements,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RankModeTile(
+    title   : String,
+    subtitle: String,
+    icon    : androidx.compose.ui.graphics.vector.ImageVector,
+    accent  : Color,
+    theme   : AppThemeState,
+    onClick : () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg2.copy(0.6f))
+            .border(1.dp, theme.stroke.copy(0.6f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon, null,
+                tint     = accent,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                title,
+                color      = theme.text0,
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.weight(1f))
+            Icon(
+                Icons.Rounded.ArrowForwardIos, null,
+                tint     = accent.copy(0.6f),
+                modifier = Modifier.size(12.dp)
+            )
+        }
+        Text(
+            subtitle,
+            color    = theme.text2,
+            fontSize = 10.sp
+        )
     }
 }
 

@@ -97,6 +97,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var showWeightTracking          by remember { mutableStateOf(false) }
     var showExerciseProgression     by remember { mutableStateOf(false) }
     var showStore                   by remember { mutableStateOf(false) }
+    var showLeaderboard             by remember { mutableStateOf(false) }
+    var leaderboardInitialTab       by remember {
+        mutableStateOf(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp)
+    }
 
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -206,6 +210,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onNavigateToAchievements        = { showAchievementsDetail = true },
                     onNavigateToWeightTracking      = { showWeightTracking = true },
                     onNavigateToExerciseProgression = { showExerciseProgression = true },
+                    onNavigateToLeaderboard         = { tab ->
+                        leaderboardInitialTab = tab
+                        showLeaderboard = true
+                    },
                     onLogout                        = onLogout,
                     onEditProfile                   = { showEditProfile = true },
                     onNavigateToStore               = { showStore = true },
@@ -260,6 +268,19 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             modifier = Modifier.zIndex(200f)
         ) {
             AchievementsDetailScreen(onBack = { showAchievementsDetail = false })
+        }
+
+        // ── Leaderboard Overlay ─────────────────────────────────────────
+        AnimatedVisibility(
+            visible  = showLeaderboard,
+            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
+            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            modifier = Modifier.zIndex(200f)
+        ) {
+            com.avonix.profitness.presentation.leaderboard.LeaderboardScreen(
+                onBack     = { showLeaderboard = false },
+                initialTab = leaderboardInitialTab
+            )
         }
 
         // ── Edit Profile Overlay ──────────────────────────────────────────

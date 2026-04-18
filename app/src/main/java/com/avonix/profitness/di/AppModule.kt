@@ -13,6 +13,8 @@ import com.avonix.profitness.data.local.dao.ProgramDao
 import com.avonix.profitness.data.local.dao.SetCompletionDao
 import com.avonix.profitness.data.local.dao.WeightLogDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
+import com.avonix.profitness.data.leaderboard.LeaderboardRepository
+import com.avonix.profitness.data.leaderboard.LeaderboardRepositoryImpl
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.ProfileRepositoryImpl
 import com.avonix.profitness.data.program.ProgramRepository
@@ -64,6 +66,9 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindUserPlanRepository(impl: UserPlanRepositoryImpl): UserPlanRepository
+
+    @Binds @Singleton
+    abstract fun bindLeaderboardRepository(impl: LeaderboardRepositoryImpl): LeaderboardRepository
 
     companion object {
 
