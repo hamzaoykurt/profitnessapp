@@ -232,6 +232,21 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+            // Tek set bile olsa bugün için workout_log oluştur — seri sürekliliği için.
+            // Supabase'e arka planda sync edilir, uninstall sonrası geçmiş korunur.
+            val existingLog = workoutDao.getLogForToday(userId, programDayId, today)
+            if (existingLog == null) {
+                workoutDao.insertLog(WorkoutLogEntity(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    programDayId = programDayId,
+                    date = today,
+                    synced = false
+                ))
+                runCatching { syncManager.pushUnsyncedWorkouts() }
+            }
+
             setCompletionDao.insert(
                 SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual)
             )
@@ -320,6 +335,14 @@ class WorkoutRepositoryImpl @Inject constructor(
     //  HELPERS
     // ═════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Toleranslı günlük seri:
+     *   - Seri = antrenman yapılan ayrık günlerin sayısı (en yeni → geriye).
+     *   - Kırılma kuralı: ardışık iki aktivite günü arasında veya bugün ile son
+     *     aktivite arasında **7 gün veya daha fazla** boşluk varsa seri biter.
+     *   - Dinlenme günleri (program veya kişisel) 7 günü aşmadığı sürece seriyi kırmaz.
+     *   - Kaynak: workout_logs.date — program değişse de korunur.
+     */
     private fun calculateStreak(dateStrings: List<String>): Int {
         if (dateStrings.isEmpty()) return 0
 
@@ -333,19 +356,18 @@ class WorkoutRepositoryImpl @Inject constructor(
         val today = LocalDate.now()
         val mostRecent = dates.first()
 
-        // Son antrenman bugün veya dün değilse seri 0
-        if (mostRecent.isBefore(today.minusDays(1))) return 0
+        // Son aktivite 7+ gün önceyse seri ölmüş
+        if (java.time.temporal.ChronoUnit.DAYS.between(mostRecent, today) >= 7L) return 0
 
-        var streak = 0
-        var expected = mostRecent
-        for (date in dates) {
-            if (date == expected) {
-                streak++
-                expected = expected.minusDays(1)
-            } else {
-                break
-            }
+        var count = 1
+        var prev = mostRecent
+        for (i in 1 until dates.size) {
+            val d = dates[i]
+            val gap = java.time.temporal.ChronoUnit.DAYS.between(d, prev)
+            if (gap >= 7L) break
+            count++
+            prev = d
         }
-        return streak
+        return count
     }
 }

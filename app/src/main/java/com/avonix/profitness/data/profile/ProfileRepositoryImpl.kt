@@ -172,20 +172,26 @@ class ProfileRepositoryImpl @Inject constructor(
 
                 val totalWorkouts = distinctDates.size
 
-                // Ardışık gün serisi hesapla
+                // Toleranslı günlük seri:
+                //   - En yeni aktivite günü bugünden 7+ gün önceyse seri ölmüş.
+                //   - Ardışık iki aktivite günü arasında 7+ gün boşluk varsa
+                //     seri o noktada biter. Dinlenme günleri 7 günü aşmadıkça kırılmaz.
                 val today = java.time.LocalDate.now()
                 val streak = if (distinctDates.isEmpty()) {
                     base.current_streak  // fallback to stored value
                 } else {
                     val mostRecent = distinctDates.first()
-                    if (mostRecent.isBefore(today.minusDays(1))) {
-                        0  // Son antrenman dünden eski → seri kırılmış
+                    if (java.time.temporal.ChronoUnit.DAYS.between(mostRecent, today) >= 7L) {
+                        0
                     } else {
-                        var count = 0
-                        var expected = mostRecent
-                        for (d in distinctDates) {
-                            if (d == expected) { count++; expected = expected.minusDays(1) }
-                            else break
+                        var count = 1
+                        var prev = mostRecent
+                        for (i in 1 until distinctDates.size) {
+                            val d = distinctDates[i]
+                            val gap = java.time.temporal.ChronoUnit.DAYS.between(d, prev)
+                            if (gap >= 7L) break
+                            count++
+                            prev = d
                         }
                         count
                     }

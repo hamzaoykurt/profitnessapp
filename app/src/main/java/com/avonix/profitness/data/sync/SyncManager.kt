@@ -60,6 +60,34 @@ class SyncManager @Inject constructor(
                 pullExercises()
                 pullPrograms(userId)
                 pullWorkoutLogs(userId)
+                // Seri sürekliliği için tüm geçmiş tarihleri de çek (uninstall sonrası restore)
+                pullWorkoutLogDates(userId)
+            }
+        }
+    }
+
+    /**
+     * Geçmişteki tüm workout_logs satırlarını (bu hafta öncesi dahil) Room'a upsert eder.
+     * Yalnızca tarih bazlı seri hesaplaması için gerekli minimum alanları getirir.
+     * Bu haftanın detaylı exercise_logs'ları `pullWorkoutLogs`'ta yönetilir.
+     */
+    suspend fun pullWorkoutLogDates(userId: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            val weekStart = LocalDate.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+            val historicalLogs = supabase.postgrest["workout_logs"]
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                        lt("date", weekStart)
+                    }
+                }
+                .decodeList<WorkoutLogDto>()
+
+            if (historicalLogs.isNotEmpty()) {
+                workoutDao.upsertLogs(historicalLogs.map { it.toEntity(synced = true) })
             }
         }
     }
