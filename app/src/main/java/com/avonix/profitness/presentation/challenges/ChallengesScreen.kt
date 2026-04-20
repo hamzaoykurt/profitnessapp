@@ -73,7 +73,7 @@ fun ChallengesTab(
     val vm: ChallengesViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
 
-    Box(Modifier.fillMaxSize().background(theme.bg0)) {
+    Box(Modifier.fillMaxSize()) {
 
         Column(Modifier.fillMaxSize()) {
 

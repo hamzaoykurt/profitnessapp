@@ -77,7 +77,7 @@ fun FriendsTab(
 
     var openProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    Box(Modifier.fillMaxSize().background(theme.bg0)) {
+    Box(Modifier.fillMaxSize()) {
 
         Column(Modifier.fillMaxSize()) {
 
