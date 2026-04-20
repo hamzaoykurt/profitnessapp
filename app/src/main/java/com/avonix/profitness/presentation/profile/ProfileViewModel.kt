@@ -6,6 +6,7 @@ import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.dto.AchievementDto
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.store.UserPlanRepository
+import com.avonix.profitness.data.workout.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -89,9 +90,10 @@ sealed class ProfileEvent {
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val profileRepository: ProfileRepository,
-    private val planRepository   : UserPlanRepository,
-    private val supabase         : SupabaseClient
+    private val profileRepository : ProfileRepository,
+    private val planRepository    : UserPlanRepository,
+    private val workoutRepository : WorkoutRepository,
+    private val supabase          : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
 
     private var lastLoadMs = 0L
@@ -139,6 +141,7 @@ class ProfileViewModel @Inject constructor(
             }
             val allAchDef       = async { profileRepository.getAllAchievements() }
             val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
+            val localStreakDef   = async { workoutRepository.getStreak(userId) }
 
             val profile          = profileDef.await().getOrNull()
             val stats            = statsDef.await().getOrNull()
@@ -146,6 +149,7 @@ class ProfileViewModel @Inject constructor(
             val workoutDates     = workoutDatesDef.await().getOrNull().orEmpty()
             val allAch           = allAchDef.await().getOrNull().orEmpty()
             val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
+            val localStreak      = localStreakDef.await().getOrElse { stats?.current_streak ?: 0 }
 
             // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
             // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
@@ -207,7 +211,7 @@ class ProfileViewModel @Inject constructor(
                     level               = lvl,
                     xp                  = currentXp,
                     xpPerLevel          = xpForNext,
-                    currentStreak       = stats?.current_streak ?: 0,
+                    currentStreak       = localStreak,
                     longestStreak       = stats?.longest_streak ?: 0,
                     totalWorkouts       = totalWorkouts,
                     totalExercises      = totalExercises,
@@ -226,7 +230,7 @@ class ProfileViewModel @Inject constructor(
             }
 
             // Achievement kontrolü
-            checkAchievements(userId, currentXp, lvl, totalWorkouts, totalExercises, stats?.current_streak ?: 0, unlockedKeys, allAch)
+            checkAchievements(userId, currentXp, lvl, totalWorkouts, totalExercises, localStreak, unlockedKeys, allAch)
         }
     }
 
