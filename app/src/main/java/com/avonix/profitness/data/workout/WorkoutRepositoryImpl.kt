@@ -216,6 +216,7 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun syncFromRemote(userId: String) {
         syncManager.pullWorkoutLogs(userId)
+        syncManager.pullWorkoutLogDates(userId)
     }
 
     override suspend fun syncToRemote() {
