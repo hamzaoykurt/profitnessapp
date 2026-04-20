@@ -7,6 +7,10 @@ import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.ai.GeminiRepositoryImpl
 import com.avonix.profitness.data.auth.AuthRepository
 import com.avonix.profitness.data.auth.AuthRepositoryImpl
+import com.avonix.profitness.data.challenges.ChallengeRepository
+import com.avonix.profitness.data.challenges.ChallengeRepositoryImpl
+import com.avonix.profitness.data.discover.DiscoverRepository
+import com.avonix.profitness.data.discover.DiscoverRepositoryImpl
 import com.avonix.profitness.data.local.AppDatabase
 import com.avonix.profitness.data.local.dao.ExerciseDao
 import com.avonix.profitness.data.local.dao.ProgramDao
@@ -17,6 +21,8 @@ import com.avonix.profitness.data.leaderboard.LeaderboardRepository
 import com.avonix.profitness.data.leaderboard.LeaderboardRepositoryImpl
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.ProfileRepositoryImpl
+import com.avonix.profitness.data.social.SocialRepository
+import com.avonix.profitness.data.social.SocialRepositoryImpl
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.program.ProgramRepositoryImpl
 import com.avonix.profitness.data.sync.SyncManager
@@ -69,6 +75,15 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindLeaderboardRepository(impl: LeaderboardRepositoryImpl): LeaderboardRepository
+
+    @Binds @Singleton
+    abstract fun bindDiscoverRepository(impl: DiscoverRepositoryImpl): DiscoverRepository
+
+    @Binds @Singleton
+    abstract fun bindSocialRepository(impl: SocialRepositoryImpl): SocialRepository
+
+    @Binds @Singleton
+    abstract fun bindChallengeRepository(impl: ChallengeRepositoryImpl): ChallengeRepository
 
     companion object {
 

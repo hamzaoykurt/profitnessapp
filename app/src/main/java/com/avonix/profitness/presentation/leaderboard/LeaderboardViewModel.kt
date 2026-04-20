@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.leaderboard
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.leaderboard.LeaderboardRepository
+import com.avonix.profitness.data.social.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -13,6 +14,9 @@ import javax.inject.Inject
 // ── UI Modelleri ──────────────────────────────────────────────────────────────
 
 enum class LeaderboardTab { Xp, Achievements }
+
+/** Sıralama kapsamı: tüm kullanıcılar mı, sadece arkadaşlar (mutual follow) mı? */
+enum class LeaderboardScope { Global, Friends }
 
 /** Tek satır — iki sıralama tipi için ortak UI modeli. */
 data class LeaderboardRow(
@@ -32,19 +36,25 @@ data class MyPositionSummary(
 )
 
 data class LeaderboardState(
-    val selectedTab     : LeaderboardTab       = LeaderboardTab.Xp,
-    val xpRows          : List<LeaderboardRow> = emptyList(),
-    val achievementRows : List<LeaderboardRow> = emptyList(),
-    val myXp            : MyPositionSummary    = MyPositionSummary(),
-    val myAchievements  : MyPositionSummary    = MyPositionSummary(),
-    val isLoading       : Boolean              = true,
-    val error           : String?              = null
+    val selectedTab         : LeaderboardTab       = LeaderboardTab.Xp,
+    val selectedScope       : LeaderboardScope     = LeaderboardScope.Global,
+    val xpRows              : List<LeaderboardRow> = emptyList(),
+    val achievementRows     : List<LeaderboardRow> = emptyList(),
+    val friendXpRows        : List<LeaderboardRow> = emptyList(),
+    val friendAchievementRows: List<LeaderboardRow> = emptyList(),
+    val myXp                : MyPositionSummary    = MyPositionSummary(),
+    val myAchievements      : MyPositionSummary    = MyPositionSummary(),
+    val myFriendXp          : MyPositionSummary    = MyPositionSummary(),
+    val myFriendAchievements: MyPositionSummary    = MyPositionSummary(),
+    val isLoading           : Boolean              = true,
+    val error               : String?              = null
 )
 
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
-    private val repo    : LeaderboardRepository,
-    private val supabase: SupabaseClient
+    private val repo      : LeaderboardRepository,
+    private val socialRepo: SocialRepository,
+    private val supabase  : SupabaseClient
 ) : BaseViewModel<LeaderboardState, Nothing>(LeaderboardState()) {
 
     init { load() }
@@ -53,27 +63,37 @@ class LeaderboardViewModel @Inject constructor(
         updateState { it.copy(selectedTab = tab) }
     }
 
+    fun selectScope(scope: LeaderboardScope) {
+        updateState { it.copy(selectedScope = scope) }
+    }
+
     fun refresh() = load()
 
     private fun load() {
         val uid = supabase.auth.currentUserOrNull()?.id
         updateState { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            val xpDeferred     = async { repo.getXpLeaderboard(100) }
-            val achDeferred    = async { repo.getAchievementLeaderboard(100) }
-            val myXpDeferred   = async { repo.getMyXpRank() }
-            val myAchDeferred  = async { repo.getMyAchievementRank() }
+            val xpDeferred        = async { repo.getXpLeaderboard(100) }
+            val achDeferred       = async { repo.getAchievementLeaderboard(100) }
+            val myXpDeferred      = async { repo.getMyXpRank() }
+            val myAchDeferred     = async { repo.getMyAchievementRank() }
+            val friendXpDeferred  = async { socialRepo.getFriendLeaderboardXp(100) }
+            val friendAchDeferred = async { socialRepo.getFriendLeaderboardAchievements(100) }
 
-            val xpRes     = xpDeferred.await()
-            val achRes    = achDeferred.await()
-            val myXpRes   = myXpDeferred.await()
-            val myAchRes  = myAchDeferred.await()
+            val xpRes        = xpDeferred.await()
+            val achRes       = achDeferred.await()
+            val myXpRes      = myXpDeferred.await()
+            val myAchRes     = myAchDeferred.await()
+            val friendXpRes  = friendXpDeferred.await()
+            val friendAchRes = friendAchDeferred.await()
 
             val firstErr =
                 xpRes.exceptionOrNull()?.message
                     ?: achRes.exceptionOrNull()?.message
                     ?: myXpRes.exceptionOrNull()?.message
                     ?: myAchRes.exceptionOrNull()?.message
+                    ?: friendXpRes.exceptionOrNull()?.message
+                    ?: friendAchRes.exceptionOrNull()?.message
 
             val xpRows = xpRes.getOrNull().orEmpty().map { dto ->
                 LeaderboardRow(
@@ -112,14 +132,60 @@ class LeaderboardViewModel @Inject constructor(
                 )
             } ?: MyPositionSummary()
 
+            // ── Arkadaş (mutual follow) leaderboard'ları UI satırlarına çevir ─
+            val friendXpList  = friendXpRes.getOrNull().orEmpty()
+            val friendAchList = friendAchRes.getOrNull().orEmpty()
+
+            val friendXpRows = friendXpList.map { r ->
+                LeaderboardRow(
+                    userId      = r.userId,
+                    displayName = r.displayName,
+                    avatar      = r.avatarUrl?.takeIf { it.isNotBlank() } ?: "🏋️",
+                    score       = r.totalXp.toLong(),
+                    position    = r.rankPosition.toLong(),
+                    isMe        = r.isMe
+                )
+            }
+            val friendAchRows = friendAchList.map { r ->
+                LeaderboardRow(
+                    userId      = r.userId,
+                    displayName = r.displayName,
+                    avatar      = r.avatarUrl?.takeIf { it.isNotBlank() } ?: "🏋️",
+                    score       = r.achievementCount.toLong(),
+                    position    = r.rankPosition.toLong(),
+                    isMe        = r.isMe
+                )
+            }
+
+            // Arkadaş kapsamında "benim pozisyonum" = arkadaşlar arasındaki sıram.
+            val myFriendXp = friendXpList.firstOrNull { it.isMe }?.let {
+                MyPositionSummary(
+                    position   = it.rankPosition.toLong(),
+                    totalUsers = friendXpList.size.toLong(),
+                    score      = it.totalXp.toLong()
+                )
+            } ?: MyPositionSummary(totalUsers = friendXpList.size.toLong())
+
+            val myFriendAch = friendAchList.firstOrNull { it.isMe }?.let {
+                MyPositionSummary(
+                    position   = it.rankPosition.toLong(),
+                    totalUsers = friendAchList.size.toLong(),
+                    score      = it.achievementCount.toLong()
+                )
+            } ?: MyPositionSummary(totalUsers = friendAchList.size.toLong())
+
             updateState {
                 it.copy(
-                    xpRows          = xpRows,
-                    achievementRows = achRows,
-                    myXp            = myXp,
-                    myAchievements  = myAch,
-                    isLoading       = false,
-                    error           = firstErr
+                    xpRows               = xpRows,
+                    achievementRows      = achRows,
+                    friendXpRows         = friendXpRows,
+                    friendAchievementRows= friendAchRows,
+                    myXp                 = myXp,
+                    myAchievements       = myAch,
+                    myFriendXp           = myFriendXp,
+                    myFriendAchievements = myFriendAch,
+                    isLoading            = false,
+                    error                = firstErr
                 )
             }
         }

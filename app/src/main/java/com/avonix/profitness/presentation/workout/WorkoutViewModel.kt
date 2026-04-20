@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.notification.WorkoutNotificationManager
 import com.avonix.profitness.data.ai.GeminiRepository
+import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
@@ -68,6 +69,7 @@ class WorkoutViewModel @Inject constructor(
     private val geminiRepository   : GeminiRepository,
     private val planRepository     : com.avonix.profitness.data.store.UserPlanRepository,
     private val notificationManager: WorkoutNotificationManager,
+    private val challengeRepository: ChallengeRepository,
     private val supabase           : SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, WorkoutEvent>(WorkoutScreenState()) {
 
@@ -474,10 +476,13 @@ class WorkoutViewModel @Inject constructor(
                     repsCompleted = exercise.reps.toIntOrNull() ?: 0
                 )
 
-                // Stats güncelle (Supabase, arka plan)
+                // Stats güncelle (Supabase, arka plan) + challenge progress refresh
                 viewModelScope.launch {
                     workoutRepository.updateStreak(userId)
                     profileRepository.invalidateStatsCache()
+                    // FAZ 7F: user_stats güncellendikten sonra challenge progress'ini
+                    // sunucuda yeniden hesaplat. Hata olsa bile workout akışını bozma.
+                    runCatching { challengeRepository.refreshMyProgress() }
                 }
 
                 // Başarım/XP kontrolü

@@ -41,7 +41,7 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
-import com.avonix.profitness.presentation.news.NewsScreen
+import com.avonix.profitness.presentation.discover.DiscoverScreen
 import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
 import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.ExerciseProgressionScreen
@@ -60,16 +60,16 @@ import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
-    object Workout : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
-    object Program : DashboardTab("program",  Icons.Rounded.CalendarMonth, "PLAN")
-    object AICoach : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "ORACLE")
-    object News    : DashboardTab("news",     Icons.Rounded.Newspaper,     "MUSE")
-    object Profile : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
+    object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
+    object Program  : DashboardTab("program",  Icons.Rounded.CalendarMonth, "PLAN")
+    object AICoach  : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "ORACLE")
+    object Discover : DashboardTab("discover", Icons.Rounded.Explore,       "KEŞFET")
+    object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
 }
 
 private val ALL_TABS = listOf(
     DashboardTab.Workout, DashboardTab.Program, DashboardTab.AICoach,
-    DashboardTab.News,    DashboardTab.Profile
+    DashboardTab.Discover, DashboardTab.Profile
 )
 
 @Composable
@@ -102,7 +102,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         mutableStateOf(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp)
     }
 
-    val navBarHeight = 78.dp
+    // Nav yüksekliği 78 → 92 dp (item padding 10/12 → 14/16, icon 20 → 24)
+    val navBarHeight = 92.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
@@ -203,7 +204,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     bottomPadding      = contentPadWithTimer,
                     onNavigateToStore  = { showStore = true }
                 )
-                DashboardTab.News    -> NewsScreen(timerExtraPad = timerExtraPad)
+                DashboardTab.Discover -> DiscoverScreen(
+                    bottomPadding = contentPad,
+                    timerExtraPad = timerExtraPad
+                )
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange                   = onThemeChange,
                     onNavigateToPerformance         = { showPerformanceDetail = true },
@@ -516,15 +520,15 @@ private fun NavCapsuleItem(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = if (isSelected) 16.dp else 12.dp, vertical = 10.dp),
+            .padding(horizontal = if (isSelected) 20.dp else 16.dp, vertical = 14.dp),
         verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector        = tab.icon,
             contentDescription = tab.label,
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
-            modifier           = Modifier.size(20.dp)
+            modifier           = Modifier.size(24.dp)
         )
         AnimatedVisibility(
             visible = isSelected,
@@ -538,9 +542,9 @@ private fun NavCapsuleItem(
             Text(
                 text          = tab.label,
                 color         = accent,
-                fontSize      = 11.sp,
+                fontSize      = 12.sp,
                 fontWeight    = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.6.sp
             )
         }
     }

@@ -103,14 +103,32 @@ fun LeaderboardScreen(
                 )
             }
 
+            // ── Kapsam seçici (Global / Arkadaşlar) ─────────────────────────
+            item {
+                ScopeSwitcher(
+                    selected = state.selectedScope,
+                    onSelect = viewModel::selectScope,
+                    accent   = accent,
+                    theme    = theme,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+
             // ── Benim pozisyonum özet kartı ─────────────────────────────────
             item {
-                val summary = when (state.selectedTab) {
-                    LeaderboardTab.Xp           -> state.myXp
-                    LeaderboardTab.Achievements -> state.myAchievements
+                val summary = when (state.selectedScope) {
+                    LeaderboardScope.Global -> when (state.selectedTab) {
+                        LeaderboardTab.Xp           -> state.myXp
+                        LeaderboardTab.Achievements -> state.myAchievements
+                    }
+                    LeaderboardScope.Friends -> when (state.selectedTab) {
+                        LeaderboardTab.Xp           -> state.myFriendXp
+                        LeaderboardTab.Achievements -> state.myFriendAchievements
+                    }
                 }
                 MyPositionCard(
                     tab      = state.selectedTab,
+                    scope    = state.selectedScope,
                     summary  = summary,
                     accent   = accent,
                     theme    = theme,
@@ -129,7 +147,10 @@ fun LeaderboardScreen(
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Text(
-                        "TOP 100",
+                        when (state.selectedScope) {
+                            LeaderboardScope.Global  -> "TOP 100"
+                            LeaderboardScope.Friends -> "ARKADAŞLAR"
+                        },
                         color         = theme.text0,
                         fontSize      = 13.sp,
                         fontWeight    = FontWeight.Black,
@@ -175,9 +196,15 @@ fun LeaderboardScreen(
                     }
                 }
             } else {
-                val rows = when (state.selectedTab) {
-                    LeaderboardTab.Xp           -> state.xpRows
-                    LeaderboardTab.Achievements -> state.achievementRows
+                val rows = when (state.selectedScope) {
+                    LeaderboardScope.Global -> when (state.selectedTab) {
+                        LeaderboardTab.Xp           -> state.xpRows
+                        LeaderboardTab.Achievements -> state.achievementRows
+                    }
+                    LeaderboardScope.Friends -> when (state.selectedTab) {
+                        LeaderboardTab.Xp           -> state.friendXpRows
+                        LeaderboardTab.Achievements -> state.friendAchievementRows
+                    }
                 }
                 if (rows.isEmpty()) {
                     item {
@@ -186,14 +213,18 @@ fun LeaderboardScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "Henüz sıralamada kimse yok",
+                                when (state.selectedScope) {
+                                    LeaderboardScope.Global  -> "Henüz sıralamada kimse yok"
+                                    LeaderboardScope.Friends -> "Henüz arkadaşın yok.\nArkadaş eklemek için birini takip et — karşılıklı takip arkadaşlık sayılır."
+                                },
                                 color    = theme.text2,
-                                fontSize = 13.sp
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
                     }
                 } else {
-                    items(items = rows, key = { "${state.selectedTab}_${it.userId}" }) { row ->
+                    items(items = rows, key = { "${state.selectedScope}_${state.selectedTab}_${it.userId}" }) { row ->
                         LeaderboardRowItem(
                             row    = row,
                             tab    = state.selectedTab,
@@ -248,6 +279,46 @@ private fun TabSwitcher(
     }
 }
 
+// ── Scope Switcher (Global / Arkadaşlar) ─────────────────────────────────────
+
+@Composable
+private fun ScopeSwitcher(
+    selected: LeaderboardScope,
+    onSelect: (LeaderboardScope) -> Unit,
+    accent  : Color,
+    theme   : AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg1.copy(0.6f))
+            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+            .padding(3.dp)
+    ) {
+        TabButton(
+            label    = "Global",
+            icon     = Icons.Rounded.Public,
+            isActive = selected == LeaderboardScope.Global,
+            accent   = accent,
+            theme    = theme,
+            onClick  = { onSelect(LeaderboardScope.Global) },
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(3.dp))
+        TabButton(
+            label    = "Arkadaşlar",
+            icon     = Icons.Rounded.People,
+            isActive = selected == LeaderboardScope.Friends,
+            accent   = accent,
+            theme    = theme,
+            onClick  = { onSelect(LeaderboardScope.Friends) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
 @Composable
 private fun TabButton(
     label   : String,
@@ -291,6 +362,7 @@ private fun TabButton(
 @Composable
 private fun MyPositionCard(
     tab     : LeaderboardTab,
+    scope   : LeaderboardScope,
     summary : MyPositionSummary,
     accent  : Color,
     theme   : AppThemeState,
@@ -299,6 +371,10 @@ private fun MyPositionCard(
     val scoreLabel = when (tab) {
         LeaderboardTab.Xp           -> "XP"
         LeaderboardTab.Achievements -> "Başarım"
+    }
+    val scopeLabel = when (scope) {
+        LeaderboardScope.Global  -> "kullanıcı arasında"
+        LeaderboardScope.Friends -> "arkadaş arasında"
     }
     Box(
         modifier = modifier
@@ -336,8 +412,10 @@ private fun MyPositionCard(
                     letterSpacing = 1.5.sp
                 )
                 Text(
-                    if (summary.totalUsers > 0)
-                        "${summary.position} / ${summary.totalUsers} kullanıcı arasında"
+                    if (summary.totalUsers > 0 && summary.position > 0L)
+                        "${summary.position} / ${summary.totalUsers} $scopeLabel"
+                    else if (scope == LeaderboardScope.Friends)
+                        "Arkadaş listen boş veya henüz yerleşmedin"
                     else "Henüz sıralama yok",
                     color    = theme.text2,
                     fontSize = 12.sp
