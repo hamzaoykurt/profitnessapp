@@ -137,6 +137,10 @@ interface WorkoutDao {
     @Query("DELETE FROM exercise_logs WHERE workout_log_id = :workoutLogId AND exercise_id = :exerciseId")
     suspend fun deleteExerciseLog(workoutLogId: String, exerciseId: String)
 
+    /** Bir workout_log'a bağlı kalan exercise_logs sayısı. */
+    @Query("SELECT COUNT(*) FROM exercise_logs WHERE workout_log_id = :workoutLogId")
+    suspend fun countExerciseLogsForWorkout(workoutLogId: String): Int
+
     // ── Bulk sync helper ─────────────────────────────────────────────────────
 
     @Transaction

@@ -130,6 +130,17 @@ class WorkoutRepositoryImpl @Inject constructor(
                         }
                     }
             }
+
+            // Güvenlik: workout_log'da başka egzersiz kalmadıysa log'u da sil.
+            // Aksi halde streak bu günü "çalışılmış" sayıp sayaç şişirebilir.
+            val remaining = workoutDao.countExerciseLogsForWorkout(log.id)
+            if (remaining == 0) {
+                workoutDao.deleteLogById(log.id)
+                runCatching {
+                    supabase.postgrest["workout_logs"]
+                        .delete { filter { eq("id", log.id) } }
+                }
+            }
             Unit
         }
     }
@@ -180,6 +191,31 @@ class WorkoutRepositoryImpl @Inject constructor(
                             set("level", newLevel)
                         }) { filter { eq("user_id", userId) } }
                 }
+                Unit
+            }
+        }
+
+    override suspend fun rollbackStreak(userId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val xpPerExercise = 10
+
+                val existing = supabase.postgrest["user_stats"]
+                    .select { filter { eq("user_id", userId) } }
+                    .decodeSingleOrNull<UserStatsDto>()
+                    ?: return@runCatching
+
+                // Negatife düşme — minimum 0 / level minimum 1.
+                val newTotal = (existing.total_exercises - 1).coerceAtLeast(0)
+                val newXp = (existing.xp - xpPerExercise).coerceAtLeast(0)
+                val newLevel = (newXp / 500) + 1
+
+                supabase.postgrest["user_stats"]
+                    .update({
+                        set("total_exercises", newTotal)
+                        set("xp", newXp)
+                        set("level", newLevel)
+                    }) { filter { eq("user_id", userId) } }
                 Unit
             }
         }

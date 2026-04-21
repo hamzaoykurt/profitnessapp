@@ -60,6 +60,12 @@ interface WorkoutRepository {
     /** user_stats'ı günceller (XP, total_exercises). */
     suspend fun updateStreak(userId: String): Result<Unit>
 
+    /**
+     * updateStreak'in tersi — egzersiz geri alındığında user_stats'ı düşürür.
+     * total_exercises -1, xp -10, level yeniden hesaplanır. Değerler 0'ın altına düşmez.
+     */
+    suspend fun rollbackStreak(userId: String): Result<Unit>
+
     /** Bonus XP ekler. */
     suspend fun addXp(userId: String, xpAmount: Int): Result<Unit>
 

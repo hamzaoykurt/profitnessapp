@@ -536,6 +536,15 @@ class WorkoutViewModel @Inject constructor(
                     programDayId = programDayId,
                     exerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
                 )
+
+                // Stats rollback + challenge progress tazele (istismar önleme):
+                // yap→geri al döngüsü XP/total_exercises/streak/challenge ilerlemesini
+                // kalıcı hale getirmesin.
+                viewModelScope.launch {
+                    workoutRepository.rollbackStreak(userId)
+                    profileRepository.invalidateStatsCache()
+                    runCatching { challengeRepository.refreshMyProgress() }
+                }
             }
         }
     }
