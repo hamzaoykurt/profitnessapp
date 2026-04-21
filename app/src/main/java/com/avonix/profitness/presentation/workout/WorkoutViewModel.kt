@@ -247,23 +247,29 @@ class WorkoutViewModel @Inject constructor(
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
 
+        // DB canonical key = exercises.id (exerciseTableId). UI state keyi = pe.id (exerciseId).
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+
         val isCurrentlyDone = setIndex in (currentState.setCompletions[exerciseId] ?: emptySet())
 
         viewModelScope.launch {
             if (isCurrentlyDone) {
                 // Tik'i kaldır: reps_actual'ı null yap (weight draft olarak korunur)
-                workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, null)
+                workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, null)
             } else {
                 // Tik ekle: kullanıcı reps girmemişse planlanan reps'i kullan
-                val plannedReps = dayState.day.exercises.find { it.id == exerciseId }?.reps?.toIntOrNull()
+                val plannedReps = exercise.reps.toIntOrNull()
                 val reps = currentState.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
                     ?: plannedReps?.takeIf { it > 0 } ?: 1
-                // Önce weight draft'ı persist et (state'te varsa), sonra reps_actual ile "done" işaretle
+                // Ağırlık fallback: kullanıcı girdisi > son seans > program planı. Hiçbiri yoksa null.
                 val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                    ?: currentState.lastSessionData[exerciseId]?.get(setIndex)?.first
+                    ?: exercise.weightKg.takeIf { it > 0f }
                 if (weight != null) {
-                    workoutRepository.upsertSetWeightDraft(userId, exerciseId, programDayId, setIndex, weight)
+                    workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, weight)
                 }
-                workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, reps)
+                workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, reps)
             }
         }
     }
@@ -302,6 +308,8 @@ class WorkoutViewModel @Inject constructor(
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
+        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
+            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
 
         val key = "$exerciseId:$setIndex:${if (weight) "w" else "r"}"
         draftPersistJobs[key]?.cancel()
@@ -310,7 +318,7 @@ class WorkoutViewModel @Inject constructor(
             val latest = uiState.value
             if (weight) {
                 val w = latest.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
-                workoutRepository.upsertSetWeightDraft(userId, exerciseId, programDayId, setIndex, w)
+                workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, w)
             }
             if (reps) {
                 // Sadece set zaten tikliyse reps_actual güncellenir — tikli olmayan set draft kalmalı.
@@ -318,7 +326,7 @@ class WorkoutViewModel @Inject constructor(
                 if (isDone) {
                     val r = latest.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
                     if (r != null) {
-                        workoutRepository.upsertSetRepsActual(userId, exerciseId, programDayId, setIndex, r)
+                        workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, r)
                     }
                 }
             }
@@ -341,12 +349,18 @@ class WorkoutViewModel @Inject constructor(
         if (uiState.value.lastSessionData.containsKey(exerciseId)) return
 
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        // DB'de kayıtlar canonical exercises.id (exerciseTableId) ile tutulur; state key'i pe.id.
+        val state = uiState.value
+        val dbExerciseId = state.dayStates.flatMap { it.day.exercises }
+            .find { it.id == exerciseId }
+            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+
         viewModelScope.launch {
-            workoutRepository.getLastSessionSets(userId, exerciseId).onSuccess { sets ->
+            workoutRepository.getLastSessionSets(userId, dbExerciseId).onSuccess { sets ->
                 if (sets.isEmpty()) return@onSuccess
                 val dataMap = sets.associate { it.setIndex to (it.weightKg to it.repsActual) }
-                updateState { state ->
-                    state.copy(lastSessionData = state.lastSessionData + (exerciseId to dataMap))
+                updateState { s ->
+                    s.copy(lastSessionData = s.lastSessionData + (exerciseId to dataMap))
                 }
                 // Henüz kullanıcı girişi yoksa önceki ağırlıkları ön-doldur
                 val currentWeights = uiState.value.setWeights[exerciseId]
@@ -355,8 +369,8 @@ class WorkoutViewModel @Inject constructor(
                         .filter { it.weightKg != null }
                         .associate { it.setIndex to it.weightKg!!.toString() }
                     if (prefill.isNotEmpty()) {
-                        updateState { state ->
-                            state.copy(setWeights = state.setWeights + (exerciseId to prefill))
+                        updateState { s ->
+                            s.copy(setWeights = s.setWeights + (exerciseId to prefill))
                         }
                     }
                 }
@@ -460,13 +474,33 @@ class WorkoutViewModel @Inject constructor(
                 // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller.
                 // Planlanan reps, reps_actual default'u olarak kullanılır (observer "tick" göstermesi için şart).
                 val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
+                val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
                 workoutRepository.fillExerciseSetCompletions(
                     userId = userId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
+                    exerciseId = dbExerciseId,
                     programDayId = programDayId,
                     totalSets = exercise.sets,
                     defaultRepsActual = plannedReps
                 )
+                // Her set için efektif ağırlığı persist et (progresyon ekranı + sonraki hafta prefill için).
+                // Fallback: kullanıcı girdisi > son seans > program planı. Hiçbiri yoksa yazılmaz.
+                val userWeights    = currentState.setWeights[exerciseId].orEmpty()
+                val lastSessionMap = currentState.lastSessionData[exerciseId].orEmpty()
+                val plannedWeight  = exercise.weightKg.takeIf { it > 0f }
+                repeat(exercise.sets) { i ->
+                    val w = userWeights[i]?.toFloatOrNull()
+                        ?: lastSessionMap[i]?.first
+                        ?: plannedWeight
+                    if (w != null) {
+                        workoutRepository.upsertSetWeightDraft(
+                            userId = userId,
+                            exerciseId = dbExerciseId,
+                            programDayId = programDayId,
+                            setIndex = i,
+                            weightKg = w
+                        )
+                    }
+                }
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(
                     userId = userId,

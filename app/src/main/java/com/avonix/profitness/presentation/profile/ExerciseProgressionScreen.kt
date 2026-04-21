@@ -336,9 +336,11 @@ private fun ExerciseProgressionCard(
                     color = theme.text2, fontSize = 11.sp
                 )
                 Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatChip(label = "${"%.1f".format(summary.maxWeight)} kg", color = accent)
-                    StatChip(label = "${summary.sessionCount} seans", color = theme.text2)
+                // MAX / AVG / LAST — her zaman görünür özet
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatChip(label = "MAX ${"%.1f".format(summary.maxWeight)}kg", color = accent)
+                    StatChip(label = "AVG ${"%.1f".format(summary.avgWeight)}kg", color = theme.text1)
+                    StatChip(label = "SON ${"%.1f".format(summary.lastWeight)}kg", color = theme.text2)
                 }
             }
 
@@ -359,6 +361,11 @@ private fun ExerciseProgressionCard(
             Column(modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 14.dp)) {
                 HorizontalDivider(color = theme.stroke, thickness = 0.5.dp, modifier = Modifier.padding(bottom = 12.dp))
 
+                // ── İstatistik Izgara ─────────────────────────────────────────
+                StatsGrid(summary = summary, accent = accent, theme = theme)
+                Spacer(Modifier.height(12.dp))
+
+                // ── İlerleme Grafiği ──────────────────────────────────────────
                 if (chartData.size >= 2) {
                     ProgressionChartSection(chartData = chartData, accent = accent, theme = theme)
                     Spacer(Modifier.height(12.dp))
@@ -377,6 +384,12 @@ private fun ExerciseProgressionCard(
                     )
                 }
 
+                // ── Son Seans Set Dökümü ──────────────────────────────────────
+                if (history.isNotEmpty()) {
+                    LastSessionBreakdown(history = history, accent = accent, theme = theme)
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 // AI Card
                 AiInsightCard(
                     insight     = aiInsight,
@@ -387,6 +400,139 @@ private fun ExerciseProgressionCard(
                     credits     = aiCredits,
                     onRefresh   = onRequestAi
                 )
+            }
+        }
+    }
+}
+
+// ── Stats Grid ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatsGrid(
+    summary : ExerciseProgressSummary,
+    accent  : Color,
+    theme   : AppThemeState
+) {
+    val stats = listOf(
+        Triple("TOPLAM HACİM", "${"%.0f".format(summary.totalVolume)} kg", accent),
+        Triple("TOPLAM TEKRAR", "${summary.totalReps}", theme.text1),
+        Triple("TOPLAM SET", "${summary.totalSets}", theme.text1),
+        Triple("SEANS", "${summary.sessionCount}", theme.text1)
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatsTile(stats[0], Modifier.weight(1f), theme)
+            StatsTile(stats[1], Modifier.weight(1f), theme)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatsTile(stats[2], Modifier.weight(1f), theme)
+            StatsTile(stats[3], Modifier.weight(1f), theme)
+        }
+        if (!summary.lastDate.isNullOrBlank()) {
+            Text(
+                text = "Son antrenman: ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
+                color = theme.text2, fontSize = 10.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsTile(
+    data: Triple<String, String, Color>,
+    modifier: Modifier,
+    theme: AppThemeState
+) {
+    val (label, value, valueColor) = data
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(theme.bg2)
+            .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+            .padding(10.dp)
+    ) {
+        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(value, color = valueColor, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+// ── Last Session Breakdown — set-by-set ağırlık & tekrar ─────────────────────
+
+@Composable
+private fun LastSessionBreakdown(
+    history : List<SetCompletionEntity>,
+    accent  : Color,
+    theme   : AppThemeState
+) {
+    // Son antrenmanın setlerini al
+    val lastDate = history.mapNotNull { it.date }.maxOrNull() ?: return
+    val lastSets = history
+        .filter { it.date == lastDate }
+        .sortedBy { it.setIndex }
+    if (lastSets.isEmpty()) return
+
+    val weightSum = lastSets.mapNotNull { it.weightKg }.sum()
+    val weightCnt = lastSets.count { it.weightKg != null }
+    val avgWeight = if (weightCnt > 0) weightSum / weightCnt else 0f
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg2)
+            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(13.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("SON ANTRENMAN", color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = "ORT ${"%.1f".format(avgWeight)}kg",
+                color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        lastSets.forEach { set ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(accent.copy(0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "${set.setIndex + 1}",
+                        color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = set.weightKg?.let { "${"%.1f".format(it)} kg" } ?: "—",
+                    color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = set.repsActual?.let { "× $it tekrar" } ?: "taslak",
+                    color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium
+                )
+                if (set.weightKg != null && set.repsActual != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "= ${"%.0f".format(set.weightKg!! * set.repsActual!!)}",
+                        color = accent.copy(0.75f), fontSize = 11.sp, fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

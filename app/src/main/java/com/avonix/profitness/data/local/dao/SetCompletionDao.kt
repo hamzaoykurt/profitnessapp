@@ -11,12 +11,18 @@ import kotlinx.coroutines.flow.Flow
 
 /** Egzersiz başına ağırlık takip özeti — profil/progresyon ekranı için */
 data class ExerciseProgressSummary(
-    @ColumnInfo(name = "exercise_id")  val exerciseId   : String,
-    @ColumnInfo(name = "name")         val name         : String,
-    @ColumnInfo(name = "image_url")    val imageUrl     : String,
-    @ColumnInfo(name = "target_muscle")val targetMuscle : String,
-    @ColumnInfo(name = "max_weight")   val maxWeight    : Float,
-    @ColumnInfo(name = "session_count")val sessionCount : Int
+    @ColumnInfo(name = "exercise_id")   val exerciseId    : String,
+    @ColumnInfo(name = "name")          val name          : String,
+    @ColumnInfo(name = "image_url")     val imageUrl      : String,
+    @ColumnInfo(name = "target_muscle") val targetMuscle  : String,
+    @ColumnInfo(name = "max_weight")    val maxWeight     : Float,
+    @ColumnInfo(name = "avg_weight")    val avgWeight     : Float,
+    @ColumnInfo(name = "last_weight")   val lastWeight    : Float,
+    @ColumnInfo(name = "last_date")     val lastDate      : String?,
+    @ColumnInfo(name = "session_count") val sessionCount  : Int,
+    @ColumnInfo(name = "total_sets")    val totalSets     : Int,
+    @ColumnInfo(name = "total_reps")    val totalReps     : Int,
+    @ColumnInfo(name = "total_volume")  val totalVolume   : Float
 )
 
 @Dao
@@ -124,17 +130,35 @@ interface SetCompletionDao {
     """)
     suspend fun getHistoryForExercise(userId: String, exerciseId: String, since: String): List<SetCompletionEntity>
 
-    /** Ağırlık takibi yapılmış egzersizlerin özet listesi (profil/progresyon ekranı için) */
+    /**
+     * Ağırlık takibi yapılmış egzersizlerin özet listesi (profil/progresyon ekranı için).
+     * Her egzersiz için: max/avg/last weight, total sets/reps/volume ve son antrenman tarihi.
+     * last_weight = son antrenmandaki max ağırlık (subquery ile).
+     */
     @Query("""
-        SELECT sc.exercise_id, e.name, COALESCE(e.image_url, '') AS image_url,
+        SELECT sc.exercise_id,
+               e.name,
+               COALESCE(e.image_url, '')                                AS image_url,
                e.target_muscle,
-               MAX(sc.weight_kg) AS max_weight,
-               COUNT(DISTINCT sc.date) AS session_count
+               MAX(sc.weight_kg)                                        AS max_weight,
+               AVG(sc.weight_kg)                                        AS avg_weight,
+               COUNT(DISTINCT sc.date)                                  AS session_count,
+               COUNT(*)                                                 AS total_sets,
+               COALESCE(SUM(sc.reps_actual), 0)                         AS total_reps,
+               COALESCE(SUM(sc.weight_kg * sc.reps_actual), 0)          AS total_volume,
+               (SELECT MAX(date) FROM set_completions
+                  WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                    AND weight_kg IS NOT NULL)                          AS last_date,
+               (SELECT MAX(weight_kg) FROM set_completions
+                  WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                    AND date = (SELECT MAX(date) FROM set_completions
+                                  WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                                    AND weight_kg IS NOT NULL))         AS last_weight
         FROM set_completions sc
         INNER JOIN exercises e ON e.id = sc.exercise_id
         WHERE sc.user_id = :userId AND sc.weight_kg IS NOT NULL
         GROUP BY sc.exercise_id
-        ORDER BY session_count DESC, max_weight DESC
+        ORDER BY last_date DESC, max_weight DESC
     """)
     suspend fun getTrackedExerciseSummaries(userId: String): List<ExerciseProgressSummary>
 }
