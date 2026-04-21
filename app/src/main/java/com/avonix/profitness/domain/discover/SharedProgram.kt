@@ -1,6 +1,7 @@
 package com.avonix.profitness.domain.discover
 
 import com.avonix.profitness.data.discover.dto.DiscoverFeedRowDto
+import com.avonix.profitness.data.discover.dto.MySharedProgramRowDto
 import kotlinx.serialization.json.JsonElement
 
 /** Domain model — UI tarafından tüketilir (DTO'dan bağımsız). */
@@ -37,6 +38,48 @@ enum class Difficulty { BEGINNER, INTERMEDIATE, ADVANCED;
 }
 
 enum class DiscoverSort(val raw: String) { NEWEST("newest"), TRENDING("trending") }
+
+/**
+ * Kullanıcının kendi paylaşımları — admin/yönetim modeli.
+ * Feed kartından farklı: like/save flag'leri yok, senkron durumu + kaynağa referans var.
+ */
+data class MySharedProgram(
+    val id              : String,
+    val originalProgramId: String?,
+    val title           : String,
+    val description     : String?,
+    val tags            : List<String>,
+    val difficulty      : Difficulty?,
+    val durationWeeks   : Int?,
+    val daysPerWeek     : Int?,
+    val likesCount      : Int,
+    val savesCount      : Int,
+    val downloadsCount  : Int,
+    val createdAtIso    : String,
+    val updatedAtIso    : String?,
+    val sourceExists    : Boolean,
+    val sourceProgramName: String?,
+    val isOutOfSync     : Boolean
+)
+
+internal fun MySharedProgramRowDto.toDomain(): MySharedProgram = MySharedProgram(
+    id               = id,
+    originalProgramId = original_program_id,
+    title            = title,
+    description      = description,
+    tags             = tags,
+    difficulty       = Difficulty.fromRaw(difficulty),
+    durationWeeks    = duration_weeks,
+    daysPerWeek      = days_per_week,
+    likesCount       = likes_count,
+    savesCount       = saves_count,
+    downloadsCount   = downloads_count,
+    createdAtIso     = created_at,
+    updatedAtIso     = updated_at,
+    sourceExists     = source_exists,
+    sourceProgramName = source_program_name,
+    isOutOfSync      = is_out_of_sync
+)
 
 internal fun DiscoverFeedRowDto.toDomain(): SharedProgram = SharedProgram(
     id               = id,

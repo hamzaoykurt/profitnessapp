@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -23,7 +24,11 @@ import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,10 +65,14 @@ import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.DiscoverSort
+import com.avonix.profitness.domain.discover.MySharedProgram
 import com.avonix.profitness.domain.discover.SharedProgram
 import android.widget.Toast
 
 enum class DiscoverTab { Programs, Friends, Challenges }
+
+/** Programlar sekmesi altındaki iç sekme: Topluluk akışı vs. Benim paylaşımlarım. */
+private enum class ProgramsSubTab { Community, Mine }
 
 @Composable
 fun DiscoverScreen(
@@ -71,10 +80,12 @@ fun DiscoverScreen(
     timerExtraPad: Dp = 0.dp
 ) {
     var selected by rememberSaveable { mutableStateOf(DiscoverTab.Programs) }
+    var programsSub by rememberSaveable { mutableStateOf(ProgramsSubTab.Community) }
     var showShareSheet by rememberSaveable { mutableStateOf(false) }
 
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Share / Apply / Error toast'ları
@@ -96,6 +107,12 @@ fun DiscoverScreen(
             }
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             viewModel.consumeApplyResult()
+        }
+    }
+    LaunchedEffect(state.myActionMsg) {
+        state.myActionMsg?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            viewModel.consumeMyActionMsg()
         }
     }
 
@@ -124,15 +141,41 @@ fun DiscoverScreen(
                 label = "discover_tab"
             ) { tab ->
                 when (tab) {
-                    DiscoverTab.Programs -> ProgramsList(
-                        state         = state,
-                        bottomPadding = bottomPadding,
-                        onLike        = viewModel::toggleLike,
-                        onSave        = viewModel::toggleSave,
-                        onApply       = viewModel::applyProgram,
-                        onLoadMore    = viewModel::loadMore,
-                        onRefresh     = viewModel::refresh
-                    )
+                    DiscoverTab.Programs -> Column(Modifier.fillMaxSize()) {
+                        ProgramsSubTabBar(
+                            selected = programsSub,
+                            mineCount = state.myShared.size,
+                            onSelect = { programsSub = it }
+                        )
+                        AnimatedContent(
+                            targetState = programsSub,
+                            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },
+                            modifier = Modifier.weight(1f),
+                            label = "programs_sub"
+                        ) { sub ->
+                            when (sub) {
+                                ProgramsSubTab.Community -> ProgramsList(
+                                    state         = state,
+                                    bottomPadding = bottomPadding,
+                                    onLike        = viewModel::toggleLike,
+                                    onSave        = viewModel::toggleSave,
+                                    onApply       = viewModel::applyProgram,
+                                    onLoadMore    = viewModel::loadMore,
+                                    onRefresh     = viewModel::refresh
+                                )
+                                ProgramsSubTab.Mine -> MySharedProgramsList(
+                                    items           = state.myShared,
+                                    isLoading       = state.myLoading,
+                                    syncInFlight    = state.mySyncInFlight,
+                                    deleteInFlight  = state.myDeleteInFlight,
+                                    bottomPadding   = bottomPadding,
+                                    onSync          = viewModel::syncShared,
+                                    onDelete        = viewModel::deleteShared,
+                                    onStartShare    = { showShareSheet = true }
+                                )
+                            }
+                        }
+                    }
                     DiscoverTab.Friends -> com.avonix.profitness.presentation.friends.FriendsTab(
                         bottomPadding = bottomPadding,
                         timerExtraPad = 0.dp
@@ -158,9 +201,11 @@ fun DiscoverScreen(
 
     if (showShareSheet) {
         ShareProgramSheet(
+            programs  = myPrograms,
+            preselectedProgramId = null,
             onDismiss = { showShareSheet = false },
-            onConfirm = { title, desc, tags, difficulty, weeks, days ->
-                viewModel.shareMyActiveProgram(title, desc, tags, difficulty, weeks, days)
+            onConfirm = { programId, title, desc, tags, difficulty, weeks, days ->
+                viewModel.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
                 showShareSheet = false
             }
         )
@@ -666,5 +711,329 @@ private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Icon(Icons.Rounded.Share, "Programı paylaş",
             tint = Color.Black, modifier = Modifier.size(24.dp))
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PROGRAMS SUB-TAB: Topluluk vs. Benim paylaşımlarım
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ProgramsSubTabBar(
+    selected: ProgramsSubTab,
+    mineCount: Int,
+    onSelect: (ProgramsSubTab) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SubTabChip(
+            label = "TOPLULUK",
+            selected = selected == ProgramsSubTab.Community,
+            onClick = { onSelect(ProgramsSubTab.Community) },
+            modifier = Modifier.weight(1f)
+        )
+        SubTabChip(
+            label = if (mineCount > 0) "PAYLAŞIMLARIM · $mineCount" else "PAYLAŞIMLARIM",
+            selected = selected == ProgramsSubTab.Mine,
+            onClick = { onSelect(ProgramsSubTab.Mine) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SubTabChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.4f))
+            .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.3f), shape)
+            .clickable { onClick() }
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            color = if (selected) accent else theme.text2.copy(0.7f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.8.sp
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MY SHARED PROGRAMS LIST — sync + delete yönetimi
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MySharedProgramsList(
+    items          : List<MySharedProgram>,
+    isLoading      : Boolean,
+    syncInFlight   : Set<String>,
+    deleteInFlight : Set<String>,
+    bottomPadding  : Dp,
+    onSync         : (String) -> Unit,
+    onDelete       : (String) -> Unit,
+    onStartShare   : () -> Unit
+) {
+    val theme = LocalAppTheme.current
+
+    when {
+        items.isEmpty() && isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+        }
+        items.isEmpty() -> Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Henüz bir program paylaşmadın",
+                color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Programlarından birini topluluğa paylaşmak için dokun.",
+                color = theme.text2.copy(0.7f),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(16.dp))
+            val accent = MaterialTheme.colorScheme.primary
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Brush.linearGradient(listOf(accent, accent.copy(0.75f))))
+                    .clickable { onStartShare() }
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Share, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("PROGRAM PAYLAŞ", color = Color.Black,
+                    fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+            }
+        }
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 20.dp, end = 20.dp,
+                top = 4.dp, bottom = bottomPadding + 80.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(items, key = { it.id }) { item ->
+                MySharedCard(
+                    item         = item,
+                    isSyncing    = item.id in syncInFlight,
+                    isDeleting   = item.id in deleteInFlight,
+                    onSync       = { onSync(item.id) },
+                    onDelete     = { onDelete(item.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MySharedCard(
+    item       : MySharedProgram,
+    isSyncing  : Boolean,
+    isDeleting : Boolean,
+    onSync     : () -> Unit,
+    onDelete   : () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val warn = Color(0xFFF5A524)
+    val danger = Color(0xFFEF476F)
+    val shape = RoundedCornerShape(18.dp)
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor   = theme.bg1,
+            title = { Text("Paylaşımı sil?", color = theme.text0, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "\"${item.title}\" topluluk akışından kalıcı olarak kaldırılacak. Kendi programın silinmez.",
+                    color = theme.text2, fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDeleteDialog = false; onDelete() }) {
+                    Text("Sil", color = danger, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("İptal", color = theme.text2)
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.55f), theme.bg1.copy(0.55f))))
+            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = item.title,
+            color = theme.text0,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2
+        )
+        if (!item.description.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = item.description,
+                color = theme.text2.copy(0.75f),
+                fontSize = 12.sp,
+                maxLines = 2,
+                lineHeight = 16.sp
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        // Meta chips row
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatLabel(Icons.Rounded.Favorite, item.likesCount.toString())
+            Spacer(Modifier.width(10.dp))
+            StatLabel(Icons.Rounded.Bookmark, item.savesCount.toString())
+            Spacer(Modifier.width(10.dp))
+            StatLabel(Icons.Rounded.CloudDownload, item.downloadsCount.toString())
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Senkron durumu
+        when {
+            !item.sourceExists -> StatusBanner(
+                icon = Icons.Rounded.Warning,
+                color = danger,
+                text  = "Kaynak program silinmiş. Sadece silebilirsin."
+            )
+            item.isOutOfSync -> StatusBanner(
+                icon = Icons.Rounded.Warning,
+                color = warn,
+                text  = "Kaynak programın güncellenmiş. 'Senkronize et' ile paylaşımı yenile."
+            )
+            else -> StatusBanner(
+                icon = Icons.Rounded.Sync,
+                color = accent,
+                text  = "Paylaşım güncel programınla senkron."
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Aksiyonlar
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Sync
+            val canSync = item.sourceExists && !isDeleting
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (canSync) accent.copy(0.14f) else theme.bg2.copy(0.3f)
+                    )
+                    .border(
+                        1.dp,
+                        if (canSync) accent.copy(0.4f) else theme.stroke.copy(0.3f),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable(enabled = canSync && !isSyncing) { onSync() }
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = accent)
+                } else {
+                    Icon(
+                        Icons.Rounded.Sync, null,
+                        tint = if (canSync) accent else theme.text2.copy(0.4f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (item.isOutOfSync) "SENKRONİZE ET" else "YENİDEN SENKRON",
+                    color = if (canSync) accent else theme.text2.copy(0.4f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.6.sp
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            // Delete
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(danger.copy(0.12f))
+                    .border(1.dp, danger.copy(0.35f), RoundedCornerShape(12.dp))
+                    .clickable(enabled = !isDeleting) { showDeleteDialog = true }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = danger)
+                } else {
+                    Icon(Icons.Rounded.DeleteOutline, null, tint = danger, modifier = Modifier.size(15.dp))
+                }
+                Spacer(Modifier.width(6.dp))
+                Text("SİL", color = danger,
+                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatLabel(icon: ImageVector, text: String) {
+    val theme = LocalAppTheme.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = theme.text2.copy(0.6f), modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(text, color = theme.text2.copy(0.75f),
+            fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun StatusBanner(icon: ImageVector, color: Color, text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(0.10f))
+            .border(1.dp, color.copy(0.28f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = color.copy(0.95f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, lineHeight = 14.sp)
     }
 }

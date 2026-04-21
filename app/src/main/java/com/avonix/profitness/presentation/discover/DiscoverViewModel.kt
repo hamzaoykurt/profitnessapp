@@ -5,13 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.data.discover.DiscoverRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.domain.discover.DiscoverSort
+import com.avonix.profitness.domain.discover.MySharedProgram
 import com.avonix.profitness.domain.discover.SharedProgram
+import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,7 +31,13 @@ data class DiscoverProgramsState(
     val canLoadMore : Boolean             = true,
     val error       : String?             = null,
     val shareResult : ShareResult?        = null,
-    val applyResult : ApplyResult?        = null
+    val applyResult : ApplyResult?        = null,
+    // Kullanıcının kendi paylaşımları
+    val myShared         : List<MySharedProgram> = emptyList(),
+    val myLoading        : Boolean               = false,
+    val mySyncInFlight   : Set<String>           = emptySet(),
+    val myDeleteInFlight : Set<String>           = emptySet(),
+    val myActionMsg      : String?               = null
 )
 
 sealed class ShareResult { object Success : ShareResult(); data class Error(val msg: String) : ShareResult() }
@@ -41,9 +53,22 @@ class DiscoverViewModel @Inject constructor(
     private val _state = MutableStateFlow(DiscoverProgramsState())
     val state: StateFlow<DiscoverProgramsState> = _state.asStateFlow()
 
+    /** Kullanıcının kendi programları — sheet'teki seçici ve paylaşımlarımda UYGULA fallback için. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val myPrograms: StateFlow<List<Program>> =
+        flowOf(supabase.auth.currentUserOrNull()?.id)
+            .flatMapLatest { uid ->
+                if (uid == null) flowOf(emptyList())
+                else programRepo.observeUserPrograms(uid)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     companion object { private const val PAGE_SIZE = 20 }
 
-    init { loadFirstPage() }
+    init {
+        loadFirstPage()
+        loadMyShared()
+    }
 
     fun changeSort(sort: DiscoverSort) {
         if (sort == _state.value.sort) return
@@ -54,6 +79,7 @@ class DiscoverViewModel @Inject constructor(
     fun refresh() {
         _state.update { it.copy(isRefreshing = true, error = null) }
         loadFirstPage(isRefresh = true)
+        loadMyShared()
     }
 
     private fun loadFirstPage(isRefresh: Boolean = false) {
@@ -110,7 +136,6 @@ class DiscoverViewModel @Inject constructor(
         }
         viewModelScope.launch {
             discoverRepo.toggleLike(programId).onFailure {
-                // rollback
                 mutateLocal(programId) { before }
                 _state.update { it.copy(error = "Beğeni başarısız") }
             }
@@ -140,8 +165,12 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    /** Kullanıcının aktif programını feed'e paylaş. */
-    fun shareMyActiveProgram(
+    /**
+     * Kullanıcının seçtiği [programId] programını feed'e paylaşır.
+     * [programId] null ise aktif programı paylaşır (geriye dönük uyum).
+     */
+    fun shareProgram(
+        programId: String?,
         title: String,
         description: String?,
         tags: List<String>,
@@ -154,14 +183,16 @@ class DiscoverViewModel @Inject constructor(
             if (uid == null) {
                 _state.update { it.copy(shareResult = ShareResult.Error("Oturum yok")) }; return@launch
             }
-            val activeResult = programRepo.getActiveProgram(uid)
-            val active = activeResult.getOrNull()
-            if (active == null) {
-                _state.update { it.copy(shareResult = ShareResult.Error("Aktif program yok")) }
-                return@launch
+            val originalId: String = if (programId != null) programId else {
+                val active = programRepo.getActiveProgram(uid).getOrNull()
+                if (active == null) {
+                    _state.update { it.copy(shareResult = ShareResult.Error("Aktif program yok")) }
+                    return@launch
+                }
+                active.id
             }
             discoverRepo.shareMyProgram(
-                originalProgramId = active.id,
+                originalProgramId = originalId,
                 title             = title,
                 description       = description,
                 tags              = tags,
@@ -172,6 +203,7 @@ class DiscoverViewModel @Inject constructor(
                 .onSuccess {
                     _state.update { it.copy(shareResult = ShareResult.Success) }
                     loadFirstPage(isRefresh = true)
+                    loadMyShared()
                 }
                 .onFailure { err ->
                     _state.update { it.copy(shareResult = ShareResult.Error(err.message ?: "Paylaşım başarısız")) }
@@ -183,8 +215,12 @@ class DiscoverViewModel @Inject constructor(
         viewModelScope.launch {
             discoverRepo.applyProgram(sharedProgramId)
                 .onSuccess {
+                    // DB'de yeni program oluştu + aktif yapıldı → Room'u sync et, aksi halde
+                    // Plan sekmesinde program görünmez, bu yüzden uygulama hissedilmez.
+                    supabase.auth.currentUserOrNull()?.id?.let { uid ->
+                        runCatching { programRepo.syncFromRemote(uid) }
+                    }
                     _state.update { it.copy(applyResult = ApplyResult.Success) }
-                    // downloadsCount local update
                     mutateLocal(sharedProgramId) { p -> p.copy(downloadsCount = p.downloadsCount + 1) }
                 }
                 .onFailure { err ->
@@ -193,7 +229,96 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    //  Paylaşımlarım (My Shared Programs)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    fun loadMyShared() {
+        viewModelScope.launch {
+            _state.update { it.copy(myLoading = true) }
+            discoverRepo.listMyShared()
+                .onSuccess { list ->
+                    _state.update { it.copy(myShared = list, myLoading = false) }
+                }
+                .onFailure {
+                    _state.update { it.copy(myLoading = false) }
+                }
+        }
+    }
+
+    /**
+     * Paylaşım kaydının snapshot'ını kaynak programdan yeniden alır.
+     * Kaynak silinmişse backend hata döner; kullanıcı silmeyi tercih eder.
+     */
+    fun syncShared(sharedId: String) {
+        val s = _state.value
+        if (sharedId in s.mySyncInFlight) return
+        _state.update { it.copy(mySyncInFlight = it.mySyncInFlight + sharedId) }
+        viewModelScope.launch {
+            discoverRepo.updateShared(
+                sharedId       = sharedId,
+                resyncSnapshot = true
+            )
+                .onSuccess {
+                    // Senkron sonrası: listeyi tazele + feed'de güncel kart görünsün
+                    loadMyShared()
+                    loadFirstPage(isRefresh = true)
+                    _state.update {
+                        it.copy(
+                            mySyncInFlight = it.mySyncInFlight - sharedId,
+                            myActionMsg    = "Paylaşım güncel programla senkron ✓"
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    _state.update {
+                        it.copy(
+                            mySyncInFlight = it.mySyncInFlight - sharedId,
+                            myActionMsg    = "Senkron başarısız: ${err.message ?: "bilinmeyen hata"}"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun deleteShared(sharedId: String) {
+        val s = _state.value
+        if (sharedId in s.myDeleteInFlight) return
+        // Optimistic: listeden anında düş
+        val snapshot = s.myShared
+        _state.update {
+            it.copy(
+                myShared         = it.myShared.filter { m -> m.id != sharedId },
+                myDeleteInFlight = it.myDeleteInFlight + sharedId
+            )
+        }
+        viewModelScope.launch {
+            discoverRepo.deleteShared(sharedId)
+                .onSuccess {
+                    // Feed'de de kalmasın
+                    _state.update {
+                        it.copy(
+                            items            = it.items.filter { p -> p.id != sharedId },
+                            myDeleteInFlight = it.myDeleteInFlight - sharedId,
+                            myActionMsg      = "Paylaşım silindi"
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    // Rollback
+                    _state.update {
+                        it.copy(
+                            myShared         = snapshot,
+                            myDeleteInFlight = it.myDeleteInFlight - sharedId,
+                            myActionMsg      = "Silme başarısız: ${err.message ?: "bilinmeyen hata"}"
+                        )
+                    }
+                }
+        }
+    }
+
     fun consumeShareResult() { _state.update { it.copy(shareResult = null) } }
     fun consumeApplyResult() { _state.update { it.copy(applyResult = null) } }
+    fun consumeMyActionMsg() { _state.update { it.copy(myActionMsg = null) } }
     fun consumeError()       { _state.update { it.copy(error = null) } }
 }

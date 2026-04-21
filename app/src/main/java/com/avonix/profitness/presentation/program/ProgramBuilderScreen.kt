@@ -269,6 +269,21 @@ fun ProgramBuilderScreen(
     viewModel        : ProgramViewModel = hiltViewModel()
 ) {
     var showPaywall by remember { mutableStateOf(false) }
+    var shareTarget by remember { mutableStateOf<Program?>(null) }
+    val discoverViewModel: com.avonix.profitness.presentation.discover.DiscoverViewModel = hiltViewModel()
+    val discoverState by discoverViewModel.state.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(discoverState.shareResult) {
+        discoverState.shareResult?.let { r ->
+            val msg = when (r) {
+                is com.avonix.profitness.presentation.discover.ShareResult.Success -> "Program topluluk akışına eklendi ✓"
+                is com.avonix.profitness.presentation.discover.ShareResult.Error   -> "Paylaşım başarısız: ${r.msg}"
+            }
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+            discoverViewModel.consumeShareResult()
+        }
+    }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf<BuilderMode>(initialMode) }
@@ -308,6 +323,7 @@ fun ProgramBuilderScreen(
                     onSetActive      = { viewModel.setActive(it) },
                     onDeleteProgram  = { viewModel.deleteProgram(it) },
                     onEditProgram    = { prog -> mode = BuilderMode.Edit(prog) },
+                    onShareProgram   = { prog -> shareTarget = prog },
                     timerExtraPad    = timerExtraPad
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
@@ -357,6 +373,19 @@ fun ProgramBuilderScreen(
                 }
             )
         }
+
+        // Program paylaşım sheet'i (kart üzerindeki "PAYLAŞ" ile açılır)
+        shareTarget?.let { target ->
+            com.avonix.profitness.presentation.discover.ShareProgramSheet(
+                programs             = uiState.userPrograms,
+                preselectedProgramId = target.id,
+                onDismiss            = { shareTarget = null },
+                onConfirm            = { programId, title, desc, tags, difficulty, weeks, days ->
+                    discoverViewModel.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
+                    shareTarget = null
+                }
+            )
+        }
     }
 }
 
@@ -394,6 +423,7 @@ private fun BuilderChooseScreen(
     onSetActive    : (String) -> Unit,
     onDeleteProgram: (String) -> Unit,
     onEditProgram  : (Program) -> Unit,
+    onShareProgram : (Program) -> Unit,
     timerExtraPad  : androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
@@ -491,7 +521,8 @@ private fun BuilderChooseScreen(
                     program     = prog,
                     onSetActive = { onSetActive(prog.id) },
                     onDelete    = { onDeleteProgram(prog.id) },
-                    onEdit      = { onEditProgram(prog) }
+                    onEdit      = { onEditProgram(prog) },
+                    onShare     = { onShareProgram(prog) }
                 )
             }
         }
@@ -766,7 +797,8 @@ private fun SavedProgramTile(
     program    : Program,
     onSetActive: () -> Unit,
     onDelete   : () -> Unit,
-    onEdit     : () -> Unit
+    onEdit     : () -> Unit,
+    onShare    : () -> Unit = {}
 ) {
     val theme   = LocalAppTheme.current
     val primary = MaterialTheme.colorScheme.primary
@@ -1052,6 +1084,26 @@ private fun SavedProgramTile(
                     Text(
                         "DÜZENLE",
                         color      = theme.text1.copy(0.8f),
+                        fontSize   = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+                VerticalDivider(color = theme.stroke.copy(0.4f), thickness = 0.5.dp)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(onClick = onShare)
+                        .padding(vertical = 13.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Share, null, tint = primary, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "PAYLAŞ",
+                        color      = primary,
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
