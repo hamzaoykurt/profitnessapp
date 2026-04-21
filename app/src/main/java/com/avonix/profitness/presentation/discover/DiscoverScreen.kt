@@ -183,7 +183,8 @@ private fun DiscoverHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -286,7 +287,7 @@ private fun DiscoverTabPill(
 ) {
     val theme = LocalAppTheme.current
     val shape = RoundedCornerShape(14.dp)
-    Row(
+    Column(
         modifier = modifier
             .clip(shape)
             .background(
@@ -295,14 +296,21 @@ private fun DiscoverTabPill(
             )
             .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), shape)
             .clickable { onClick() }
-            .padding(vertical = 12.dp, horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(icon, null, tint = if (selected) accent else theme.text2.copy(0.55f), modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = if (selected) accent else theme.text2.copy(0.7f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

@@ -480,13 +480,17 @@ private fun OtpInputRow(
                 .focusRequester(focusRequester)
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             repeat(6) { idx ->
                 val char      = code.getOrNull(idx)
                 val isFocused = code.length == idx
                 Box(
                     modifier = Modifier
-                        .size(width = 46.dp, height = 58.dp)
+                        .weight(1f)
+                        .aspectRatio(46f / 58f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(theme.bg2)
                         .border(
