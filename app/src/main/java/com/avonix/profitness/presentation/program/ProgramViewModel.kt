@@ -43,6 +43,7 @@ data class ProgramUiState(
     val isLoading    : Boolean          = false,
     val error        : String?          = null,
     val userPrograms : List<Program>    = emptyList(),
+    val deletingProgramIds: Set<String> = emptySet(),
     val exercises    : List<ExerciseItem> = emptyList(),
     // AI builder
     val aiLoading    : Boolean          = false,
@@ -158,7 +159,13 @@ class ProgramViewModel @Inject constructor(
         // Room Flow: programlar değişince otomatik güncellenir
         viewModelScope.launch {
             programRepository.observeUserPrograms(uid).collect { programs ->
-                updateState { it.copy(isLoading = false, userPrograms = programs) }
+                updateState { state ->
+                    state.copy(
+                        isLoading = false,
+                        userPrograms = programs,
+                        deletingProgramIds = state.deletingProgramIds.intersect(programs.map { it.id }.toSet())
+                    )
+                }
             }
         }
 
@@ -685,18 +692,25 @@ FORMAT:
 
     // ── Delete ────────────────────────────────────────────────────────────────
 
-    fun deleteProgram(programId: String) {
-        // Optimistic: UI'dan hemen kaldır, arka planda sil
+    fun deleteProgram(
+        programId: String,
+        onSuccess: (() -> Unit)? = null,
+        onFailure: (() -> Unit)? = null
+    ) {
         updateState { state ->
-            state.copy(userPrograms = state.userPrograms.filter { it.id != programId })
+            state.copy(deletingProgramIds = state.deletingProgramIds + programId)
         }
         viewModelScope.launch {
             programRepository.deleteProgram(programId)
                 .onSuccess {
+                    onSuccess?.invoke()
                     sendEvent(ProgramEvent.ShowSnackbar("Program silindi."))
                 }
                 .onFailure { e ->
-                    // Başarısız olursa listeyi yeniden yükle
+                    updateState { state ->
+                        state.copy(deletingProgramIds = state.deletingProgramIds - programId)
+                    }
+                    onFailure?.invoke()
                     loadUserPrograms()
                     sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
                 }

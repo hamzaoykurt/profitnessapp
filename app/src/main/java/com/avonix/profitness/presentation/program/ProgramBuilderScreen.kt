@@ -311,7 +311,7 @@ fun ProgramBuilderScreen(
         Crossfade(targetState = mode, label = "builder_fade") { m ->
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
-                    userPrograms     = uiState.userPrograms,
+                    userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
                     onMode           = { newMode ->
                         // AI Builder → ViewModel'in checkAiAccess'ini çağır;
@@ -321,7 +321,14 @@ fun ProgramBuilderScreen(
                     },
                     onSelectTemplate = { viewModel.selectTemplate(it) },
                     onSetActive      = { viewModel.setActive(it) },
-                    onDeleteProgram  = { viewModel.deleteProgram(it) },
+                    onDeleteProgram  = { programId ->
+                        discoverViewModel.markLocalProgramDeleting(programId)
+                        viewModel.deleteProgram(
+                            programId = programId,
+                            onSuccess = { discoverViewModel.confirmLocalProgramDeleted(programId) },
+                            onFailure = { discoverViewModel.unmarkLocalProgramDeleting(programId) }
+                        )
+                    },
                     onEditProgram    = { prog -> mode = BuilderMode.Edit(prog) },
                     onShareProgram   = { prog -> shareTarget = prog },
                     timerExtraPad    = timerExtraPad

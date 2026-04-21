@@ -32,6 +32,9 @@ data class DiscoverProgramsState(
     val error       : String?             = null,
     val shareResult : ShareResult?        = null,
     val applyResult : ApplyResult?        = null,
+    val applyingProgramIds: Set<String>   = emptySet(),
+    val appliedProgramMap : Map<String, String> = emptyMap(),
+    val localDeletingProgramIds: Set<String> = emptySet(),
     // Kullanıcının kendi paylaşımları
     val myShared         : List<MySharedProgram> = emptyList(),
     val myLoading        : Boolean               = false,
@@ -212,19 +215,40 @@ class DiscoverViewModel @Inject constructor(
     }
 
     fun applyProgram(sharedProgramId: String) {
+        val currentState = _state.value
+        if (sharedProgramId in currentState.applyingProgramIds) {
+            return
+        }
+        _state.update {
+            it.copy(
+                applyingProgramIds = it.applyingProgramIds + sharedProgramId,
+                applyResult = null
+            )
+        }
         viewModelScope.launch {
             discoverRepo.applyProgram(sharedProgramId)
-                .onSuccess {
+                .onSuccess { localProgramId ->
                     // DB'de yeni program oluştu + aktif yapıldı → Room'u sync et, aksi halde
                     // Plan sekmesinde program görünmez, bu yüzden uygulama hissedilmez.
                     supabase.auth.currentUserOrNull()?.id?.let { uid ->
                         runCatching { programRepo.syncFromRemote(uid) }
                     }
-                    _state.update { it.copy(applyResult = ApplyResult.Success) }
+                    _state.update {
+                        it.copy(
+                            applyResult = ApplyResult.Success,
+                            applyingProgramIds = it.applyingProgramIds - sharedProgramId,
+                            appliedProgramMap = it.appliedProgramMap + (sharedProgramId to localProgramId)
+                        )
+                    }
                     mutateLocal(sharedProgramId) { p -> p.copy(downloadsCount = p.downloadsCount + 1) }
                 }
                 .onFailure { err ->
-                    _state.update { it.copy(applyResult = ApplyResult.Error(err.message ?: "Uygulanamadı")) }
+                    _state.update {
+                        it.copy(
+                            applyResult = ApplyResult.Error(err.message ?: "Uygulanamadı"),
+                            applyingProgramIds = it.applyingProgramIds - sharedProgramId
+                        )
+                    }
                 }
         }
     }
@@ -321,4 +345,21 @@ class DiscoverViewModel @Inject constructor(
     fun consumeApplyResult() { _state.update { it.copy(applyResult = null) } }
     fun consumeMyActionMsg() { _state.update { it.copy(myActionMsg = null) } }
     fun consumeError()       { _state.update { it.copy(error = null) } }
+
+    fun markLocalProgramDeleting(programId: String) {
+        _state.update { it.copy(localDeletingProgramIds = it.localDeletingProgramIds + programId) }
+    }
+
+    fun unmarkLocalProgramDeleting(programId: String) {
+        _state.update { it.copy(localDeletingProgramIds = it.localDeletingProgramIds - programId) }
+    }
+
+    fun confirmLocalProgramDeleted(programId: String) {
+        _state.update { state ->
+            state.copy(
+                localDeletingProgramIds = state.localDeletingProgramIds - programId,
+                appliedProgramMap = state.appliedProgramMap.filterValues { it != programId }
+            )
+        }
+    }
 }

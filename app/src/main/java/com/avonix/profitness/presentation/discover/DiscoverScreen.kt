@@ -86,6 +86,7 @@ fun DiscoverScreen(
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
+    val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toSet() }
     val context = LocalContext.current
 
     // Share / Apply / Error toast'ları
@@ -155,11 +156,12 @@ fun DiscoverScreen(
                         ) { sub ->
                             when (sub) {
                                 ProgramsSubTab.Community -> ProgramsList(
-                                    state         = state,
-                                    bottomPadding = bottomPadding,
-                                    onLike        = viewModel::toggleLike,
-                                    onSave        = viewModel::toggleSave,
-                                    onApply       = viewModel::applyProgram,
+                                     state         = state,
+                                     myProgramIds  = myProgramIds,
+                                     bottomPadding = bottomPadding,
+                                     onLike        = viewModel::toggleLike,
+                                     onSave        = viewModel::toggleSave,
+                                     onApply       = viewModel::applyProgram,
                                     onLoadMore    = viewModel::loadMore,
                                     onRefresh     = viewModel::refresh
                                 )
@@ -366,6 +368,7 @@ private fun DiscoverTabPill(
 @Composable
 private fun ProgramsList(
     state         : DiscoverProgramsState,
+    myProgramIds  : Set<String>,
     bottomPadding : Dp,
     onLike        : (String) -> Unit,
     onSave        : (String) -> Unit,
@@ -402,11 +405,17 @@ private fun ProgramsList(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(state.items, key = { it.id }) { program ->
+                val appliedLocalProgramId = state.appliedProgramMap[program.id]
+                val isApplied = appliedLocalProgramId != null &&
+                    appliedLocalProgramId !in state.localDeletingProgramIds &&
+                    myProgramIds.contains(appliedLocalProgramId)
                 SharedProgramCard(
-                    program = program,
-                    onLike  = { onLike(program.id) },
-                    onSave  = { onSave(program.id) },
-                    onApply = { onApply(program.id) }
+                    program    = program,
+                    isApplying = program.id in state.applyingProgramIds,
+                    isApplied  = isApplied,
+                    onLike     = { onLike(program.id) },
+                    onSave     = { onSave(program.id) },
+                    onApply    = { onApply(program.id) }
                 )
             }
             if (state.isLoading && state.items.isNotEmpty()) {
@@ -423,10 +432,12 @@ private fun ProgramsList(
 
 @Composable
 private fun SharedProgramCard(
-    program: SharedProgram,
-    onLike : () -> Unit,
-    onSave : () -> Unit,
-    onApply: () -> Unit
+    program   : SharedProgram,
+    isApplying: Boolean,
+    isApplied : Boolean,
+    onLike    : () -> Unit,
+    onSave    : () -> Unit,
+    onApply   : () -> Unit
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -532,7 +543,17 @@ private fun SharedProgramCard(
                 onClick = {}   // salt sayaç
             )
             Spacer(Modifier.weight(1f))
-            ApplyButton(onClick = onApply)
+            ApplyButton(
+                onClick = onApply,
+                text = when {
+                    isApplied -> "UYGULANDI"
+                    isApplying -> "UYGULANIYOR"
+                    else -> "UYGULA"
+                },
+                enabled = !isApplying && !isApplied,
+                isLoading = isApplying,
+                applied = isApplied
+            )
         }
     }
 }
@@ -567,19 +588,45 @@ private fun ActionChip(
 }
 
 @Composable
-private fun ApplyButton(onClick: () -> Unit) {
+private fun ApplyButton(
+    onClick: () -> Unit,
+    text: String = "UYGULA",
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    applied: Boolean = false
+) {
     val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(14.dp)
+    val background = when {
+        applied -> Brush.linearGradient(listOf(accent.copy(0.18f), accent.copy(0.10f)))
+        enabled -> Brush.linearGradient(listOf(accent, accent.copy(0.75f)))
+        else -> Brush.linearGradient(listOf(accent.copy(0.45f), accent.copy(0.35f)))
+    }
+    val textColor = if (applied) accent else Color.Black
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(Brush.linearGradient(listOf(accent, accent.copy(0.75f))))
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .clip(shape)
+            .background(background)
+            .border(
+                width = 1.dp,
+                color = if (applied) accent.copy(0.35f) else Color.Transparent,
+                shape = shape
+            )
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(12.dp),
+                strokeWidth = 2.dp,
+                color = textColor
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
-            text = "UYGULA",
-            color = Color.Black,
+            text = text,
+            color = textColor,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.8.sp
@@ -641,7 +688,10 @@ private fun ErrorState(msg: String, onRetry: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text(msg, color = theme.text2.copy(0.7f), fontSize = 13.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(14.dp))
-        ApplyButton(onClick = onRetry)
+        ApplyButton(
+            onClick = onRetry,
+            text = "TEKRAR DENE"
+        )
     }
 }
 
