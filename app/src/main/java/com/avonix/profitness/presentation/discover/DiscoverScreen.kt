@@ -395,7 +395,14 @@ private fun ProgramsList(
         state.items.isEmpty() && state.isLoading -> LoadingState()
         state.items.isEmpty() && state.error != null -> ErrorState(state.error, onRefresh)
         state.items.isEmpty() -> EmptyFeedState()
-        else -> LazyColumn(
+        else -> {
+            // Kendi paylaşımlarım için sharedId → originalProgramId haritası
+            // Feed'deki kart senin paylaşımın VE originalProgramId hâlâ sende varsa "uygulandi" say
+            val mySharedOriginMap = remember(state.myShared) {
+                state.myShared.associate { it.id to it.originalProgramId }
+            }
+
+            LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -406,9 +413,12 @@ private fun ProgramsList(
         ) {
             items(state.items, key = { it.id }) { program ->
                 val appliedLocalProgramId = state.appliedProgramMap[program.id]
-                val isApplied = appliedLocalProgramId != null &&
+                val isApplied = (appliedLocalProgramId != null &&
                     appliedLocalProgramId !in state.localDeletingProgramIds &&
-                    myProgramIds.contains(appliedLocalProgramId)
+                    myProgramIds.contains(appliedLocalProgramId)) ||
+                    (mySharedOriginMap[program.id]?.let { origId ->
+                        origId !in state.localDeletingProgramIds && myProgramIds.contains(origId)
+                    } == true)
                 SharedProgramCard(
                     program    = program,
                     isApplying = program.id in state.applyingProgramIds,
@@ -427,6 +437,7 @@ private fun ProgramsList(
                 }
             }
         }
+        } // else block
     }
 }
 
