@@ -251,7 +251,7 @@ class WorkoutViewModel @Inject constructor(
         val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
         val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
-        val isCurrentlyDone = setIndex in (currentState.setCompletions[exerciseId] ?: emptySet())
+        val isCurrentlyDone = setIndex in (currentState.setCompletions[dbExerciseId] ?: emptySet())
 
         viewModelScope.launch {
             if (isCurrentlyDone) {
@@ -294,7 +294,26 @@ class WorkoutViewModel @Inject constructor(
             exerciseMap[setIndex] = value
             state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
         }
-        scheduleDraftPersist(exerciseId, setIndex, weight = false, reps = true)
+        // Tikli setler için reps_actual'ı anında yaz (debounce yok) — kullanıcı ekrandan çıkarsa
+        // 500ms bekleyen job iptal olur ve değer kaybolur. Tikli olmayan setlerde yine debounce kullan.
+        val state = uiState.value
+        val dayState = state.dayStates.getOrNull(state.selectedDayIdx)
+        val dbExerciseId = dayState?.day?.exercises?.find { it.id == exerciseId }
+            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val isDone = setIndex in (state.setCompletions[dbExerciseId] ?: emptySet())
+        if (isDone) {
+            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+            val programDayId = dayState?.day?.programDayId ?: return
+            if (programDayId.isBlank()) return
+            val r = value.toIntOrNull() ?: return
+            val key = "$exerciseId:$setIndex:r"
+            draftPersistJobs[key]?.cancel()
+            viewModelScope.launch {
+                workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, r)
+            }
+        } else {
+            scheduleDraftPersist(exerciseId, setIndex, weight = false, reps = true)
+        }
     }
 
     /**
@@ -322,7 +341,7 @@ class WorkoutViewModel @Inject constructor(
             }
             if (reps) {
                 // Sadece set zaten tikliyse reps_actual güncellenir — tikli olmayan set draft kalmalı.
-                val isDone = setIndex in (latest.setCompletions[exerciseId] ?: emptySet())
+                val isDone = setIndex in (latest.setCompletions[dbExerciseId] ?: emptySet())
                 if (isDone) {
                     val r = latest.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
                     if (r != null) {

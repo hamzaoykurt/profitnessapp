@@ -634,7 +634,7 @@ private fun WorkoutContent(
                 val doneSetIndices = if (isCompleted) {
                     (0 until exercise.sets).toSet()
                 } else {
-                    state.setCompletions[exercise.id] ?: emptySet()
+                    state.setCompletions[exercise.exerciseTableId.ifBlank { exercise.id }] ?: emptySet()
                 }
                 // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
                 val timer = state.restTimer
