@@ -49,10 +49,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
 import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.components.glassCard
+import com.avonix.profitness.presentation.challenges.ChallengeDetailOverlay
+import com.avonix.profitness.presentation.dashboard.ChallengeTodayBanner
+import com.avonix.profitness.presentation.dashboard.DashboardViewModel
+import com.avonix.profitness.presentation.dashboard.UpcomingEventsSection
 import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
@@ -478,13 +483,36 @@ private fun WorkoutContent(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
+    // ── FAZ 7J-9: Dashboard event challenges ──────────────────────────────
+    val dashboardVm: DashboardViewModel = hiltViewModel()
+    val dashState by dashboardVm.state.collectAsStateWithLifecycle()
+    var detailChallengeId by remember { mutableStateOf<String?>(null) }
+    val dashLifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(dashLifecycle) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) dashboardVm.refresh()
+        }
+        dashLifecycle.addObserver(obs)
+        onDispose { dashLifecycle.removeObserver(obs) }
+    }
+
+    // Event banner gününde otomatik refresh (ON_RESUME zaten ana ekranda çağırıyor)
+    val todayEvents = dashState.today
+    val upcomingEvents = dashState.upcoming
+    val hasTodayBanner = todayEvents.isNotEmpty()
+    val skipProgramToday = dashState.skipProgramToday && hasTodayBanner
+    val hasUpcomingSection = upcomingEvents.any {
+        it.event?.dateIso != java.time.LocalDate.now().toString()
+    }
+
     val listState = rememberLazyListState()
     // Açılan kartı ekranın ortasına scroll et
     var expandedExIdx by remember { mutableStateOf(-1) }
-    LaunchedEffect(expandedExIdx) {
+    LaunchedEffect(expandedExIdx, hasTodayBanner) {
         if (expandedExIdx >= 0) {
-            // Header items: StreakBanner(0), Header(1), DaySelector(2), SectionLabel(3)
-            val lazyIdx = 4 + expandedExIdx
+            // Header items: StreakBanner(0), [EventBanner(1)?], Header, DaySelector, SectionLabel
+            val bannerOffset = if (hasTodayBanner) 1 else 0
+            val lazyIdx = 4 + bannerOffset + expandedExIdx
             kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
             val viewportHeight = listState.layoutInfo.viewportSize.height
             listState.animateScrollToItem(lazyIdx, scrollOffset = -(viewportHeight / 5))
@@ -525,6 +553,16 @@ private fun WorkoutContent(
             StreakBanner(streak = state.currentStreak)
         }
 
+        // ── FAZ 7J-9: Today's joined challenge events (above program) ────
+        if (hasTodayBanner) {
+            item {
+                ChallengeTodayBanner(
+                    events = todayEvents,
+                    onOpen = { detailChallengeId = it.id }
+                )
+            }
+        }
+
         // ── Header: Greeting + Progress Ring ─────────────────────────────
         item {
             AnimatedContent(
@@ -558,7 +596,7 @@ private fun WorkoutContent(
         }
 
         // ── Section Label ─────────────────────────────────────────────────
-        if (!currentDay.isRestDay && currentDay.exercises.isNotEmpty()) {
+        if (!currentDay.isRestDay && currentDay.exercises.isNotEmpty() && !skipProgramToday) {
             item {
                 Row(
                     modifier = Modifier
@@ -587,6 +625,8 @@ private fun WorkoutContent(
         // ── Content: Rest day or exercise cards ──────────────────────────
         if (currentDay.isRestDay) {
             item { RestDayView() }
+        } else if (skipProgramToday) {
+            item { SkippedProgramNotice() }
         } else {
             itemsIndexed(currentDay.exercises, key = { _, ex -> ex.id }) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
@@ -639,6 +679,68 @@ private fun WorkoutContent(
                 }
             }
         }
+
+        // ── FAZ 7J-9: Upcoming events (next 7 days) ───────────────────────
+        if (hasUpcomingSection) {
+            item {
+                UpcomingEventsSection(
+                    events = upcomingEvents,
+                    onOpen = { detailChallengeId = it.id }
+                )
+            }
+        }
+    }
+
+    // ── FAZ 7J-9: Challenge detail overlay (banner/upcoming tap target) ──
+    detailChallengeId?.let { id ->
+        ChallengeDetailOverlay(
+            challengeId = id,
+            onBack = { detailChallengeId = null },
+            onChanged = {
+                // Event üzerinde bir şey değişmiş olabilir (movement completion, skip toggle)
+                dashboardVm.refresh()
+            }
+        )
+    }
+}
+
+@Composable
+private fun SkippedProgramNotice() {
+    val theme = LocalAppTheme.current
+    val strings = theme.strings
+    val accent = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 24.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(accent.copy(0.08f))
+            .border(1.dp, accent.copy(0.30f), RoundedCornerShape(18.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            Icons.Rounded.Event,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            strings.skippedProgramTitle,
+            color = accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            strings.skippedProgramBody,
+            color = theme.text1,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp
+        )
     }
 }
 

@@ -3,9 +3,12 @@ package com.avonix.profitness.presentation.challenges
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.data.challenges.ChallengeRepository
+import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
+import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.model.ExerciseItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,12 +31,16 @@ data class ChallengesUiState(
     val showCreateSheet: Boolean               = false,
     val createInFlight : Boolean               = false,
     val createError    : String?               = null,
-    val joinInFlight   : Set<String>           = emptySet()
+    val joinInFlight   : Set<String>           = emptySet(),
+    /** Event mode'da hareket seçici için yüklenen tüm hareketler (lazy). */
+    val exercises      : List<ExerciseItem>    = emptyList(),
+    val exercisesLoading: Boolean              = false
 )
 
 @HiltViewModel
 class ChallengesViewModel @Inject constructor(
-    private val repo: ChallengeRepository
+    private val repo        : ChallengeRepository,
+    private val programRepo : ProgramRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChallengesUiState())
@@ -77,7 +84,23 @@ class ChallengesViewModel @Inject constructor(
 
     // ── Create sheet ─────────────────────────────────────────────────────────
 
-    fun openCreate()  { _state.update { it.copy(showCreateSheet = true, createError = null) } }
+    fun openCreate() {
+        _state.update { it.copy(showCreateSheet = true, createError = null) }
+        // Lazy load exercises the first time create overlay opens.
+        if (_state.value.exercises.isEmpty() && !_state.value.exercisesLoading) {
+            _state.update { it.copy(exercisesLoading = true) }
+            viewModelScope.launch {
+                val res = programRepo.getAllExercises()
+                _state.update {
+                    it.copy(
+                        exercises       = res.getOrNull().orEmpty(),
+                        exercisesLoading = false
+                    )
+                }
+            }
+        }
+    }
+
     fun closeCreate() { _state.update { it.copy(showCreateSheet = false, createError = null) } }
 
     fun submitCreate(
@@ -122,6 +145,33 @@ class ChallengesViewModel @Inject constructor(
                         it.copy(
                             createInFlight = false,
                             createError    = t.message ?: "Challenge oluşturulamadı"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun submitCreateEvent(req: CreateEventChallengeRequest) {
+        if (req.title.isBlank()) {
+            _state.update { it.copy(createError = "Başlık boş olamaz") }
+            return
+        }
+        _state.update { it.copy(createInFlight = true, createError = null) }
+        viewModelScope.launch {
+            val res = repo.createEventChallenge(req)
+            res.fold(
+                onSuccess = {
+                    _state.update {
+                        it.copy(createInFlight = false, showCreateSheet = false, createError = null)
+                    }
+                    loadAll(isRefresh = true)
+                },
+                onFailure = { t ->
+                    _state.update {
+                        it.copy(
+                            createInFlight = false,
+                            createError    = t.message ?: "Etkinlik oluşturulamadı"
                         )
                     }
                 }

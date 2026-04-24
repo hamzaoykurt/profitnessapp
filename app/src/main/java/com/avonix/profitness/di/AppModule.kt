@@ -7,6 +7,8 @@ import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.ai.GeminiRepositoryImpl
 import com.avonix.profitness.data.auth.AuthRepository
 import com.avonix.profitness.data.auth.AuthRepositoryImpl
+import com.avonix.profitness.core.analytics.AnalyticsTracker
+import com.avonix.profitness.core.analytics.NoOpAnalyticsTracker
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.challenges.ChallengeRepositoryImpl
 import com.avonix.profitness.data.discover.DiscoverRepository
@@ -84,6 +86,9 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindChallengeRepository(impl: ChallengeRepositoryImpl): ChallengeRepository
+
+    @Binds @Singleton
+    abstract fun bindAnalyticsTracker(impl: NoOpAnalyticsTracker): AnalyticsTracker
 
     companion object {
 

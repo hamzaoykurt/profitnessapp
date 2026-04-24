@@ -162,6 +162,44 @@ data class AppStrings(
     val progCatStrength     : String,   // "GÜÇ" / "STRENGTH"
     val progCatEndurance    : String,   // "DAYANIKLILIK" / "ENDURANCE"
     val progCatBeginner     : String,   // "BAŞLANGIÇ" / "BEGINNER"
+
+    // ── Challenge 2.0 (FAZ 7J) — kind & event modes ──────────────────────────
+    val challengeKindMetric    : String,   // "METRİK" / "METRIC"
+    val challengeKindEvent     : String,   // "ETKİNLİK" / "EVENT"
+    val eventModePhysical      : String,   // "FİZİKSEL" / "PHYSICAL"
+    val eventModeOnline        : String,   // "ONLİNE" / "ONLINE"
+    val eventModeMovementList  : String,   // "HAREKET" / "MOVEMENTS"
+
+    // ── Challenge 2.0 — create overlay ───────────────────────────────────────
+    val newChallengeTitle      : String,   // "YENİ CHALLENGE" / "NEW CHALLENGE"
+    val newEventTitle          : String,   // "YENİ ETKİNLİK" / "NEW EVENT"
+    val challengeFieldTitle    : String,   // "BAŞLIK" / "TITLE"
+    val challengeFieldDesc     : String,   // "AÇIKLAMA" / "DESCRIPTION"
+    val challengeVisibility    : String,   // "GÖRÜNÜRLÜK" / "VISIBILITY"
+    val challengeVisPublic     : String,   // "PUBLIC" / "PUBLIC"
+    val challengeVisPrivate    : String,   // "ÖZEL" / "PRIVATE"
+    val challengeCreateBtn     : String,   // "OLUŞTUR" / "CREATE"
+
+    // ── Challenge 2.0 — detail overlay ───────────────────────────────────────
+    val challengeLabel         : String,   // "CHALLENGE" / "CHALLENGE"
+    val eventLabel             : String,   // "ETKİNLİK" / "EVENT"
+    val openInMapsLabel        : String,   // "HARİTADA AÇ" / "OPEN IN MAPS"
+    val openLinkLabel          : String,   // "BAĞLANTIYI AÇ" / "OPEN LINK"
+    val completeAllLabel       : String,   // "TÜMÜNÜ TAMAMLA" / "COMPLETE ALL"
+    val skipProgramTodayLabel  : String,   // "Bugün programı atla" / "Skip today's program"
+    val joinLabel              : String,   // "KATIL" / "JOIN"
+    val leaveLabel             : String,   // "AYRIL" / "LEAVE"
+
+    // ── Challenge 2.0 — dashboard ────────────────────────────────────────────
+    val todayEventsTitle       : String,   // "BUGÜNKÜ ETKİNLİKLERİN" / "YOUR EVENTS TODAY"
+    val upcomingEventsTitle    : String,   // "YAKLAŞAN ETKİNLİKLER" / "UPCOMING EVENTS"
+    val skippedProgramTitle    : String,   // "BUGÜN ETKİNLİK GÜNÜ" / "EVENT DAY"
+    val skippedProgramBody     : String,   // long sentence
+
+    // ── Challenge 2.0 — private join password dialog ─────────────────────────
+    val privateJoinTitle       : String,   // "ŞİFRE GEREKLİ" / "PASSWORD REQUIRED"
+    val privateJoinHint        : String,   // long sentence
+    val privateJoinCancel      : String    // "İPTAL" / "CANCEL"
 )
 
 // ── Turkish ───────────────────────────────────────────────────────────────────
@@ -309,6 +347,44 @@ val TurkishStrings = AppStrings(
     progCatStrength     = "GÜÇ",
     progCatEndurance    = "DAYANIKLILIK",
     progCatBeginner     = "BAŞLANGIÇ",
+
+    // Challenge 2.0 — kind & event modes
+    challengeKindMetric    = "METRİK",
+    challengeKindEvent     = "ETKİNLİK",
+    eventModePhysical      = "FİZİKSEL",
+    eventModeOnline        = "ONLİNE",
+    eventModeMovementList  = "HAREKET",
+
+    // Challenge 2.0 — create overlay
+    newChallengeTitle      = "YENİ CHALLENGE",
+    newEventTitle          = "YENİ ETKİNLİK",
+    challengeFieldTitle    = "BAŞLIK",
+    challengeFieldDesc     = "AÇIKLAMA",
+    challengeVisibility    = "GÖRÜNÜRLÜK",
+    challengeVisPublic     = "PUBLIC",
+    challengeVisPrivate    = "ÖZEL",
+    challengeCreateBtn     = "OLUŞTUR",
+
+    // Challenge 2.0 — detail overlay
+    challengeLabel         = "CHALLENGE",
+    eventLabel             = "ETKİNLİK",
+    openInMapsLabel        = "HARİTADA AÇ",
+    openLinkLabel          = "BAĞLANTIYI AÇ",
+    completeAllLabel       = "TÜMÜNÜ TAMAMLA",
+    skipProgramTodayLabel  = "Bugün programı atla",
+    joinLabel              = "KATIL",
+    leaveLabel             = "AYRIL",
+
+    // Challenge 2.0 — dashboard
+    todayEventsTitle       = "BUGÜNKÜ ETKİNLİKLERİN",
+    upcomingEventsTitle    = "YAKLAŞAN ETKİNLİKLER",
+    skippedProgramTitle    = "BUGÜN ETKİNLİK GÜNÜ",
+    skippedProgramBody     = "Günlük programı atladın. Etkinlik detayından hareketlerini işaretleyebilirsin.",
+
+    // Challenge 2.0 — private join dialog
+    privateJoinTitle       = "ŞİFRE GEREKLİ",
+    privateJoinHint        = "Bu challenge özel. Katılmak için şifreyi gir.",
+    privateJoinCancel      = "İPTAL"
 )
 
 // ── English ───────────────────────────────────────────────────────────────────
@@ -456,6 +532,44 @@ val EnglishStrings = AppStrings(
     progCatStrength     = "STRENGTH",
     progCatEndurance    = "ENDURANCE",
     progCatBeginner     = "BEGINNER",
+
+    // Challenge 2.0 — kind & event modes
+    challengeKindMetric    = "METRIC",
+    challengeKindEvent     = "EVENT",
+    eventModePhysical      = "PHYSICAL",
+    eventModeOnline        = "ONLINE",
+    eventModeMovementList  = "MOVEMENTS",
+
+    // Challenge 2.0 — create overlay
+    newChallengeTitle      = "NEW CHALLENGE",
+    newEventTitle          = "NEW EVENT",
+    challengeFieldTitle    = "TITLE",
+    challengeFieldDesc     = "DESCRIPTION",
+    challengeVisibility    = "VISIBILITY",
+    challengeVisPublic     = "PUBLIC",
+    challengeVisPrivate    = "PRIVATE",
+    challengeCreateBtn     = "CREATE",
+
+    // Challenge 2.0 — detail overlay
+    challengeLabel         = "CHALLENGE",
+    eventLabel             = "EVENT",
+    openInMapsLabel        = "OPEN IN MAPS",
+    openLinkLabel          = "OPEN LINK",
+    completeAllLabel       = "COMPLETE ALL",
+    skipProgramTodayLabel  = "Skip today's program",
+    joinLabel              = "JOIN",
+    leaveLabel             = "LEAVE",
+
+    // Challenge 2.0 — dashboard
+    todayEventsTitle       = "YOUR EVENTS TODAY",
+    upcomingEventsTitle    = "UPCOMING EVENTS",
+    skippedProgramTitle    = "EVENT DAY",
+    skippedProgramBody     = "You're skipping today's program. Mark your movements from the event detail.",
+
+    // Challenge 2.0 — private join dialog
+    privateJoinTitle       = "PASSWORD REQUIRED",
+    privateJoinHint        = "This challenge is private. Enter the password to join.",
+    privateJoinCancel      = "CANCEL"
 )
 
 // ── Convenience extensions ────────────────────────────────────────────────────

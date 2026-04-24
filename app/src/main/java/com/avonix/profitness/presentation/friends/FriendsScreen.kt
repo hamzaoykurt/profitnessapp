@@ -1,11 +1,6 @@
 package com.avonix.profitness.presentation.friends
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -155,19 +150,13 @@ fun FriendsTab(
             }
         }
 
-        // Public profile overlay — tıklanan kullanıcı için
-        AnimatedVisibility(
-            visible = openProfileUserId != null,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit  = slideOutHorizontally(targetOffsetX = { it })  + fadeOut()
-        ) {
-            openProfileUserId?.let { uid ->
-                PublicProfileOverlay(
-                    userId       = uid,
-                    onBack       = { openProfileUserId = null },
-                    timerExtraPad = timerExtraPad
-                )
-            }
+        // Public profile overlay — Dialog-backed fullscreen + glow
+        openProfileUserId?.let { uid ->
+            PublicProfileOverlay(
+                userId       = uid,
+                onBack       = { openProfileUserId = null },
+                timerExtraPad = timerExtraPad
+            )
         }
     }
 }

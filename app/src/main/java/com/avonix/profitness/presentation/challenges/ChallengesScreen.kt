@@ -1,12 +1,5 @@
 package com.avonix.profitness.presentation.challenges
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,8 +10,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,9 +50,11 @@ import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
+import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
+import com.avonix.profitness.domain.challenges.EventMode
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -155,7 +155,14 @@ fun ChallengesTab(
                                         accent     = accent,
                                         inFlight   = state.joinInFlight.contains(c.id),
                                         onTap      = { vm.openDetail(c.id) },
-                                        onToggle   = { vm.toggleJoin(c) },
+                                        onToggle   = {
+                                            // Private + not joined → detail'e git (password dialog orada)
+                                            if (!c.isJoined && c.visibility == com.avonix.profitness.domain.challenges.ChallengeVisibility.Private) {
+                                                vm.openDetail(c.id)
+                                            } else {
+                                                vm.toggleJoin(c)
+                                            }
+                                        },
                                         modifier   = Modifier.padding(vertical = 6.dp)
                                     )
                                 }
@@ -203,34 +210,26 @@ fun ChallengesTab(
             Icon(Icons.Rounded.Add, "Yeni challenge", tint = Color.Black, modifier = Modifier.size(26.dp))
         }
 
-        // ── Detail overlay ─────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = state.openDetailId != null,
-            enter   = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit    = slideOutHorizontally(targetOffsetX  = { it }) + fadeOut()
-        ) {
-            state.openDetailId?.let { id ->
-                ChallengeDetailOverlay(
-                    challengeId = id,
-                    onBack      = { vm.closeDetail() },
-                    onChanged   = { vm.refresh() }
-                )
-            }
+        // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
+        state.openDetailId?.let { id ->
+            ChallengeDetailOverlay(
+                challengeId = id,
+                onBack      = { vm.closeDetail() },
+                onChanged   = { vm.refresh() }
+            )
         }
 
-        // ── Create overlay ─────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = state.showCreateSheet,
-            enter   = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit    = slideOutVertically(targetOffsetY  = { it }) + fadeOut()
-        ) {
+        // ── Create overlay (Dialog-backed: tam ekran + glow) ───────────
+        if (state.showCreateSheet) {
             CreateChallengeOverlay(
                 inFlight = state.createInFlight,
                 error    = state.createError,
+                exercises = state.exercises,
                 onDismiss = { vm.closeCreate() },
                 onSubmit  = { title, desc, tt, tv, sd, ed, vis, pw ->
                     vm.submitCreate(title, desc, tt, tv, sd, ed, vis, pw)
-                }
+                },
+                onSubmitEvent = { req -> vm.submitCreateEvent(req) }
             )
         }
     }
@@ -289,6 +288,7 @@ private fun ChallengeCard(
 ) {
     val theme = LocalAppTheme.current
     val isPrivate = c.visibility == ChallengeVisibility.Private
+    val isEvent = c.kind == ChallengeKind.Event
 
     Column(
         modifier = modifier
@@ -303,7 +303,28 @@ private fun ChallengeCard(
             .clickable(onClick = onTap)
             .padding(14.dp)
     ) {
-        // Başlık satırı
+        // Kind chip (Metric / Event)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            KindBadge(isEvent = isEvent, accent = accent, theme = theme)
+            if (isEvent && c.event != null) {
+                Spacer(Modifier.width(6.dp))
+                EventModeBadge(mode = c.event.mode, theme = theme)
+            }
+            Spacer(Modifier.weight(1f))
+            if (c.isCompleted) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(accent.copy(0.25f))
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                ) {
+                    Text("TAMAM", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        // Başlık
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,14 +348,30 @@ private fun ChallengeCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            if (c.isCompleted) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(accent.copy(0.25f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
-                ) {
-                    Text("TAMAM", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
+        }
+
+        // Event date + time footer
+        if (isEvent && c.event != null) {
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.CalendarMonth, null, tint = theme.text2, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    c.event.dateIso + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: ""),
+                    color = theme.text1,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!c.event.location.isNullOrBlank()) {
+                    Spacer(Modifier.width(10.dp))
+                    Icon(Icons.Rounded.LocationOn, null, tint = theme.text2, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        c.event.location,
+                        color = theme.text1,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
                 }
             }
         }
@@ -366,7 +403,8 @@ private fun ChallengeCard(
         // Alt bilgi satırı
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${c.participantsCount} katılımcı · ${c.startDateIso} → ${c.endDateIso}",
+                if (isEvent) "${c.participantsCount} katılımcı"
+                else "${c.participantsCount} katılımcı · ${c.startDateIso} → ${c.endDateIso}",
                 color    = theme.text2,
                 fontSize = 10.sp,
                 modifier = Modifier.weight(1f),
@@ -418,6 +456,70 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(3.dp))
                 .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.6f))))
+        )
+    }
+}
+
+@Composable
+private fun KindBadge(
+    isEvent: Boolean,
+    accent: Color,
+    theme: com.avonix.profitness.core.theme.AppThemeState
+) {
+    val (icon, label, tint) = if (isEvent)
+        Triple(Icons.Rounded.Event, "ETKİNLİK", accent)
+    else
+        Triple(Icons.Rounded.EmojiEvents, "METRİK", theme.text1)
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (isEvent) accent.copy(0.18f) else theme.bg2.copy(0.6f))
+            .border(
+                1.dp,
+                if (isEvent) accent.copy(0.45f) else theme.stroke.copy(0.5f),
+                RoundedCornerShape(6.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(10.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            label,
+            color = tint,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp
+        )
+    }
+}
+
+@Composable
+private fun EventModeBadge(
+    mode: EventMode,
+    theme: com.avonix.profitness.core.theme.AppThemeState
+) {
+    val (icon, label) = when (mode) {
+        EventMode.Physical     -> Icons.Rounded.LocationOn to "FİZİKSEL"
+        EventMode.Online       -> Icons.Rounded.Link to "ONLINE"
+        EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to "HAREKET"
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = theme.text2, modifier = Modifier.size(10.dp))
+        Spacer(Modifier.width(3.dp))
+        Text(
+            label,
+            color = theme.text2,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
         )
     }
 }

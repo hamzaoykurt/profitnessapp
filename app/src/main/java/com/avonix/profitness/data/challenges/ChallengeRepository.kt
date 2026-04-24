@@ -4,6 +4,7 @@ import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
+import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 
 interface ChallengeRepository {
 
@@ -13,10 +14,10 @@ interface ChallengeRepository {
     /** Oturum sahibinin katıldığı (aktif + bitmiş) challenge'lar. */
     suspend fun listMyChallenges(): Result<List<ChallengeSummary>>
 
-    /** Tek challenge detayı + katılımcı leaderboard (top 50). */
+    /** Tek challenge detayı + katılımcı leaderboard (top 50) + event modunda movements. */
     suspend fun getChallengeDetail(challengeId: String): Result<ChallengeDetail>
 
-    /** Yeni challenge yarat. Döner: yeni challenge id. */
+    /** Yeni metric challenge yarat. Döner: yeni challenge id. */
     suspend fun createChallenge(
         title       : String,
         description : String,
@@ -27,6 +28,9 @@ interface ChallengeRepository {
         visibility  : ChallengeVisibility = ChallengeVisibility.Public,
         password    : String? = null
     ): Result<String>
+
+    /** Yeni event challenge yarat (physical / online / movement_list). Döner: yeni challenge id. */
+    suspend fun createEventChallenge(req: CreateEventChallengeRequest): Result<String>
 
     /** Challenge'a katıl. Private ise password zorunlu. */
     suspend fun joinChallenge(challengeId: String, password: String? = null): Result<Boolean>
@@ -39,4 +43,22 @@ interface ChallengeRepository {
      * Workout bitince çağrılır. Döner: yeni tamamlanan challenge sayısı.
      */
     suspend fun refreshMyProgress(): Result<Int>
+
+    /** Event movement'ı tamamlandı olarak işaretle (idempotent). */
+    suspend fun completeMovement(challengeId: String, movementId: String): Result<Unit>
+
+    /** Event movement tamamlama işaretini kaldır (idempotent). */
+    suspend fun uncompleteMovement(challengeId: String, movementId: String): Result<Unit>
+
+    /** Tek seferde birden çok movement'ı tamamla. Döner: yeni kayıt sayısı. */
+    suspend fun completeMultipleMovements(
+        challengeId: String,
+        movementIds: List<String>
+    ): Result<Int>
+
+    /** Verilen gün için katıldığım event challenge'lar (dashboard banner). */
+    suspend fun listMyEventsForDate(dateIso: String): Result<List<ChallengeSummary>>
+
+    /** Yaklaşan event'ler (bugünden p_days sonrasına kadar). */
+    suspend fun listMyUpcomingEvents(days: Int = 7): Result<List<ChallengeSummary>>
 }

@@ -34,10 +34,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.LocalAppTheme
+import com.avonix.profitness.core.theme.PageAccentBloom
 import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
@@ -64,7 +67,17 @@ fun PublicProfileOverlay(
 
     LaunchedEffect(userId) { vm.load(userId) }
 
+    Dialog(
+        onDismissRequest = onBack,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
     Box(Modifier.fillMaxSize().background(theme.bg0)) {
+        PageAccentBloom()
 
         when {
             state.isLoading && state.profile == null -> {
@@ -111,6 +124,7 @@ fun PublicProfileOverlay(
                 Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
             }
         }
+    }
     }
 }
 

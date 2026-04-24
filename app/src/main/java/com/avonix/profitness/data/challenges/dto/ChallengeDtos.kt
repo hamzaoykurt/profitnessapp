@@ -19,7 +19,19 @@ data class PublicChallengeRowDto(
     val is_joined          : Boolean = false,
     val my_progress        : Long = 0,
     val is_completed       : Boolean = false,
-    val created_at         : String? = null
+    val created_at         : String? = null,
+    // FAZ 7J event fields (backward compat via defaults).
+    val kind               : String = "metric",
+    val event_mode         : String? = null,
+    val event_date         : String? = null,
+    val event_time         : String? = null,
+    val event_timezone     : String = "UTC",
+    val event_location     : String? = null,
+    val event_geo_lat      : Double? = null,
+    val event_geo_lng      : Double? = null,
+    val event_online_url   : String? = null,
+    val movements_count    : Int = 0,
+    val my_completed_count : Int = 0
 )
 
 /** RPC: public.list_my_challenges() */
@@ -39,7 +51,19 @@ data class MyChallengeRowDto(
     val creator_avatar     : String? = null,
     val my_progress        : Long = 0,
     val is_completed       : Boolean = false,
-    val joined_at          : String? = null
+    val joined_at          : String? = null,
+    // FAZ 7J event fields.
+    val kind               : String = "metric",
+    val event_mode         : String? = null,
+    val event_date         : String? = null,
+    val event_time         : String? = null,
+    val event_timezone     : String = "UTC",
+    val event_location     : String? = null,
+    val event_geo_lat      : Double? = null,
+    val event_geo_lng      : Double? = null,
+    val event_online_url   : String? = null,
+    val movements_count    : Int = 0,
+    val my_completed_count : Int = 0
 )
 
 /** RPC: public.get_challenge_detail(p_challenge_id).leaderboard[] */
@@ -52,6 +76,19 @@ data class ChallengeLeaderboardEntryDto(
     val joined_at    : String? = null,
     val is_completed : Boolean = false,
     val is_me        : Boolean = false
+)
+
+/** One movement row inside a challenge. */
+@Serializable
+data class ChallengeMovementDto(
+    val id               : String,
+    val exercise_id      : String,
+    val exercise_name    : String? = null,
+    val sort_index       : Int = 0,
+    val suggested_sets   : Int? = null,
+    val suggested_reps   : Int? = null,
+    val suggested_dur_s  : Int? = null,
+    val my_completed     : Boolean = false
 )
 
 /** RPC: public.get_challenge_detail(p_challenge_id) — jsonb tek satır. */
@@ -72,5 +109,16 @@ data class ChallengeDetailDto(
     val is_joined          : Boolean = false,
     val my_progress        : Long = 0,
     val is_completed       : Boolean = false,
-    val leaderboard        : List<ChallengeLeaderboardEntryDto> = emptyList()
+    val leaderboard        : List<ChallengeLeaderboardEntryDto> = emptyList(),
+    // FAZ 7J event fields.
+    val kind               : String = "metric",
+    val event_mode         : String? = null,
+    val event_date         : String? = null,
+    val event_time         : String? = null,
+    val event_timezone     : String = "UTC",
+    val event_location     : String? = null,
+    val event_geo_lat      : Double? = null,
+    val event_geo_lng      : Double? = null,
+    val event_online_url   : String? = null,
+    val movements          : List<ChallengeMovementDto> = emptyList()
 )
