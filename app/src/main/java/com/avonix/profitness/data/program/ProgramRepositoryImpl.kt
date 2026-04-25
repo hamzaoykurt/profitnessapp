@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.util.UUID
 import javax.inject.Inject
 
 class ProgramRepositoryImpl @Inject constructor(
@@ -259,58 +260,44 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
         runCatching {
-            // 1) Program adını güncelle
+            // Düzenleme, mevcut kaydı mutate etmez: yeni bir program sürümü oluşturulur.
+            val sourceProgram = supabase.postgrest["programs"]
+                .select { filter { eq("id", programId) } }
+                .decodeSingle<ProgramDto>()
+
+            if (sourceProgram.is_active) {
+                supabase.postgrest["programs"]
+                    .update({ set("is_active", false) }) {
+                        filter { eq("user_id", sourceProgram.user_id); eq("is_active", true) }
+                    }
+            }
+
+            val newProgramId = UUID.randomUUID().toString()
             supabase.postgrest["programs"]
-                .update({ set("name", name) }) { filter { eq("id", programId) } }
+                .insert(buildJsonObject {
+                    put("id", newProgramId)
+                    put("user_id", sourceProgram.user_id)
+                    put("name", name)
+                    put("type", sourceProgram.type)
+                    put("is_active", sourceProgram.is_active)
+                })
 
-            // 2) Mevcut günlerin ID'lerini çek
-            val oldDayIds = supabase.postgrest["program_days"]
-                .select { filter { eq("program_id", programId) } }
-                .decodeList<ProgramDayDto>()
-                .map { it.id }
-
-            // 3) Eski egzersizleri sil
-            for (dayId in oldDayIds) {
-                runCatching {
-                    supabase.postgrest["program_exercises"]
-                        .delete { filter { eq("program_day_id", dayId) } }
-                }
-            }
-
-            // 3b) workout_logs referansını NULL yap
-            for (dayId in oldDayIds) {
-                runCatching {
-                    supabase.postgrest["workout_logs"]
-                        .update({ set("program_day_id", null as String?) }) {
-                            filter { eq("program_day_id", dayId) }
-                        }
-                }
-            }
-
-            // 4) Eski günleri sil
-            supabase.postgrest["program_days"]
-                .delete { filter { eq("program_id", programId) } }
-
-            // 5) Yeni günleri ve egzersizleri ekle
             days.forEachIndexed { dayIdx, dayInput ->
+                val newDayId = UUID.randomUUID().toString()
                 supabase.postgrest["program_days"]
                     .insert(buildJsonObject {
-                        put("program_id", programId)
+                        put("id", newDayId)
+                        put("program_id", newProgramId)
                         put("day_index", dayIdx)
                         put("title", dayInput.title)
                         put("is_rest_day", dayInput.isRestDay)
                     })
 
-                val dayDto = supabase.postgrest["program_days"]
-                    .select {
-                        filter { eq("program_id", programId); eq("day_index", dayIdx) }
-                    }
-                    .decodeSingle<ProgramDayDto>()
-
                 dayInput.exercises.forEach { exInput ->
                     supabase.postgrest["program_exercises"]
                         .insert(buildJsonObject {
-                            put("program_day_id", dayDto.id)
+                            put("id", UUID.randomUUID().toString())
+                            put("program_day_id", newDayId)
                             put("exercise_id", exInput.exerciseId)
                             put("sets", exInput.sets)
                             put("reps", exInput.reps)
@@ -321,13 +308,10 @@ class ProgramRepositoryImpl @Inject constructor(
             }
 
             // Room'a sync et
-            val userId = supabase.postgrest["programs"]
-                .select { filter { eq("id", programId) } }
-                .decodeSingle<ProgramDto>().user_id
-            syncManager.pullPrograms(userId)
+            syncManager.pullPrograms(sourceProgram.user_id)
 
-            programDao.getUserPrograms(userId)
-                .firstOrNull { it.program.id == programId }
+            programDao.getUserPrograms(sourceProgram.user_id)
+                .firstOrNull { it.program.id == newProgramId }
                 ?.toDomain()
                 ?: error("Güncellenen program Room'da bulunamadı")
         }

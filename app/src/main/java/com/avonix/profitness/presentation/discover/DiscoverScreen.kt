@@ -24,7 +24,6 @@ import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.AlertDialog
@@ -86,7 +85,9 @@ fun DiscoverScreen(
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
-    val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toSet() }
+    val myActiveProgramIds = remember(myPrograms) {
+        myPrograms.filter { it.isActive }.map { it.id }.toSet()
+    }
     val context = LocalContext.current
 
     // Share / Apply / Error toast'ları
@@ -157,7 +158,7 @@ fun DiscoverScreen(
                             when (sub) {
                                 ProgramsSubTab.Community -> ProgramsList(
                                      state         = state,
-                                     myProgramIds  = myProgramIds,
+                                     myActiveProgramIds = myActiveProgramIds,
                                      bottomPadding = bottomPadding,
                                      onLike        = viewModel::toggleLike,
                                      onSave        = viewModel::toggleSave,
@@ -168,10 +169,8 @@ fun DiscoverScreen(
                                 ProgramsSubTab.Mine -> MySharedProgramsList(
                                     items           = state.myShared,
                                     isLoading       = state.myLoading,
-                                    syncInFlight    = state.mySyncInFlight,
                                     deleteInFlight  = state.myDeleteInFlight,
                                     bottomPadding   = bottomPadding,
-                                    onSync          = viewModel::syncShared,
                                     onDelete        = viewModel::deleteShared,
                                     onStartShare    = { showShareSheet = true }
                                 )
@@ -368,7 +367,7 @@ private fun DiscoverTabPill(
 @Composable
 private fun ProgramsList(
     state         : DiscoverProgramsState,
-    myProgramIds  : Set<String>,
+    myActiveProgramIds: Set<String>,
     bottomPadding : Dp,
     onLike        : (String) -> Unit,
     onSave        : (String) -> Unit,
@@ -415,9 +414,9 @@ private fun ProgramsList(
                 val appliedLocalProgramId = state.appliedProgramMap[program.id]
                 val isApplied = (appliedLocalProgramId != null &&
                     appliedLocalProgramId !in state.localDeletingProgramIds &&
-                    myProgramIds.contains(appliedLocalProgramId)) ||
+                    myActiveProgramIds.contains(appliedLocalProgramId)) ||
                     (mySharedOriginMap[program.id]?.let { origId ->
-                        origId !in state.localDeletingProgramIds && myProgramIds.contains(origId)
+                        origId !in state.localDeletingProgramIds && myActiveProgramIds.contains(origId)
                     } == true)
                 SharedProgramCard(
                     program    = program,
@@ -845,10 +844,8 @@ private fun SubTabChip(
 private fun MySharedProgramsList(
     items          : List<MySharedProgram>,
     isLoading      : Boolean,
-    syncInFlight   : Set<String>,
     deleteInFlight : Set<String>,
     bottomPadding  : Dp,
-    onSync         : (String) -> Unit,
     onDelete       : (String) -> Unit,
     onStartShare   : () -> Unit
 ) {
@@ -899,9 +896,7 @@ private fun MySharedProgramsList(
             items(items, key = { it.id }) { item ->
                 MySharedCard(
                     item         = item,
-                    isSyncing    = item.id in syncInFlight,
                     isDeleting   = item.id in deleteInFlight,
-                    onSync       = { onSync(item.id) },
                     onDelete     = { onDelete(item.id) }
                 )
             }
@@ -912,9 +907,7 @@ private fun MySharedProgramsList(
 @Composable
 private fun MySharedCard(
     item       : MySharedProgram,
-    isSyncing  : Boolean,
     isDeleting : Boolean,
-    onSync     : () -> Unit,
     onDelete   : () -> Unit
 ) {
     val theme = LocalAppTheme.current
@@ -997,12 +990,12 @@ private fun MySharedCard(
             item.isOutOfSync -> StatusBanner(
                 icon = Icons.Rounded.Warning,
                 color = warn,
-                text  = "Kaynak programın güncellenmiş. 'Senkronize et' ile paylaşımı yenile."
+                text  = "Kaynak program değişmiş. Bu paylaşım eski sürüm olarak kaldı."
             )
             else -> StatusBanner(
-                icon = Icons.Rounded.Sync,
+                icon = Icons.Rounded.FitnessCenter,
                 color = accent,
-                text  = "Paylaşım güncel programınla senkron."
+                text  = "Paylaşım bir snapshot olarak korunuyor."
             )
         }
 
@@ -1010,47 +1003,10 @@ private fun MySharedCard(
 
         // Aksiyonlar
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Sync
-            val canSync = item.sourceExists && !isDeleting
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (canSync) accent.copy(0.14f) else theme.bg2.copy(0.3f)
-                    )
-                    .border(
-                        1.dp,
-                        if (canSync) accent.copy(0.4f) else theme.stroke.copy(0.3f),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .clickable(enabled = canSync && !isSyncing) { onSync() }
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isSyncing) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = accent)
-                } else {
-                    Icon(
-                        Icons.Rounded.Sync, null,
-                        tint = if (canSync) accent else theme.text2.copy(0.4f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (item.isOutOfSync) "SENKRONİZE ET" else "YENİDEN SENKRON",
-                    color = if (canSync) accent else theme.text2.copy(0.4f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.6.sp
-                )
-            }
-            Spacer(Modifier.width(10.dp))
             // Delete
             Row(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(danger.copy(0.12f))
                     .border(1.dp, danger.copy(0.35f), RoundedCornerShape(12.dp))

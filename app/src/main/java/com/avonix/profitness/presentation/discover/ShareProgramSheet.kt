@@ -109,7 +109,7 @@ fun ShareProgramSheet(
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text     = "Kendi programlarından birini seç, ardından başlık/açıklama ekleyerek topluluğa paylaş. Snapshot alınır; sonra güncellersen 'Paylaşımlarım' ekranından senkronize edebilirsin.",
+                    text     = "Kendi programlarından birini seç, ardından başlık/açıklama ekleyerek topluluğa paylaş. Paylaşım snapshot olarak sabit kalır; programı sonra düzenlesen bile bu paylaşım değişmez.",
                     color    = theme.text2.copy(0.7f),
                     fontSize = 12.sp,
                     lineHeight = 17.sp

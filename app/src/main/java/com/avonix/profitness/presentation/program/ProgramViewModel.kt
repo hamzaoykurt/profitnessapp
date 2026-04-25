@@ -673,14 +673,13 @@ FORMAT:
             programRepository.updateProgram(programId, name, inputs)
                 .onSuccess { updated ->
                     updateState { state ->
+                        val existing = state.userPrograms.filterNot { it.id == programId }
                         state.copy(
                             isLoading    = false,
-                            userPrograms = state.userPrograms.map { p ->
-                                if (p.id == programId) updated else p
-                            }
+                            userPrograms = listOf(updated) + existing
                         )
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" güncellendi."))
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" için yeni sürüm oluşturuldu."))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
