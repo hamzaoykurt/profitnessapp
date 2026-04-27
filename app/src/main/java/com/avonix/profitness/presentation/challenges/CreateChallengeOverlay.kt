@@ -11,8 +11,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.Link
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -160,33 +163,89 @@ fun CreateChallengeOverlay(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── Top bar ──
-            Row(
+            // ── Top bar (premium) ──
+            val isMetric = kind == CreateFormKind.Metric
+            val headerIcon = if (isMetric) Icons.Rounded.EmojiEvents else Icons.Rounded.CalendarMonth
+            val headerTitle = if (isMetric) strings.newChallengeTitle else strings.newEventTitle
+            val headerSubtitle = if (isMetric)
+                "Hedefini koy, takip et, başar"
+            else
+                "Etkinlik planla, dostlarını davet et"
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(accent.copy(0.14f), Color.Transparent)
+                        )
+                    )
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg1)
-                        .border(1.dp, theme.stroke, CircleShape)
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Close, null, tint = theme.text0, modifier = Modifier.size(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Close button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(theme.bg1.copy(0.85f))
+                            .border(1.dp, theme.stroke.copy(0.6f), CircleShape)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            null,
+                            tint = theme.text0,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    // Icon badge (kind indicator)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(accent.copy(0.32f), accent.copy(0.14f))
+                                )
+                            )
+                            .border(1.dp, accent.copy(0.45f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            headerIcon,
+                            null,
+                            tint = accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            headerTitle,
+                            color         = theme.text0,
+                            fontSize      = 16.sp,
+                            fontWeight    = FontWeight.Black,
+                            letterSpacing = 1.5.sp,
+                            maxLines      = 1
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            headerSubtitle,
+                            color    = theme.text2,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    if (kind == CreateFormKind.Metric) strings.newChallengeTitle else strings.newEventTitle,
-                    color         = theme.text0,
-                    fontSize      = 14.sp,
-                    fontWeight    = FontWeight.Black,
-                    letterSpacing = 2.sp
-                )
             }
 
             // ── Kind segment ──
