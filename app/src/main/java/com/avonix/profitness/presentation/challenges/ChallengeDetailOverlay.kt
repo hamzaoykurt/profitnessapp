@@ -164,7 +164,8 @@ fun ChallengeDetailOverlay(
                         letterSpacing = 2.sp,
                         modifier   = Modifier.weight(1f)
                     )
-                    if (state.isOwner && state.detail?.summary?.kind == ChallengeKind.Event) {
+                    if (state.isOwner) {
+                        val isEventOwner = state.detail?.summary?.kind == ChallengeKind.Event
                         Box {
                             Box(
                                 modifier = Modifier
@@ -184,6 +185,7 @@ fun ChallengeDetailOverlay(
                             OwnerActionMenu(
                                 expanded = showOwnerMenu,
                                 accent = accent,
+                                canEdit = isEventOwner, // metric için edit yok, sadece sil
                                 onDismiss = { showOwnerMenu = false },
                                 onEdit = { showOwnerMenu = false; showEditOverlay = true },
                                 onDelete = { showOwnerMenu = false; showDeleteConfirm = true }
@@ -1099,6 +1101,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
 private fun OwnerActionMenu(
     expanded: Boolean,
     accent: Color,
+    canEdit: Boolean = true,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -1112,22 +1115,24 @@ private fun OwnerActionMenu(
         shadowElevation = 8.dp,
         tonalElevation = 0.dp
     ) {
-        DropdownMenuItem(
-            text = {
-                Text(
-                    "Düzenle",
-                    color = theme.text0,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            leadingIcon = {
-                Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
-            },
-            onClick = onEdit,
-            colors = MenuDefaults.itemColors(textColor = theme.text0)
-        )
-        HorizontalDivider(color = theme.stroke.copy(0.5f), thickness = 0.5.dp)
+        if (canEdit) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Düzenle",
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                leadingIcon = {
+                    Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
+                },
+                onClick = onEdit,
+                colors = MenuDefaults.itemColors(textColor = theme.text0)
+            )
+            HorizontalDivider(color = theme.stroke.copy(0.5f), thickness = 0.5.dp)
+        }
         DropdownMenuItem(
             text = {
                 Text(
