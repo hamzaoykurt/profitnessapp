@@ -6,6 +6,7 @@ import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 
 interface ChallengeRepository {
 
@@ -68,6 +69,9 @@ interface ChallengeRepository {
 
     /** Sahip → event challenge alanlarını günceller. */
     suspend fun updateEventChallenge(req: UpdateEventChallengeRequest): Result<Unit>
+
+    /** Sahip → metric challenge alanlarını günceller. */
+    suspend fun updateMetricChallenge(req: UpdateMetricChallengeRequest): Result<Unit>
 
     /** Sahip → event challenge'ı tamamen siler. */
     suspend fun deleteEventChallenge(challengeId: String): Result<Unit>

@@ -13,14 +13,25 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DirectionsRun
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Straighten
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -124,11 +135,7 @@ fun CreateChallengeOverlay(
     var eventDateIso by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var eventTimeIso by rememberSaveable { mutableStateOf<String?>(null) }
     var eventLocation by rememberSaveable { mutableStateOf("") }
-    var eventStartLat by rememberSaveable { mutableStateOf("") }
-    var eventStartLng by rememberSaveable { mutableStateOf("") }
     var eventEndLocation by rememberSaveable { mutableStateOf("") }
-    var eventEndLat by rememberSaveable { mutableStateOf("") }
-    var eventEndLng by rememberSaveable { mutableStateOf("") }
     var eventOnlineUrl by rememberSaveable { mutableStateOf("") }
     var eventTargetEnabled by rememberSaveable { mutableStateOf(false) }
     var eventTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalDistanceM) }
@@ -177,11 +184,11 @@ fun CreateChallengeOverlay(
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
-                            listOf(accent.copy(0.14f), Color.Transparent)
+                            listOf(accent.copy(0.10f), Color.Transparent)
                         )
                     )
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Close button
@@ -253,10 +260,10 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg1.copy(0.6f))
-                    .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-                    .padding(3.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(theme.bg1.copy(0.72f))
+                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .padding(4.dp)
             ) {
                 KindChip(
                     label = strings.challengeKindMetric,
@@ -321,16 +328,8 @@ fun CreateChallengeOverlay(
                     onClearTime = { eventTimeIso = null },
                     location = eventLocation,
                     onLocation = { eventLocation = it },
-                    startLat = eventStartLat,
-                    onStartLat = { eventStartLat = it },
-                    startLng = eventStartLng,
-                    onStartLng = { eventStartLng = it },
                     endLocation = eventEndLocation,
                     onEndLocation = { eventEndLocation = it },
-                    endLat = eventEndLat,
-                    onEndLat = { eventEndLat = it },
-                    endLng = eventEndLng,
-                    onEndLng = { eventEndLng = it },
                     onlineUrl = eventOnlineUrl,
                     onOnlineUrl = { eventOnlineUrl = it },
                     movements = selectedMovements,
@@ -350,13 +349,14 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg1.copy(0.6f))
-                    .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-                    .padding(3.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(theme.bg1.copy(0.72f))
+                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .padding(4.dp)
             ) {
                 VisibilityChip(
                     label    = strings.challengeVisPublic,
+                    icon     = Icons.Rounded.Public,
                     isActive = visibility == ChallengeVisibility.Public,
                     accent   = accent,
                     onClick  = { visibility = ChallengeVisibility.Public },
@@ -365,6 +365,7 @@ fun CreateChallengeOverlay(
                 Spacer(Modifier.width(3.dp))
                 VisibilityChip(
                     label    = strings.challengeVisPrivate,
+                    icon     = Icons.Rounded.Lock,
                     isActive = visibility == ChallengeVisibility.Private,
                     accent   = accent,
                     onClick  = { visibility = ChallengeVisibility.Private },
@@ -426,11 +427,11 @@ fun CreateChallengeOverlay(
                                 timeIso     = eventTimeIso,
                                 timezone    = timezone,
                                 location    = eventLocation.ifBlank { null },
-                                geoLat      = eventStartLat.toDoubleOrNull(),
-                                geoLng      = eventStartLng.toDoubleOrNull(),
+                                geoLat      = null,
+                                geoLng      = null,
                                 endLocation = eventEndLocation.ifBlank { null },
-                                endGeoLat   = eventEndLat.toDoubleOrNull(),
-                                endGeoLng   = eventEndLng.toDoubleOrNull(),
+                                endGeoLat   = null,
+                                endGeoLng   = null,
                                 onlineUrl   = eventOnlineUrl.ifBlank { null },
                                 movements   = if (eventMode == EventMode.MovementList)
                                     selectedMovements.toList() else emptyList(),
@@ -611,16 +612,8 @@ private fun EventForm(
     onClearTime: () -> Unit,
     location: String,
     onLocation: (String) -> Unit,
-    startLat: String,
-    onStartLat: (String) -> Unit,
-    startLng: String,
-    onStartLng: (String) -> Unit,
     endLocation: String,
     onEndLocation: (String) -> Unit,
-    endLat: String,
-    onEndLat: (String) -> Unit,
-    endLng: String,
-    onEndLng: (String) -> Unit,
     onlineUrl: String,
     onOnlineUrl: (String) -> Unit,
     movements: List<MovementInput>,
@@ -641,10 +634,10 @@ private fun EventForm(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-            .padding(3.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+            .padding(4.dp)
     ) {
         EventModeChip(
             label = strings.eventModePhysical,
@@ -716,61 +709,15 @@ private fun EventForm(
                 placeholder = "ör. Maçka Parkı, İstanbul",
                 imeAction = ImeAction.Default
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(Modifier.weight(1f)) {
-                    FieldLabel("BAŞ. ENLEM (ops)", padded = false)
-                    TextInputInline(
-                        value = startLat,
-                        onValueChange = onStartLat,
-                        placeholder = "41.0",
-                        keyboardType = KeyboardType.Number
-                    )
-                }
-                Column(Modifier.weight(1f)) {
-                    FieldLabel("BAŞ. BOYLAM (ops)", padded = false)
-                    TextInputInline(
-                        value = startLng,
-                        onValueChange = onStartLng,
-                        placeholder = "29.0",
-                        keyboardType = KeyboardType.Number
-                    )
-                }
-            }
             FieldLabel("BİTİŞ KONUMU (opsiyonel)")
             TextInputBox(
                 value = endLocation,
                 onValueChange = onEndLocation,
-                placeholder = "Rotalı etkinlikler için (ör. Bisiklet)",
+                placeholder = "ör. Caddebostan Sahil, İstanbul",
                 imeAction = ImeAction.Default
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(Modifier.weight(1f)) {
-                    FieldLabel("BİT. ENLEM (ops)", padded = false)
-                    TextInputInline(
-                        value = endLat,
-                        onValueChange = onEndLat,
-                        placeholder = "41.0",
-                        keyboardType = KeyboardType.Number
-                    )
-                }
-                Column(Modifier.weight(1f)) {
-                    FieldLabel("BİT. BOYLAM (ops)", padded = false)
-                    TextInputInline(
-                        value = endLng,
-                        onValueChange = onEndLng,
-                        placeholder = "29.0",
-                        keyboardType = KeyboardType.Number
-                    )
-                }
-            }
             Text(
-                "İpucu: Google Maps'te konuma uzun bas → koordinatları kopyala. Hem başlangıç hem bitiş girilirse rota açılır.",
+                "Başlangıç ve bitiş girilirse detayda Google Maps rotası açılır.",
                 color = LocalAppTheme.current.text2,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
@@ -810,9 +757,9 @@ private fun EventForm(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg1.copy(0.6f))
-                    .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(theme.bg1.copy(0.72f))
+                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             ) {
                 if (movements.isEmpty()) {
                     Text(
@@ -910,9 +857,9 @@ private fun OptionalMetricTargetSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             .clickable { onEnabled(!enabled) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -976,14 +923,14 @@ private fun FieldLabel(text: String, padded: Boolean = true) {
     val theme = LocalAppTheme.current
     Text(
         text,
-        color      = theme.text2,
-        fontSize   = 10.sp,
+        color      = theme.text1,
+        fontSize   = 10.5.sp,
         fontWeight = FontWeight.Black,
-        letterSpacing = 1.5.sp,
+        letterSpacing = 1.25.sp,
         modifier = Modifier.padding(
             start = if (padded) 20.dp else 0.dp,
-            top = 10.dp,
-            bottom = 4.dp
+            top = 14.dp,
+            bottom = 6.dp
         )
     )
 }
@@ -1003,15 +950,16 @@ private fun TextInputBox(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-            .padding(14.dp)
+            .heightIn(min = if (minLines == 1) 58.dp else 84.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = TextStyle(color = theme.text0, fontSize = 14.sp),
+            textStyle = TextStyle(color = theme.text0, fontSize = 15.sp, lineHeight = 20.sp),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             singleLine = minLines == 1,
             minLines = minLines,
@@ -1020,7 +968,7 @@ private fun TextInputBox(
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
                 if (value.isEmpty()) {
-                    Text(placeholder, color = theme.text2.copy(0.55f), fontSize = 14.sp)
+                    Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
                 }
                 inner()
             }
@@ -1040,10 +988,11 @@ private fun TextInputInline(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-            .padding(14.dp)
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
             value = value,
@@ -1053,14 +1002,14 @@ private fun TextInputInline(
                 else v
                 onValueChange(filtered)
             },
-            textStyle = TextStyle(color = theme.text0, fontSize = 14.sp),
+            textStyle = TextStyle(color = theme.text0, fontSize = 15.sp),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
                 if (value.isEmpty()) {
-                    Text(placeholder, color = theme.text2.copy(0.55f), fontSize = 14.sp)
+                    Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp)
                 }
                 inner()
             }
@@ -1074,10 +1023,11 @@ private fun NumberInputInline(value: String, onValueChange: (String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-            .padding(14.dp)
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
             value = value,
@@ -1103,11 +1053,12 @@ private fun PickerField(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
@@ -1123,6 +1074,16 @@ private fun PickerField(
     }
 }
 
+private fun iconForTargetType(type: ChallengeTargetType): ImageVector = when (type) {
+    ChallengeTargetType.TotalWorkouts        -> Icons.Rounded.FitnessCenter
+    ChallengeTargetType.TotalXp              -> Icons.Rounded.Bolt
+    ChallengeTargetType.CurrentStreak        -> Icons.Rounded.LocalFireDepartment
+    ChallengeTargetType.TotalDurationMinutes -> Icons.Rounded.Timer
+    ChallengeTargetType.TotalDistanceM       -> Icons.Rounded.Straighten
+    ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
+    ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
+}
+
 @Composable
 private fun TargetTypeOption(
     type: ChallengeTargetType,
@@ -1135,33 +1096,69 @@ private fun TargetTypeOption(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isActive) accent.copy(0.14f) else theme.bg1.copy(0.5f))
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (isActive) Brush.horizontalGradient(
+                    listOf(accent.copy(0.18f), accent.copy(0.08f))
+                ) else Brush.horizontalGradient(
+                    listOf(theme.bg1.copy(0.72f), theme.bg1.copy(0.54f))
+                )
+            )
             .border(
                 1.dp,
-                if (isActive) accent.copy(0.5f) else theme.stroke.copy(0.4f),
-                RoundedCornerShape(12.dp)
+                if (isActive) accent.copy(0.58f) else theme.stroke.copy(0.55f),
+                RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(16.dp)
+                .size(30.dp)
                 .clip(CircleShape)
-                .background(if (isActive) accent else Color.Transparent)
-                .border(1.dp, if (isActive) accent else theme.text2, CircleShape)
-        )
+                .background(
+                    if (isActive) accent.copy(0.22f) else theme.bg2.copy(0.64f)
+                )
+                .border(
+                    1.dp,
+                    if (isActive) accent.copy(0.5f) else theme.stroke.copy(0.5f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                iconForTargetType(type),
+                null,
+                tint = if (isActive) accent else theme.text2,
+                modifier = Modifier.size(16.dp)
+            )
+        }
         Spacer(Modifier.width(12.dp))
         Text(
             type.label,
             color = if (isActive) theme.text0 else theme.text1,
-            fontSize = 13.sp,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 13.5.sp,
+            fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
-        Text(type.unit, color = theme.text2, fontSize = 11.sp)
+        // Unit pill
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (isActive) accent.copy(0.20f) else theme.bg2.copy(0.5f)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                type.unit,
+                color = if (isActive) accent else theme.text2,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp
+            )
+        }
     }
 }
 
@@ -1178,11 +1175,15 @@ private fun KindChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(accent.copy(0.22f))
+                if (isActive) Modifier.background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(0.24f), accent.copy(0.12f))
+                    )
+                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -1190,7 +1191,7 @@ private fun KindChip(
             color = if (isActive) accent else theme.text2,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.5.sp
+            letterSpacing = 1.2.sp
         )
     }
 }
@@ -1209,22 +1210,26 @@ private fun EventModeChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(accent.copy(0.22f))
+                if (isActive) Modifier.background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(0.24f), accent.copy(0.12f))
+                    )
+                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp, horizontal = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (isActive) accent else theme.text2, modifier = Modifier.size(13.dp))
-        Spacer(Modifier.width(5.dp))
+        Icon(icon, null, tint = if (isActive) accent else theme.text2, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             label,
             color = if (isActive) accent else theme.text2,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
+            letterSpacing = 0.8.sp
         )
     }
 }
@@ -1235,26 +1240,40 @@ private fun VisibilityChip(
     isActive: Boolean,
     accent: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null
 ) {
     val theme = LocalAppTheme.current
-    Box(
+    Row(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(accent.copy(0.22f))
+                if (isActive) Modifier.background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(0.24f), accent.copy(0.12f))
+                    )
+                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        if (icon != null) {
+            Icon(
+                icon, null,
+                tint = if (isActive) accent else theme.text2,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+        }
         Text(
             label,
             color = if (isActive) accent else theme.text2,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.5.sp
+            letterSpacing = 1.2.sp
         )
     }
 }

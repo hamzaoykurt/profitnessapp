@@ -9,6 +9,7 @@ import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 import com.avonix.profitness.domain.challenges.toDomain
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -268,6 +269,27 @@ class ChallengeRepositoryImpl @Inject constructor(
                         if (req.onlineUrl != null) put("p_online_url", req.onlineUrl) else put("p_online_url", JsonNull)
                     }
                 )
+                Unit
+            }
+        }
+
+    override suspend fun updateMetricChallenge(req: UpdateMetricChallengeRequest): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest["group_challenges"]
+                    .update({
+                        set("title", req.title.trim())
+                        set("description", req.description)
+                        set("target_type", req.targetType.raw)
+                        set("target_value", req.targetValue.toInt())
+                        set("start_date", req.startDateIso)
+                        set("end_date", req.endDateIso)
+                    }) {
+                        filter {
+                            eq("id", req.challengeId)
+                            eq("kind", "metric")
+                        }
+                    }
                 Unit
             }
         }

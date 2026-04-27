@@ -16,15 +16,20 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Straighten
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -308,6 +314,16 @@ private fun daysBetween(fromIso: String, toIso: String): Long? {
     return java.time.temporal.ChronoUnit.DAYS.between(f, t)
 }
 
+private fun targetIcon(type: ChallengeTargetType): ImageVector = when (type) {
+    ChallengeTargetType.TotalWorkouts        -> Icons.Rounded.FitnessCenter
+    ChallengeTargetType.TotalXp              -> Icons.Rounded.Bolt
+    ChallengeTargetType.CurrentStreak        -> Icons.Rounded.LocalFireDepartment
+    ChallengeTargetType.TotalDurationMinutes -> Icons.Rounded.Timer
+    ChallengeTargetType.TotalDistanceM       -> Icons.Rounded.Straighten
+    ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
+    ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
+}
+
 @Composable
 private fun ChallengeCard(
     c: ChallengeSummary,
@@ -335,16 +351,17 @@ private fun ChallengeCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        theme.bg1.copy(0.85f),
-                        theme.bg1.copy(0.55f)
+                        theme.bg2.copy(0.92f),
+                        theme.bg1.copy(0.70f),
+                        theme.bg1.copy(0.56f)
                     )
                 )
             )
-            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(22.dp))
             .clickable(onClick = onTap)
     ) {
         // Subtle accent glow overlay (joined/live için belirgin)
@@ -352,11 +369,11 @@ private fun ChallengeCard(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(accent.copy(0.10f), Color.Transparent),
-                            radius = 600f
+                            colors = listOf(accent.copy(0.16f), accent.copy(0.04f), Color.Transparent),
+                            radius = 520f
                         )
                     )
             )
@@ -375,7 +392,7 @@ private fun ChallengeCard(
                 )
             }
 
-            Column(Modifier.padding(16.dp)) {
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
                 // ── Header chips + status ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     KindBadge(isEvent = isEvent, accent = accent, theme = theme)
@@ -392,7 +409,7 @@ private fun ChallengeCard(
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // ── Title row (lock + title) ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -403,61 +420,79 @@ private fun ChallengeCard(
                     Text(
                         c.title,
                         color      = theme.text0,
-                        fontSize   = 17.sp,
+                        fontSize   = 18.sp,
                         fontWeight = FontWeight.Black,
-                        maxLines   = 2
+                        maxLines   = 2,
+                        overflow   = TextOverflow.Ellipsis,
+                        lineHeight  = 22.sp
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // ── Hero stat tile ──
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(accent.copy(0.20f), theme.bg2.copy(0.58f))
+                            )
+                        )
+                        .border(1.dp, accent.copy(0.34f), RoundedCornerShape(18.dp))
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(accent.copy(0.22f), accent.copy(0.08f))
-                                )
-                            )
-                            .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(accent.copy(0.20f))
+                            .border(1.dp, accent.copy(0.42f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                "${c.targetValue}",
-                                color = theme.text0,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                c.targetType.unit,
-                                color = accent,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
+                        Icon(
+                            targetIcon(c.targetType),
+                            null,
+                            tint = accent,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "${c.targetValue}",
+                            color = theme.text0,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Black,
+                            lineHeight = 28.sp
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            c.targetType.unit,
+                            color = accent,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
                             "HEDEF",
                             color = theme.text2,
-                            fontSize = 9.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp
+                            letterSpacing = 1.2.sp
                         )
                         Text(
                             c.targetType.label,
                             color = theme.text1,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -500,9 +535,11 @@ private fun ChallengeCard(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         c.description,
-                        color     = theme.text1,
-                        fontSize  = 12.sp,
-                        maxLines  = 2
+                        color     = theme.text1.copy(0.88f),
+                        fontSize  = 13.sp,
+                        maxLines  = 2,
+                        overflow  = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
                     )
                 }
 
@@ -609,10 +646,10 @@ private fun StatusPill(
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(bg)
-            .border(1.dp, fg.copy(0.45f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .border(1.dp, fg.copy(0.42f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 9.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -627,7 +664,7 @@ private fun StatusPill(
             color = fg,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
+            letterSpacing = 1.sp
         )
     }
 }
@@ -650,11 +687,12 @@ private fun JoinPill(
     val border = if (isJoined && canAct) accent.copy(0.5f) else Color.Transparent
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .heightIn(min = 46.dp)
+            .clip(RoundedCornerShape(15.dp))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(12.dp))
+            .border(1.dp, border, RoundedCornerShape(15.dp))
             .clickable(enabled = !inFlight && canAct, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (inFlight) {
@@ -684,7 +722,7 @@ private fun JoinPill(
             Text(
                 label,
                 color = fg,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
@@ -728,14 +766,14 @@ private fun KindBadge(
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (isEvent) accent.copy(0.18f) else theme.bg2.copy(0.6f))
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isEvent) accent.copy(0.16f) else theme.bg2.copy(0.72f))
             .border(
                 1.dp,
                 if (isEvent) accent.copy(0.45f) else theme.stroke.copy(0.5f),
-                RoundedCornerShape(6.dp)
+                RoundedCornerShape(10.dp)
             )
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = 9.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(10.dp))
@@ -745,7 +783,7 @@ private fun KindBadge(
             color = tint,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
+            letterSpacing = 1.sp
         )
     }
 }
@@ -762,9 +800,10 @@ private fun EventModeBadge(
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .clip(RoundedCornerShape(10.dp))
+            .background(theme.bg2.copy(0.42f))
+            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 9.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = theme.text2, modifier = Modifier.size(10.dp))

@@ -1,6 +1,7 @@
 package com.avonix.profitness.presentation.challenges
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
@@ -22,8 +24,10 @@ import androidx.compose.material.icons.rounded.DirectionsWalk
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MoreVert
@@ -31,6 +35,8 @@ import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Straighten
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -84,9 +90,11 @@ import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.challenges.ChallengeLeaderboardEntry
 import com.avonix.profitness.domain.challenges.ChallengeMovement
 import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
@@ -166,7 +174,6 @@ fun ChallengeDetailOverlay(
                         modifier   = Modifier.weight(1f)
                     )
                     if (state.isOwner) {
-                        val isEventOwner = state.detail?.summary?.kind == ChallengeKind.Event
                         Box {
                             Box(
                                 modifier = Modifier
@@ -186,7 +193,7 @@ fun ChallengeDetailOverlay(
                             OwnerActionMenu(
                                 expanded = showOwnerMenu,
                                 accent = accent,
-                                canEdit = isEventOwner, // metric için edit yok, sadece sil
+                                canEdit = true,
                                 onDismiss = { showOwnerMenu = false },
                                 onEdit = { showOwnerMenu = false; showEditOverlay = true },
                                 onDelete = { showOwnerMenu = false; showDeleteConfirm = true }
@@ -481,16 +488,29 @@ fun ChallengeDetailOverlay(
         if (showEditOverlay) {
             val d = state.detail
             if (d != null) {
-                EditEventChallengeOverlay(
-                    summary = d.summary,
-                    inFlight = state.ownerActionInFlight,
-                    onClose = { showEditOverlay = false },
-                    onSubmit = { req ->
-                        vm.updateChallenge(req)
-                        showEditOverlay = false
-                        onChanged()
-                    }
-                )
+                if (d.summary.kind == ChallengeKind.Event) {
+                    EditEventChallengeOverlay(
+                        summary = d.summary,
+                        inFlight = state.ownerActionInFlight,
+                        onClose = { showEditOverlay = false },
+                        onSubmit = { req ->
+                            vm.updateChallenge(req)
+                            showEditOverlay = false
+                            onChanged()
+                        }
+                    )
+                } else {
+                    EditMetricChallengeOverlay(
+                        summary = d.summary,
+                        inFlight = state.ownerActionInFlight,
+                        onClose = { showEditOverlay = false },
+                        onSubmit = { req ->
+                            vm.updateMetricChallenge(req)
+                            showEditOverlay = false
+                            onChanged()
+                        }
+                    )
+                }
             }
         }
     }
@@ -709,6 +729,10 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         // Mode-specific body
         when (ev.mode) {
             EventMode.Physical -> {
+                val startQuery = ev.location?.trim()?.takeIf { it.isNotBlank() }
+                    ?: coordinateQuery(ev.geoLat, ev.geoLng)
+                val endQuery = ev.endLocation?.trim()?.takeIf { it.isNotBlank() }
+                    ?: coordinateQuery(ev.endGeoLat, ev.endGeoLng)
                 if (!ev.location.isNullOrBlank()) {
                     Spacer(Modifier.height(10.dp))
                     LocationRow(
@@ -716,34 +740,28 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         title = "BAŞLANGIÇ",
                         value = ev.location,
                         accent = accent,
-                        actionLabel = if (ev.geoLat != null && ev.geoLng != null) "HARİTA" else null,
+                        actionLabel = if (startQuery != null) "HARİTA" else null,
                         onAction = {
-                            if (ev.geoLat != null && ev.geoLng != null) {
-                                val uri = "geo:${ev.geoLat},${ev.geoLng}?q=${ev.geoLat},${ev.geoLng}(${ev.location})".toUri()
-                                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                            }
+                            startQuery?.let { openMapSearch(ctx, it) }
                         }
                     )
                 }
                 // Bitiş konumu (rotalı etkinlik)
-                if (!ev.endLocation.isNullOrBlank() || (ev.endGeoLat != null && ev.endGeoLng != null)) {
+                if (!ev.endLocation.isNullOrBlank() || endQuery != null) {
                     Spacer(Modifier.height(8.dp))
                     LocationRow(
                         icon = Icons.Rounded.Flag,
                         title = "BİTİŞ",
-                        value = ev.endLocation ?: "${ev.endGeoLat}, ${ev.endGeoLng}",
+                        value = ev.endLocation ?: endQuery.orEmpty(),
                         accent = accent,
-                        actionLabel = if (ev.endGeoLat != null && ev.endGeoLng != null) "HARİTA" else null,
+                        actionLabel = if (endQuery != null) "HARİTA" else null,
                         onAction = {
-                            if (ev.endGeoLat != null && ev.endGeoLng != null) {
-                                val uri = "geo:${ev.endGeoLat},${ev.endGeoLng}?q=${ev.endGeoLat},${ev.endGeoLng}(${ev.endLocation ?: "Bitiş"})".toUri()
-                                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                            }
+                            endQuery?.let { openMapSearch(ctx, it) }
                         }
                     )
                 }
-                // Rota — both endpoints present. 3 travelmode seçeneği (bisiklet/koşu/yürüyüş)
-                if (ev.geoLat != null && ev.geoLng != null && ev.endGeoLat != null && ev.endGeoLng != null) {
+                // Rota: yer adı varsa Google Maps onu çözer; eski kayıtlar için koordinat fallback'i kalır.
+                if (startQuery != null && endQuery != null) {
                     Spacer(Modifier.height(10.dp))
                     Text(
                         "ROTAYI AÇ",
@@ -763,7 +781,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             accent = accent,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "bicycling")
+                                openRoute(ctx, startQuery, endQuery, "bicycling")
                             }
                         )
                         TravelModeChip(
@@ -773,7 +791,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 // Google Maps "running" travelmode'u kabul etmediği için walking ile açıyoruz
-                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "walking")
+                                openRoute(ctx, startQuery, endQuery, "walking")
                             }
                         )
                         TravelModeChip(
@@ -782,7 +800,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             accent = accent,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "walking")
+                                openRoute(ctx, startQuery, endQuery, "walking")
                             }
                         )
                     }
@@ -1745,6 +1763,229 @@ private fun AddProgressDialog(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  EDIT METRIC CHALLENGE OVERLAY (owner)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+private fun EditMetricChallengeOverlay(
+    summary: ChallengeSummary,
+    inFlight: Boolean,
+    onClose: () -> Unit,
+    onSubmit: (UpdateMetricChallengeRequest) -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
+    var title        by remember(summary.id) { mutableStateOf(summary.title) }
+    var description  by remember(summary.id) { mutableStateOf(summary.description) }
+    var targetType   by remember(summary.id) { mutableStateOf(summary.targetType) }
+    var targetValue  by remember(summary.id) { mutableStateOf(summary.targetValue.takeIf { it > 0 }?.toString() ?: "") }
+    var startDateIso by remember(summary.id) { mutableStateOf(summary.startDateIso) }
+    var endDateIso   by remember(summary.id) { mutableStateOf(summary.endDateIso) }
+
+    val parsedTarget = targetValue.toLongOrNull() ?: 0L
+    val parsedStartDate = runCatching { LocalDate.parse(startDateIso.trim()) }.getOrNull()
+    val parsedEndDate = runCatching { LocalDate.parse(endDateIso.trim()) }.getOrNull()
+    val canSave = title.isNotBlank() &&
+        parsedTarget in 1L..Int.MAX_VALUE.toLong() &&
+        parsedStartDate != null &&
+        parsedEndDate != null &&
+        !parsedEndDate.isBefore(parsedStartDate) &&
+        !inFlight
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Box(Modifier.fillMaxSize().background(theme.bg0)) {
+            PageAccentBloom()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 40.dp)
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(theme.bg1)
+                                .border(1.dp, theme.stroke, CircleShape)
+                                .clickable(onClick = onClose),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "CHALLENGE'I DÜZENLE",
+                            color = theme.text0,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                }
+                item { EditField("Başlık", title, { title = it }, accent) }
+                item { EditField("Açıklama", description, { description = it }, accent, lines = 3) }
+                item { MetricTargetTypeSection(targetType, { targetType = it }, accent) }
+                item { EditField("Hedef değer (${targetType.unit})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
+                item { EditField("Başlangıç tarihi (YYYY-MM-DD)", startDateIso, { startDateIso = it }, accent) }
+                item { EditField("Bitiş tarihi (YYYY-MM-DD)", endDateIso, { endDateIso = it }, accent) }
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (canSave) accent else accent.copy(0.35f))
+                            .clickable(enabled = canSave) {
+                                onSubmit(
+                                    UpdateMetricChallengeRequest(
+                                        challengeId = summary.id,
+                                        title = title.trim(),
+                                        description = description.trim().ifBlank { null },
+                                        targetType = targetType,
+                                        targetValue = parsedTarget,
+                                        startDateIso = parsedStartDate.toString(),
+                                        endDateIso = parsedEndDate.toString()
+                                    )
+                                )
+                            }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (inFlight) {
+                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        } else {
+                            Text("KAYDET", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricTargetTypeSection(
+    targetType: ChallengeTargetType,
+    onTargetType: (ChallengeTargetType) -> Unit,
+    accent: Color
+) {
+    val theme = LocalAppTheme.current
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+        Text(
+            "HEDEF TİPİ",
+            color = theme.text2,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+        )
+        ChallengeTargetType.selectableForMetric.forEach { type ->
+            MetricTargetTypeOption(
+                type = type,
+                isActive = type == targetType,
+                accent = accent,
+                onClick = { onTargetType(type) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricTargetTypeOption(
+    type: ChallengeTargetType,
+    isActive: Boolean,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isActive) Brush.horizontalGradient(listOf(accent.copy(0.18f), accent.copy(0.08f)))
+                else Brush.horizontalGradient(listOf(theme.bg1.copy(0.72f), theme.bg1.copy(0.54f)))
+            )
+            .border(
+                1.dp,
+                if (isActive) accent.copy(0.58f) else theme.stroke.copy(0.55f),
+                RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(if (isActive) accent.copy(0.22f) else theme.bg2.copy(0.64f))
+                .border(
+                    1.dp,
+                    if (isActive) accent.copy(0.50f) else theme.stroke.copy(0.50f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                metricTargetIcon(type),
+                null,
+                tint = if (isActive) accent else theme.text2,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            type.label,
+            color = if (isActive) theme.text0 else theme.text1,
+            fontSize = 13.5.sp,
+            fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (isActive) accent.copy(0.20f) else theme.bg2.copy(0.50f))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                type.unit,
+                color = if (isActive) accent else theme.text2,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+private fun metricTargetIcon(type: ChallengeTargetType): ImageVector = when (type) {
+    ChallengeTargetType.TotalWorkouts        -> Icons.Rounded.FitnessCenter
+    ChallengeTargetType.TotalXp              -> Icons.Rounded.Bolt
+    ChallengeTargetType.CurrentStreak        -> Icons.Rounded.LocalFireDepartment
+    ChallengeTargetType.TotalDurationMinutes -> Icons.Rounded.Timer
+    ChallengeTargetType.TotalDistanceM       -> Icons.Rounded.Straighten
+    ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
+    ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  EDIT EVENT CHALLENGE OVERLAY (owner only — minimal field set)
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
@@ -1763,11 +2004,7 @@ private fun EditEventChallengeOverlay(
     var dateIso     by remember(summary.id) { mutableStateOf(ev?.dateIso ?: summary.startDateIso) }
     var timeIso     by remember(summary.id) { mutableStateOf(ev?.timeIso ?: "") }
     var location    by remember(summary.id) { mutableStateOf(ev?.location ?: "") }
-    var geoLat      by remember(summary.id) { mutableStateOf(ev?.geoLat?.toString() ?: "") }
-    var geoLng      by remember(summary.id) { mutableStateOf(ev?.geoLng?.toString() ?: "") }
     var endLocation by remember(summary.id) { mutableStateOf(ev?.endLocation ?: "") }
-    var endLat      by remember(summary.id) { mutableStateOf(ev?.endGeoLat?.toString() ?: "") }
-    var endLng      by remember(summary.id) { mutableStateOf(ev?.endGeoLng?.toString() ?: "") }
     var onlineUrl   by remember(summary.id) { mutableStateOf(ev?.onlineUrl ?: "") }
     var targetValue by remember(summary.id) { mutableStateOf(summary.targetValue.takeIf { it > 0 }?.toString() ?: "") }
 
@@ -1824,25 +2061,7 @@ private fun EditEventChallengeOverlay(
                 item { EditField("Saat (HH:MM, opsiyonel)", timeIso, { timeIso = it }, accent) }
                 if (isPhysical) {
                     item { EditField("Başlangıç konumu", location, { location = it }, accent) }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(Modifier.weight(1f)) { EditField("Lat", geoLat, { geoLat = it }, accent, numeric = true) }
-                            Box(Modifier.weight(1f)) { EditField("Lng", geoLng, { geoLng = it }, accent, numeric = true) }
-                        }
-                    }
                     item { EditField("Bitiş konumu (opsiyonel)", endLocation, { endLocation = it }, accent) }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(Modifier.weight(1f)) { EditField("Bitiş Lat", endLat, { endLat = it }, accent, numeric = true) }
-                            Box(Modifier.weight(1f)) { EditField("Bitiş Lng", endLng, { endLng = it }, accent, numeric = true) }
-                        }
-                    }
                 }
                 if (isOnline) {
                     item { EditField("Online URL", onlineUrl, { onlineUrl = it }, accent) }
@@ -1865,11 +2084,11 @@ private fun EditEventChallengeOverlay(
                                         dateIso     = dateIso.trim(),
                                         timeIso     = timeIso.trim().ifBlank { null },
                                         location    = location.trim().ifBlank { null },
-                                        geoLat      = geoLat.toDoubleOrNull(),
-                                        geoLng      = geoLng.toDoubleOrNull(),
+                                        geoLat      = ev?.geoLat,
+                                        geoLng      = ev?.geoLng,
                                         endLocation = endLocation.trim().ifBlank { null },
-                                        endGeoLat   = endLat.toDoubleOrNull(),
-                                        endGeoLng   = endLng.toDoubleOrNull(),
+                                        endGeoLat   = ev?.endGeoLat,
+                                        endGeoLng   = ev?.endGeoLng,
                                         targetValue = targetValue.toLongOrNull(),
                                         onlineUrl   = onlineUrl.trim().ifBlank { null }
                                     )
@@ -2008,17 +2227,34 @@ private fun TravelModeChip(
 
 private fun openRoute(
     ctx: android.content.Context,
-    originLat: Double,
-    originLng: Double,
-    destLat: Double,
-    destLng: Double,
+    origin: String,
+    destination: String,
     travelmode: String
 ) {
     val uri = ("https://www.google.com/maps/dir/?api=1" +
-        "&origin=$originLat,$originLng" +
-        "&destination=$destLat,$destLng" +
+        "&origin=${Uri.encode(origin)}" +
+        "&destination=${Uri.encode(destination)}" +
         "&travelmode=$travelmode").toUri()
+    openInMaps(ctx, uri)
+}
+
+private fun openMapSearch(
+    ctx: android.content.Context,
+    query: String
+) {
+    val uri = ("https://www.google.com/maps/search/?api=1" +
+        "&query=${Uri.encode(query)}").toUri()
+    openInMaps(ctx, uri)
+}
+
+private fun coordinateQuery(lat: Double?, lng: Double?): String? =
+    if (lat != null && lng != null) "$lat,$lng" else null
+
+private fun openInMaps(ctx: android.content.Context, uri: Uri) {
+    val mapsIntent = Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.maps")
     runCatching {
+        ctx.startActivity(mapsIntent)
+    }.recoverCatching {
         ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
     }
 }

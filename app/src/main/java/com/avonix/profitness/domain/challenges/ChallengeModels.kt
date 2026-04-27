@@ -182,6 +182,17 @@ data class UpdateEventChallengeRequest(
     val onlineUrl    : String?
 )
 
+/** Metric challenge için sahip düzenleme isteği. */
+data class UpdateMetricChallengeRequest(
+    val challengeId  : String,
+    val title        : String,
+    val description  : String?,
+    val targetType   : ChallengeTargetType,
+    val targetValue  : Long,
+    val startDateIso : String,
+    val endDateIso   : String
+)
+
 // ── DTO → domain mapping ─────────────────────────────────────────────────────
 
 private fun buildEventInfo(

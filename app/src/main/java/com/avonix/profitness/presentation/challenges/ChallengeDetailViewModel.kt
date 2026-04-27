@@ -7,6 +7,7 @@ import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -225,6 +226,24 @@ class ChallengeDetailViewModel @Inject constructor(
         _state.update { it.copy(ownerActionInFlight = true, error = null) }
         viewModelScope.launch {
             repo.updateEventChallenge(req).fold(
+                onSuccess = {
+                    load(id, force = true)
+                    _state.update { it.copy(ownerActionInFlight = false) }
+                },
+                onFailure = { t ->
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                }
+            )
+        }
+    }
+
+    /** Sahip → metric challenge alanlarını günceller. */
+    fun updateMetricChallenge(req: UpdateMetricChallengeRequest) {
+        val id = loadedId ?: return
+        if (_state.value.ownerActionInFlight) return
+        _state.update { it.copy(ownerActionInFlight = true, error = null) }
+        viewModelScope.launch {
+            repo.updateMetricChallenge(req).fold(
                 onSuccess = {
                     load(id, force = true)
                     _state.update { it.copy(ownerActionInFlight = false) }
