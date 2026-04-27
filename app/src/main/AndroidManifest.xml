@@ -47,6 +47,7 @@
         <service
             android:name=".service.WorkoutForegroundService"
             android:foregroundServiceType="specialUse"
+            android:stopWithTask="true"
             android:exported="false" />
     </application>
 

@@ -93,6 +93,18 @@ class WorkoutForegroundService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * Kullanıcı uygulamayı son uygulamalar listesinden kapattığında
+     * servisi ve bildirimi temizle. Böylece process serbest kalır ve
+     * uygulama bir sonraki açılışta takılmaz.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        notifManager.cancel(NOTIF_ID_ALERT)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     // ── Notification Builders ─────────────────────────────────────────────────

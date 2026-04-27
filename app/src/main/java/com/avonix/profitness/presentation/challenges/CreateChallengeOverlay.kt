@@ -121,7 +121,11 @@ fun CreateChallengeOverlay(
     var eventDateIso by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var eventTimeIso by rememberSaveable { mutableStateOf<String?>(null) }
     var eventLocation by rememberSaveable { mutableStateOf("") }
+    var eventStartLat by rememberSaveable { mutableStateOf("") }
+    var eventStartLng by rememberSaveable { mutableStateOf("") }
     var eventEndLocation by rememberSaveable { mutableStateOf("") }
+    var eventEndLat by rememberSaveable { mutableStateOf("") }
+    var eventEndLng by rememberSaveable { mutableStateOf("") }
     var eventOnlineUrl by rememberSaveable { mutableStateOf("") }
     var eventTargetEnabled by rememberSaveable { mutableStateOf(false) }
     var eventTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalDistanceM) }
@@ -258,8 +262,16 @@ fun CreateChallengeOverlay(
                     onClearTime = { eventTimeIso = null },
                     location = eventLocation,
                     onLocation = { eventLocation = it },
+                    startLat = eventStartLat,
+                    onStartLat = { eventStartLat = it },
+                    startLng = eventStartLng,
+                    onStartLng = { eventStartLng = it },
                     endLocation = eventEndLocation,
                     onEndLocation = { eventEndLocation = it },
+                    endLat = eventEndLat,
+                    onEndLat = { eventEndLat = it },
+                    endLng = eventEndLng,
+                    onEndLng = { eventEndLng = it },
                     onlineUrl = eventOnlineUrl,
                     onOnlineUrl = { eventOnlineUrl = it },
                     movements = selectedMovements,
@@ -355,11 +367,11 @@ fun CreateChallengeOverlay(
                                 timeIso     = eventTimeIso,
                                 timezone    = timezone,
                                 location    = eventLocation.ifBlank { null },
-                                geoLat      = null,  // TODO: map picker ileride eklenecek
-                                geoLng      = null,
+                                geoLat      = eventStartLat.toDoubleOrNull(),
+                                geoLng      = eventStartLng.toDoubleOrNull(),
                                 endLocation = eventEndLocation.ifBlank { null },
-                                endGeoLat   = null,
-                                endGeoLng   = null,
+                                endGeoLat   = eventEndLat.toDoubleOrNull(),
+                                endGeoLng   = eventEndLng.toDoubleOrNull(),
                                 onlineUrl   = eventOnlineUrl.ifBlank { null },
                                 movements   = if (eventMode == EventMode.MovementList)
                                     selectedMovements.toList() else emptyList(),
@@ -540,8 +552,16 @@ private fun EventForm(
     onClearTime: () -> Unit,
     location: String,
     onLocation: (String) -> Unit,
+    startLat: String,
+    onStartLat: (String) -> Unit,
+    startLng: String,
+    onStartLng: (String) -> Unit,
     endLocation: String,
     onEndLocation: (String) -> Unit,
+    endLat: String,
+    onEndLat: (String) -> Unit,
+    endLng: String,
+    onEndLng: (String) -> Unit,
     onlineUrl: String,
     onOnlineUrl: (String) -> Unit,
     movements: List<MovementInput>,
@@ -637,12 +657,64 @@ private fun EventForm(
                 placeholder = "ör. Maçka Parkı, İstanbul",
                 imeAction = ImeAction.Default
             )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(Modifier.weight(1f)) {
+                    FieldLabel("BAŞ. ENLEM (ops)", padded = false)
+                    TextInputInline(
+                        value = startLat,
+                        onValueChange = onStartLat,
+                        placeholder = "41.0",
+                        keyboardType = KeyboardType.Number
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    FieldLabel("BAŞ. BOYLAM (ops)", padded = false)
+                    TextInputInline(
+                        value = startLng,
+                        onValueChange = onStartLng,
+                        placeholder = "29.0",
+                        keyboardType = KeyboardType.Number
+                    )
+                }
+            }
             FieldLabel("BİTİŞ KONUMU (opsiyonel)")
             TextInputBox(
                 value = endLocation,
                 onValueChange = onEndLocation,
                 placeholder = "Rotalı etkinlikler için (ör. Bisiklet)",
                 imeAction = ImeAction.Default
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(Modifier.weight(1f)) {
+                    FieldLabel("BİT. ENLEM (ops)", padded = false)
+                    TextInputInline(
+                        value = endLat,
+                        onValueChange = onEndLat,
+                        placeholder = "41.0",
+                        keyboardType = KeyboardType.Number
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    FieldLabel("BİT. BOYLAM (ops)", padded = false)
+                    TextInputInline(
+                        value = endLng,
+                        onValueChange = onEndLng,
+                        placeholder = "29.0",
+                        keyboardType = KeyboardType.Number
+                    )
+                }
+            }
+            Text(
+                "İpucu: Google Maps'te konuma uzun bas → koordinatları kopyala. Hem başlangıç hem bitiş girilirse rota açılır.",
+                color = LocalAppTheme.current.text2,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
             OptionalMetricTargetSection(
                 enabled = targetEnabled,
@@ -886,6 +958,46 @@ private fun TextInputBox(
             minLines = minLines,
             keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = keyboardType),
             visualTransformation = visualTransformation,
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { inner ->
+                if (value.isEmpty()) {
+                    Text(placeholder, color = theme.text2.copy(0.55f), fontSize = 14.sp)
+                }
+                inner()
+            }
+        )
+    }
+}
+
+/** Inline text input — Row hücrelerinde padding'siz; opsiyonel keyboardType + filter. */
+@Composable
+private fun TextInputInline(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    val theme = LocalAppTheme.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg1.copy(0.6f))
+            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+            .padding(14.dp)
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = { v ->
+                val filtered = if (keyboardType == KeyboardType.Number)
+                    v.filter { it.isDigit() || it == '.' || it == '-' }.take(12)
+                else v
+                onValueChange(filtered)
+            },
+            textStyle = TextStyle(color = theme.text0, fontSize = 14.sp),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
                 if (value.isEmpty()) {

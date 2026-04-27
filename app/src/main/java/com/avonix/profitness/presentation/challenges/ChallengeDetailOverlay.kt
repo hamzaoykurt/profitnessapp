@@ -16,6 +16,9 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DirectionsBike
+import androidx.compose.material.icons.rounded.DirectionsRun
+import androidx.compose.material.icons.rounded.DirectionsWalk
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Flag
@@ -84,6 +87,7 @@ import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 @Composable
 fun ChallengeDetailOverlay(
@@ -310,9 +314,10 @@ fun ChallengeDetailOverlay(
                         }
                     }
 
-                    // ── "İlerleme Ekle" (Physical / Online + joined) ──
+                    // ── "İlerleme Ekle" — sadece metric target'lı event'lerde ──
                     if (isEvent && c.isJoined && ev != null
                         && ev.mode != EventMode.MovementList
+                        && c.targetValue > 0
                     ) {
                         item {
                             Box(
@@ -414,7 +419,10 @@ fun ChallengeDetailOverlay(
                             }
                         }
                     } else {
-                        items(detail.leaderboard, key = { "lb_${it.userId}" }) { entry ->
+                        items(
+                            detail.leaderboard.sortedByDescending { it.progress },
+                            key = { "lb_${it.userId}" }
+                        ) { entry ->
                             LeaderboardEntryRow(entry, c.targetType.unit)
                         }
                     }
@@ -715,36 +723,48 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         )
                     }
                 }
-                // Bike route — both endpoints present
+                // Rota — both endpoints present. 3 travelmode seçeneği (bisiklet/koşu/yürüyüş)
                 if (ev.geoLat != null && ev.geoLng != null && ev.endGeoLat != null && ev.endGeoLng != null) {
                     Spacer(Modifier.height(10.dp))
+                    Text(
+                        "ROTAYI AÇ",
+                        color = theme.text2,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(accent.copy(0.18f))
-                            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(12.dp))
-                            .clickable {
-                                val uri = ("https://www.google.com/maps/dir/?api=1" +
-                                    "&origin=${ev.geoLat},${ev.geoLng}" +
-                                    "&destination=${ev.endGeoLat},${ev.endGeoLng}" +
-                                    "&travelmode=bicycling").toUri()
-                                runCatching {
-                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                                }
-                            }
-                            .padding(vertical = 12.dp, horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Rounded.DirectionsBike, null, tint = accent, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "ROTAYI GOOGLE MAPS'TE AÇ",
-                            color = accent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp
+                        TravelModeChip(
+                            label = "BİSİKLET",
+                            icon = Icons.Rounded.DirectionsBike,
+                            accent = accent,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "bicycling")
+                            }
+                        )
+                        TravelModeChip(
+                            label = "KOŞU",
+                            icon = Icons.Rounded.DirectionsRun,
+                            accent = accent,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                // Google Maps "running" travelmode'u kabul etmediği için walking ile açıyoruz
+                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "walking")
+                            }
+                        )
+                        TravelModeChip(
+                            label = "YÜRÜYÜŞ",
+                            icon = Icons.Rounded.DirectionsWalk,
+                            accent = accent,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                openRoute(ctx, ev.geoLat, ev.geoLng, ev.endGeoLat, ev.endGeoLng, "walking")
+                            }
                         )
                     }
                 }
@@ -1224,6 +1244,20 @@ private fun AddProgressDialog(
     var text by remember { mutableStateOf("") }
     val parsed = text.trim().toLongOrNull() ?: 0L
 
+    // Kronometre — sadece dakika bazlı target için
+    val showStopwatch = unit == "dk"
+    var swRunning by remember { mutableStateOf(false) }
+    var swStartMs by remember { mutableStateOf(0L) }
+    var swAccumMs by remember { mutableStateOf(0L) }
+    var swTickMs by remember { mutableStateOf(0L) }
+    val swElapsedMs = swAccumMs + (if (swRunning) swTickMs - swStartMs else 0L)
+    LaunchedEffect(swRunning) {
+        while (swRunning) {
+            swTickMs = System.currentTimeMillis()
+            delay(250)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1533,7 +1567,7 @@ private fun StatChip(
                 )
             )
             .border(1.dp, accent.copy(0.32f), RoundedCornerShape(16.dp))
-            .padding(vertical = 14.dp, horizontal = 10.dp),
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
@@ -1541,7 +1575,7 @@ private fun StatChip(
         Text(
             value,
             color = theme.text0,
-            fontSize = 17.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Black,
             maxLines = 1
         )
@@ -1549,9 +1583,56 @@ private fun StatChip(
         Text(
             label.uppercase(),
             color = theme.text2,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
         )
+    }
+}
+
+// ── Travel mode chip + Maps route helper ────────────────────────────────────
+@Composable
+private fun TravelModeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(0.16f))
+            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            label,
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+private fun openRoute(
+    ctx: android.content.Context,
+    originLat: Double,
+    originLng: Double,
+    destLat: Double,
+    destLng: Double,
+    travelmode: String
+) {
+    val uri = ("https://www.google.com/maps/dir/?api=1" +
+        "&origin=$originLat,$originLng" +
+        "&destination=$destLat,$destLng" +
+        "&travelmode=$travelmode").toUri()
+    runCatching {
+        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
     }
 }
