@@ -10,15 +10,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -277,6 +283,31 @@ private fun ScopeChip(
 //  Challenge card
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ── Card status ──────────────────────────────────────────────────────────────
+private enum class CardStatus { NotStarted, Live, Ended }
+
+private fun statusOf(start: String, end: String): CardStatus {
+    val today = java.time.LocalDate.now()
+    val s = runCatching { java.time.LocalDate.parse(start) }.getOrNull() ?: return CardStatus.Live
+    val e = runCatching { java.time.LocalDate.parse(end) }.getOrNull() ?: return CardStatus.Live
+    return when {
+        today.isBefore(s) -> CardStatus.NotStarted
+        today.isAfter(e)  -> CardStatus.Ended
+        else              -> CardStatus.Live
+    }
+}
+
+private val TR_MONTHS = listOf("Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara")
+private fun humanDate(iso: String): String {
+    val d = runCatching { java.time.LocalDate.parse(iso) }.getOrNull() ?: return iso
+    return "${d.dayOfMonth} ${TR_MONTHS[d.monthValue - 1]}"
+}
+private fun daysBetween(fromIso: String, toIso: String): Long? {
+    val f = runCatching { java.time.LocalDate.parse(fromIso) }.getOrNull() ?: return null
+    val t = runCatching { java.time.LocalDate.parse(toIso) }.getOrNull() ?: return null
+    return java.time.temporal.ChronoUnit.DAYS.between(f, t)
+}
+
 @Composable
 private fun ChallengeCard(
     c: ChallengeSummary,
@@ -289,153 +320,377 @@ private fun ChallengeCard(
     val theme = LocalAppTheme.current
     val isPrivate = c.visibility == ChallengeVisibility.Private
     val isEvent = c.kind == ChallengeKind.Event
+    val status = statusOf(c.startDateIso, c.endDateIso)
+    val today = java.time.LocalDate.now().toString()
+    val daysLeft = daysBetween(today, c.endDateIso) ?: 0L
+    val daysUntilStart = daysBetween(today, c.startDateIso) ?: 0L
 
-    Column(
+    val borderColor = when {
+        c.isCompleted -> accent.copy(0.7f)
+        c.isJoined    -> accent.copy(0.55f)
+        status == CardStatus.Ended -> theme.stroke.copy(0.35f)
+        else -> theme.stroke.copy(0.5f)
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(
-                1.dp,
-                if (c.isCompleted) accent.copy(0.55f) else theme.stroke.copy(0.5f),
-                RoundedCornerShape(16.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        theme.bg1.copy(0.85f),
+                        theme.bg1.copy(0.55f)
+                    )
+                )
             )
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
             .clickable(onClick = onTap)
-            .padding(14.dp)
     ) {
-        // Kind chip (Metric / Event)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            KindBadge(isEvent = isEvent, accent = accent, theme = theme)
-            if (isEvent && c.event != null) {
-                Spacer(Modifier.width(6.dp))
-                EventModeBadge(mode = c.event.mode, theme = theme)
-            }
-            Spacer(Modifier.weight(1f))
-            if (c.isCompleted) {
+        // Subtle accent glow overlay (joined/live için belirgin)
+        if (c.isJoined || status == CardStatus.Live) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(accent.copy(0.10f), Color.Transparent),
+                            radius = 600f
+                        )
+                    )
+            )
+        }
+
+        Row(Modifier.fillMaxWidth()) {
+            // Sol kenar accent strip (joined ise)
+            if (c.isJoined) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(accent.copy(0.25f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
-                ) {
-                    Text("TAMAM", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                }
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.verticalGradient(listOf(accent, accent.copy(0.4f)))
+                        )
+                )
             }
-        }
-        Spacer(Modifier.height(8.dp))
 
-        // Başlık
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.padding(16.dp)) {
+                // ── Header chips + status ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    KindBadge(isEvent = isEvent, accent = accent, theme = theme)
+                    if (isEvent && c.event != null) {
+                        Spacer(Modifier.width(6.dp))
+                        EventModeBadge(mode = c.event.mode, theme = theme)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    StatusPill(
+                        status = if (c.isCompleted) CardStatus.Ended else status,
+                        completed = c.isCompleted,
+                        accent = accent,
+                        theme = theme
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // ── Title row (lock + title) ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isPrivate) {
-                        Icon(Icons.Rounded.Lock, null, tint = theme.text2, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Rounded.Lock, null, tint = theme.text2, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
                         c.title,
                         color      = theme.text0,
-                        fontSize   = 15.sp,
+                        fontSize   = 17.sp,
                         fontWeight = FontWeight.Black,
-                        maxLines   = 1
+                        maxLines   = 2
                     )
                 }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "${c.targetType.label} · ${c.targetValue} ${c.targetType.unit}",
-                    color      = accent,
-                    fontSize   = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
 
-        // Event date + time footer
-        if (isEvent && c.event != null) {
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.CalendarMonth, null, tint = theme.text2, modifier = Modifier.size(12.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    c.event.dateIso + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: ""),
-                    color = theme.text1,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (!c.event.location.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+
+                // ── Hero stat tile ──
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(accent.copy(0.22f), accent.copy(0.08f))
+                                )
+                            )
+                            .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                "${c.targetValue}",
+                                color = theme.text0,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                c.targetType.unit,
+                                color = accent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(bottom = 3.dp)
+                            )
+                        }
+                    }
                     Spacer(Modifier.width(10.dp))
-                    Icon(Icons.Rounded.LocationOn, null, tint = theme.text2, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(3.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "HEDEF",
+                            color = theme.text2,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp
+                        )
+                        Text(
+                            c.targetType.label,
+                            color = theme.text1,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // ── Event-spesifik tarih+saat+konum bandı ──
+                if (isEvent && c.event != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(theme.bg2.copy(0.5f))
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                    ) {
+                        Icon(Icons.Rounded.CalendarMonth, null, tint = accent, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            humanDate(c.event.dateIso) + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: ""),
+                            color = theme.text0,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        if (!c.event.location.isNullOrBlank()) {
+                            Spacer(Modifier.width(10.dp))
+                            Icon(Icons.Rounded.LocationOn, null, tint = theme.text2, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                c.event.location,
+                                color = theme.text1,
+                                fontSize = 11.sp,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // ── Description ──
+                if (c.description.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
                     Text(
-                        c.event.location,
-                        color = theme.text1,
-                        fontSize = 11.sp,
-                        maxLines = 1
+                        c.description,
+                        color     = theme.text1,
+                        fontSize  = 12.sp,
+                        maxLines  = 2
+                    )
+                }
+
+                // ── Progress (joined ise) ──
+                if (c.isJoined) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
+                            color    = theme.text1,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            "%${(c.progressPct * 100).toInt()}",
+                            color = accent,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    ProgressBar(pct = c.progressPct, accent = accent, theme.stroke)
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Footer: meta info + CTA ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        // 1. satır: katılımcı + countdown
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.People, null, tint = theme.text2, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "${c.participantsCount}",
+                                color = theme.text1,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            // Countdown / status
+                            val (cdIcon, cdText, cdColor) = when {
+                                c.isCompleted -> Triple(Icons.Rounded.Check, "TAMAMLANDI", accent)
+                                status == CardStatus.NotStarted ->
+                                    Triple(Icons.Rounded.HourglassBottom,
+                                        if (daysUntilStart == 0L) "Bugün başlıyor"
+                                        else "$daysUntilStart gün sonra", theme.text1)
+                                status == CardStatus.Ended ->
+                                    Triple(Icons.Rounded.Schedule, "Sona erdi", theme.text2)
+                                daysLeft == 0L ->
+                                    Triple(Icons.Rounded.Schedule, "Son gün", Color(0xFFFF8A80))
+                                daysLeft <= 3L ->
+                                    Triple(Icons.Rounded.Schedule, "$daysLeft gün kaldı", Color(0xFFFFB74D))
+                                else ->
+                                    Triple(Icons.Rounded.Schedule, "$daysLeft gün kaldı", theme.text1)
+                            }
+                            Icon(cdIcon, null, tint = cdColor, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(cdText, color = cdColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                        // 2. satır: tarih aralığı (sadece metric için, event'te zaten üstte tek tarih var)
+                        if (!isEvent) {
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                "${humanDate(c.startDateIso)} → ${humanDate(c.endDateIso)}",
+                                color = theme.text2,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    // CTA
+                    JoinPill(
+                        isJoined = c.isJoined,
+                        inFlight = inFlight,
+                        canAct   = !c.isCompleted && status != CardStatus.Ended,
+                        accent   = accent,
+                        theme    = theme,
+                        onClick  = onToggle
                     )
                 }
             }
         }
+    }
+}
 
-        if (c.description.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                c.description,
-                color     = theme.text1,
-                fontSize  = 12.sp,
-                maxLines  = 2
+// ── Status pill (NOT STARTED / LIVE / ENDED / DONE) ─────────────────────────
+@Composable
+private fun StatusPill(
+    status: CardStatus,
+    completed: Boolean,
+    accent: Color,
+    theme: com.avonix.profitness.core.theme.AppThemeState
+) {
+    val (label, fg, bg) = when {
+        completed -> Triple("TAMAM", accent, accent.copy(0.22f))
+        status == CardStatus.NotStarted -> Triple("YAKINDA", Color(0xFFFFB74D), Color(0xFFFFB74D).copy(0.18f))
+        status == CardStatus.Live       -> Triple("DEVAM EDİYOR", accent, accent.copy(0.18f))
+        else                            -> Triple("SONA ERDİ", theme.text2, theme.bg2.copy(0.6f))
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .border(1.dp, fg.copy(0.45f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(fg)
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            label,
+            color = fg,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp
+        )
+    }
+}
+
+// ── Join / Leave CTA pill — gradient + icon ─────────────────────────────────
+@Composable
+private fun JoinPill(
+    isJoined: Boolean,
+    inFlight: Boolean,
+    canAct: Boolean,
+    accent: Color,
+    theme: com.avonix.profitness.core.theme.AppThemeState,
+    onClick: () -> Unit
+) {
+    val bg: Brush = when {
+        !canAct  -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2))
+        isJoined -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2.copy(0.7f)))
+        else     -> Brush.horizontalGradient(listOf(accent, accent.copy(0.7f)))
+    }
+    val border = if (isJoined && canAct) accent.copy(0.5f) else Color.Transparent
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(12.dp))
+            .clickable(enabled = !inFlight && canAct, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (inFlight) {
+            CircularProgressIndicator(
+                color = if (isJoined) accent else Color.Black,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(14.dp)
             )
-        }
-
-        // Progress (join etmişse)
-        if (c.isJoined) {
-            Spacer(Modifier.height(10.dp))
-            ProgressBar(pct = c.progressPct, accent = accent, theme.stroke)
-            Spacer(Modifier.height(6.dp))
+        } else {
+            val icon = when {
+                !canAct  -> Icons.Rounded.Lock
+                isJoined -> Icons.Rounded.Check
+                else     -> Icons.Rounded.Bolt
+            }
+            val label = when {
+                !canAct  -> "KAPALI"
+                isJoined -> "KATILDIN"
+                else     -> "KATIL"
+            }
+            val fg = when {
+                !canAct  -> theme.text2
+                isJoined -> accent
+                else     -> Color.Black
+            }
+            Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
             Text(
-                "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
-                color    = theme.text2,
-                fontSize = 11.sp
+                label,
+                color = fg,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp
             )
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        // Alt bilgi satırı
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (isEvent) "${c.participantsCount} katılımcı"
-                else "${c.participantsCount} katılımcı · ${c.startDateIso} → ${c.endDateIso}",
-                color    = theme.text2,
-                fontSize = 10.sp,
-                modifier = Modifier.weight(1f),
-                maxLines = 1
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (c.isJoined) theme.bg2 else accent)
-                    .border(
-                        1.dp,
-                        if (c.isJoined) theme.stroke else Color.Transparent,
-                        RoundedCornerShape(10.dp)
-                    )
-                    .clickable(enabled = !inFlight, onClick = onToggle)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                if (inFlight) {
-                    CircularProgressIndicator(
-                        color = if (c.isJoined) accent else Color.Black,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(14.dp)
-                    )
-                } else {
-                    Text(
-                        if (c.isJoined) "AYRIL" else "KATIL",
-                        color = if (c.isJoined) theme.text0 else Color.Black,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+            if (!isJoined && canAct) {
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Rounded.ChevronRight, null, tint = fg, modifier = Modifier.size(14.dp))
             }
         }
     }

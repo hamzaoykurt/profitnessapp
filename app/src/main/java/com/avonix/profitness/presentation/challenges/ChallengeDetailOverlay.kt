@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -421,11 +422,11 @@ fun ChallengeDetailOverlay(
                             }
                         }
                     } else {
-                        items(
+                        itemsIndexed(
                             detail.leaderboard.sortedByDescending { it.progress },
-                            key = { "lb_${it.userId}" }
-                        ) { entry ->
-                            LeaderboardEntryRow(entry, c.targetType.unit)
+                            key = { _, e -> "lb_${e.userId}" }
+                        ) { index, entry ->
+                            LeaderboardEntryRow(rank = index + 1, entry = entry, unit = c.targetType.unit)
                         }
                     }
                 }
@@ -630,47 +631,78 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1.copy(0.7f))
-            .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(theme.bg1.copy(0.85f), theme.bg1.copy(0.55f))
+                )
+            )
+            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(18.dp))
             .padding(14.dp)
     ) {
+        // ── Mode header pill ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             val (icon, label) = when (ev.mode) {
                 EventMode.Physical     -> Icons.Rounded.LocationOn to "FİZİKSEL"
                 EventMode.Online       -> Icons.Rounded.Link to "ONLINE"
                 EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to "HAREKET LİSTESİ"
             }
-            Icon(icon, null, tint = accent, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(
-                label,
-                color = accent,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(accent.copy(0.28f), accent.copy(0.14f))
+                        )
+                    )
+                    .border(1.dp, accent.copy(0.45f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, null, tint = accent, modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        label,
+                        color = accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                }
+            }
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // Date + time
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.CalendarMonth, null, tint = theme.text2, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(
-                ev.dateIso + (ev.timeIso?.let { " · ${it.take(5)}" } ?: ""),
-                color = theme.text0,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+        // ── Date / Time chips (side-by-side) ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            EventMetaChip(
+                icon  = Icons.Rounded.CalendarMonth,
+                label = "TARİH",
+                value = ev.dateIso,
+                accent = accent,
+                modifier = Modifier.weight(1f)
             )
+            if (!ev.timeIso.isNullOrBlank()) {
+                EventMetaChip(
+                    icon  = Icons.Rounded.Schedule,
+                    label = "SAAT",
+                    value = ev.timeIso.take(5),
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
         if (!ev.timezone.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
             Text(
                 ev.timezone,
                 color = theme.text2,
                 fontSize = 10.sp,
-                modifier = Modifier.padding(start = 20.dp, top = 1.dp)
+                modifier = Modifier.padding(start = 4.dp)
             )
         }
 
@@ -678,52 +710,37 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         when (ev.mode) {
             EventMode.Physical -> {
                 if (!ev.location.isNullOrBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.LocationOn, null, tint = theme.text2, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            ev.location,
-                            color = theme.text0,
-                            fontSize = 13.sp
-                        )
-                    }
-                    if (ev.geoLat != null && ev.geoLng != null) {
-                        Spacer(Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(accent.copy(0.16f))
-                                .clickable {
-                                    val uri = "geo:${ev.geoLat},${ev.geoLng}?q=${ev.geoLat},${ev.geoLng}(${ev.location ?: "Etkinlik"})".toUri()
-                                    runCatching {
-                                        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                                    }
-                                }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                "HARİTADA AÇ",
-                                color = accent,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
-                            )
+                    Spacer(Modifier.height(10.dp))
+                    LocationRow(
+                        icon = Icons.Rounded.LocationOn,
+                        title = "BAŞLANGIÇ",
+                        value = ev.location,
+                        accent = accent,
+                        actionLabel = if (ev.geoLat != null && ev.geoLng != null) "HARİTA" else null,
+                        onAction = {
+                            if (ev.geoLat != null && ev.geoLng != null) {
+                                val uri = "geo:${ev.geoLat},${ev.geoLng}?q=${ev.geoLat},${ev.geoLng}(${ev.location})".toUri()
+                                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                            }
                         }
-                    }
+                    )
                 }
                 // Bitiş konumu (rotalı etkinlik)
                 if (!ev.endLocation.isNullOrBlank() || (ev.endGeoLat != null && ev.endGeoLng != null)) {
                     Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Flag, null, tint = theme.text2, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Bitiş: " + (ev.endLocation ?: "${ev.endGeoLat}, ${ev.endGeoLng}"),
-                            color = theme.text0,
-                            fontSize = 13.sp
-                        )
-                    }
+                    LocationRow(
+                        icon = Icons.Rounded.Flag,
+                        title = "BİTİŞ",
+                        value = ev.endLocation ?: "${ev.endGeoLat}, ${ev.endGeoLng}",
+                        accent = accent,
+                        actionLabel = if (ev.endGeoLat != null && ev.endGeoLng != null) "HARİTA" else null,
+                        onAction = {
+                            if (ev.endGeoLat != null && ev.endGeoLng != null) {
+                                val uri = "geo:${ev.endGeoLat},${ev.endGeoLng}?q=${ev.endGeoLat},${ev.endGeoLng}(${ev.endLocation ?: "Bitiş"})".toUri()
+                                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                            }
+                        }
+                    )
                 }
                 // Rota — both endpoints present. 3 travelmode seçeneği (bisiklet/koşu/yürüyüş)
                 if (ev.geoLat != null && ev.geoLng != null && ev.endGeoLat != null && ev.endGeoLng != null) {
@@ -805,6 +822,111 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                     color = theme.text1,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventMetaChip(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg2.copy(0.55f))
+            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(
+                label,
+                color = theme.text2,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            value,
+            color = theme.text0,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun LocationRow(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    accent: Color,
+    actionLabel: String? = null,
+    onAction: () -> Unit = {}
+) {
+    val theme = LocalAppTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg2.copy(0.5f))
+            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(14.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = theme.text2,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp
+            )
+            Spacer(Modifier.height(1.dp))
+            Text(
+                value,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2
+            )
+        }
+        if (actionLabel != null) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accent.copy(0.20f))
+                    .clickable(onClick = onAction)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    actionLabel,
+                    color = accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
                 )
             }
         }
@@ -951,25 +1073,41 @@ private fun MovementRow(
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun LeaderboardEntryRow(entry: ChallengeLeaderboardEntry, unit: String = "") {
+private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry, unit: String = "") {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val highlight = entry.isMe
+    val isMedal = rank in 1..3
+    val medalColor = MEDAL_COLORS.getOrNull(rank - 1)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (highlight) accent.copy(0.12f) else theme.bg1.copy(0.5f))
+            .background(
+                when {
+                    highlight -> accent.copy(0.12f)
+                    isMedal && medalColor != null -> medalColor.copy(0.08f)
+                    else -> theme.bg1.copy(0.5f)
+                }
+            )
             .border(
                 1.dp,
-                if (highlight) accent.copy(0.4f) else theme.stroke.copy(0.4f),
+                when {
+                    highlight -> accent.copy(0.4f)
+                    isMedal && medalColor != null -> medalColor.copy(0.35f)
+                    else -> theme.stroke.copy(0.4f)
+                },
                 RoundedCornerShape(12.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (rank > 0) {
+            RankBadge(rank, accent, theme)
+            Spacer(Modifier.width(8.dp))
+        }
         Box(
             modifier = Modifier
                 .size(32.dp)
@@ -1027,47 +1165,138 @@ private fun LeaderboardEntryRow(entry: ChallengeLeaderboardEntry, unit: String =
 @Composable
 private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) {
     val theme = LocalAppTheme.current
+    val today = LocalDate.now()
+    val startDate = runCatching { LocalDate.parse(c.startDateIso) }.getOrNull()
+    val endDate = runCatching { LocalDate.parse(c.endDateIso) }.getOrNull()
+    val daysLeft = if (endDate != null)
+        java.time.temporal.ChronoUnit.DAYS.between(today, endDate) else 0L
+    val daysToStart = if (startDate != null)
+        java.time.temporal.ChronoUnit.DAYS.between(today, startDate) else 0L
+
+    val (statusLabel, statusColor) = when {
+        c.isCompleted -> "TAMAMLANDI" to accent
+        startDate != null && today.isBefore(startDate) -> "YAKINDA" to Color(0xFFFFB74D)
+        endDate != null && today.isAfter(endDate) -> "SONA ERDİ" to theme.text2
+        daysLeft == 0L -> "SON GÜN" to Color(0xFFFF8A80)
+        else -> "DEVAM EDİYOR" to accent
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(accent.copy(0.22f), accent.copy(0.06f))
+                    listOf(accent.copy(0.28f), accent.copy(0.06f))
                 )
             )
-            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(18.dp))
-            .padding(18.dp)
+            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(20.dp))
     ) {
-        Column {
+        // Subtle radial accent overlay
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(accent.copy(0.18f), Color.Transparent),
+                        radius = 700f
+                    )
+                )
+        )
+        Column(Modifier.padding(18.dp)) {
+            // Üst row: kategori + status pill
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (isEvent) "ETKİNLİK" else c.targetType.label.uppercase(),
+                    if (isEvent) "ETKİNLİK · ${c.targetType.label.uppercase()}"
+                    else c.targetType.label.uppercase(),
                     color = accent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.weight(1f)
                 )
-                if (isEvent) {
-                    Spacer(Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(statusColor.copy(0.18f))
+                        .border(1.dp, statusColor.copy(0.45f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Spacer(Modifier.width(5.dp))
                     Text(
-                        "· ${c.targetType.label.uppercase()}",
-                        color = theme.text2,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp
+                        statusLabel,
+                        color = statusColor,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.2.sp
                     )
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(10.dp))
+
+            // Title
             Text(
                 c.title,
                 color      = theme.text0,
-                fontSize   = 20.sp,
-                fontWeight = FontWeight.Black
+                fontSize   = 22.sp,
+                fontWeight = FontWeight.Black,
+                lineHeight = 26.sp
             )
-            Spacer(Modifier.height(10.dp))
+
+            // Countdown row
+            Spacer(Modifier.height(6.dp))
+            val countdownText = when {
+                c.isCompleted -> null
+                startDate != null && today.isBefore(startDate) ->
+                    if (daysToStart == 0L) "Bugün başlıyor"
+                    else "$daysToStart gün sonra başlıyor"
+                endDate != null && today.isAfter(endDate) -> "Bitti"
+                daysLeft == 0L -> "Bugün son gün"
+                else -> "$daysLeft gün kaldı"
+            }
+            if (countdownText != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Schedule, null, tint = theme.text1, modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        countdownText,
+                        color = theme.text1,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // İlerleme bölgesi (yalnız joined için anlamlı; ama herkese gösterilsin — 0%)
+            Spacer(Modifier.height(14.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
+                    color    = theme.text1,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "%${(c.progressPct * 100).toInt()}",
+                    color = accent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.height(6.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1083,12 +1312,39 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
                         .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.6f))))
                 )
             }
-            Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+private val MEDAL_COLORS = listOf(
+    Color(0xFFFFD54F),  // gold
+    Color(0xFFB0BEC5),  // silver
+    Color(0xFFD7945A)   // bronze
+)
+
+@Composable
+private fun RankBadge(rank: Int, accent: Color, theme: com.avonix.profitness.core.theme.AppThemeState) {
+    val color = MEDAL_COLORS.getOrNull(rank - 1) ?: theme.text2
+    val isMedal = rank in 1..3
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(if (isMedal) color.copy(0.22f) else theme.bg2.copy(0.6f))
+            .border(1.dp, if (isMedal) color.copy(0.6f) else theme.stroke.copy(0.4f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isMedal) {
+            Icon(
+                Icons.Rounded.EmojiEvents, null,
+                tint = color, modifier = Modifier.size(14.dp)
+            )
+        } else {
             Text(
-                "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
-                color    = theme.text1,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
+                "$rank",
+                color = theme.text1,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black
             )
         }
     }
