@@ -14,7 +14,11 @@ data class ProgramDto(
     val name: String,
     val type: String,
     val is_active: Boolean,
-    val created_at: String = ""
+    val created_at: String = "",
+    /** Server-computed canonical hash of the program's content (set by trigger). */
+    val content_hash: String? = null,
+    /** If this program was applied from a shared snapshot, that snapshot's id. */
+    val applied_from_shared_id: String? = null
 )
 
 fun ProgramDto.toDomain() = Program(
@@ -23,7 +27,9 @@ fun ProgramDto.toDomain() = Program(
     name = name,
     type = runCatching { ProgramType.valueOf(type.uppercase()) }.getOrDefault(ProgramType.MANUAL),
     isActive = is_active,
-    createdAt = created_at
+    createdAt = created_at,
+    contentHash = content_hash,
+    appliedFromSharedId = applied_from_shared_id
 )
 
 @Serializable

@@ -260,34 +260,54 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
         runCatching {
-            // Düzenleme, mevcut kaydı mutate etmez: yeni bir program sürümü oluşturulur.
-            val sourceProgram = supabase.postgrest["programs"]
-                .select { filter { eq("id", programId) } }
-                .decodeSingle<ProgramDto>()
+            // Mimari karar (content-addressable snapshot):
+            // Düzenleme programın id'sini değiştirmez — mevcut satır mutate edilir.
+            // Paylaşılan kopya (shared_programs.program_data) ayrı, immutable bir snapshot
+            // olarak donmuş; o asla bu düzenlemeden etkilenmez. Discover feed'inin
+            // "UYGULANDI/UYGULA" çentiği ise her satır için sunucu tarafında hesaplanan
+            // SHA-256 content_hash'ine bakar (programs trigger'ı her INSERT/UPDATE/DELETE
+            // sonrası hash'i yeniler). Kullanıcı düzenleme yapınca hash değişir → çentik
+            // otomatik olarak "UYGULA"ya döner.
 
-            if (sourceProgram.is_active) {
-                supabase.postgrest["programs"]
-                    .update({ set("is_active", false) }) {
-                        filter { eq("user_id", sourceProgram.user_id); eq("is_active", true) }
-                    }
+            // 1) Program adını güncelle
+            supabase.postgrest["programs"]
+                .update({ set("name", name) }) { filter { eq("id", programId) } }
+
+            // 2) Mevcut günlerin ID'lerini çek
+            val oldDayIds = supabase.postgrest["program_days"]
+                .select { filter { eq("program_id", programId) } }
+                .decodeList<ProgramDayDto>()
+                .map { it.id }
+
+            // 3) Eski egzersizleri sil
+            for (dayId in oldDayIds) {
+                runCatching {
+                    supabase.postgrest["program_exercises"]
+                        .delete { filter { eq("program_day_id", dayId) } }
+                }
             }
 
-            val newProgramId = UUID.randomUUID().toString()
-            supabase.postgrest["programs"]
-                .insert(buildJsonObject {
-                    put("id", newProgramId)
-                    put("user_id", sourceProgram.user_id)
-                    put("name", name)
-                    put("type", sourceProgram.type)
-                    put("is_active", sourceProgram.is_active)
-                })
+            // 3b) workout_logs FK referansını NULL yap (gün siliniyor — log tarihi korunur)
+            for (dayId in oldDayIds) {
+                runCatching {
+                    supabase.postgrest["workout_logs"]
+                        .update({ set("program_day_id", null as String?) }) {
+                            filter { eq("program_day_id", dayId) }
+                        }
+                }
+            }
 
+            // 4) Eski günleri sil
+            supabase.postgrest["program_days"]
+                .delete { filter { eq("program_id", programId) } }
+
+            // 5) Yeni günleri ve egzersizleri ekle (program id aynı kalır)
             days.forEachIndexed { dayIdx, dayInput ->
                 val newDayId = UUID.randomUUID().toString()
                 supabase.postgrest["program_days"]
                     .insert(buildJsonObject {
                         put("id", newDayId)
-                        put("program_id", newProgramId)
+                        put("program_id", programId)
                         put("day_index", dayIdx)
                         put("title", dayInput.title)
                         put("is_rest_day", dayInput.isRestDay)
@@ -307,11 +327,14 @@ class ProgramRepositoryImpl @Inject constructor(
                 }
             }
 
-            // Room'a sync et
-            syncManager.pullPrograms(sourceProgram.user_id)
+            // 6) Room'a sync et — content_hash trigger'larca yeniden hesaplanmış olarak gelir
+            val userId = supabase.postgrest["programs"]
+                .select { filter { eq("id", programId) } }
+                .decodeSingle<ProgramDto>().user_id
+            syncManager.pullPrograms(userId)
 
-            programDao.getUserPrograms(sourceProgram.user_id)
-                .firstOrNull { it.program.id == newProgramId }
+            programDao.getUserPrograms(userId)
+                .firstOrNull { it.program.id == programId }
                 ?.toDomain()
                 ?: error("Güncellenen program Room'da bulunamadı")
         }
@@ -347,6 +370,9 @@ class ProgramRepositoryImpl @Inject constructor(
                     .delete { filter { eq("program_id", programId) } }
                 supabase.postgrest["programs"]
                     .delete { filter { eq("id", programId) } }
+                // Supabase silme sırasında bir sync Room'a geri yazmış olabilir;
+                // işlem bitince Room'dan kesin olarak sil.
+                programDao.deleteProgram(programId)
                 Unit
             }
         }
@@ -432,6 +458,8 @@ class ProgramRepositoryImpl @Inject constructor(
                 .getOrDefault(ProgramType.MANUAL),
             isActive = program.isActive,
             createdAt = program.createdAt,
+            contentHash = program.contentHash,
+            appliedFromSharedId = program.appliedFromSharedId,
             days = days.map { dwe ->
                 ProgramDay(
                     id = dwe.day.id,

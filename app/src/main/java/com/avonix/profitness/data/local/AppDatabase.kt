@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -122,6 +122,22 @@ abstract class AppDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS index_weight_logs_user_id_recorded_at " +
                     "ON weight_logs (user_id, recorded_at)"
                 )
+            }
+        }
+
+        /**
+         * Migration 5→6: `programs` tablosuna `content_hash` ve `applied_from_shared_id`
+         * sütunlarını ekler.
+         *
+         * Bu sütunlar Supabase tarafında trigger ile otomatik dolduruluyor; Room sadece
+         * pull edilen değerleri yansıtır (kullanıcının kendi düzenlemesi yapıldığında
+         * bir sonraki sync'te yeni hash gelir). Eski cihazların `programs` satırları
+         * için geçici olarak NULL kalır; ilk sync sırasında doldurulur.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE programs ADD COLUMN content_hash TEXT DEFAULT NULL")
+                database.execSQL("ALTER TABLE programs ADD COLUMN applied_from_shared_id TEXT DEFAULT NULL")
             }
         }
     }

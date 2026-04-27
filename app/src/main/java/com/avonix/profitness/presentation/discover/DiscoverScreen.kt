@@ -66,7 +66,9 @@ import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.DiscoverSort
 import com.avonix.profitness.domain.discover.MySharedProgram
 import com.avonix.profitness.domain.discover.SharedProgram
-import android.widget.Toast
+import com.avonix.profitness.presentation.components.AppToast
+import com.avonix.profitness.presentation.components.AppToastData
+import com.avonix.profitness.presentation.components.AppToastType
 
 enum class DiscoverTab { Programs, Friends, Challenges }
 
@@ -85,35 +87,45 @@ fun DiscoverScreen(
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
-    val myActiveProgramIds = remember(myPrograms) {
-        myPrograms.filter { it.isActive }.map { it.id }.toSet()
+    val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toSet() }
+    /**
+     * Hash'leri Room'dan derle — Discover feed'i UYGULA/UYGULANDI çentiğini sunucu flag'i
+     * yanında bu yerel set ile de teyit etsin ki kullanıcı bir programı düzenlediğinde
+     * (hash değişir) bir sonraki feed pull'unu beklemeden kart anında "UYGULA"ya döner.
+     */
+    val myProgramHashes = remember(myPrograms) {
+        myPrograms.mapNotNull { it.contentHash }.toSet()
     }
-    val context = LocalContext.current
 
-    // Share / Apply / Error toast'ları
+    var currentToast by remember { mutableStateOf<AppToastData?>(null) }
+
     LaunchedEffect(state.shareResult) {
         state.shareResult?.let { result ->
-            val msg = when (result) {
-                is ShareResult.Success  -> "Program topluluk akışına eklendi ✓"
-                is ShareResult.Error    -> "Paylaşım başarısız: ${result.msg}"
-            }
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            currentToast = AppToastData(
+                message = when (result) {
+                    is ShareResult.Success -> "Program topluluk akışına eklendi"
+                    is ShareResult.Error   -> "Paylaşım başarısız: ${result.msg}"
+                },
+                type = if (result is ShareResult.Success) AppToastType.Success else AppToastType.Error
+            )
             viewModel.consumeShareResult()
         }
     }
     LaunchedEffect(state.applyResult) {
         state.applyResult?.let { result ->
-            val msg = when (result) {
-                is ApplyResult.Success  -> "Program planına uygulandı ✓"
-                is ApplyResult.Error    -> "Uygulanamadı: ${result.msg}"
-            }
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            currentToast = AppToastData(
+                message = when (result) {
+                    is ApplyResult.Success -> "Program planına uygulandı"
+                    is ApplyResult.Error   -> "Uygulanamadı: ${result.msg}"
+                },
+                type = if (result is ApplyResult.Success) AppToastType.Success else AppToastType.Error
+            )
             viewModel.consumeApplyResult()
         }
     }
     LaunchedEffect(state.myActionMsg) {
         state.myActionMsg?.let { msg ->
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            currentToast = AppToastData(message = msg, type = AppToastType.Info)
             viewModel.consumeMyActionMsg()
         }
     }
@@ -157,14 +169,15 @@ fun DiscoverScreen(
                         ) { sub ->
                             when (sub) {
                                 ProgramsSubTab.Community -> ProgramsList(
-                                     state         = state,
-                                     myActiveProgramIds = myActiveProgramIds,
-                                     bottomPadding = bottomPadding,
-                                     onLike        = viewModel::toggleLike,
-                                     onSave        = viewModel::toggleSave,
-                                     onApply       = viewModel::applyProgram,
-                                    onLoadMore    = viewModel::loadMore,
-                                    onRefresh     = viewModel::refresh
+                                     state           = state,
+                                     myProgramIds    = myProgramIds,
+                                     myProgramHashes = myProgramHashes,
+                                     bottomPadding   = bottomPadding,
+                                     onLike          = viewModel::toggleLike,
+                                     onSave          = viewModel::toggleSave,
+                                     onApply         = viewModel::applyProgram,
+                                     onLoadMore      = viewModel::loadMore,
+                                     onRefresh       = viewModel::refresh
                                 )
                                 ProgramsSubTab.Mine -> MySharedProgramsList(
                                     items           = state.myShared,
@@ -198,6 +211,13 @@ fun DiscoverScreen(
                     .padding(end = 20.dp, bottom = bottomPadding + 12.dp)
             )
         }
+
+        // ── In-app notification toast ──────────────────────────────────────
+        AppToast(
+            toast = currentToast,
+            onDismiss = { currentToast = null },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 
     if (showShareSheet) {
@@ -366,14 +386,15 @@ private fun DiscoverTabPill(
 
 @Composable
 private fun ProgramsList(
-    state         : DiscoverProgramsState,
-    myActiveProgramIds: Set<String>,
-    bottomPadding : Dp,
-    onLike        : (String) -> Unit,
-    onSave        : (String) -> Unit,
-    onApply       : (String) -> Unit,
-    onLoadMore    : () -> Unit,
-    onRefresh     : () -> Unit
+    state           : DiscoverProgramsState,
+    myProgramIds    : Set<String>,
+    myProgramHashes : Set<String>,
+    bottomPadding   : Dp,
+    onLike          : (String) -> Unit,
+    onSave          : (String) -> Unit,
+    onApply         : (String) -> Unit,
+    onLoadMore      : () -> Unit,
+    onRefresh       : () -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -395,12 +416,6 @@ private fun ProgramsList(
         state.items.isEmpty() && state.error != null -> ErrorState(state.error, onRefresh)
         state.items.isEmpty() -> EmptyFeedState()
         else -> {
-            // Kendi paylaşımlarım için sharedId → originalProgramId haritası
-            // Feed'deki kart senin paylaşımın VE originalProgramId hâlâ sende varsa "uygulandi" say
-            val mySharedOriginMap = remember(state.myShared) {
-                state.myShared.associate { it.id to it.originalProgramId }
-            }
-
             LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -411,13 +426,21 @@ private fun ProgramsList(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(state.items, key = { it.id }) { program ->
+                // Senior approach: content-addressable. UYGULANDI iff caller has a local
+                // program with matching content hash. Server flag is canonical; local-hash
+                // check provides instant feedback (after Room sync) without waiting for
+                // the next feed pull. Düzenleme yapılırsa hash değişir → çentik düşer.
+                //
+                // Geriye dönük güvenlik ağı: hash henüz dolmamış (NULL) eski Room satırları
+                // için, kullanıcı az önce uygula'ya basmış ve programId hâlâ duruyorsa da
+                // UYGULANDI kabul et (geçici, ilk sync'te kalkar).
+                val isAppliedByHash =
+                    program.contentHash != null && program.contentHash in myProgramHashes
                 val appliedLocalProgramId = state.appliedProgramMap[program.id]
-                val isApplied = (appliedLocalProgramId != null &&
+                val isAppliedFallback = appliedLocalProgramId != null &&
                     appliedLocalProgramId !in state.localDeletingProgramIds &&
-                    myActiveProgramIds.contains(appliedLocalProgramId)) ||
-                    (mySharedOriginMap[program.id]?.let { origId ->
-                        origId !in state.localDeletingProgramIds && myActiveProgramIds.contains(origId)
-                    } == true)
+                    myProgramIds.contains(appliedLocalProgramId)
+                val isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback
                 SharedProgramCard(
                     program    = program,
                     isApplying = program.id in state.applyingProgramIds,
@@ -912,7 +935,6 @@ private fun MySharedCard(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val warn = Color(0xFFF5A524)
     val danger = Color(0xFFEF476F)
     val shape = RoundedCornerShape(18.dp)
 
@@ -988,41 +1010,39 @@ private fun MySharedCard(
                 text  = "Kaynak program silinmiş. Sadece silebilirsin."
             )
             item.isOutOfSync -> StatusBanner(
-                icon = Icons.Rounded.Warning,
-                color = warn,
-                text  = "Kaynak program değişmiş. Bu paylaşım eski sürüm olarak kaldı."
+                icon = Icons.Rounded.FitnessCenter,
+                color = accent,
+                text  = "Kaynak programın değişmiş. Bu paylaşım eski sürüm olarak kalıyor."
             )
             else -> StatusBanner(
                 icon = Icons.Rounded.FitnessCenter,
                 color = accent,
-                text  = "Paylaşım bir snapshot olarak korunuyor."
+                text  = "Paylaşım sabit bir snapshot olarak korunuyor."
             )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Aksiyonlar
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Delete
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(danger.copy(0.12f))
-                    .border(1.dp, danger.copy(0.35f), RoundedCornerShape(12.dp))
-                    .clickable(enabled = !isDeleting) { showDeleteDialog = true }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isDeleting) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = danger)
-                } else {
-                    Icon(Icons.Rounded.DeleteOutline, null, tint = danger, modifier = Modifier.size(15.dp))
-                }
-                Spacer(Modifier.width(6.dp))
-                Text("SİL", color = danger,
-                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
+        // Aksiyon: yalnız Sil (paylaşımlar artık snapshot — senkron yok)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(danger.copy(0.12f))
+                .border(1.dp, danger.copy(0.35f), RoundedCornerShape(12.dp))
+                .clickable(enabled = !isDeleting) { showDeleteDialog = true }
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isDeleting) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = danger)
+            } else {
+                Icon(Icons.Rounded.DeleteOutline, null, tint = danger, modifier = Modifier.size(15.dp))
             }
+            Spacer(Modifier.width(6.dp))
+            Text("SİL", color = danger,
+                fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
         }
     }
 }

@@ -244,7 +244,9 @@ class SyncManager @Inject constructor(
         name = name,
         type = type,
         isActive = is_active,
-        createdAt = created_at
+        createdAt = created_at,
+        contentHash = content_hash,
+        appliedFromSharedId = applied_from_shared_id
     )
 
     private fun ProgramDayDto.toEntity() = ProgramDayEntity(

@@ -22,6 +22,15 @@ data class SharedProgram(
     val downloadsCount  : Int,
     val isLikedByMe     : Boolean,
     val isSavedByMe     : Boolean,
+    /**
+     * Server-computed: caller has at least one local program whose canonical content
+     * hash matches this snapshot. UI uses this to render "UYGULANDI" vs "UYGULA".
+     * Auto-flips to false when the user edits an applied program (hash changes).
+     */
+    val isAppliedByMe   : Boolean,
+    /** SHA-256 hash of this snapshot's canonical content. Lets the client cross-check
+     *  against locally-cached program hashes for instant UI feedback. */
+    val contentHash     : String?,
     val createdAtIso    : String
 )
 
@@ -59,7 +68,11 @@ data class MySharedProgram(
     val updatedAtIso    : String?,
     val sourceExists    : Boolean,
     val sourceProgramName: String?,
-    val isOutOfSync     : Boolean
+    val isOutOfSync     : Boolean,
+    /** Hash frozen on the shared snapshot at publish time. */
+    val sharedContentHash: String?,
+    /** Current hash of the source program (NULL if source deleted). */
+    val sourceContentHash: String?
 )
 
 internal fun MySharedProgramRowDto.toDomain(): MySharedProgram = MySharedProgram(
@@ -78,7 +91,9 @@ internal fun MySharedProgramRowDto.toDomain(): MySharedProgram = MySharedProgram
     updatedAtIso     = updated_at,
     sourceExists     = source_exists,
     sourceProgramName = source_program_name,
-    isOutOfSync      = is_out_of_sync
+    isOutOfSync      = is_out_of_sync,
+    sharedContentHash = shared_content_hash,
+    sourceContentHash = source_content_hash
 )
 
 internal fun DiscoverFeedRowDto.toDomain(): SharedProgram = SharedProgram(
@@ -98,5 +113,7 @@ internal fun DiscoverFeedRowDto.toDomain(): SharedProgram = SharedProgram(
     downloadsCount   = downloads_count,
     isLikedByMe      = is_liked_by_me,
     isSavedByMe      = is_saved_by_me,
+    isAppliedByMe    = is_applied_by_me,
+    contentHash      = content_hash,
     createdAtIso     = created_at
 )

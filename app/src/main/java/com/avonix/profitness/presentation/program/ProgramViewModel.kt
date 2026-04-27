@@ -82,6 +82,9 @@ class ProgramViewModel @Inject constructor(
 
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    private var lastSyncTime = 0L
+    private val syncStaleMs  = 3 * 60 * 1000L // 3 dakika
+
     init {
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
@@ -177,14 +180,18 @@ class ProgramViewModel @Inject constructor(
         }
 
         // İlk yüklemede Supabase'den sync et
+        lastSyncTime = System.currentTimeMillis()
         viewModelScope.launch {
             programRepository.syncFromRemote(uid)
         }
     }
 
-    /** Tab geçişleri veya geri dönüş için — artık sadece sync tetikler, Flow otomatik günceller. */
+    /** Tab geçişleri veya geri dönüş için — son syncten 3 dakika geçmediyse atlar. */
     fun reloadIfStale() {
         val uid = currentUserId() ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastSyncTime < syncStaleMs) return
+        lastSyncTime = now
         viewModelScope.launch { programRepository.syncFromRemote(uid) }
     }
 
@@ -672,14 +679,17 @@ FORMAT:
             updateState { it.copy(isLoading = true, error = null) }
             programRepository.updateProgram(programId, name, inputs)
                 .onSuccess { updated ->
+                    // In-place edit: program id korunur, sadece içerik & ad değişir.
+                    // Liste sırası bozulmasın diye map ile aynı pozisyonda yer değiştirir.
                     updateState { state ->
-                        val existing = state.userPrograms.filterNot { it.id == programId }
                         state.copy(
                             isLoading    = false,
-                            userPrograms = listOf(updated) + existing
+                            userPrograms = state.userPrograms.map { p ->
+                                if (p.id == programId) updated else p
+                            }
                         )
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" için yeni sürüm oluşturuldu."))
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" güncellendi."))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->

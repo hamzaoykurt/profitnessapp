@@ -13,7 +13,11 @@ data class Program(
     val type: ProgramType,
     val isActive: Boolean,
     val days: List<ProgramDay> = emptyList(),
-    val createdAt: String = ""
+    val createdAt: String = "",
+    /** SHA-256 of the canonical program content. Server-maintained; used to detect drift vs shared snapshots. */
+    val contentHash: String? = null,
+    /** id of the [shared_programs] row this program was applied from (null if user-authored). */
+    val appliedFromSharedId: String? = null
 )
 
 @Serializable

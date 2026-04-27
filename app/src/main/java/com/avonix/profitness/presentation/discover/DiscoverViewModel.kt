@@ -38,7 +38,6 @@ data class DiscoverProgramsState(
     // Kullanıcının kendi paylaşımları
     val myShared         : List<MySharedProgram> = emptyList(),
     val myLoading        : Boolean               = false,
-    val mySyncInFlight   : Set<String>           = emptySet(),
     val myDeleteInFlight : Set<String>           = emptySet(),
     val myActionMsg      : String?               = null
 )
@@ -266,41 +265,6 @@ class DiscoverViewModel @Inject constructor(
                 }
                 .onFailure {
                     _state.update { it.copy(myLoading = false) }
-                }
-        }
-    }
-
-    /**
-     * Paylaşım kaydının snapshot'ını kaynak programdan yeniden alır.
-     * Kaynak silinmişse backend hata döner; kullanıcı silmeyi tercih eder.
-     */
-    fun syncShared(sharedId: String) {
-        val s = _state.value
-        if (sharedId in s.mySyncInFlight) return
-        _state.update { it.copy(mySyncInFlight = it.mySyncInFlight + sharedId) }
-        viewModelScope.launch {
-            discoverRepo.updateShared(
-                sharedId       = sharedId,
-                resyncSnapshot = true
-            )
-                .onSuccess {
-                    // Senkron sonrası: listeyi tazele + feed'de güncel kart görünsün
-                    loadMyShared()
-                    loadFirstPage(isRefresh = true)
-                    _state.update {
-                        it.copy(
-                            mySyncInFlight = it.mySyncInFlight - sharedId,
-                            myActionMsg    = "Paylaşım güncel programla senkron ✓"
-                        )
-                    }
-                }
-                .onFailure { err ->
-                    _state.update {
-                        it.copy(
-                            mySyncInFlight = it.mySyncInFlight - sharedId,
-                            myActionMsg    = "Senkron başarısız: ${err.message ?: "bilinmeyen hata"}"
-                        )
-                    }
                 }
         }
     }

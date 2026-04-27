@@ -22,6 +22,14 @@ data class DiscoverFeedRowDto(
     val downloads_count     : Int = 0,
     val is_liked_by_me      : Boolean = false,
     val is_saved_by_me      : Boolean = false,
+    /**
+     * TRUE if caller's local programs contain a row with content matching this snapshot
+     * (server-computed via SHA-256). Edits to a previously-applied program flip this back
+     * to FALSE so the "Uygula" button reappears.
+     */
+    val is_applied_by_me    : Boolean = false,
+    /** Server-computed canonical hash of program_data; lets clients short-circuit comparisons. */
+    val content_hash        : String? = null,
     val created_at          : String
 )
 
@@ -43,5 +51,9 @@ data class MySharedProgramRowDto(
     val updated_at          : String? = null,
     val source_exists       : Boolean = false,
     val source_program_name : String? = null,
-    val is_out_of_sync      : Boolean = false
+    val is_out_of_sync      : Boolean = false,
+    /** SHA-256 hash stored on the shared snapshot row at publish time. */
+    val shared_content_hash : String? = null,
+    /** Current hash of the source program (NULL if source program was deleted). */
+    val source_content_hash : String? = null
 )
