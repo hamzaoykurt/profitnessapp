@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.avonix.profitness.presentation.challenges
 
 import androidx.compose.foundation.background
@@ -25,7 +27,6 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Straighten
@@ -34,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +69,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
+import com.avonix.profitness.domain.discover.DiscoverSort
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -78,6 +81,7 @@ import com.avonix.profitness.domain.challenges.EventMode
 @Composable
 fun ChallengesTab(
     bottomPadding: Dp,
+    sort: DiscoverSort = DiscoverSort.NEWEST,
     timerExtraPad: Dp = 0.dp
 ) {
     val theme = LocalAppTheme.current
@@ -135,7 +139,11 @@ fun ChallengesTab(
             }
 
             // ── Liste ─────────────────────────────────────────────────────
-            Box(Modifier.fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = { vm.refresh() },
+                modifier = Modifier.fillMaxSize()
+            ) {
                 when {
                     state.isLoading -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -143,7 +151,10 @@ fun ChallengesTab(
                         }
                     }
                     else -> {
-                        val list = if (state.scope == ChallengesScope.Browse) state.browseList else state.myList
+                        val list = remember(state.scope, state.browseList, state.myList, sort) {
+                            val base = if (state.scope == ChallengesScope.Browse) state.browseList else state.myList
+                            base.sortedFor(sort)
+                        }
                         if (list.isEmpty()) {
                             EmptyBlock(
                                 text = if (state.scope == ChallengesScope.Browse)
@@ -180,29 +191,6 @@ fun ChallengesTab(
                                 }
                             }
                         }
-                    }
-                }
-
-                // ── Refresh button (top-right floating) ──────────────────
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(end = 14.dp, top = 0.dp)
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg1.copy(0.6f))
-                        .border(1.dp, theme.stroke.copy(0.5f), CircleShape)
-                        .clickable { vm.refresh() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (state.isRefreshing) {
-                        CircularProgressIndicator(
-                            color = accent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    } else {
-                        Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -250,6 +238,20 @@ fun ChallengesTab(
 // ═══════════════════════════════════════════════════════════════════════════
 //  Scope chip
 // ═══════════════════════════════════════════════════════════════════════════
+
+private fun List<ChallengeSummary>.sortedFor(sort: DiscoverSort): List<ChallengeSummary> =
+    when (sort) {
+        DiscoverSort.NEWEST -> sortedWith(
+            compareByDescending<ChallengeSummary> { it.createdAtIso.orEmpty() }
+                .thenByDescending { it.startDateIso }
+                .thenByDescending { it.participantsCount }
+        )
+        DiscoverSort.TRENDING -> sortedWith(
+            compareByDescending<ChallengeSummary> { it.participantsCount }
+                .thenByDescending { it.createdAtIso.orEmpty() }
+                .thenByDescending { it.startDateIso }
+        )
+    }
 
 @Composable
 private fun ScopeChip(

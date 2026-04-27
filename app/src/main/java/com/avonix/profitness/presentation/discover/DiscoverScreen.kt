@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.avonix.profitness.presentation.discover
 
 import androidx.compose.animation.*
@@ -22,7 +24,6 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
@@ -30,9 +31,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -143,8 +144,7 @@ fun DiscoverScreen(
                         if (state.sort == DiscoverSort.TRENDING) DiscoverSort.NEWEST
                         else DiscoverSort.TRENDING
                     )
-                },
-                onRefresh = { viewModel.refresh() }
+                }
             )
             DiscoverTabBar(selected) { selected = it }
 
@@ -182,9 +182,11 @@ fun DiscoverScreen(
                                 ProgramsSubTab.Mine -> MySharedProgramsList(
                                     items           = state.myShared,
                                     isLoading       = state.myLoading,
+                                    isRefreshing    = state.isRefreshing,
                                     deleteInFlight  = state.myDeleteInFlight,
                                     bottomPadding   = bottomPadding,
                                     onDelete        = viewModel::deleteShared,
+                                    onRefresh       = viewModel::refresh,
                                     onStartShare    = { showShareSheet = true }
                                 )
                             }
@@ -196,6 +198,7 @@ fun DiscoverScreen(
                     )
                     DiscoverTab.Challenges -> com.avonix.profitness.presentation.challenges.ChallengesTab(
                         bottomPadding = bottomPadding,
+                        sort = state.sort,
                         timerExtraPad = 0.dp
                     )
                 }
@@ -240,11 +243,9 @@ fun DiscoverScreen(
 @Composable
 private fun DiscoverHeader(
     isTrending: Boolean,
-    onToggleSort: () -> Unit,
-    onRefresh: () -> Unit
+    onToggleSort: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
 
     Row(
         modifier = Modifier
@@ -275,10 +276,6 @@ private fun DiscoverHeader(
             selected = isTrending,
             onClick  = onToggleSort
         )
-        Spacer(Modifier.width(8.dp))
-        IconButton(onClick = onRefresh) {
-            Icon(Icons.Rounded.Refresh, contentDescription = "Yenile", tint = accent)
-        }
     }
 }
 
@@ -411,55 +408,61 @@ private fun ProgramsList(
         if (shouldLoadMore && state.canLoadMore && !state.isLoading) onLoadMore()
     }
 
-    when {
-        state.items.isEmpty() && state.isLoading -> LoadingState()
-        state.items.isEmpty() && state.error != null -> ErrorState(state.error, onRefresh)
-        state.items.isEmpty() -> EmptyFeedState()
-        else -> {
-            LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp,
-                top = 12.dp, bottom = bottomPadding + 80.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            items(state.items, key = { it.id }) { program ->
-                // Senior approach: content-addressable. UYGULANDI iff caller has a local
-                // program with matching content hash. Server flag is canonical; local-hash
-                // check provides instant feedback (after Room sync) without waiting for
-                // the next feed pull. Düzenleme yapılırsa hash değişir → çentik düşer.
-                //
-                // Geriye dönük güvenlik ağı: hash henüz dolmamış (NULL) eski Room satırları
-                // için, kullanıcı az önce uygula'ya basmış ve programId hâlâ duruyorsa da
-                // UYGULANDI kabul et (geçici, ilk sync'te kalkar).
-                val isAppliedByHash =
-                    program.contentHash != null && program.contentHash in myProgramHashes
-                val appliedLocalProgramId = state.appliedProgramMap[program.id]
-                val isAppliedFallback = appliedLocalProgramId != null &&
-                    appliedLocalProgramId !in state.localDeletingProgramIds &&
-                    myProgramIds.contains(appliedLocalProgramId)
-                val isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback
-                SharedProgramCard(
-                    program    = program,
-                    isApplying = program.id in state.applyingProgramIds,
-                    isApplied  = isApplied,
-                    onLike     = { onLike(program.id) },
-                    onSave     = { onSave(program.id) },
-                    onApply    = { onApply(program.id) }
-                )
-            }
-            if (state.isLoading && state.items.isNotEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp) }
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when {
+            state.items.isEmpty() && state.isLoading -> LoadingState()
+            state.items.isEmpty() && state.error != null -> ErrorState(state.error, onRefresh)
+            state.items.isEmpty() -> EmptyFeedState()
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 20.dp, end = 20.dp,
+                        top = 12.dp, bottom = bottomPadding + 80.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(state.items, key = { it.id }) { program ->
+                        // Senior approach: content-addressable. UYGULANDI iff caller has a local
+                        // program with matching content hash. Server flag is canonical; local-hash
+                        // check provides instant feedback (after Room sync) without waiting for
+                        // the next feed pull. Düzenleme yapılırsa hash değişir → çentik düşer.
+                        //
+                        // Geriye dönük güvenlik ağı: hash henüz dolmamış (NULL) eski Room satırları
+                        // için, kullanıcı az önce uygula'ya basmış ve programId hâlâ duruyorsa da
+                        // UYGULANDI kabul et (geçici, ilk sync'te kalkar).
+                        val isAppliedByHash =
+                            program.contentHash != null && program.contentHash in myProgramHashes
+                        val appliedLocalProgramId = state.appliedProgramMap[program.id]
+                        val isAppliedFallback = appliedLocalProgramId != null &&
+                            appliedLocalProgramId !in state.localDeletingProgramIds &&
+                            myProgramIds.contains(appliedLocalProgramId)
+                        val isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback
+                        SharedProgramCard(
+                            program    = program,
+                            isApplying = program.id in state.applyingProgramIds,
+                            isApplied  = isApplied,
+                            onLike     = { onLike(program.id) },
+                            onSave     = { onSave(program.id) },
+                            onApply    = { onApply(program.id) }
+                        )
+                    }
+                    if (state.isLoading && state.items.isNotEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) { CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp) }
+                        }
+                    }
                 }
-            }
+            } // else block
         }
-        } // else block
     }
 }
 
@@ -867,61 +870,69 @@ private fun SubTabChip(
 private fun MySharedProgramsList(
     items          : List<MySharedProgram>,
     isLoading      : Boolean,
+    isRefreshing   : Boolean,
     deleteInFlight : Set<String>,
     bottomPadding  : Dp,
     onDelete       : (String) -> Unit,
+    onRefresh      : () -> Unit,
     onStartShare   : () -> Unit
 ) {
     val theme = LocalAppTheme.current
 
-    when {
-        items.isEmpty() && isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
-        }
-        items.isEmpty() -> Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Henüz bir program paylaşmadın",
-                color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Programlarından birini topluluğa paylaşmak için dokun.",
-                color = theme.text2.copy(0.7f),
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(16.dp))
-            val accent = MaterialTheme.colorScheme.primary
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Brush.linearGradient(listOf(accent, accent.copy(0.75f))))
-                    .clickable { onStartShare() }
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.Share, null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("PROGRAM PAYLAŞ", color = Color.Black,
-                    fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when {
+            items.isEmpty() && isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
             }
-        }
-        else -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp,
-                top = 4.dp, bottom = bottomPadding + 80.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(items, key = { it.id }) { item ->
-                MySharedCard(
-                    item         = item,
-                    isDeleting   = item.id in deleteInFlight,
-                    onDelete     = { onDelete(item.id) }
+            items.isEmpty() -> Column(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Henüz bir program paylaşmadın",
+                    color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "Programlarından birini topluluğa paylaşmak için dokun.",
+                    color = theme.text2.copy(0.7f),
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(16.dp))
+                val accent = MaterialTheme.colorScheme.primary
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Brush.linearGradient(listOf(accent, accent.copy(0.75f))))
+                        .clickable { onStartShare() }
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Share, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("PROGRAM PAYLAŞ", color = Color.Black,
+                        fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                }
+            }
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 20.dp, end = 20.dp,
+                    top = 4.dp, bottom = bottomPadding + 80.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(items, key = { it.id }) { item ->
+                    MySharedCard(
+                        item         = item,
+                        isDeleting   = item.id in deleteInFlight,
+                        onDelete     = { onDelete(item.id) }
+                    )
+                }
             }
         }
     }

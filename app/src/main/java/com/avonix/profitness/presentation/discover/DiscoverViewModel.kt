@@ -90,7 +90,7 @@ class DiscoverViewModel @Inject constructor(
             discoverRepo.getFeed(_state.value.sort, PAGE_SIZE, 0)
                 .onSuccess { items ->
                     _state.update { it.copy(
-                        items        = items,
+                        items        = items.sortedFor(_state.value.sort),
                         isLoading    = false,
                         isRefreshing = false,
                         canLoadMore  = items.size >= PAGE_SIZE,
@@ -115,7 +115,7 @@ class DiscoverViewModel @Inject constructor(
             discoverRepo.getFeed(s.sort, PAGE_SIZE, s.items.size)
                 .onSuccess { more ->
                     _state.update { it.copy(
-                        items       = it.items + more,
+                        items       = (it.items + more).sortedFor(s.sort),
                         isLoading   = false,
                         canLoadMore = more.size >= PAGE_SIZE
                     ) }
@@ -326,4 +326,17 @@ class DiscoverViewModel @Inject constructor(
             )
         }
     }
+
+    private fun List<SharedProgram>.sortedFor(sort: DiscoverSort): List<SharedProgram> =
+        when (sort) {
+            DiscoverSort.NEWEST -> sortedWith(
+                compareByDescending<SharedProgram> { it.createdAtIso }
+                    .thenByDescending { it.downloadsCount }
+            )
+            DiscoverSort.TRENDING -> sortedWith(
+                compareByDescending<SharedProgram> { it.downloadsCount }
+                    .thenByDescending { it.likesCount + it.savesCount }
+                    .thenByDescending { it.createdAtIso }
+            )
+        }
 }
