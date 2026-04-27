@@ -421,18 +421,18 @@ fun CreateChallengeOverlay(
                         } else {
                             val req = CreateEventChallengeRequest(
                                 title       = title,
-                                description = description.ifBlank { null },
+                                description = description.trim().ifBlank { null },
                                 mode        = eventMode,
                                 dateIso     = eventDateIso,
                                 timeIso     = eventTimeIso,
                                 timezone    = timezone,
-                                location    = eventLocation.ifBlank { null },
+                                location    = eventLocation.trim().ifBlank { null },
                                 geoLat      = null,
                                 geoLng      = null,
-                                endLocation = eventEndLocation.ifBlank { null },
+                                endLocation = eventEndLocation.trim().ifBlank { null },
                                 endGeoLat   = null,
                                 endGeoLng   = null,
-                                onlineUrl   = eventOnlineUrl.ifBlank { null },
+                                onlineUrl   = eventOnlineUrl.trim().ifBlank { null },
                                 movements   = if (eventMode == EventMode.MovementList)
                                     selectedMovements.toList() else emptyList(),
                                 targetType  = if (eventMode != EventMode.MovementList && eventTargetEnabled)

@@ -116,10 +116,14 @@ class ChallengeRepositoryImpl @Inject constructor(
                         put("p_event_date",    req.dateIso)
                         if (req.timeIso != null) put("p_event_time", req.timeIso) else put("p_event_time", JsonNull)
                         put("p_event_timezone", req.timezone)
-                        if (req.location != null) put("p_event_location", req.location) else put("p_event_location", JsonNull)
+                        req.location?.trim()?.takeIf { it.isNotEmpty() }
+                            ?.let { put("p_event_location", it) }
+                            ?: put("p_event_location", JsonNull)
                         if (req.geoLat != null) put("p_geo_lat", req.geoLat) else put("p_geo_lat", JsonNull)
                         if (req.geoLng != null) put("p_geo_lng", req.geoLng) else put("p_geo_lng", JsonNull)
-                        if (req.onlineUrl != null) put("p_online_url", req.onlineUrl) else put("p_online_url", JsonNull)
+                        req.onlineUrl?.trim()?.takeIf { it.isNotEmpty() }
+                            ?.let { put("p_online_url", it) }
+                            ?: put("p_online_url", JsonNull)
                         if (req.targetType != null) put("p_target_type", req.targetType.raw) else put("p_target_type", JsonNull)
                         if (req.targetValue != null) put("p_target_value", req.targetValue) else put("p_target_value", JsonNull)
                         put("p_visibility", req.visibility.raw)
@@ -128,7 +132,9 @@ class ChallengeRepositoryImpl @Inject constructor(
                         put("p_movements", movementsJson)
                         if (req.endGeoLat != null) put("p_end_geo_lat", req.endGeoLat) else put("p_end_geo_lat", JsonNull)
                         if (req.endGeoLng != null) put("p_end_geo_lng", req.endGeoLng) else put("p_end_geo_lng", JsonNull)
-                        if (req.endLocation != null) put("p_end_location", req.endLocation) else put("p_end_location", JsonNull)
+                        req.endLocation?.trim()?.takeIf { it.isNotEmpty() }
+                            ?.let { put("p_end_location", it) }
+                            ?: put("p_end_location", JsonNull)
                     }
                 ).decodeAs<String>()
             }

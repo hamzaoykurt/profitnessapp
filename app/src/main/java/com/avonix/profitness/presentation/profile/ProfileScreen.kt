@@ -650,19 +650,28 @@ private fun PerformanceMetricsSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(metrics) { metric ->
-                MetricCard(metric = metric, theme = theme)
+                MetricCard(
+                    metric = metric,
+                    theme = theme,
+                    onClick = onNavigateToDetail
+                )
             }
         }
     }
 }
 
 @Composable
-private fun MetricCard(metric: PerformanceMetric, theme: AppThemeState) {
+private fun MetricCard(
+    metric: PerformanceMetric,
+    theme: AppThemeState,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .width(130.dp)
             .height(160.dp)
             .glassCard(metric.color, theme, RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
         Column(

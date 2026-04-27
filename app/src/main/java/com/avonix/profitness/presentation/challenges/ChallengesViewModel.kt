@@ -8,6 +8,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.model.ExerciseItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -155,6 +156,22 @@ class ChallengesViewModel @Inject constructor(
     fun submitCreateEvent(req: CreateEventChallengeRequest) {
         if (req.title.isBlank()) {
             _state.update { it.copy(createError = "Başlık boş olamaz") }
+            return
+        }
+        if (req.mode == EventMode.Physical && req.location.isNullOrBlank()) {
+            _state.update { it.copy(createError = "Fiziksel etkinlik için başlangıç konumu gerekli") }
+            return
+        }
+        if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
+            _state.update { it.copy(createError = "Online etkinlik için bağlantı gerekli") }
+            return
+        }
+        if (req.mode == EventMode.MovementList && req.movements.isEmpty()) {
+            _state.update { it.copy(createError = "Hareket listesi için en az bir hareket seç") }
+            return
+        }
+        if (req.targetType != null && (req.targetValue ?: 0L) <= 0L) {
+            _state.update { it.copy(createError = "Hedef sıfırdan büyük olmalı") }
             return
         }
         _state.update { it.copy(createInFlight = true, createError = null) }
