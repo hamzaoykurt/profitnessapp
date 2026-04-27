@@ -370,9 +370,10 @@ class WorkoutViewModel @Inject constructor(
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         // DB'de kayıtlar canonical exercises.id (exerciseTableId) ile tutulur; state key'i pe.id.
         val state = uiState.value
-        val dbExerciseId = state.dayStates.flatMap { it.day.exercises }
-            .find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val exercise = state.dayStates.flatMap { it.day.exercises }.find { it.id == exerciseId }
+        val dbExerciseId = exercise?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val plannedReps = exercise?.reps   // Program oluşturulurken seçilen tekrar sayısı (e.g. "12")
+        val totalSets   = exercise?.sets ?: 0
 
         viewModelScope.launch {
             val today = LocalDate.now().toString()
@@ -398,12 +399,32 @@ class WorkoutViewModel @Inject constructor(
                         }
                     }
                 }
+                // Tekrar sayılarını doldur: bugünkü repsActual > program planı
+                val currentReps = uiState.value.setReps[exerciseId]
+                if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
+                    val savedReps = todaySets.filter { it.repsActual != null }
+                        .associate { it.setIndex to it.repsActual!!.toString() }
+                    val repsPrefill = (0 until totalSets).associate { i ->
+                        i to (savedReps[i] ?: plannedReps)
+                    }
+                    updateState { s -> s.copy(setReps = s.setReps + (exerciseId to repsPrefill)) }
+                }
                 return@launch
             }
 
             // 2. Bugün kayıt yoksa önceki seansı yükle (prefill için)
             workoutRepository.getLastSessionSets(userId, dbExerciseId).onSuccess { sets ->
-                if (sets.isEmpty()) return@onSuccess
+                if (sets.isEmpty()) {
+                    // Hiç DB kaydı yok — program planındaki tekrar sayısını göster
+                    if (totalSets > 0 && !plannedReps.isNullOrEmpty()) {
+                        val currentReps = uiState.value.setReps[exerciseId]
+                        if (currentReps.isNullOrEmpty()) {
+                            val repsPrefill = (0 until totalSets).associate { i -> i to plannedReps }
+                            updateState { s -> s.copy(setReps = s.setReps + (exerciseId to repsPrefill)) }
+                        }
+                    }
+                    return@onSuccess
+                }
                 val dataMap = sets.associate { it.setIndex to (it.weightKg to it.repsActual) }
                 updateState { s ->
                     s.copy(lastSessionData = s.lastSessionData + (exerciseId to dataMap))
@@ -419,6 +440,16 @@ class WorkoutViewModel @Inject constructor(
                             s.copy(setWeights = s.setWeights + (exerciseId to prefill))
                         }
                     }
+                }
+                // Tekrar sayılarını doldur: önceki seans repsActual > program planı
+                val currentReps = uiState.value.setReps[exerciseId]
+                if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
+                    val savedReps = sets.filter { it.repsActual != null }
+                        .associate { it.setIndex to it.repsActual!!.toString() }
+                    val repsPrefill = (0 until totalSets).associate { i ->
+                        i to (savedReps[i] ?: plannedReps)
+                    }
+                    updateState { s -> s.copy(setReps = s.setReps + (exerciseId to repsPrefill)) }
                 }
             }
         }
