@@ -1325,6 +1325,131 @@ private fun AddProgressDialog(
                     }
                 )
             }
+
+            // Kronometre paneli — sadece dakika bazlı target
+            if (showStopwatch) {
+                Spacer(Modifier.height(14.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accent.copy(0.10f))
+                        .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
+                        .padding(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Timer, null, tint = accent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "KRONOMETRE",
+                            color = accent,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(Modifier.weight(1f))
+                        val totalSec = (swElapsedMs / 1000).coerceAtLeast(0)
+                        val mm = totalSec / 60
+                        val ss = totalSec % 60
+                        Text(
+                            "%02d:%02d".format(mm, ss),
+                            color = theme.text0,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Başlat / Durdur
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (swRunning) Color(0xFFFF5252).copy(0.22f) else accent.copy(0.22f))
+                                .border(
+                                    1.dp,
+                                    if (swRunning) Color(0xFFFF5252).copy(0.5f) else accent.copy(0.5f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable {
+                                    if (swRunning) {
+                                        // Durdur — biriken süreyi accum'a kaydet
+                                        swAccumMs += (System.currentTimeMillis() - swStartMs)
+                                        swRunning = false
+                                    } else {
+                                        swStartMs = System.currentTimeMillis()
+                                        swTickMs = swStartMs
+                                        swRunning = true
+                                    }
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                if (swRunning) "DURDUR" else "BAŞLAT",
+                                color = if (swRunning) Color(0xFFFF8A80) else accent,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        // Sıfırla
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(theme.bg2)
+                                .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+                                .clickable(enabled = !swRunning && swElapsedMs > 0L) {
+                                    swAccumMs = 0L
+                                    swStartMs = 0L
+                                    swTickMs = 0L
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "SIFIRLA",
+                                color = if (!swRunning && swElapsedMs > 0L) theme.text0 else theme.text2.copy(0.5f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        // Aktar (geçen süreyi text alanına yaz)
+                        val elapsedMin = (swElapsedMs / 60_000L).coerceAtLeast(0L)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (elapsedMin > 0L) accent else accent.copy(0.3f))
+                                .clickable(enabled = elapsedMin > 0L) {
+                                    text = elapsedMin.toString()
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "AKTAR",
+                                color = Color.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Kronometre durduğunda 'Aktar' tuşuyla geçen dakikayı yukarıdaki alana yazabilirsin.",
+                        color = theme.text2,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+
             Spacer(Modifier.height(18.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
