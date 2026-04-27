@@ -10,21 +10,30 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DirectionsBike
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -73,6 +82,7 @@ import com.avonix.profitness.domain.challenges.ChallengeMovement
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
+import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import java.time.LocalDate
 
 @Composable
@@ -89,8 +99,18 @@ fun ChallengeDetailOverlay(
 
     // Private join password dialog
     var showJoinPasswordDialog by remember { mutableStateOf(false) }
+    var showOwnerMenu          by remember { mutableStateOf(false) }
+    var showDeleteConfirm      by remember { mutableStateOf(false) }
+    var showProgressDialog     by remember { mutableStateOf(false) }
+    var showEditOverlay        by remember { mutableStateOf(false) }
 
     LaunchedEffect(challengeId) { vm.load(challengeId) }
+    LaunchedEffect(state.deleted) {
+        if (state.deleted) {
+            onChanged()
+            onBack()
+        }
+    }
 
     Dialog(
         onDismissRequest = onBack,
@@ -137,8 +157,35 @@ fun ChallengeDetailOverlay(
                         color      = theme.text0,
                         fontSize   = 14.sp,
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
+                        letterSpacing = 2.sp,
+                        modifier   = Modifier.weight(1f)
                     )
+                    if (state.isOwner && state.detail?.summary?.kind == ChallengeKind.Event) {
+                        Box {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(theme.bg1)
+                                    .border(1.dp, theme.stroke, CircleShape)
+                                    .clickable { showOwnerMenu = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.MoreVert, null,
+                                    tint = theme.text0,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            OwnerActionMenu(
+                                expanded = showOwnerMenu,
+                                accent = accent,
+                                onDismiss = { showOwnerMenu = false },
+                                onEdit = { showOwnerMenu = false; showEditOverlay = true },
+                                onDelete = { showOwnerMenu = false; showDeleteConfirm = true }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -181,8 +228,9 @@ fun ChallengeDetailOverlay(
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            StatChip("Hedef", "${c.targetValue}", Icons.Rounded.Flag, accent, Modifier.weight(1f))
-                            StatChip("İlerleme", "${c.myProgress}", Icons.Rounded.EmojiEvents, accent, Modifier.weight(1f))
+                            val unit = c.targetType.unit
+                            StatChip("Hedef", "${c.targetValue} $unit", Icons.Rounded.Flag, accent, Modifier.weight(1f))
+                            StatChip("İlerleme", "${c.myProgress} $unit", Icons.Rounded.EmojiEvents, accent, Modifier.weight(1f))
                             StatChip("Katılımcı", "${c.participantsCount}", Icons.Rounded.People, accent, Modifier.weight(1f))
                         }
                     }
@@ -262,6 +310,46 @@ fun ChallengeDetailOverlay(
                         }
                     }
 
+                    // ── "İlerleme Ekle" (Physical / Online + joined) ──
+                    if (isEvent && c.isJoined && ev != null
+                        && ev.mode != EventMode.MovementList
+                    ) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(accent.copy(0.16f))
+                                    .border(1.dp, accent.copy(0.4f), RoundedCornerShape(14.dp))
+                                    .clickable(enabled = !state.submittingProgress) {
+                                        showProgressDialog = true
+                                    }
+                                    .padding(vertical = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (state.submittingProgress) {
+                                    CircularProgressIndicator(
+                                        color = accent, strokeWidth = 2.dp,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "İLERLEME EKLE",
+                                            color = accent,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 2.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // ── Skip-program toggle (today + event + joined) ─
                     if (isEvent && c.isJoined && ev?.dateIso == LocalDate.now().toString()) {
                         item {
@@ -327,7 +415,7 @@ fun ChallengeDetailOverlay(
                         }
                     } else {
                         items(detail.leaderboard, key = { "lb_${it.userId}" }) { entry ->
-                            LeaderboardEntryRow(entry)
+                            LeaderboardEntryRow(entry, c.targetType.unit)
                         }
                     }
                 }
@@ -345,6 +433,54 @@ fun ChallengeDetailOverlay(
                     onChanged()
                 }
             )
+        }
+
+        // ── Add manual progress dialog ───────────────────────────────────────
+        if (showProgressDialog) {
+            val c = state.detail?.summary
+            if (c != null) {
+                AddProgressDialog(
+                    accent = accent,
+                    unit = c.targetType.unit,
+                    targetLabel = c.targetType.label,
+                    onCancel = { showProgressDialog = false },
+                    onSubmit = { amount ->
+                        showProgressDialog = false
+                        vm.addManualProgress(amount)
+                        onChanged()
+                    }
+                )
+            }
+        }
+
+        // ── Delete confirm dialog ────────────────────────────────────────────
+        if (showDeleteConfirm) {
+            DeleteConfirmDialog(
+                accent = accent,
+                inFlight = state.ownerActionInFlight,
+                onCancel = { showDeleteConfirm = false },
+                onConfirm = {
+                    vm.deleteChallenge()
+                    onChanged()
+                }
+            )
+        }
+
+        // ── Edit overlay (owner) ─────────────────────────────────────────────
+        if (showEditOverlay) {
+            val d = state.detail
+            if (d != null) {
+                EditEventChallengeOverlay(
+                    summary = d.summary,
+                    inFlight = state.ownerActionInFlight,
+                    onClose = { showEditOverlay = false },
+                    onSubmit = { req ->
+                        vm.updateChallenge(req)
+                        showEditOverlay = false
+                        onChanged()
+                    }
+                )
+            }
         }
     }
     }
@@ -566,6 +702,52 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         }
                     }
                 }
+                // Bitiş konumu (rotalı etkinlik)
+                if (!ev.endLocation.isNullOrBlank() || (ev.endGeoLat != null && ev.endGeoLng != null)) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Flag, null, tint = theme.text2, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Bitiş: " + (ev.endLocation ?: "${ev.endGeoLat}, ${ev.endGeoLng}"),
+                            color = theme.text0,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                // Bike route — both endpoints present
+                if (ev.geoLat != null && ev.geoLng != null && ev.endGeoLat != null && ev.endGeoLng != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(accent.copy(0.18f))
+                            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(12.dp))
+                            .clickable {
+                                val uri = ("https://www.google.com/maps/dir/?api=1" +
+                                    "&origin=${ev.geoLat},${ev.geoLng}" +
+                                    "&destination=${ev.endGeoLat},${ev.endGeoLng}" +
+                                    "&travelmode=bicycling").toUri()
+                                runCatching {
+                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                }
+                            }
+                            .padding(vertical = 12.dp, horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Rounded.DirectionsBike, null, tint = accent, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "ROTAYI GOOGLE MAPS'TE AÇ",
+                            color = accent,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                }
             }
             EventMode.Online -> {
                 if (!ev.onlineUrl.isNullOrBlank()) {
@@ -747,7 +929,7 @@ private fun MovementRow(
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun LeaderboardEntryRow(entry: ChallengeLeaderboardEntry) {
+private fun LeaderboardEntryRow(entry: ChallengeLeaderboardEntry, unit: String = "") {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val highlight = entry.isMe
@@ -812,7 +994,7 @@ private fun LeaderboardEntryRow(entry: ChallengeLeaderboardEntry) {
             }
         }
         Text(
-            entry.progress.toString(),
+            if (unit.isNotBlank()) "${entry.progress} $unit" else entry.progress.toString(),
             color      = if (highlight) accent else theme.text0,
             fontSize   = 14.sp,
             fontWeight = FontWeight.Black
@@ -890,6 +1072,449 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  OWNER ACTION MENU (3-dot dropdown — anchored to button)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+private fun OwnerActionMenu(
+    expanded: Boolean,
+    accent: Color,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        containerColor = theme.bg1,
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 8.dp,
+        tonalElevation = 0.dp
+    ) {
+        DropdownMenuItem(
+            text = {
+                Text(
+                    "Düzenle",
+                    color = theme.text0,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            leadingIcon = {
+                Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
+            },
+            onClick = onEdit,
+            colors = MenuDefaults.itemColors(textColor = theme.text0)
+        )
+        HorizontalDivider(color = theme.stroke.copy(0.5f), thickness = 0.5.dp)
+        DropdownMenuItem(
+            text = {
+                Text(
+                    "Sil",
+                    color = Color(0xFFFF8A80),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            leadingIcon = {
+                Icon(Icons.Rounded.Delete, null, tint = Color(0xFFFF5252), modifier = Modifier.size(18.dp))
+            },
+            onClick = onDelete,
+            colors = MenuDefaults.itemColors(textColor = Color(0xFFFF8A80))
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DELETE CONFIRM DIALOG
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+private fun DeleteConfirmDialog(
+    accent: Color,
+    inFlight: Boolean,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(0.72f))
+            .clickable(enabled = true, onClick = onCancel),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .clickable(enabled = false) {}
+                .padding(24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Delete, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "ETKİNLİĞİ SİL",
+                    color = theme.text0,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Bu etkinliği sildiğinde tüm katılımcı ilerlemesi de silinecek. Bu işlem geri alınamaz.",
+                color = theme.text1,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(theme.bg2)
+                        .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                        .clickable(enabled = !inFlight, onClick = onCancel)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("VAZGEÇ", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFF5252))
+                        .clickable(enabled = !inFlight, onClick = onConfirm)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (inFlight) {
+                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("SİL", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ADD MANUAL PROGRESS DIALOG
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+private fun AddProgressDialog(
+    accent: Color,
+    unit: String,
+    targetLabel: String,
+    onCancel: () -> Unit,
+    onSubmit: (Long) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    var text by remember { mutableStateOf("") }
+    val parsed = text.trim().toLongOrNull() ?: 0L
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(0.72f))
+            .clickable(enabled = true, onClick = onCancel),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .clickable(enabled = false) {}
+                .padding(24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "İLERLEMENİ GİR",
+                    color = theme.text0,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Kaç $unit $targetLabel?",
+                color = theme.text1,
+                fontSize = 13.sp
+            )
+            Spacer(Modifier.height(14.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(theme.bg2)
+                    .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                BasicTextField(
+                    value = text,
+                    onValueChange = { v -> text = v.filter { it.isDigit() }.take(7) },
+                    singleLine = true,
+                    textStyle = TextStyle(color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black),
+                    cursorBrush = SolidColor(accent),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    decorationBox = { inner ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) {
+                                if (text.isEmpty()) {
+                                    Text("0", color = theme.text2, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                }
+                                inner()
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(unit, color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(theme.bg2)
+                        .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                        .clickable(onClick = onCancel)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("İPTAL", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (parsed > 0L) accent else accent.copy(0.35f))
+                        .clickable(enabled = parsed > 0L) { onSubmit(parsed) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("KAYDET", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EDIT EVENT CHALLENGE OVERLAY (owner only — minimal field set)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+private fun EditEventChallengeOverlay(
+    summary: ChallengeSummary,
+    inFlight: Boolean,
+    onClose: () -> Unit,
+    onSubmit: (UpdateEventChallengeRequest) -> Unit
+) {
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val ev = summary.event
+
+    var title       by remember(summary.id) { mutableStateOf(summary.title) }
+    var description by remember(summary.id) { mutableStateOf(summary.description) }
+    var dateIso     by remember(summary.id) { mutableStateOf(ev?.dateIso ?: summary.startDateIso) }
+    var timeIso     by remember(summary.id) { mutableStateOf(ev?.timeIso ?: "") }
+    var location    by remember(summary.id) { mutableStateOf(ev?.location ?: "") }
+    var geoLat      by remember(summary.id) { mutableStateOf(ev?.geoLat?.toString() ?: "") }
+    var geoLng      by remember(summary.id) { mutableStateOf(ev?.geoLng?.toString() ?: "") }
+    var endLocation by remember(summary.id) { mutableStateOf(ev?.endLocation ?: "") }
+    var endLat      by remember(summary.id) { mutableStateOf(ev?.endGeoLat?.toString() ?: "") }
+    var endLng      by remember(summary.id) { mutableStateOf(ev?.endGeoLng?.toString() ?: "") }
+    var onlineUrl   by remember(summary.id) { mutableStateOf(ev?.onlineUrl ?: "") }
+    var targetValue by remember(summary.id) { mutableStateOf(summary.targetValue.takeIf { it > 0 }?.toString() ?: "") }
+
+    val isPhysical = ev?.mode == EventMode.Physical
+    val isOnline   = ev?.mode == EventMode.Online
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Box(Modifier.fillMaxSize().background(theme.bg0)) {
+            PageAccentBloom()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 40.dp)
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(theme.bg1)
+                                .border(1.dp, theme.stroke, CircleShape)
+                                .clickable(onClick = onClose),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "ETKİNLİĞİ DÜZENLE",
+                            color = theme.text0,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                }
+                item { EditField("Başlık", title, { title = it }, accent) }
+                item { EditField("Açıklama", description, { description = it }, accent, lines = 3) }
+                item { EditField("Tarih (YYYY-MM-DD)", dateIso, { dateIso = it }, accent) }
+                item { EditField("Saat (HH:MM, opsiyonel)", timeIso, { timeIso = it }, accent) }
+                if (isPhysical) {
+                    item { EditField("Başlangıç konumu", location, { location = it }, accent) }
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(Modifier.weight(1f)) { EditField("Lat", geoLat, { geoLat = it }, accent, numeric = true) }
+                            Box(Modifier.weight(1f)) { EditField("Lng", geoLng, { geoLng = it }, accent, numeric = true) }
+                        }
+                    }
+                    item { EditField("Bitiş konumu (opsiyonel)", endLocation, { endLocation = it }, accent) }
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(Modifier.weight(1f)) { EditField("Bitiş Lat", endLat, { endLat = it }, accent, numeric = true) }
+                            Box(Modifier.weight(1f)) { EditField("Bitiş Lng", endLng, { endLng = it }, accent, numeric = true) }
+                        }
+                    }
+                }
+                if (isOnline) {
+                    item { EditField("Online URL", onlineUrl, { onlineUrl = it }, accent) }
+                }
+                item { EditField("Hedef değer (${summary.targetType.unit})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (title.isBlank() || inFlight) accent.copy(0.35f) else accent)
+                            .clickable(enabled = title.isNotBlank() && !inFlight) {
+                                onSubmit(
+                                    UpdateEventChallengeRequest(
+                                        challengeId = summary.id,
+                                        title       = title.trim(),
+                                        description = description.trim().ifBlank { null },
+                                        dateIso     = dateIso.trim(),
+                                        timeIso     = timeIso.trim().ifBlank { null },
+                                        location    = location.trim().ifBlank { null },
+                                        geoLat      = geoLat.toDoubleOrNull(),
+                                        geoLng      = geoLng.toDoubleOrNull(),
+                                        endLocation = endLocation.trim().ifBlank { null },
+                                        endGeoLat   = endLat.toDoubleOrNull(),
+                                        endGeoLng   = endLng.toDoubleOrNull(),
+                                        targetValue = targetValue.toLongOrNull(),
+                                        onlineUrl   = onlineUrl.trim().ifBlank { null }
+                                    )
+                                )
+                            }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (inFlight) {
+                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        } else {
+                            Text("KAYDET", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    accent: Color,
+    lines: Int = 1,
+    numeric: Boolean = false
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+    ) {
+        Text(
+            label.uppercase(),
+            color = theme.text2,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                singleLine = lines == 1,
+                maxLines = lines,
+                textStyle = TextStyle(color = theme.text0, fontSize = 14.sp),
+                cursorBrush = SolidColor(accent),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,
+                    imeAction = if (lines == 1) ImeAction.Next else ImeAction.Default
+                )
+            )
+        }
+    }
+}
+
 @Composable
 private fun StatChip(
     label: String,
@@ -901,15 +1526,32 @@ private fun StatChip(
     val theme = LocalAppTheme.current
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp, horizontal = 8.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(accent.copy(0.16f), accent.copy(0.04f))
+                )
+            )
+            .border(1.dp, accent.copy(0.32f), RoundedCornerShape(16.dp))
+            .padding(vertical = 14.dp, horizontal = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.height(4.dp))
-        Text(value, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 10.sp)
+        Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            value,
+            color = theme.text0,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label.uppercase(),
+            color = theme.text2,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
     }
 }

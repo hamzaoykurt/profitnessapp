@@ -345,6 +345,12 @@ class WorkoutRepositoryImpl @Inject constructor(
     //  PROGRESSIVE OVERLOAD
     // ═════════════════════════════════════════════════════════════════════════
 
+    override suspend fun getSetsForDate(
+        userId: String, exerciseId: String, date: String
+    ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {
+        runCatching { setCompletionDao.getForDate(userId, exerciseId, date) }
+    }
+
     override suspend fun getLastSessionSets(
         userId: String, exerciseId: String
     ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {

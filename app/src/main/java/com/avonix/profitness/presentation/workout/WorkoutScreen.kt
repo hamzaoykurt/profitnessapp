@@ -553,6 +553,16 @@ private fun WorkoutContent(
             StreakBanner(streak = state.currentStreak)
         }
 
+        // ── FAZ 7J-9: Upcoming events (next 7 days) — streak banner'ın hemen altında ──
+        if (hasUpcomingSection) {
+            item {
+                UpcomingEventsSection(
+                    events = upcomingEvents,
+                    onOpen = { detailChallengeId = it.id }
+                )
+            }
+        }
+
         // ── FAZ 7J-9: Today's joined challenge events (above program) ────
         if (hasTodayBanner) {
             item {
@@ -680,15 +690,6 @@ private fun WorkoutContent(
             }
         }
 
-        // ── FAZ 7J-9: Upcoming events (next 7 days) ───────────────────────
-        if (hasUpcomingSection) {
-            item {
-                UpcomingEventsSection(
-                    events = upcomingEvents,
-                    onOpen = { detailChallengeId = it.id }
-                )
-            }
-        }
     }
 
     // ── FAZ 7J-9: Challenge detail overlay (banner/upcoming tap target) ──

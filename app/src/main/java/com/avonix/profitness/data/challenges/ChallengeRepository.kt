@@ -5,6 +5,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 
 interface ChallengeRepository {
 
@@ -61,4 +62,13 @@ interface ChallengeRepository {
 
     /** Yaklaşan event'ler (bugünden p_days sonrasına kadar). */
     suspend fun listMyUpcomingEvents(days: Int = 7): Result<List<ChallengeSummary>>
+
+    /** Physical/Online event'lerde manuel ilerleme ekler. Döner: yeni toplam manual_progress. */
+    suspend fun addManualProgress(challengeId: String, amount: Long): Result<Long>
+
+    /** Sahip → event challenge alanlarını günceller. */
+    suspend fun updateEventChallenge(req: UpdateEventChallengeRequest): Result<Unit>
+
+    /** Sahip → event challenge'ı tamamen siler. */
+    suspend fun deleteEventChallenge(challengeId: String): Result<Unit>
 }

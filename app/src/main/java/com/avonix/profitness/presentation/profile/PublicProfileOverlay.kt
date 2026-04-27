@@ -1,5 +1,7 @@
 package com.avonix.profitness.presentation.profile
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,12 +12,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,9 +54,12 @@ import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
-import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.social.PublicProfile
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Bir kullanıcının public profilini overlay olarak gösteren composable.
@@ -76,55 +87,55 @@ fun PublicProfileOverlay(
             dismissOnClickOutside = false
         )
     ) {
-    Box(Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+        Box(Modifier.fillMaxSize().background(theme.bg0)) {
+            PageAccentBloom()
 
-        when {
-            state.isLoading && state.profile == null -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = accent)
+            when {
+                state.isLoading && state.profile == null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = accent)
+                    }
+                }
+                state.error != null && state.profile == null -> {
+                    Column(
+                        Modifier.fillMaxSize().padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("Profil yüklenemedi", color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        Text(state.error ?: "", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    }
+                }
+                state.profile != null -> {
+                    ProfileContent(
+                        profile        = state.profile!!,
+                        onToggleFollow = { vm.toggleFollow() },
+                        timerExtraPad  = timerExtraPad
+                    )
                 }
             }
-            state.error != null && state.profile == null -> {
-                Column(
-                    Modifier.fillMaxSize().padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("Profil yüklenemedi", color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    Text(state.error ?: "", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
-                }
-            }
-            state.profile != null -> {
-                ProfileContent(
-                    profile        = state.profile!!,
-                    onToggleFollow = { vm.toggleFollow() },
-                    timerExtraPad  = timerExtraPad
-                )
-            }
-        }
 
-        // Top bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+            // Top bar
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(if (theme.isDark) Color.Black.copy(0.55f) else theme.bg2.copy(0.9f))
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (theme.isDark) Color.Black.copy(0.55f) else theme.bg2.copy(0.9f))
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
+                }
             }
         }
-    }
     }
 }
 
@@ -137,6 +148,26 @@ private fun ProfileContent(
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val scroll = rememberScrollState()
+
+    // XP hesaplama: level^2 * 100 → bir sonraki seviyeye kaç XP
+    val xpForCurrentLevel = ((profile.level - 1) * (profile.level - 1) * 100)
+    val xpForNextLevel    = (profile.level * profile.level * 100)
+    val xpInLevel         = (profile.totalXp - xpForCurrentLevel).coerceAtLeast(0)
+    val xpNeeded          = (xpForNextLevel - xpForCurrentLevel).coerceAtLeast(1)
+    val rawProgress       = xpInLevel.toFloat() / xpNeeded
+    val xpProgress by animateFloatAsState(
+        targetValue = rawProgress.coerceIn(0f, 1f),
+        animationSpec = tween(800),
+        label = "xpProgress"
+    )
+
+    // Üyelik tarihi
+    val joinDate = runCatching {
+        val instant = Instant.parse(profile.createdAtIso)
+        DateTimeFormatter.ofPattern("MMM yyyy", Locale("tr"))
+            .withZone(ZoneId.systemDefault())
+            .format(instant)
+    }.getOrElse { "—" }
 
     Column(
         modifier = Modifier
@@ -171,13 +202,36 @@ private fun ProfileContent(
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // Name + @username + mutual badge
+        // Seviye rozeti
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(accent.copy(0.15f))
+                .border(1.dp, accent.copy(0.4f), RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(12.dp))
+            Text(
+                "SEVİYE ${profile.level}",
+                color = accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // Ad + @kullanici
         Text(profile.displayName, color = theme.text0, fontSize = 22.sp, fontWeight = FontWeight.Black)
         profile.username?.let {
             Text("@$it", color = theme.text2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
+
         if (profile.isMutual) {
             Spacer(Modifier.height(6.dp))
             Text(
@@ -194,24 +248,110 @@ private fun ProfileContent(
             )
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Follow / Unfollow
         FollowActionButton(isFollowing = profile.isFollowing, onClick = onToggleFollow)
 
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // Stats row
+        // XP Progress bar
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .fillMaxWidth()
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Rounded.Workspaces, null, tint = accent, modifier = Modifier.size(13.dp))
+                    Text(
+                        "${profile.totalXp} XP",
+                        color = theme.text0,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    "Sıradaki: ${xpForNextLevel} XP",
+                    color = theme.text2,
+                    fontSize = 10.sp
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { xpProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50)),
+                color = accent,
+                trackColor = theme.bg2,
+                strokeCap = StrokeCap.Round
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // Stats row: başarım / rank / antrenman
         Row(
             modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatTile("XP", profile.totalXp.toString(), Icons.Rounded.Workspaces)
-            StatTile("BAŞARIM", profile.achievementsCount.toString(), Icons.Rounded.EmojiEvents)
-            StatTile("RANK", profile.currentRank.uppercase().take(6), Icons.Rounded.MilitaryTech)
+            StatTile(profile.achievementsCount.toString(), "BAŞARIM", Icons.Rounded.EmojiEvents)
+            StatTile(profile.currentRank.uppercase().take(6), "RANK", Icons.Rounded.MilitaryTech)
+            StatTile(profile.totalWorkouts.toString(), "ANTRENMAN", Icons.Rounded.FitnessCenter)
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // Streak + Üyelik tarihi
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(theme.bg1)
+                .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(20.dp))
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Seri
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.LocalFireDepartment, null, tint = Color(0xFFFF6B35), modifier = Modifier.size(18.dp))
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(
+                        "${profile.currentStreak} GÜN",
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text("GÜNCEL SERİ", color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                }
+            }
+
+            Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke.copy(0.3f)))
+
+            // Üyelik tarihi
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.CalendarMonth, null, tint = accent.copy(0.8f), modifier = Modifier.size(18.dp))
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(
+                        joinDate.uppercase(Locale("tr")),
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text("ÜYELİK", color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         // Followers / Following row
         Row(
@@ -263,14 +403,23 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StatTile(label: String, value: String, icon: ImageVector) {
+private fun StatTile(value: String, label: String, icon: ImageVector) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.1f))
+                .border(1.dp, accent.copy(0.25f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
         Spacer(Modifier.height(6.dp))
-        Text(value, color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
+        Text(value, color = theme.text0, fontSize = 17.sp, fontWeight = FontWeight.Black)
+        Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

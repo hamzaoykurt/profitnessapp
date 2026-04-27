@@ -375,6 +375,33 @@ class WorkoutViewModel @Inject constructor(
             ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
 
         viewModelScope.launch {
+            val today = LocalDate.now().toString()
+
+            // 1. Önce bugünkü kayıtları yükle (uygulama kapanıp açılsa da draft ağırlıklar korunur)
+            val todaySets = workoutRepository.getSetsForDate(userId, dbExerciseId, today)
+                .getOrNull().orEmpty()
+
+            if (todaySets.isNotEmpty()) {
+                // Bugüne ait kayıtlar var — bunları lastSessionData olarak sakla ve setWeights'i doldur
+                val dataMap = todaySets.associate { it.setIndex to (it.weightKg to it.repsActual) }
+                updateState { s ->
+                    s.copy(lastSessionData = s.lastSessionData + (exerciseId to dataMap))
+                }
+                val currentWeights = uiState.value.setWeights[exerciseId]
+                if (currentWeights.isNullOrEmpty()) {
+                    val prefill = todaySets
+                        .filter { it.weightKg != null }
+                        .associate { it.setIndex to it.weightKg!!.toString() }
+                    if (prefill.isNotEmpty()) {
+                        updateState { s ->
+                            s.copy(setWeights = s.setWeights + (exerciseId to prefill))
+                        }
+                    }
+                }
+                return@launch
+            }
+
+            // 2. Bugün kayıt yoksa önceki seansı yükle (prefill için)
             workoutRepository.getLastSessionSets(userId, dbExerciseId).onSuccess { sets ->
                 if (sets.isEmpty()) return@onSuccess
                 val dataMap = sets.associate { it.setIndex to (it.weightKg to it.repsActual) }

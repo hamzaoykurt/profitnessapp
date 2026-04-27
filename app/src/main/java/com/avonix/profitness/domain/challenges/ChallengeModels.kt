@@ -70,6 +70,9 @@ data class ChallengeEventInfo(
     val location         : String?,
     val geoLat           : Double?,
     val geoLng           : Double?,
+    val endLocation      : String?,
+    val endGeoLat        : Double?,
+    val endGeoLng        : Double?,
     val onlineUrl        : String?,
     val movementsCount   : Int,
     val myCompletedCount : Int
@@ -151,12 +154,32 @@ data class CreateEventChallengeRequest(
     val location     : String?,
     val geoLat       : Double?,
     val geoLng       : Double?,
+    val endLocation  : String? = null,
+    val endGeoLat    : Double? = null,
+    val endGeoLng    : Double? = null,
     val onlineUrl    : String?,
     val targetType   : ChallengeTargetType? = null,
     val targetValue  : Long? = null,
     val visibility   : ChallengeVisibility = ChallengeVisibility.Public,
     val password     : String? = null,
     val movements    : List<MovementInput> = emptyList()
+)
+
+/** update_event_challenge RPC için typed request (sahip yönetimi). */
+data class UpdateEventChallengeRequest(
+    val challengeId  : String,
+    val title        : String,
+    val description  : String?,
+    val dateIso      : String,
+    val timeIso      : String?,
+    val location     : String?,
+    val geoLat       : Double?,
+    val geoLng       : Double?,
+    val endLocation  : String?,
+    val endGeoLat    : Double?,
+    val endGeoLng    : Double?,
+    val targetValue  : Long?,
+    val onlineUrl    : String?
 )
 
 // ── DTO → domain mapping ─────────────────────────────────────────────────────
@@ -170,6 +193,9 @@ private fun buildEventInfo(
     eventLocation    : String?,
     eventGeoLat      : Double?,
     eventGeoLng      : Double?,
+    eventEndLocation : String?,
+    eventEndGeoLat   : Double?,
+    eventEndGeoLng   : Double?,
     eventOnlineUrl   : String?,
     movementsCount   : Int,
     myCompletedCount : Int
@@ -185,6 +211,9 @@ private fun buildEventInfo(
         location         = eventLocation,
         geoLat           = eventGeoLat,
         geoLng           = eventGeoLng,
+        endLocation      = eventEndLocation,
+        endGeoLat        = eventEndGeoLat,
+        endGeoLng        = eventEndGeoLng,
         onlineUrl        = eventOnlineUrl,
         movementsCount   = movementsCount,
         myCompletedCount = myCompletedCount
@@ -210,7 +239,9 @@ internal fun PublicChallengeRowDto.toDomain() = ChallengeSummary(
     kind              = ChallengeKind.fromRaw(kind),
     event             = buildEventInfo(
         kind, event_mode, event_date, event_time, event_timezone,
-        event_location, event_geo_lat, event_geo_lng, event_online_url,
+        event_location, event_geo_lat, event_geo_lng,
+        event_end_location, event_end_geo_lat, event_end_geo_lng,
+        event_online_url,
         movements_count, my_completed_count
     )
 )
@@ -234,7 +265,9 @@ internal fun MyChallengeRowDto.toDomain() = ChallengeSummary(
     kind              = ChallengeKind.fromRaw(kind),
     event             = buildEventInfo(
         kind, event_mode, event_date, event_time, event_timezone,
-        event_location, event_geo_lat, event_geo_lng, event_online_url,
+        event_location, event_geo_lat, event_geo_lng,
+        event_end_location, event_end_geo_lat, event_end_geo_lng,
+        event_online_url,
         movements_count, my_completed_count
     )
 )
@@ -279,7 +312,9 @@ internal fun ChallengeDetailDto.toDomain(): ChallengeDetail {
         kind              = ChallengeKind.fromRaw(kind),
         event             = buildEventInfo(
             kind, event_mode, event_date, event_time, event_timezone,
-            event_location, event_geo_lat, event_geo_lng, event_online_url,
+            event_location, event_geo_lat, event_geo_lng,
+            event_end_location, event_end_geo_lat, event_end_geo_lng,
+            event_online_url,
             movements.size,
             movements.count { it.my_completed }
         )

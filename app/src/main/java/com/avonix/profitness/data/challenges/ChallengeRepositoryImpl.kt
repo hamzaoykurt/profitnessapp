@@ -8,6 +8,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.toDomain
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -124,6 +125,9 @@ class ChallengeRepositoryImpl @Inject constructor(
                         val pw = req.password?.trim().orEmpty()
                         if (pw.isNotEmpty()) put("p_password", pw) else put("p_password", JsonNull)
                         put("p_movements", movementsJson)
+                        if (req.endGeoLat != null) put("p_end_geo_lat", req.endGeoLat) else put("p_end_geo_lat", JsonNull)
+                        if (req.endGeoLng != null) put("p_end_geo_lng", req.endGeoLng) else put("p_end_geo_lng", JsonNull)
+                        if (req.endLocation != null) put("p_end_location", req.endLocation) else put("p_end_location", JsonNull)
                     }
                 ).decodeAs<String>()
             }
@@ -227,6 +231,55 @@ class ChallengeRepositoryImpl @Inject constructor(
                     "list_my_upcoming_events",
                     buildJsonObject { put("p_days", days) }
                 ).decodeList<MyChallengeRowDto>().map { it.toDomain() }
+            }
+        }
+
+    override suspend fun addManualProgress(challengeId: String, amount: Long): Result<Long> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "add_challenge_manual_progress",
+                    buildJsonObject {
+                        put("p_challenge_id", challengeId)
+                        put("p_amount", amount)
+                    }
+                ).decodeAs<Long>()
+            }
+        }
+
+    override suspend fun updateEventChallenge(req: UpdateEventChallengeRequest): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "update_event_challenge",
+                    buildJsonObject {
+                        put("p_challenge_id", req.challengeId)
+                        put("p_title", req.title.trim())
+                        if (req.description != null) put("p_description", req.description) else put("p_description", JsonNull)
+                        put("p_event_date", req.dateIso)
+                        if (req.timeIso != null) put("p_event_time", req.timeIso) else put("p_event_time", JsonNull)
+                        if (req.location != null) put("p_event_location", req.location) else put("p_event_location", JsonNull)
+                        if (req.geoLat != null) put("p_geo_lat", req.geoLat) else put("p_geo_lat", JsonNull)
+                        if (req.geoLng != null) put("p_geo_lng", req.geoLng) else put("p_geo_lng", JsonNull)
+                        if (req.endGeoLat != null) put("p_end_geo_lat", req.endGeoLat) else put("p_end_geo_lat", JsonNull)
+                        if (req.endGeoLng != null) put("p_end_geo_lng", req.endGeoLng) else put("p_end_geo_lng", JsonNull)
+                        if (req.endLocation != null) put("p_end_location", req.endLocation) else put("p_end_location", JsonNull)
+                        if (req.targetValue != null) put("p_target_value", req.targetValue) else put("p_target_value", JsonNull)
+                        if (req.onlineUrl != null) put("p_online_url", req.onlineUrl) else put("p_online_url", JsonNull)
+                    }
+                )
+                Unit
+            }
+        }
+
+    override suspend fun deleteEventChallenge(challengeId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "delete_event_challenge",
+                    buildJsonObject { put("p_challenge_id", challengeId) }
+                )
+                Unit
             }
         }
 }

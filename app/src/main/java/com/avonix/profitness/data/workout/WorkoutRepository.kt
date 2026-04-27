@@ -118,6 +118,9 @@ interface WorkoutRepository {
 
     // ── Progressive Overload ─────────────────────────────────────────────────
 
+    /** Belirli bir güne ait set kayıtlarını getirir (bugünkü taslak ağırlıklar dahil). */
+    suspend fun getSetsForDate(userId: String, exerciseId: String, date: String): Result<List<SetCompletionEntity>>
+
     /** Önceki antrenmanın set verilerini getirir (ağırlık ön-doldurma için). */
     suspend fun getLastSessionSets(userId: String, exerciseId: String): Result<List<SetCompletionEntity>>
 

@@ -6,7 +6,10 @@ import com.avonix.profitness.data.challenges.ChallengePrefsRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeKind
+import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,13 +25,29 @@ data class ChallengeDetailState(
     /** Movement ids currently mid-flight to server. */
     val pendingMovementIds: Set<String>  = emptySet(),
     /** Skip-program toggle for today (only relevant if event is today). */
-    val skipProgramToday: Boolean        = false
-)
+    val skipProgramToday: Boolean        = false,
+    /** Manual progress kaydı in-flight. */
+    val submittingProgress: Boolean      = false,
+    /** Sahip silme/güncelleme in-flight. */
+    val ownerActionInFlight: Boolean     = false,
+    /** Silme tamamlandı → UI overlay'i kapatsın. */
+    val deleted          : Boolean       = false,
+    /** Mevcut auth user id — isOwner kontrolü için. */
+    val currentUserId    : String?       = null
+) {
+    val isOwner: Boolean
+        get() {
+            val uid = currentUserId ?: return false
+            val sum = detail?.summary ?: return false
+            return sum.creatorId == uid
+        }
+}
 
 @HiltViewModel
 class ChallengeDetailViewModel @Inject constructor(
     private val repo: ChallengeRepository,
-    private val prefs: ChallengePrefsRepository
+    private val prefs: ChallengePrefsRepository,
+    private val supabase: SupabaseClient
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChallengeDetailState())
@@ -39,7 +58,8 @@ class ChallengeDetailViewModel @Inject constructor(
     fun load(challengeId: String, force: Boolean = false) {
         if (!force && loadedId == challengeId && _state.value.detail != null) return
         loadedId = challengeId
-        _state.update { it.copy(isLoading = true, error = null) }
+        val uid = supabase.auth.currentSessionOrNull()?.user?.id
+        _state.update { it.copy(isLoading = true, error = null, currentUserId = uid) }
         viewModelScope.launch {
             repo.getChallengeDetail(challengeId).fold(
                 onSuccess = { d ->
@@ -161,4 +181,58 @@ class ChallengeDetailViewModel @Inject constructor(
     }
 
     fun clearError() { _state.update { it.copy(error = null) } }
+
+    /** Physical/Online event'lerde manuel ilerleme ekler. */
+    fun addManualProgress(amount: Long) {
+        val id = loadedId ?: return
+        if (amount <= 0L) return
+        if (_state.value.submittingProgress) return
+        _state.update { it.copy(submittingProgress = true, error = null) }
+        viewModelScope.launch {
+            repo.addManualProgress(id, amount).fold(
+                onSuccess = {
+                    load(id, force = true)
+                    _state.update { it.copy(submittingProgress = false) }
+                },
+                onFailure = { t ->
+                    _state.update { it.copy(submittingProgress = false, error = t.message) }
+                }
+            )
+        }
+    }
+
+    /** Sahip → event challenge'ı siler. UI overlay'i kapatması için `deleted=true` set eder. */
+    fun deleteChallenge() {
+        val id = loadedId ?: return
+        if (_state.value.ownerActionInFlight) return
+        _state.update { it.copy(ownerActionInFlight = true, error = null) }
+        viewModelScope.launch {
+            repo.deleteEventChallenge(id).fold(
+                onSuccess = {
+                    _state.update { it.copy(ownerActionInFlight = false, deleted = true) }
+                },
+                onFailure = { t ->
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                }
+            )
+        }
+    }
+
+    /** Sahip → event challenge alanlarını günceller. */
+    fun updateChallenge(req: UpdateEventChallengeRequest) {
+        val id = loadedId ?: return
+        if (_state.value.ownerActionInFlight) return
+        _state.update { it.copy(ownerActionInFlight = true, error = null) }
+        viewModelScope.launch {
+            repo.updateEventChallenge(req).fold(
+                onSuccess = {
+                    load(id, force = true)
+                    _state.update { it.copy(ownerActionInFlight = false) }
+                },
+                onFailure = { t ->
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                }
+            )
+        }
+    }
 }

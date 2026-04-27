@@ -29,6 +29,9 @@ data class PublicChallengeRowDto(
     val event_location     : String? = null,
     val event_geo_lat      : Double? = null,
     val event_geo_lng      : Double? = null,
+    val event_end_geo_lat  : Double? = null,
+    val event_end_geo_lng  : Double? = null,
+    val event_end_location : String? = null,
     val event_online_url   : String? = null,
     val movements_count    : Int = 0,
     val my_completed_count : Int = 0
@@ -61,6 +64,9 @@ data class MyChallengeRowDto(
     val event_location     : String? = null,
     val event_geo_lat      : Double? = null,
     val event_geo_lng      : Double? = null,
+    val event_end_geo_lat  : Double? = null,
+    val event_end_geo_lng  : Double? = null,
+    val event_end_location : String? = null,
     val event_online_url   : String? = null,
     val movements_count    : Int = 0,
     val my_completed_count : Int = 0
@@ -119,6 +125,9 @@ data class ChallengeDetailDto(
     val event_location     : String? = null,
     val event_geo_lat      : Double? = null,
     val event_geo_lng      : Double? = null,
+    val event_end_geo_lat  : Double? = null,
+    val event_end_geo_lng  : Double? = null,
+    val event_end_location : String? = null,
     val event_online_url   : String? = null,
     val movements          : List<ChallengeMovementDto> = emptyList()
 )

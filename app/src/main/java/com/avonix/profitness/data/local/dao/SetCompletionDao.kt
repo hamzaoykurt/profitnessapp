@@ -109,6 +109,14 @@ interface SetCompletionDao {
     """)
     suspend fun deleteAllForDay(userId: String, programDayId: String, date: String)
 
+    /** Belirli bir güne ait set kayıtlarını çeker (draft + completed). */
+    @Query("""
+        SELECT * FROM set_completions
+        WHERE user_id = :userId AND exercise_id = :exerciseId AND date = :date
+        ORDER BY set_index ASC
+    """)
+    suspend fun getForDate(userId: String, exerciseId: String, date: String): List<SetCompletionEntity>
+
     /** Önceki antrenmanın set verilerini çeker (ağırlık ön-doldurma için) */
     @Query("""
         SELECT * FROM set_completions

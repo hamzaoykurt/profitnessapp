@@ -121,6 +121,7 @@ fun CreateChallengeOverlay(
     var eventDateIso by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var eventTimeIso by rememberSaveable { mutableStateOf<String?>(null) }
     var eventLocation by rememberSaveable { mutableStateOf("") }
+    var eventEndLocation by rememberSaveable { mutableStateOf("") }
     var eventOnlineUrl by rememberSaveable { mutableStateOf("") }
     var eventTargetEnabled by rememberSaveable { mutableStateOf(false) }
     var eventTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalDistanceM) }
@@ -257,6 +258,8 @@ fun CreateChallengeOverlay(
                     onClearTime = { eventTimeIso = null },
                     location = eventLocation,
                     onLocation = { eventLocation = it },
+                    endLocation = eventEndLocation,
+                    onEndLocation = { eventEndLocation = it },
                     onlineUrl = eventOnlineUrl,
                     onOnlineUrl = { eventOnlineUrl = it },
                     movements = selectedMovements,
@@ -354,6 +357,9 @@ fun CreateChallengeOverlay(
                                 location    = eventLocation.ifBlank { null },
                                 geoLat      = null,  // TODO: map picker ileride eklenecek
                                 geoLng      = null,
+                                endLocation = eventEndLocation.ifBlank { null },
+                                endGeoLat   = null,
+                                endGeoLng   = null,
                                 onlineUrl   = eventOnlineUrl.ifBlank { null },
                                 movements   = if (eventMode == EventMode.MovementList)
                                     selectedMovements.toList() else emptyList(),
@@ -534,6 +540,8 @@ private fun EventForm(
     onClearTime: () -> Unit,
     location: String,
     onLocation: (String) -> Unit,
+    endLocation: String,
+    onEndLocation: (String) -> Unit,
     onlineUrl: String,
     onOnlineUrl: (String) -> Unit,
     movements: List<MovementInput>,
@@ -622,11 +630,18 @@ private fun EventForm(
     // ── Mode-specific fields ─────────────────────────────────────────────
     when (mode) {
         EventMode.Physical -> {
-            FieldLabel("KONUM")
+            FieldLabel("BAŞLANGIÇ KONUMU")
             TextInputBox(
                 value = location,
                 onValueChange = onLocation,
                 placeholder = "ör. Maçka Parkı, İstanbul",
+                imeAction = ImeAction.Default
+            )
+            FieldLabel("BİTİŞ KONUMU (opsiyonel)")
+            TextInputBox(
+                value = endLocation,
+                onValueChange = onEndLocation,
+                placeholder = "Rotalı etkinlikler için (ör. Bisiklet)",
                 imeAction = ImeAction.Default
             )
             OptionalMetricTargetSection(
