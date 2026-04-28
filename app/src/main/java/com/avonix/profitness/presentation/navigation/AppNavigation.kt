@@ -4,9 +4,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -50,7 +50,7 @@ fun AppNavigation(
     onThemeChange: (AppThemeState) -> Unit
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
-    val code by recoveryCode.collectAsState()
+    val code by recoveryCode.collectAsStateWithLifecycle()
 
     // Deep link ile recovery code geldiğinde reset_password route'una yönlendir.
     // StateFlow olduğu için compose başlamadan önce set edilse bile kaçmaz.

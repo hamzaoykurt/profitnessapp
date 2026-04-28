@@ -266,22 +266,22 @@ fun ProgramBuilderScreen(
     initialMode      : BuilderMode = BuilderMode.Choose,
     timerExtraPad    : androidx.compose.ui.unit.Dp = 0.dp,
     onNavigateToStore: () -> Unit = {},
-    viewModel        : ProgramViewModel = hiltViewModel()
+    viewModel        : ProgramViewModel = hiltViewModel(),
+    shareViewModel   : ProgramShareViewModel = hiltViewModel()
 ) {
     var showPaywall by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<Program?>(null) }
-    val discoverViewModel: com.avonix.profitness.presentation.discover.DiscoverViewModel = hiltViewModel()
-    val discoverState by discoverViewModel.state.collectAsStateWithLifecycle()
+    val shareState by shareViewModel.state.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    LaunchedEffect(discoverState.shareResult) {
-        discoverState.shareResult?.let { r ->
+    LaunchedEffect(shareState.result) {
+        shareState.result?.let { r ->
             val msg = when (r) {
-                is com.avonix.profitness.presentation.discover.ShareResult.Success -> "Program topluluk akışına eklendi ✓"
-                is com.avonix.profitness.presentation.discover.ShareResult.Error   -> "Paylaşım başarısız: ${r.msg}"
+                ProgramShareResult.Success -> "Program topluluk akışına eklendi ✓"
+                is ProgramShareResult.Error -> "Paylaşım başarısız: ${r.message}"
             }
             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-            discoverViewModel.consumeShareResult()
+            shareViewModel.consumeResult()
         }
     }
 
@@ -322,11 +322,10 @@ fun ProgramBuilderScreen(
                     onSelectTemplate = { viewModel.selectTemplate(it) },
                     onSetActive      = { viewModel.setActive(it) },
                     onDeleteProgram  = { programId ->
-                        discoverViewModel.markLocalProgramDeleting(programId)
                         viewModel.deleteProgram(
                             programId = programId,
-                            onSuccess = { discoverViewModel.confirmLocalProgramDeleted(programId) },
-                            onFailure = { discoverViewModel.unmarkLocalProgramDeleting(programId) }
+                            onSuccess = {},
+                            onFailure = {}
                         )
                     },
                     onEditProgram    = { prog -> mode = BuilderMode.Edit(prog) },
@@ -388,7 +387,7 @@ fun ProgramBuilderScreen(
                 preselectedProgramId = target.id,
                 onDismiss            = { shareTarget = null },
                 onConfirm            = { programId, title, desc, tags, difficulty, weeks, days ->
-                    discoverViewModel.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
+                    shareViewModel.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
                     shareTarget = null
                 }
             )

@@ -320,22 +320,26 @@ class ProfileViewModel @Inject constructor(
             "total_exercises" to totalExercises
         )
 
-        allAch
-            .filter { it.key !in unlocked }
-            .forEach { ach ->
-                val value = toCheck[ach.category] ?: return@forEach
-                if (value >= ach.threshold) {
-                    val result = profileRepository.unlockAchievement(userId, ach.key)
-                    if (result.isSuccess) {
-                        sendEvent(ProfileEvent.AchievementUnlocked(ach.name, ach.icon ?: "🏆", ach.description ?: ""))
-                        // State'teki achievement listesini güncelle
-                        updateState { st ->
-                            st.copy(achievements = st.achievements.map { uiAch ->
-                                if (uiAch.key == ach.key) uiAch.copy(isUnlocked = true) else uiAch
-                            })
-                        }
-                    }
-                }
+        val achievementsToUnlock = allAch.mapNotNull { ach ->
+            val value = toCheck[ach.category] ?: return@mapNotNull null
+            ach.takeIf { it.key !in unlocked && value >= it.threshold }
+        }
+
+        if (achievementsToUnlock.isEmpty()) return
+
+        val keysToUnlock = achievementsToUnlock.map { it.key }
+        val result = profileRepository.unlockAchievements(userId, keysToUnlock)
+        if (result.isSuccess) {
+            achievementsToUnlock.forEach { ach ->
+                sendEvent(ProfileEvent.AchievementUnlocked(ach.name, ach.icon ?: "🏆", ach.description ?: ""))
             }
+            updateState { st ->
+                st.copy(
+                    achievements = st.achievements.map { uiAch ->
+                        if (uiAch.key in keysToUnlock) uiAch.copy(isUnlocked = true) else uiAch
+                    }
+                )
+            }
+        }
     }
 }

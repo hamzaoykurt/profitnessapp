@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
@@ -75,22 +76,8 @@ private val ALL_TABS = listOf(
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
-    var previousTab             by remember { mutableStateOf<DashboardTab?>(null) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
-
-    // Program tab'ından dönerken zorla sync — program değişmiş olabilir.
-    // Diğer geçişlerde soft refresh — Room Flow zaten dinleniyor, sadece sync tetikler.
-    LaunchedEffect(selectedTab) {
-        if (selectedTab == DashboardTab.Workout) {
-            if (previousTab == DashboardTab.Program) {
-                workoutViewModel.forceRefresh()
-            } else {
-                workoutViewModel.refresh()
-            }
-        }
-        previousTab = selectedTab
-    }
     var showPerformanceDetail       by remember { mutableStateOf(false) }
     var showAchievementsDetail      by remember { mutableStateOf(false) }
     var showEditProfile             by remember { mutableStateOf(false) }
@@ -108,10 +95,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
 
-    val workoutStateEarly by workoutViewModel.uiState.collectAsState()
+    val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
     // Timer aktifken diğer ekranlardaki içerik aşağı kayar
     val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive   = workoutStateEarly.restTimer.isRunning || workoutStateEarly.restTimer.isDone
+    val timerActive   = restTimer.isRunning || restTimer.isDone
     val timerExtraPad by animateDpAsState(
         targetValue   = if (timerActive && selectedTab != DashboardTab.Workout)
                             (statusBarPad + 60.dp) else 0.dp,
@@ -234,7 +221,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         )
 
         // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
-        val restTimer = workoutStateEarly.restTimer
         if (selectedTab != DashboardTab.Workout) {
             DynamicIslandTimer(
                 timer     = restTimer,

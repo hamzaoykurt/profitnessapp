@@ -25,11 +25,15 @@ class WorkoutNotificationManager @Inject constructor(
 ) {
     private var toneGenerator: ToneGenerator? = null
     private var sessionActive = false
+    private var lastTimerUpdateAt = 0L
+    private var lastTimerSecondsLeft = Int.MIN_VALUE
 
     // ── Oturum Kontrolü ──────────────────────────────────────────────────────
 
     fun startWorkoutSession(dayTitle: String) {
         sessionActive = true
+        lastTimerUpdateAt = 0L
+        lastTimerSecondsLeft = Int.MIN_VALUE
         val intent = Intent(context, WorkoutForegroundService::class.java).apply {
             action = WorkoutForegroundService.ACTION_START
             putExtra(WorkoutForegroundService.EXTRA_DAY_TITLE, dayTitle)
@@ -39,6 +43,8 @@ class WorkoutNotificationManager @Inject constructor(
 
     fun stopWorkoutSession() {
         sessionActive = false
+        lastTimerUpdateAt = 0L
+        lastTimerSecondsLeft = Int.MIN_VALUE
         val intent = Intent(context, WorkoutForegroundService::class.java).apply {
             action = WorkoutForegroundService.ACTION_STOP
         }
@@ -49,10 +55,22 @@ class WorkoutNotificationManager @Inject constructor(
     // ── Timer Güncellemeleri ──────────────────────────────────────────────────
 
     /**
-     * Her saniye çağrılır; bildirim çubuğundaki geri sayımı günceller.
+     * UI timer'ı saniyede bir akar; bildirim ise daha seyrek güncellenir.
      * Servis başlamamışsa otomatik başlatır.
      */
     fun updateRestTimer(exerciseName: String, secondsLeft: Int, totalSeconds: Int) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val shouldUpdate = secondsLeft == totalSeconds ||
+            secondsLeft <= 5 ||
+            secondsLeft == 0 ||
+            secondsLeft % 5 == 0 ||
+            now - lastTimerUpdateAt >= TIMER_NOTIFICATION_THROTTLE_MS
+
+        if (!shouldUpdate && secondsLeft == lastTimerSecondsLeft) return
+        if (!shouldUpdate) return
+
+        lastTimerUpdateAt = now
+        lastTimerSecondsLeft = secondsLeft
         val intent = Intent(context, WorkoutForegroundService::class.java).apply {
             action = WorkoutForegroundService.ACTION_TIMER_UPDATE
             putExtra(WorkoutForegroundService.EXTRA_EXERCISE_NAME, exerciseName)
@@ -68,6 +86,8 @@ class WorkoutNotificationManager @Inject constructor(
      * 2. "Hazırsın!" yüksek öncelikli bildirimi
      */
     fun notifyTimerDone(exerciseName: String) {
+        lastTimerUpdateAt = 0L
+        lastTimerSecondsLeft = Int.MIN_VALUE
         playTimerEndSound()
         val intent = Intent(context, WorkoutForegroundService::class.java).apply {
             action = WorkoutForegroundService.ACTION_TIMER_DONE
@@ -112,5 +132,9 @@ class WorkoutNotificationManager @Inject constructor(
         } else {
             context.startService(intent)
         }
+    }
+
+    private companion object {
+        const val TIMER_NOTIFICATION_THROTTLE_MS = 5_000L
     }
 }
