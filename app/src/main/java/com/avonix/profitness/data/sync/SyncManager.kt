@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.DayOfWeek
@@ -31,6 +32,27 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import javax.inject.Singleton
+
+@Serializable
+private data class WorkoutLogUpsert(
+    val id: String,
+    val user_id: String,
+    val program_day_id: String?,
+    val date: String,
+    val started_at: String? = null,
+    val finished_at: String? = null
+)
+
+@Serializable
+private data class ExerciseLogUpsert(
+    val id: String,
+    val workout_log_id: String,
+    val exercise_id: String,
+    val sets_completed: Int,
+    val reps_completed: Int,
+    val is_completed: Boolean = true,
+    val duration_seconds: Int = 0
+)
 
 /**
  * Supabase ↔ Room senkronizasyon katmanı.
@@ -101,27 +123,31 @@ class SyncManager @Inject constructor(
 
             val allDays = mutableListOf<ProgramDayEntity>()
             val allProgramExercises = mutableListOf<ProgramExerciseEntity>()
+            val programIds = programDtos.map { it.id }
 
-            for (dto in programDtos) {
-                val dayDtos = supabase.postgrest["program_days"]
+            val dayDtos = if (programIds.isEmpty()) {
+                emptyList()
+            } else {
+                supabase.postgrest["program_days"]
                     .select {
-                        filter { eq("program_id", dto.id) }
+                        filter { isIn("program_id", programIds) }
                         order("day_index", Order.ASCENDING)
                     }
                     .decodeList<ProgramDayDto>()
+            }
 
-                for (dayDto in dayDtos) {
-                    allDays.add(dayDto.toEntity())
+            allDays.addAll(dayDtos.map { it.toEntity() })
+            val dayIds = dayDtos.map { it.id }
 
-                    val exerciseDtos = supabase.postgrest["program_exercises"]
+            if (dayIds.isNotEmpty()) {
+                val exerciseDtos = supabase.postgrest["program_exercises"]
                         .select(columns = Columns.raw("*, exercises(name, target_muscle, category, image_url)")) {
-                            filter { eq("program_day_id", dayDto.id) }
+                            filter { isIn("program_day_id", dayIds) }
                             order("order_index", Order.ASCENDING)
                         }
                         .decodeList<ProgramExerciseWithNameDto>()
 
-                    allProgramExercises.addAll(exerciseDtos.map { it.toEntity() })
-                }
+                allProgramExercises.addAll(exerciseDtos.map { it.toEntity() })
             }
 
             programDao.replaceAllForUser(
@@ -159,12 +185,14 @@ class SyncManager @Inject constructor(
                 }
                 .decodeList<WorkoutLogDto>()
 
-            val allExLogs = mutableListOf<ExerciseLogEntity>()
-            for (log in logDtos) {
-                val exDtos = supabase.postgrest["exercise_logs"]
-                    .select { filter { eq("workout_log_id", log.id) } }
+            val logIds = logDtos.map { it.id }
+            val allExLogs = if (logIds.isEmpty()) {
+                emptyList()
+            } else {
+                supabase.postgrest["exercise_logs"]
+                    .select { filter { isIn("workout_log_id", logIds) } }
                     .decodeList<ExerciseLogDto>()
-                allExLogs.addAll(exDtos.map { it.toEntity(synced = true) })
+                    .map { it.toEntity(synced = true) }
             }
 
             workoutDao.replaceWeeklyData(
@@ -184,51 +212,39 @@ class SyncManager @Inject constructor(
     suspend fun pushUnsyncedWorkouts() = syncMutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
-                // 1. Unsynced workout_logs
                 val unsyncedLogs = workoutDao.getUnsyncedLogs()
-                for (log in unsyncedLogs) {
-                    runCatching {
-                        // Supabase'de zaten var mı kontrol et
-                        val existing = supabase.postgrest["workout_logs"]
-                            .select {
-                                filter {
-                                    eq("user_id", log.userId)
-                                    eq("program_day_id", log.programDayId ?: "")
-                                    eq("date", log.date)
-                                }
-                                limit(1)
-                            }
-                            .decodeSingleOrNull<WorkoutLogDto>()
-
-                        if (existing == null) {
-                            supabase.postgrest["workout_logs"]
-                                .insert(buildJsonObject {
-                                    put("id", log.id)
-                                    put("user_id", log.userId)
-                                    put("program_day_id", log.programDayId)
-                                    put("date", log.date)
-                                })
-                        }
-                        workoutDao.markLogSynced(log.id)
+                if (unsyncedLogs.isNotEmpty()) {
+                    val payload = unsyncedLogs.map { log ->
+                        WorkoutLogUpsert(
+                            id = log.id,
+                            user_id = log.userId,
+                            program_day_id = log.programDayId,
+                            date = log.date,
+                            started_at = log.startedAt,
+                            finished_at = log.finishedAt
+                        )
                     }
+                    supabase.postgrest["workout_logs"]
+                        .upsert(payload, onConflict = "id", defaultToNull = false)
+                    unsyncedLogs.forEach { workoutDao.markLogSynced(it.id) }
                 }
 
-                // 2. Unsynced exercise_logs
                 val unsyncedExLogs = workoutDao.getUnsyncedExerciseLogs()
-                for (exLog in unsyncedExLogs) {
-                    runCatching {
-                        supabase.postgrest["exercise_logs"]
-                            .insert(buildJsonObject {
-                                put("id", exLog.id)
-                                put("workout_log_id", exLog.workoutLogId)
-                                put("exercise_id", exLog.exerciseId)
-                                put("sets_completed", exLog.setsCompleted)
-                                put("reps_completed", exLog.repsCompleted)
-                                put("is_completed", true)
-                                put("duration_seconds", exLog.durationSeconds)
-                            })
-                        workoutDao.markExerciseLogSynced(exLog.id)
+                if (unsyncedExLogs.isNotEmpty()) {
+                    val payload = unsyncedExLogs.map { exLog ->
+                        ExerciseLogUpsert(
+                            id = exLog.id,
+                            workout_log_id = exLog.workoutLogId,
+                            exercise_id = exLog.exerciseId,
+                            sets_completed = exLog.setsCompleted,
+                            reps_completed = exLog.repsCompleted,
+                            is_completed = true,
+                            duration_seconds = exLog.durationSeconds
+                        )
                     }
+                    supabase.postgrest["exercise_logs"]
+                        .upsert(payload, onConflict = "id", defaultToNull = false)
+                    unsyncedExLogs.forEach { workoutDao.markExerciseLogSynced(it.id) }
                 }
             }
         }

@@ -26,6 +26,12 @@ private data class ProgramExerciseCountDto(
 @Serializable
 private data class RatioEntry(val date: String, val ratio: Float)
 
+@Serializable
+private data class UserAchievementUpsert(
+    val user_id: String,
+    val achievement_id: String
+)
+
 class ProfileRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val disk: DiskCache
@@ -39,6 +45,8 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var _unlockedKeysUid: String? = null
     @Volatile private var _stats: UserStatsDto? = null
     @Volatile private var _statsUid: String? = null
+    @Volatile private var _allWorkoutDates: List<java.time.LocalDate>? = null
+    @Volatile private var _allWorkoutDatesUid: String? = null
     @Volatile private var _ratios: Map<String, Float>? = null
     @Volatile private var _ratiosKey: String? = null           // "userId|weekStart"
     @Volatile private var _workoutDates: List<String>? = null
@@ -50,6 +58,7 @@ class ProfileRepositoryImpl @Inject constructor(
     }
     private fun invalidateStats() {
         _stats = null; _statsUid = null
+        _allWorkoutDates = null; _allWorkoutDatesUid = null
         _ratios = null; _ratiosKey = null
         _workoutDates = null; _workoutDatesKey = null
         disk.removeByPrefix("stats_")
@@ -158,17 +167,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
                 // total_workouts ve streak'i her zaman workout_logs'tan doğrudan hesapla
                 // Böylece program silme veya değişiklikleri bu değerleri bozmaz
-                val workoutLogs = supabase.postgrest["workout_logs"]
-                    .select {
-                        filter { eq("user_id", userId) }
-                        order("date", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
-                    }
-                    .decodeList<WorkoutLogDto>()
-
-                val distinctDates = workoutLogs
-                    .mapNotNull { runCatching { java.time.LocalDate.parse(it.date.take(10)) }.getOrNull() }
-                    .distinct()
-                    .sortedDescending()
+                val distinctDates = getAllWorkoutDates(userId)
 
                 val totalWorkouts = distinctDates.size
 
@@ -240,16 +239,11 @@ class ProfileRepositoryImpl @Inject constructor(
         }
         return withContext(Dispatchers.IO) {
             runCatching {
-                supabase.postgrest["workout_logs"]
-                    .select {
-                        filter {
-                            eq("user_id", userId)
-                            gte("date", fromDate)
-                        }
-                        order("date", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
-                    }
-                    .decodeList<WorkoutLogDto>()
-                    .map { it.date }
+                val from = java.time.LocalDate.parse(fromDate)
+                getAllWorkoutDates(userId)
+                    .filter { !it.isBefore(from) }
+                    .sorted()
+                    .map { it.toString() }
             }.also { r -> r.getOrNull()?.let {
                 _workoutDates = it; _workoutDatesKey = key
                 disk.put("wdates_$key", it)
@@ -280,24 +274,35 @@ class ProfileRepositoryImpl @Inject constructor(
 
                 if (logs.isEmpty()) return@runCatching emptyMap()
 
+                val logIds = logs.map { it.id }
+                val programDayIds = logs.mapNotNull { it.program_day_id }.distinct()
+
+                val totalsByDay = if (programDayIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    supabase.postgrest["program_exercises"]
+                        .select { filter { isIn("program_day_id", programDayIds) } }
+                        .decodeList<ProgramExerciseCountDto>()
+                        .groupingBy { it.program_day_id }
+                        .eachCount()
+                }
+
+                val completedByLog = if (logIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    supabase.postgrest["exercise_logs"]
+                        .select { filter { isIn("workout_log_id", logIds) } }
+                        .decodeList<ExerciseLogDto>()
+                        .groupingBy { it.workout_log_id }
+                        .eachCount()
+                }
+
                 val result = mutableMapOf<String, Float>()
                 for (log in logs) {
                     val programDayId = log.program_day_id ?: continue
-
-                    // Bu program günündeki toplam egzersiz sayısı
-                    val total = supabase.postgrest["program_exercises"]
-                        .select { filter { eq("program_day_id", programDayId) } }
-                        .decodeList<ProgramExerciseCountDto>()
-                        .size
-
+                    val total = totalsByDay[programDayId] ?: 0
                     if (total == 0) continue // dinlenme günü veya egzersiz yok
-
-                    // Bu workout_log için tamamlanan egzersizler
-                    val completed = supabase.postgrest["exercise_logs"]
-                        .select { filter { eq("workout_log_id", log.id) } }
-                        .decodeList<ExerciseLogDto>()
-                        .size
-
+                    val completed = completedByLog[log.id] ?: 0
                     val ratio = (completed.toFloat() / total).coerceIn(0f, 1f)
                     // Aynı gün birden fazla log varsa en yüksek oranı al
                     result[log.date] = maxOf(result[log.date] ?: 0f, ratio)
@@ -341,33 +346,39 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun unlockAchievement(userId: String, achievementKey: String): Result<Unit> =
+        unlockAchievements(userId, listOf(achievementKey))
+
+    override suspend fun unlockAchievements(userId: String, achievementKeys: List<String>): Result<Unit> =
         withContext(Dispatchers.IO) {
+            if (achievementKeys.isEmpty()) return@withContext Result.success(Unit)
             _unlockedKeys = null; _unlockedKeysUid = null; disk.removeByPrefix("unlocked_")
             runCatching {
-                // Önce achievement id'yi bul
-                val ach = supabase.postgrest["achievements"]
-                    .select { filter { eq("key", achievementKey) } }
-                    .decodeSingleOrNull<AchievementDto>()
-                    ?: return@runCatching
+                val targetKeys = achievementKeys.distinct()
+                val achievements = supabase.postgrest["achievements"]
+                    .select { filter { isIn("key", targetKeys) } }
+                    .decodeList<AchievementDto>()
 
-                // Zaten unlock edilmişse insert etme
-                val existing = supabase.postgrest["user_achievements"]
+                if (achievements.isEmpty()) return@runCatching
+
+                val achievementIds = achievements.map { it.id }
+                val existingIds = supabase.postgrest["user_achievements"]
                     .select {
                         filter {
                             eq("user_id", userId)
-                            eq("achievement_id", ach.id)
+                            isIn("achievement_id", achievementIds)
                         }
-                        limit(1)
                     }
-                    .decodeSingleOrNull<UserAchievementDto>()
+                    .decodeList<UserAchievementDto>()
+                    .map { it.achievement_id }
+                    .toSet()
 
-                if (existing == null) {
-                    supabase.postgrest["user_achievements"].insert(
-                        buildJsonObject {
-                            put("user_id",        userId)
-                            put("achievement_id", ach.id)
-                        }
-                    )
+                val payload = achievements
+                    .filter { it.id !in existingIds }
+                    .map { UserAchievementUpsert(user_id = userId, achievement_id = it.id) }
+
+                if (payload.isNotEmpty()) {
+                    supabase.postgrest["user_achievements"]
+                        .upsert(payload, onConflict = "user_id,achievement_id", defaultToNull = false)
                 }
             }
         }
@@ -387,4 +398,21 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override fun invalidateStatsCache() { invalidateStats() }
+
+    private suspend fun getAllWorkoutDates(userId: String): List<java.time.LocalDate> {
+        _allWorkoutDates?.takeIf { _allWorkoutDatesUid == userId }?.let { return it }
+        return supabase.postgrest["workout_logs"]
+            .select {
+                filter { eq("user_id", userId) }
+                order("date", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+            }
+            .decodeList<WorkoutLogDto>()
+            .mapNotNull { runCatching { java.time.LocalDate.parse(it.date.take(10)) }.getOrNull() }
+            .distinct()
+            .sortedDescending()
+            .also {
+                _allWorkoutDates = it
+                _allWorkoutDatesUid = userId
+            }
+    }
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.auth.AuthFeedback
 import com.avonix.profitness.presentation.auth.AuthLiquidField
@@ -32,7 +33,7 @@ fun ResetPasswordScreen(
     onDone      : () -> Unit,
     viewModel   : ResetPasswordViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // PKCE code'u bir kez exchange et
     LaunchedEffect(code) { viewModel.exchangeCode(code) }

@@ -46,9 +46,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
@@ -163,7 +160,8 @@ fun WorkoutScreen(
     onNavigateToStore       : () -> Unit = {},
     viewModel               : WorkoutViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val restTimer by viewModel.restTimer.collectAsStateWithLifecycle()
     val theme   = LocalAppTheme.current
     val strings = theme.strings
     val context = LocalContext.current
@@ -200,22 +198,12 @@ fun WorkoutScreen(
         )
     }
 
-    // ON_RESUME: arka planda Supabase sync tetikle.
-    // Room Flow zaten dinleniyor — yeni veri gelince UI otomatik güncellenir.
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refresh()
-            }
-        }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
-    }
+    // ON_RESUME: arka planda stale-aware Supabase sync tetikle.
+    WorkoutRefreshOnResumeEffect { viewModel.refresh() }
 
     // Timer değişkenleri — hem overlay hem içerik için kullanılır
     val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive  = state.restTimer.isRunning || state.restTimer.isDone
+    val timerActive  = restTimer.isRunning || restTimer.isDone
     val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
@@ -238,6 +226,7 @@ fun WorkoutScreen(
             else -> {
                 WorkoutContent(
                     state = state,
+                    restTimer = restTimer,
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
                     timerActive = timerActive,
@@ -248,7 +237,7 @@ fun WorkoutScreen(
 
         // ── Dynamic Island — rest timer overlay ──────────────────────────────
         DynamicIslandTimer(
-            timer     = state.restTimer,
+            timer     = restTimer,
             topOffset = statusBarPad + 8.dp,
             onStop    = { viewModel.stopRestTimer() },
             onDismiss = { viewModel.dismissRestTimer() }
@@ -471,6 +460,7 @@ private fun NoProgramView(
 @Composable
 private fun WorkoutContent(
     state: WorkoutScreenState,
+    restTimer: RestTimerState,
     viewModel: WorkoutViewModel,
     bottomPadding: Dp,
     timerActive: Boolean = false,
@@ -487,16 +477,9 @@ private fun WorkoutContent(
     val dashboardVm: DashboardViewModel = hiltViewModel()
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
-    val dashLifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(dashLifecycle) {
-        val obs = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) dashboardVm.refresh()
-        }
-        dashLifecycle.addObserver(obs)
-        onDispose { dashLifecycle.removeObserver(obs) }
-    }
+    WorkoutRefreshOnResumeEffect { dashboardVm.reloadIfStale() }
 
-    // Event banner gününde otomatik refresh (ON_RESUME zaten ana ekranda çağırıyor)
+    // Event banner verisi stale ise resume sonrası yenilenir; UI tab geçişi bloklanmaz.
     val todayEvents = dashState.today
     val upcomingEvents = dashState.upcoming
     val hasTodayBanner = todayEvents.isNotEmpty()
@@ -520,7 +503,7 @@ private fun WorkoutContent(
     }
 
     // Timer başladığında o egzersizin kartını otomatik aç ve scroll et
-    val timer = state.restTimer
+    val timer = restTimer
     LaunchedEffect(timer.isRunning, timer.exerciseName) {
         if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
             val exIdx = currentDay.exercises.indexOfFirst { it.name == timer.exerciseName }
@@ -647,7 +630,7 @@ private fun WorkoutContent(
                     state.setCompletions[exercise.exerciseTableId.ifBlank { exercise.id }] ?: emptySet()
                 }
                 // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
-                val timer = state.restTimer
+                val timer = restTimer
                 val isThisExTimer = timer.exerciseName == exercise.name
                 CinematicExerciseCard(
                     exercise          = exercise,

@@ -6,6 +6,7 @@ import com.avonix.profitness.data.challenges.ChallengePrefsRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,12 +40,27 @@ class DashboardViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(DashboardEventsUiState())
     val state: StateFlow<DashboardEventsUiState> = _state.asStateFlow()
+    private var refreshJob: Job? = null
+    private var lastLoadMs: Long = 0L
 
-    init { refresh() }
+    init { refresh(force = true) }
 
-    fun refresh() {
-        _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
+    fun reloadIfStale() {
+        val hasLoaded = lastLoadMs > 0L
+        val isFresh = System.currentTimeMillis() - lastLoadMs < EVENTS_TTL_MS
+        if (hasLoaded && isFresh) return
+        refresh(force = false)
+    }
+
+    fun refresh(force: Boolean = true) {
+        if (refreshJob?.isActive == true) return
+        val hasData = state.value.today.isNotEmpty() || state.value.upcoming.isNotEmpty()
+        val hasLoaded = lastLoadMs > 0L
+        val isFresh = System.currentTimeMillis() - lastLoadMs < EVENTS_TTL_MS
+        if (!force && hasLoaded && isFresh) return
+
+        _state.update { it.copy(isLoading = !hasData, error = null) }
+        refreshJob = viewModelScope.launch {
             val today = LocalDate.now().toString()
             val todayDef    = async { repo.listMyEventsForDate(today) }
             val upcomingDef = async { repo.listMyUpcomingEvents(7) }
@@ -55,6 +71,7 @@ class DashboardViewModel @Inject constructor(
 
             val todayList = todayRes.getOrNull().orEmpty()
             val skipFlag = prefs.isAnySkippedForDate(today)
+            lastLoadMs = System.currentTimeMillis()
 
             _state.update {
                 it.copy(
@@ -66,5 +83,9 @@ class DashboardViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private companion object {
+        const val EVENTS_TTL_MS = 2 * 60_000L
     }
 }

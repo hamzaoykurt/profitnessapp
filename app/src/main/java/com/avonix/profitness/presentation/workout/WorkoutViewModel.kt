@@ -8,6 +8,7 @@ import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
+import com.avonix.profitness.data.sync.SyncCoordinator
 import com.avonix.profitness.data.workout.WorkoutRepository
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.presentation.profile.computeRank
@@ -19,6 +20,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
@@ -44,7 +49,6 @@ data class WorkoutScreenState(
     val currentProgramId: String = "",
     val currentStreak: Int = 0,
     val setCompletions: Map<String, Set<Int>> = emptyMap(),
-    val restTimer: RestTimerState = RestTimerState(),
     // Progressive overload — per-set weight & reps input
     val setWeights: Map<String, Map<Int, String>> = emptyMap(),
     val setReps: Map<String, Map<Int, String>> = emptyMap(),
@@ -69,12 +73,15 @@ class WorkoutViewModel @Inject constructor(
     private val geminiRepository   : GeminiRepository,
     private val planRepository     : com.avonix.profitness.data.store.UserPlanRepository,
     private val notificationManager: WorkoutNotificationManager,
+    private val syncCoordinator    : SyncCoordinator,
     private val challengeRepository: ChallengeRepository,
     private val supabase           : SupabaseClient
 ) : BaseViewModel<WorkoutScreenState, WorkoutEvent>(WorkoutScreenState()) {
 
     private var observeJob: Job? = null
     private var timerJob: Job? = null
+    private val _restTimer = MutableStateFlow(RestTimerState())
+    val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
     private val draftPersistJobs = mutableMapOf<String, Job>()
 
@@ -92,11 +99,11 @@ class WorkoutViewModel @Inject constructor(
 
     fun startRestTimer(restSeconds: Int, exerciseName: String) {
         timerJob?.cancel()
-        updateState { it.copy(restTimer = RestTimerState(
+        _restTimer.value = RestTimerState(
             isRunning = true, isDone = false,
             secondsLeft = restSeconds, totalSeconds = restSeconds,
             exerciseName = exerciseName
-        ))}
+        )
 
         // Ön plan servisi başlat — uygulama arka plandayken de bildirim gösterir
         notificationManager.startWorkoutSession(exerciseName)
@@ -107,13 +114,13 @@ class WorkoutViewModel @Inject constructor(
             while (remaining > 0) {
                 delay(1000L)
                 remaining--
-                updateState { it.copy(restTimer = it.restTimer.copy(secondsLeft = remaining)) }
-                // Her saniye bildirimi güncelle (IO thread'inde servis intent'i gönder)
+                _restTimer.update { it.copy(secondsLeft = remaining) }
+                // Bildirim güncellemeleri UI timer'ından daha seyrek akar.
                 withContext(Dispatchers.IO) {
                     notificationManager.updateRestTimer(exerciseName, remaining, restSeconds)
                 }
             }
-            updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false, isDone = true, secondsLeft = 0)) }
+            _restTimer.update { it.copy(isRunning = false, isDone = true, secondsLeft = 0) }
             // Ses + "Hazırsın!" bildirimi
             withContext(Dispatchers.IO) {
                 notificationManager.notifyTimerDone(exerciseName)
@@ -123,13 +130,13 @@ class WorkoutViewModel @Inject constructor(
 
     fun stopRestTimer() {
         timerJob?.cancel()
-        updateState { it.copy(restTimer = it.restTimer.copy(isRunning = false)) }
+        _restTimer.update { it.copy(isRunning = false) }
         notificationManager.stopWorkoutSession()
     }
 
     fun dismissRestTimer() {
         timerJob?.cancel()
-        updateState { it.copy(restTimer = RestTimerState()) }
+        _restTimer.value = RestTimerState()
         notificationManager.stopWorkoutSession()
     }
 
@@ -152,10 +159,7 @@ class WorkoutViewModel @Inject constructor(
 
         // İlk seferde arka planda sync başlat
         viewModelScope.launch {
-            runCatching {
-                programRepository.syncFromRemote(userId)
-                workoutRepository.syncFromRemote(userId)
-            }
+            syncCoordinator.refreshWorkout(userId)
         }
 
         observeJob?.cancel()
@@ -217,10 +221,7 @@ class WorkoutViewModel @Inject constructor(
         // Observe zaten aktifse tekrar başlatma — sadece sync tetikle
         if (observeJob?.isActive != true) startObserving()
         viewModelScope.launch {
-            runCatching {
-                workoutRepository.syncFromRemote(userId)
-                programRepository.syncFromRemote(userId)
-            }
+            syncCoordinator.refreshWorkout(userId)
         }
     }
 
@@ -229,10 +230,7 @@ class WorkoutViewModel @Inject constructor(
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         if (observeJob?.isActive != true) startObserving()
         viewModelScope.launch {
-            runCatching {
-                programRepository.syncFromRemote(userId)
-                workoutRepository.syncFromRemote(userId)
-            }
+            syncCoordinator.refreshWorkout(userId, force = true, debounceMillis = 0)
         }
     }
 
@@ -707,14 +705,17 @@ class WorkoutViewModel @Inject constructor(
             "total_exercises" to stats.total_exercises
         )
 
-        allAch
+        val achievementsToUnlock = allAch
             .filter { it.key !in unlockedKeys }
-            .forEach { ach ->
-                val value = toCheck[ach.category] ?: return@forEach
-                if (value >= ach.threshold) {
-                    profileRepository.unlockAchievement(userId, ach.key)
-                }
+            .mapNotNull { ach ->
+                val value = toCheck[ach.category] ?: return@mapNotNull null
+                ach.key.takeIf { value >= ach.threshold }
             }
+
+        if (achievementsToUnlock.isNotEmpty()) {
+            profileRepository.unlockAchievements(userId, achievementsToUnlock)
+            profileRepository.invalidateStatsCache()
+        }
 
         val newRank = computeRank(stats.xp)
         val profile = profileRepository.getProfile(userId).getOrNull()
