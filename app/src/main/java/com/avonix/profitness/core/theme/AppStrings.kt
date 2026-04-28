@@ -65,7 +65,6 @@ data class AppStrings(
     val notifSheetTitle     : String,
     val workoutReminders    : String,
     val progressUpdates     : String,
-    val newsAlerts          : String,
 
     // ── Language sheet ───────────────────────────────────────────────────────
     val langSheetTitle      : String,
@@ -95,45 +94,6 @@ data class AppStrings(
     val chipProgram         : String,
     val chipRecovery        : String,
     val chipHiitVsLiss      : String,
-
-    // ── News screen – categories ─────────────────────────────────────────────
-    val newsCatAll          : String,   // "TÜMÜ" / "ALL"
-    val newsCatSaved        : String,   // "KAYDEDILENLER" / "SAVED"
-    val newsCatNutrition    : String,   // "BESLENME" / "NUTRITION"
-    val newsCatTraining     : String,   // "ANTRENMAN" / "TRAINING"
-    val newsCatSports       : String,   // "SPOR" / "SPORTS"
-    val newsCatMind         : String,   // "ZİHİN" / "MIND"
-    val newsCatLifestyle    : String,   // "YAŞAM" / "LIFESTYLE"
-    val newsCatRecovery     : String,   // "TOPARLANMA" / "RECOVERY"
-
-    // ── News screen – UI labels ──────────────────────────────────────────────
-    val liveLabel           : String,   // "CANLI" / "LIVE"
-    val newsCountLabel      : String,   // "HABER" / "NEWS"
-    val allNewsLabel        : String,   // "TÜM HABERLER" / "ALL NEWS"
-    val noSavedNews         : String,
-    val noCategoryNews      : String,
-    val readingLabel        : String,   // "OKUMA" / "READ"
-    val readTimeUnit        : String,   // "dk" / "min"
-    val aiSummaryLabel      : String,   // "AI ÖZETİ" / "AI SUMMARY"
-    val contentLabel        : String,   // "İÇERİK" / "CONTENT"
-    val goToOriginal        : String,   // "HABERİN ORİJİNALİNE GİT" / "READ ORIGINAL ARTICLE"
-    val translatingLabel    : String,   // "Türkçeye çevriliyor…" / "Translating…"
-    val loadingContentLabel : String,   // "İçerik yükleniyor…"  / "Loading content…"
-    val translatedLabel     : String,   // "Yapay zeka ile çevrildi" / "AI Translated"
-    val sourceLabel         : String,   // "Kaynak" / "Source"
-    val noSummaryLabel      : String,   // "Özet mevcut değil." / "No summary available."
-    val saveArticle              : String,   // "Kaydet" / "Save"
-    val unsaveArticle            : String,   // "Kaydı kaldır" / "Remove"
-    val reportArticle            : String,   // "Bildir" / "Report"
-    val reportDialogTitle        : String,   // "Haberi Bildir" / "Report Article"
-    val reportReasonMisinfo      : String,   // "Yanlış Bilgi" / "Misinformation"
-    val reportReasonSpam         : String,   // "Spam" / "Spam"
-    val reportReasonInappropriate: String,   // "Uygunsuz İçerik" / "Inappropriate Content"
-    val reportConfirm            : String,   // "Bildir" / "Report"
-    val reportCancel             : String,   // "İptal" / "Cancel"
-    val reportSuccessMsg         : String,   // "Haber bildirildi ve kaldırıldı." / "Article reported and removed."
-    val newArticlesMsg           : String,   // "yeni haber" / "new articles"
-    val noNewArticlesMsg         : String,   // "Haberler güncel." / "Already up to date."
 
     // ── Program Builder screen ───────────────────────────────────────────────
     val programStudioSub    : String,   // "Hazır programlardan seç veya kendin tasarla."
@@ -252,7 +212,6 @@ val TurkishStrings = AppStrings(
     notifSheetTitle     = "BİLDİRİM AYARLARI",
     workoutReminders    = "Antrenman Hatırlatmaları",
     progressUpdates     = "İlerleme Güncellemeleri",
-    newsAlerts          = "Haber Bildirimleri",
     langSheetTitle      = "DİL SEÇİMİ",
     turkishLabel        = "Türkçe",
     englishLabel        = "English",
@@ -280,45 +239,6 @@ val TurkishStrings = AppStrings(
     chipProgram         = "Program Önerisi",
     chipRecovery        = "Toparlanma",
     chipHiitVsLiss      = "HIIT vs LISS",
-
-    // News – categories
-    newsCatAll          = "TÜMÜ",
-    newsCatSaved        = "KAYDEDILENLER",
-    newsCatNutrition    = "BESLENME",
-    newsCatTraining     = "ANTRENMAN",
-    newsCatSports       = "SPOR",
-    newsCatMind         = "ZİHİN",
-    newsCatLifestyle    = "YAŞAM",
-    newsCatRecovery     = "TOPARLANMA",
-
-    // News – UI labels
-    liveLabel           = "CANLI",
-    newsCountLabel      = "HABER",
-    allNewsLabel        = "TÜM HABERLER",
-    noSavedNews         = "Henüz kaydedilen haber yok",
-    noCategoryNews      = "Bu kategoride haber bulunamadı",
-    readingLabel        = "OKUMA",
-    readTimeUnit        = "dk",
-    aiSummaryLabel      = "AI ÖZETİ",
-    contentLabel        = "İÇERİK",
-    goToOriginal        = "HABERİN ORİJİNALİNE GİT",
-    translatingLabel    = "Türkçeye çevriliyor…",
-    loadingContentLabel = "İçerik yükleniyor…",
-    translatedLabel     = "Yapay zeka ile Türkçeye çevrildi",
-    sourceLabel         = "Kaynak",
-    noSummaryLabel      = "Bu haber için özet mevcut değil.",
-    saveArticle              = "Kaydet",
-    unsaveArticle            = "Kaydı kaldır",
-    reportArticle            = "Bildir",
-    reportDialogTitle        = "Haberi Bildir",
-    reportReasonMisinfo      = "Yanlış Bilgi",
-    reportReasonSpam         = "Spam",
-    reportReasonInappropriate= "Uygunsuz İçerik",
-    reportConfirm            = "Bildir",
-    reportCancel             = "İptal",
-    reportSuccessMsg         = "Haber bildirildi ve listenizden kaldırıldı.",
-    newArticlesMsg           = "yeni haber",
-    noNewArticlesMsg         = "Haberler güncel.",
 
     // Program Builder
     programStudioSub    = "Hazır programlardan seç veya kendin tasarla.",
@@ -437,7 +357,6 @@ val EnglishStrings = AppStrings(
     notifSheetTitle     = "NOTIFICATION SETTINGS",
     workoutReminders    = "Workout Reminders",
     progressUpdates     = "Progress Updates",
-    newsAlerts          = "News Alerts",
     langSheetTitle      = "LANGUAGE",
     turkishLabel        = "Türkçe",
     englishLabel        = "English",
@@ -465,45 +384,6 @@ val EnglishStrings = AppStrings(
     chipProgram         = "Program Suggestion",
     chipRecovery        = "Recovery",
     chipHiitVsLiss      = "HIIT vs LISS",
-
-    // News – categories
-    newsCatAll          = "ALL",
-    newsCatSaved        = "SAVED",
-    newsCatNutrition    = "NUTRITION",
-    newsCatTraining     = "TRAINING",
-    newsCatSports       = "SPORTS",
-    newsCatMind         = "MIND",
-    newsCatLifestyle    = "LIFESTYLE",
-    newsCatRecovery     = "RECOVERY",
-
-    // News – UI labels
-    liveLabel           = "LIVE",
-    newsCountLabel      = "NEWS",
-    allNewsLabel        = "ALL NEWS",
-    noSavedNews         = "No saved articles yet",
-    noCategoryNews      = "No articles found in this category",
-    readingLabel        = "READ",
-    readTimeUnit        = "min",
-    aiSummaryLabel      = "AI SUMMARY",
-    contentLabel        = "CONTENT",
-    goToOriginal        = "READ ORIGINAL ARTICLE",
-    translatingLabel    = "Translating to English…",
-    loadingContentLabel = "Loading content…",
-    translatedLabel     = "AI Translated to English",
-    sourceLabel         = "Source",
-    noSummaryLabel      = "No summary available for this article.",
-    saveArticle              = "Save",
-    unsaveArticle            = "Remove",
-    reportArticle            = "Report",
-    reportDialogTitle        = "Report Article",
-    reportReasonMisinfo      = "Misinformation",
-    reportReasonSpam         = "Spam",
-    reportReasonInappropriate= "Inappropriate Content",
-    reportConfirm            = "Report",
-    reportCancel             = "Cancel",
-    reportSuccessMsg         = "Article reported and removed from your feed.",
-    newArticlesMsg           = "new articles",
-    noNewArticlesMsg         = "Already up to date.",
 
     // Program Builder
     programStudioSub    = "Choose from ready programs or design your own.",
@@ -576,16 +456,3 @@ val EnglishStrings = AppStrings(
 
 val AppThemeState.strings: AppStrings
     get() = if (language == AppLanguage.ENGLISH) EnglishStrings else TurkishStrings
-
-/** Maps an internal category key (always Turkish) to the localised display label. */
-fun AppStrings.localizedNewsCategory(key: String): String = when (key) {
-    "TÜMÜ"          -> newsCatAll
-    "KAYDEDILENLER" -> newsCatSaved
-    "BESLENME"      -> newsCatNutrition
-    "ANTRENMAN"     -> newsCatTraining
-    "SPOR"          -> newsCatSports
-    "ZİHİN"         -> newsCatMind
-    "YAŞAM"         -> newsCatLifestyle
-    "TOPARLANMA"    -> newsCatRecovery
-    else            -> key
-}
