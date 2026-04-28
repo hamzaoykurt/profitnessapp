@@ -1386,7 +1386,6 @@ private fun NotificationsSettingsSheet(
 ) {
     var workoutReminders by remember { mutableStateOf(currentEnabled) }
     var progressUpdates  by remember { mutableStateOf(currentEnabled) }
-    var newsAlerts       by remember { mutableStateOf(currentEnabled) }
 
     Column(
         modifier = Modifier
@@ -1428,19 +1427,10 @@ private fun NotificationsSettingsSheet(
                 theme           = theme,
                 onCheckedChange = { progressUpdates = it }
             )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            NotifToggleRow(
-                label           = strings.newsAlerts,
-                icon            = Icons.Rounded.Newspaper,
-                checked         = newsAlerts,
-                accent          = accent,
-                theme           = theme,
-                onCheckedChange = { newsAlerts = it }
-            )
         }
 
         Button(
-            onClick  = { onApply(workoutReminders || progressUpdates || newsAlerts) },
+            onClick  = { onApply(workoutReminders || progressUpdates) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape    = RoundedCornerShape(14.dp),
             colors   = ButtonDefaults.buttonColors(
