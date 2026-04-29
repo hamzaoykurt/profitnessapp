@@ -235,7 +235,10 @@ class ProgramRepositoryImpl @Inject constructor(
                     }
                 supabase.postgrest["programs"]
                     .update({ set("is_active", true) }) {
-                        filter { eq("id", programId) }
+                        filter {
+                            eq("id", programId)
+                            eq("user_id", userId)
+                        }
                     }
                 // Room'u da güncelle — anında UI yansıması
                 programDao.deactivateAll(userId)
@@ -247,8 +250,14 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun updateProgramName(programId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                val userId = programDao.getProgramById(programId)?.userId
                 supabase.postgrest["programs"]
-                    .update({ set("name", name) }) { filter { eq("id", programId) } }
+                    .update({ set("name", name) }) {
+                        filter {
+                            eq("id", programId)
+                            userId?.let { eq("user_id", it) }
+                        }
+                    }
                 programDao.updateName(programId, name)
                 Unit
             }
@@ -270,8 +279,14 @@ class ProgramRepositoryImpl @Inject constructor(
             // otomatik olarak "UYGULA"ya döner.
 
             // 1) Program adını güncelle
+            val ownerUserId = programDao.getProgramById(programId)?.userId
             supabase.postgrest["programs"]
-                .update({ set("name", name) }) { filter { eq("id", programId) } }
+                .update({ set("name", name) }) {
+                    filter {
+                        eq("id", programId)
+                        ownerUserId?.let { eq("user_id", it) }
+                    }
+                }
 
             // 2) Mevcut günlerin ID'lerini çek
             val oldDayIds = supabase.postgrest["program_days"]
@@ -292,7 +307,10 @@ class ProgramRepositoryImpl @Inject constructor(
                 runCatching {
                     supabase.postgrest["workout_logs"]
                         .update({ set("program_day_id", null as String?) }) {
-                            filter { eq("program_day_id", dayId) }
+                            filter {
+                                eq("program_day_id", dayId)
+                                ownerUserId?.let { eq("user_id", it) }
+                            }
                         }
                 }
             }
@@ -347,6 +365,7 @@ class ProgramRepositoryImpl @Inject constructor(
                 programDao.deleteProgram(programId)
 
                 // Supabase'den sil
+                val ownerUserId = programDao.getProgramById(programId)?.userId
                 val dayIds = supabase.postgrest["program_days"]
                     .select { filter { eq("program_id", programId) } }
                     .decodeList<ProgramDayDto>()
@@ -357,7 +376,10 @@ class ProgramRepositoryImpl @Inject constructor(
                         runCatching {
                             supabase.postgrest["workout_logs"]
                                 .update({ set("program_day_id", null as String?) }) {
-                                    filter { eq("program_day_id", dayId) }
+                                    filter {
+                                        eq("program_day_id", dayId)
+                                        ownerUserId?.let { eq("user_id", it) }
+                                    }
                                 }
                         }
                         runCatching {
@@ -369,7 +391,12 @@ class ProgramRepositoryImpl @Inject constructor(
                 supabase.postgrest["program_days"]
                     .delete { filter { eq("program_id", programId) } }
                 supabase.postgrest["programs"]
-                    .delete { filter { eq("id", programId) } }
+                    .delete {
+                        filter {
+                            eq("id", programId)
+                            ownerUserId?.let { eq("user_id", it) }
+                        }
+                    }
                 // Supabase silme sırasında bir sync Room'a geri yazmış olabilir;
                 // işlem bitince Room'dan kesin olarak sil.
                 programDao.deleteProgram(programId)
@@ -378,6 +405,7 @@ class ProgramRepositoryImpl @Inject constructor(
         }
 
     override suspend fun addExercise(
+        userId: String,
         name: String,
         nameEn: String,
         targetMuscle: String,
@@ -395,6 +423,7 @@ class ProgramRepositoryImpl @Inject constructor(
                     put("sets_default", setsDefault)
                     put("reps_default", repsDefault)
                     put("description", "")
+                    put("created_by", userId)
                 })
 
             val dto = supabase.postgrest["exercises"]

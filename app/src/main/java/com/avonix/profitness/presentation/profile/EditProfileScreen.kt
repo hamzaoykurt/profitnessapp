@@ -99,9 +99,10 @@ fun EditProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: return@rememberLauncherForActivityResult
-        viewModel.uploadPhoto(bytes)
+        viewModel.uploadPhoto(bytes, mimeType)
     }
 
     fun saveAndExit() {

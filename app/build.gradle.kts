@@ -15,20 +15,22 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
     localProperties.load(it)
 }
 
-// Keystore: CI'da KEYSTORE_BASE64'ten decode et, lokalde varsayılan debug keystore'u kullan
-val ksBase64: String = localProperties.getProperty("KEYSTORE_BASE64", "")
-val ksPassword: String = localProperties.getProperty("KEYSTORE_PASSWORD", "android")
-val ksAlias: String = localProperties.getProperty("KEY_ALIAS", "androiddebugkey")
-val ksKeyPassword: String = localProperties.getProperty("KEY_PASSWORD", "android")
+fun secureProperty(name: String, default: String = ""): String =
+    localProperties.getProperty(name) ?: System.getenv(name) ?: default
 
-val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
-    val bytes = Base64.getDecoder().decode(ksBase64.trim())
+val releaseKsBase64: String = secureProperty("KEYSTORE_BASE64")
+val releaseKsPassword: String = secureProperty("KEYSTORE_PASSWORD")
+val releaseKsAlias: String = secureProperty("KEY_ALIAS")
+val releaseKsKeyPassword: String = secureProperty("KEY_PASSWORD")
+
+val releaseKeystore: File? = if (releaseKsBase64.isNotBlank()) {
+    val bytes = Base64.getDecoder().decode(releaseKsBase64.trim())
     val f = rootProject.file("build/ci_signing.keystore")
     f.parentFile?.mkdirs()
     f.writeBytes(bytes)
     f
 } else {
-    File(System.getProperty("user.home"), ".android/debug.keystore")
+    null
 }
 
 android {
@@ -50,20 +52,21 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            storeFile     = resolvedKeystore
-            storePassword = ksPassword
-            keyAlias      = ksAlias
-            keyPassword   = ksKeyPassword
+        create("release") {
+            releaseKeystore?.let {
+                storeFile     = it
+                storePassword = releaseKsPassword
+                keyAlias      = releaseKsAlias
+                keyPassword   = releaseKsKeyPassword
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            signingConfig = signingConfigs.getByName("debug") // debug key ile imzala (şimdilik)
+            releaseKeystore?.let { signingConfig = signingConfigs.getByName("release") }
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -81,6 +84,18 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+tasks.matching { it.name in setOf("assembleRelease", "bundleRelease") }.configureEach {
+    doFirst {
+        if (releaseKeystore == null ||
+            releaseKsPassword.isBlank() ||
+            releaseKsAlias.isBlank() ||
+            releaseKsKeyPassword.isBlank()
+        ) {
+            throw GradleException("Release signing requires KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD.")
+        }
     }
 }
 

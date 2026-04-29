@@ -22,14 +22,14 @@ class DiskCache @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     @PublishedApi internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    @PublishedApi internal val dir by lazy { File(context.filesDir, "data_cache").also { it.mkdirs() } }
+    @PublishedApi internal val dir by lazy { File(context.noBackupFilesDir, "data_cache").also { it.mkdirs() } }
 
     private val prefs by lazy {
         context.getSharedPreferences("disk_cache_meta", Context.MODE_PRIVATE)
     }
 
     companion object {
-        private const val CACHE_VERSION = 2
+        private const val CACHE_VERSION = 3
         private const val KEY_VERSION   = "cache_version"
     }
 
@@ -46,7 +46,7 @@ class DiskCache @Inject constructor(
     }
 
     inline fun <reified T> get(key: String): T? {
-        val file = File(dir, "$key.json")
+        val file = fileForKey(key)
         if (!file.exists()) return null
         return try {
             json.decodeFromString<T>(file.readText())
@@ -57,15 +57,21 @@ class DiskCache @Inject constructor(
 
     inline fun <reified T> put(key: String, value: T) {
         try {
-            File(dir, "$key.json").writeText(json.encodeToString(value))
+            fileForKey(key).writeText(json.encodeToString(value))
         } catch (_: Exception) { /* sessizce yoksay — cache opsiyonel */ }
     }
 
     fun remove(key: String) {
-        File(dir, "$key.json").delete()
+        fileForKey(key).delete()
     }
 
     fun removeByPrefix(prefix: String) {
-        dir.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }
+        dir.listFiles()?.filter { it.name.startsWith(safeKey(prefix)) }?.forEach { it.delete() }
     }
+
+    @PublishedApi
+    internal fun fileForKey(key: String): File = File(dir, "${safeKey(key)}.json")
+
+    private fun safeKey(key: String): String =
+        key.replace(Regex("[^A-Za-z0-9._-]"), "_")
 }

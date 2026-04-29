@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.discover.DiscoverRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.domain.discover.DiscoverSort
@@ -101,7 +102,7 @@ class DiscoverViewModel @Inject constructor(
                     _state.update { it.copy(
                         isLoading    = false,
                         isRefreshing = false,
-                        error        = err.message ?: "Feed yüklenemedi"
+                        error        = err.toUserSafeMessage("Feed yüklenemedi")
                     ) }
                 }
         }
@@ -121,7 +122,7 @@ class DiscoverViewModel @Inject constructor(
                     ) }
                 }
                 .onFailure { err ->
-                    _state.update { it.copy(isLoading = false, error = err.message) }
+                    _state.update { it.copy(isLoading = false, error = err.toUserSafeMessage("Feed yüklenemedi")) }
                 }
         }
     }
@@ -208,7 +209,7 @@ class DiscoverViewModel @Inject constructor(
                     loadMyShared()
                 }
                 .onFailure { err ->
-                    _state.update { it.copy(shareResult = ShareResult.Error(err.message ?: "Paylaşım başarısız")) }
+                    _state.update { it.copy(shareResult = ShareResult.Error(err.toUserSafeMessage("Paylaşım başarısız"))) }
                 }
         }
     }
@@ -244,7 +245,7 @@ class DiscoverViewModel @Inject constructor(
                 .onFailure { err ->
                     _state.update {
                         it.copy(
-                            applyResult = ApplyResult.Error(err.message ?: "Uygulanamadı"),
+                            applyResult = ApplyResult.Error(err.toUserSafeMessage("Uygulanamadı")),
                             applyingProgramIds = it.applyingProgramIds - sharedProgramId
                         )
                     }
@@ -298,7 +299,7 @@ class DiscoverViewModel @Inject constructor(
                         it.copy(
                             myShared         = snapshot,
                             myDeleteInFlight = it.myDeleteInFlight - sharedId,
-                            myActionMsg      = "Silme başarısız: ${err.message ?: "bilinmeyen hata"}"
+                            myActionMsg      = "Silme başarısız. Tekrar dene."
                         )
                     }
                 }

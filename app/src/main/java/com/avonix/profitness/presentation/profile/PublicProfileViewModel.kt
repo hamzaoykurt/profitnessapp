@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.social.SocialRepository
 import com.avonix.profitness.domain.social.PublicProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +36,7 @@ class PublicProfileViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepo.getPublicProfile(userId)
                 .onSuccess { p -> _state.update { it.copy(profile = p, isLoading = false) } }
-                .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.message ?: "Yüklenemedi") } }
+                .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.toUserSafeMessage("Yüklenemedi")) } }
         }
     }
 
@@ -53,7 +54,7 @@ class PublicProfileViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepo.toggleFollow(current.userId).onFailure { e ->
                 // rollback
-                _state.update { it.copy(profile = current, error = e.message ?: "Takip işlemi başarısız") }
+                _state.update { it.copy(profile = current, error = e.toUserSafeMessage("Takip işlemi başarısız")) }
             }
         }
     }

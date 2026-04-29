@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.challenges.ChallengePrefsRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.domain.challenges.ChallengeSummary
@@ -51,7 +52,8 @@ class DashboardViewModel @Inject constructor(
 
             val todayRes    = todayDef.await()
             val upcomingRes = upcomingDef.await()
-            val err = todayRes.exceptionOrNull()?.message ?: upcomingRes.exceptionOrNull()?.message
+            val err = todayRes.exceptionOrNull()?.toUserSafeMessage("Etkinlikler yüklenemedi.")
+                ?: upcomingRes.exceptionOrNull()?.toUserSafeMessage("Etkinlikler yüklenemedi.")
 
             val todayList = todayRes.getOrNull().orEmpty()
             val skipFlag = prefs.isAnySkippedForDate(today)

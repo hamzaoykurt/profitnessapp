@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
                     AppNavigation(
                         navController  = navController,
                         recoveryCode   = recoveryCode,
+                        clearRecoveryCode = { recoveryCode.value = null },
                         onThemeChange  = { newState ->
                             themeState = newState
                             lifecycleScope.launch { themeRepository.saveTheme(newState) }
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
         if (data.scheme == "profitness" && data.host == "reset-password") {
             val code = data.getQueryParameter("code") ?: return
             recoveryCode.value = code
+            intent.data = null
         }
     }
 }

@@ -8,7 +8,6 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val DASHBOARD = "dashboard"
 
-    /** Şifre sıfırlama ekranı — deep link'ten gelen PKCE code parametresi ile açılır. */
-    const val RESET_PASSWORD = "reset_password/{code}"
-    fun resetPassword(code: String) = "reset_password/$code"
+    /** Şifre sıfırlama ekranı — PKCE code route/back stack içine yazılmaz. */
+    const val RESET_PASSWORD = "reset_password"
 }

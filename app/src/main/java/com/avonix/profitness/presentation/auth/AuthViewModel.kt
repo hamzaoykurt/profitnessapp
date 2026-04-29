@@ -68,7 +68,7 @@ class AuthViewModel @Inject constructor(
 
     fun onLoginClick(email: String, password: String) {
         val trimmed = email.trim()
-        if (!validateEmailPassword(trimmed, password)) return
+        if (!validateLoginInput(trimmed, password)) return
 
         updateState { it.copy(isLoading = true, error = null, hint = null) }
         viewModelScope.launch {
@@ -89,7 +89,8 @@ class AuthViewModel @Inject constructor(
 
     fun onRegisterClick(email: String, password: String, confirmPassword: String) {
         val trimmed = email.trim()
-        if (!validateEmailPassword(trimmed, password)) return
+        if (!validateLoginInput(trimmed, password)) return
+        if (!validateNewPassword(password)) return
         if (password != confirmPassword) {
             updateState { it.copy(error = "Şifreler eşleşmiyor.") }
             return
@@ -199,7 +200,7 @@ class AuthViewModel @Inject constructor(
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
-    private fun validateEmailPassword(email: String, password: String): Boolean {
+    private fun validateLoginInput(email: String, password: String): Boolean {
         return when {
             email.isBlank() || password.isBlank() -> {
                 updateState { it.copy(error = "Lütfen tüm alanları doldurun.") }
@@ -209,8 +210,18 @@ class AuthViewModel @Inject constructor(
                 updateState { it.copy(error = "Geçerli bir email adresi girin.") }
                 false
             }
-            password.length < 6 -> {
-                updateState { it.copy(error = "Şifre en az 6 karakter olmalı.") }
+            else -> true
+        }
+    }
+
+    private fun validateNewPassword(password: String): Boolean {
+        return when {
+            password.length < 8 -> {
+                updateState { it.copy(error = "Şifre en az 8 karakter olmalı.") }
+                false
+            }
+            !password.any { it.isLetter() } || !password.any { it.isDigit() } -> {
+                updateState { it.copy(error = "Şifre en az bir harf ve bir rakam içermeli.") }
                 false
             }
             else -> true
@@ -238,7 +249,7 @@ class AuthViewModel @Inject constructor(
         message.contains("User already registered", ignoreCase = true) ->
             "Bu email adresi zaten kayıtlı."
         message.contains("Password should be at least", ignoreCase = true) ->
-            "Şifre en az 6 karakter olmalı."
+            "Şifre en az 8 karakter olmalı."
         message.contains("Unable to validate email", ignoreCase = true) ||
         message.contains("invalid format", ignoreCase = true) ->
             "Geçerli bir email adresi girin."

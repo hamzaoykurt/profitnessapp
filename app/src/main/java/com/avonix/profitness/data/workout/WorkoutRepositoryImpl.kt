@@ -138,7 +138,12 @@ class WorkoutRepositoryImpl @Inject constructor(
                 workoutDao.deleteLogById(log.id)
                 runCatching {
                     supabase.postgrest["workout_logs"]
-                        .delete { filter { eq("id", log.id) } }
+                        .delete {
+                            filter {
+                                eq("id", log.id)
+                                eq("user_id", userId)
+                            }
+                        }
                 }
             }
             Unit
@@ -149,11 +154,15 @@ class WorkoutRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val now = java.time.Instant.now().toString()
+                val localLog = workoutDao.getLogById(workoutLogId)
                 workoutDao.finishWorkout(workoutLogId, now)
                 runCatching {
                     supabase.postgrest["workout_logs"]
                         .update({ set("finished_at", "now()") }) {
-                            filter { eq("id", workoutLogId) }
+                            filter {
+                                eq("id", workoutLogId)
+                                localLog?.let { eq("user_id", it.userId) }
+                            }
                         }
                 }
                 Unit

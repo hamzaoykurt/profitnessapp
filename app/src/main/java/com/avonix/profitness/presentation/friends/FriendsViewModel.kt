@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.friends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.social.SocialRepository
 import com.avonix.profitness.domain.social.FollowListKind
 import com.avonix.profitness.domain.social.UserSummary
@@ -68,7 +69,7 @@ class FriendsViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isSearching = false, error = e.message ?: "Arama başarısız") }
+                    _state.update { it.copy(isSearching = false, error = e.toUserSafeMessage("Arama başarısız")) }
                 }
         }
     }
@@ -81,7 +82,7 @@ class FriendsViewModel @Inject constructor(
                     _state.update { it.copy(following = list, isFollowingLoading = false) }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(isFollowingLoading = false, error = e.message) }
+                    _state.update { it.copy(isFollowingLoading = false, error = e.toUserSafeMessage("Takip listesi yüklenemedi")) }
                 }
         }
     }
@@ -120,7 +121,7 @@ class FriendsViewModel @Inject constructor(
                     s.copy(
                         searchResults = revertSearch,
                         following     = revertFollowing,
-                        error         = e.message ?: "Takip işlemi başarısız"
+                        error         = e.toUserSafeMessage("Takip işlemi başarısız")
                     )
                 }
             }

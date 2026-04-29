@@ -108,6 +108,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_logs WHERE user_id = :userId AND date >= :weekStart")
     suspend fun getLogsForWeek(userId: String, weekStart: String): List<WorkoutLogEntity>
 
+    @Query("SELECT * FROM workout_logs WHERE id = :logId LIMIT 1")
+    suspend fun getLogById(logId: String): WorkoutLogEntity?
+
     // ── Write ────────────────────────────────────────────────────────────────
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

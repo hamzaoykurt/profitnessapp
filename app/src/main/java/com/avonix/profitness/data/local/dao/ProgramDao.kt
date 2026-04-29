@@ -74,6 +74,9 @@ interface ProgramDao {
     @Query("SELECT * FROM program_days WHERE program_id = :programId ORDER BY day_index")
     suspend fun getDaysForProgram(programId: String): List<ProgramDayEntity>
 
+    @Query("SELECT * FROM programs WHERE id = :programId LIMIT 1")
+    suspend fun getProgramById(programId: String): ProgramEntity?
+
     // ── Write ────────────────────────────────────────────────────────────────
 
     @Upsert

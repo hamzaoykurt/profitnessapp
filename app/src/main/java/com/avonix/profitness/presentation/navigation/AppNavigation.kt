@@ -6,12 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import com.avonix.profitness.core.theme.AppThemeState
 import com.avonix.profitness.presentation.auth.AuthEvent
 import com.avonix.profitness.presentation.auth.AuthScreen
@@ -47,16 +48,20 @@ private fun slidePopExit() = slideOutHorizontally(
 fun AppNavigation(
     navController: NavHostController,
     recoveryCode : StateFlow<String?>,
+    clearRecoveryCode: () -> Unit,
     onThemeChange: (AppThemeState) -> Unit
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val code by recoveryCode.collectAsState()
+    var activeRecoveryCode by remember { mutableStateOf<String?>(null) }
 
     // Deep link ile recovery code geldiğinde reset_password route'una yönlendir.
     // StateFlow olduğu için compose başlamadan önce set edilse bile kaçmaz.
     LaunchedEffect(code) {
         val c = code ?: return@LaunchedEffect
-        navController.navigate(Routes.resetPassword(c)) {
+        activeRecoveryCode = c
+        clearRecoveryCode()
+        navController.navigate(Routes.RESET_PASSWORD) {
             popUpTo(navController.graph.startDestinationId) { inclusive = true }
         }
     }
@@ -116,14 +121,11 @@ fun AppNavigation(
             )
         }
 
-        composable(
-            route     = Routes.RESET_PASSWORD,
-            arguments = listOf(navArgument("code") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val recoveryCodeArg = backStackEntry.arguments?.getString("code") ?: ""
+        composable(Routes.RESET_PASSWORD) {
             ResetPasswordScreen(
-                code   = recoveryCodeArg,
+                code   = activeRecoveryCode.orEmpty(),
                 onDone = {
+                    activeRecoveryCode = null
                     navController.navigate(Routes.AUTH) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }

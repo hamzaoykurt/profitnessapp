@@ -105,12 +105,23 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray): Result<String> =
+    override suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray, mimeType: String): Result<String> =
         withContext(Dispatchers.IO) {
             invalidateProfile()
             runCatching {
-                val path = "avatars/$userId.jpg"
+                val normalizedMime = mimeType.lowercase()
+                val contentType = if (normalizedMime == "image/jpg") "image/jpeg" else normalizedMime
+                val extension = when (contentType) {
+                    "image/jpeg" -> "jpg"
+                    "image/png" -> "png"
+                    "image/webp" -> "webp"
+                    else -> error("unsupported_image_type")
+                }
+                if (imageBytes.size > MAX_PROFILE_PHOTO_BYTES) error("image_too_large")
+
+                val path = "$userId/avatar.$extension"
                 // Var olan dosyayi sil (varsa)
+                runCatching { supabase.storage.from("profile-photos").delete("avatars/$userId.jpg") }
                 runCatching { supabase.storage.from("profile-photos").delete(path) }
                 // Yukle
                 supabase.storage.from("profile-photos").upload(path, imageBytes, upsert = true)
@@ -387,4 +398,8 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override fun invalidateStatsCache() { invalidateStats() }
+
+    private companion object {
+        const val MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
+    }
 }

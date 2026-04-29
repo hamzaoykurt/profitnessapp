@@ -1,5 +1,6 @@
 package com.avonix.profitness.core.analytics
 
+import com.avonix.profitness.BuildConfig
 import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,15 +14,15 @@ interface AnalyticsTracker {
     fun track(event: String, props: Map<String, Any?> = emptyMap())
 }
 
-/** Logcat-only impl — safe in production (TAG discoverable via `adb logcat -s AProf`). */
+/** Logcat-only impl for debug builds. Values are intentionally not logged. */
 @Singleton
 class NoOpAnalyticsTracker @Inject constructor() : AnalyticsTracker {
     override fun track(event: String, props: Map<String, Any?>) {
-        if (props.isEmpty()) {
-            Log.d(TAG, event)
-        } else {
-            Log.d(TAG, "$event ${props.entries.joinToString(" ") { "${it.key}=${it.value}" }}")
-        }
+        if (!BuildConfig.DEBUG) return
+        val suffix = props.keys.takeIf { it.isNotEmpty() }
+            ?.joinToString(prefix = " keys=[", postfix = "]")
+            .orEmpty()
+        Log.d(TAG, "$event$suffix")
     }
 
     private companion object { const val TAG = "AProf" }

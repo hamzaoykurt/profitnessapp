@@ -15,37 +15,46 @@ class ChatSessionManager(context: Context) {
         private const val MAX_SESSIONS = 50
     }
 
-    fun getAllSessions(): List<ChatSession> =
-        getIds().mapNotNull { getSession(it) }.sortedByDescending { it.updatedAt }
+    fun getAllSessions(userId: String): List<ChatSession> =
+        getIds(userId).mapNotNull { getSession(userId, it) }.sortedByDescending { it.updatedAt }
 
-    fun getSession(id: String): ChatSession? =
-        prefs.getString("$PREFIX$id", null)
+    fun getSession(userId: String, id: String): ChatSession? =
+        prefs.getString(sessionKey(userId, id), null)
             ?.let { runCatching { json.decodeFromString<ChatSession>(it) }.getOrNull() }
 
-    fun save(session: ChatSession) {
-        val ids = getIds().toMutableList()
+    fun save(userId: String, session: ChatSession) {
+        val ids = getIds(userId).toMutableList()
         if (session.id !in ids) {
             ids.add(0, session.id)
             if (ids.size > MAX_SESSIONS) {
-                prefs.edit().remove("$PREFIX${ids.removeLast()}").apply()
+                val removedId = ids.removeAt(ids.lastIndex)
+                prefs.edit().remove(sessionKey(userId, removedId)).apply()
             }
         }
         prefs.edit()
-            .putString(KEY_IDS, json.encodeToString(ids))
-            .putString("$PREFIX${session.id}", json.encodeToString(session))
+            .putString(idsKey(userId), json.encodeToString(ids))
+            .putString(sessionKey(userId, session.id), json.encodeToString(session))
             .apply()
     }
 
-    fun delete(id: String) {
-        val ids = getIds().toMutableList().also { it.remove(id) }
+    fun delete(userId: String, id: String) {
+        val ids = getIds(userId).toMutableList().also { it.remove(id) }
         prefs.edit()
-            .putString(KEY_IDS, json.encodeToString(ids))
-            .remove("$PREFIX$id")
+            .putString(idsKey(userId), json.encodeToString(ids))
+            .remove(sessionKey(userId, id))
             .apply()
     }
 
-    private fun getIds(): List<String> =
-        prefs.getString(KEY_IDS, null)
+    private fun getIds(userId: String): List<String> =
+        prefs.getString(idsKey(userId), null)
             ?.let { runCatching { json.decodeFromString<List<String>>(it) }.getOrNull() }
             ?: emptyList()
+
+    private fun idsKey(userId: String): String = "${KEY_IDS}_${safeUserId(userId)}"
+
+    private fun sessionKey(userId: String, id: String): String =
+        "$PREFIX${safeUserId(userId)}_$id"
+
+    private fun safeUserId(userId: String): String =
+        userId.replace(Regex("[^A-Za-z0-9._-]"), "_")
 }

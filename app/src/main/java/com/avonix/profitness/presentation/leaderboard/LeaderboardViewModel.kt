@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.leaderboard
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.leaderboard.LeaderboardRepository
 import com.avonix.profitness.data.social.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -88,12 +89,12 @@ class LeaderboardViewModel @Inject constructor(
             val friendAchRes = friendAchDeferred.await()
 
             val firstErr =
-                xpRes.exceptionOrNull()?.message
-                    ?: achRes.exceptionOrNull()?.message
-                    ?: myXpRes.exceptionOrNull()?.message
-                    ?: myAchRes.exceptionOrNull()?.message
-                    ?: friendXpRes.exceptionOrNull()?.message
-                    ?: friendAchRes.exceptionOrNull()?.message
+                xpRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
+                    ?: achRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
+                    ?: myXpRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
+                    ?: myAchRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
+                    ?: friendXpRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
+                    ?: friendAchRes.exceptionOrNull()?.toUserSafeMessage("Liderlik tablosu yüklenemedi.")
 
             val xpRows = xpRes.getOrNull().orEmpty().map { dto ->
                 LeaderboardRow(

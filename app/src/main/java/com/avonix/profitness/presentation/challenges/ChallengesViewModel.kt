@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.challenges
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.domain.challenges.ChallengeSummary
@@ -64,7 +65,8 @@ class ChallengesViewModel @Inject constructor(
             val browseRes = browseDef.await()
             val myRes     = myDef.await()
 
-            val err = browseRes.exceptionOrNull()?.message ?: myRes.exceptionOrNull()?.message
+            val err = browseRes.exceptionOrNull()?.toUserSafeMessage("Challenge listesi yüklenemedi.")
+                ?: myRes.exceptionOrNull()?.toUserSafeMessage("Challenge listesi yüklenemedi.")
 
             _state.update {
                 it.copy(

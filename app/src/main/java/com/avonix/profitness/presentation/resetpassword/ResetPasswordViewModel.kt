@@ -29,6 +29,10 @@ class ResetPasswordViewModel @Inject constructor(
      * PKCE code → Supabase session dönüşümünü yapar; başarısız olursa hata gösterir.
      */
     fun exchangeCode(code: String) {
+        if (code.isBlank()) {
+            updateState { it.copy(isExchanging = false, isLinkInvalid = true) }
+            return
+        }
         viewModelScope.launch {
             authRepository.exchangeRecoveryCode(code)
                 .onSuccess {
@@ -41,8 +45,12 @@ class ResetPasswordViewModel @Inject constructor(
     }
 
     fun submit(password: String, confirmPassword: String) {
-        if (password.length < 6) {
-            updateState { it.copy(error = "Şifre en az 6 karakter olmalı.") }
+        if (password.length < 8) {
+            updateState { it.copy(error = "Şifre en az 8 karakter olmalı.") }
+            return
+        }
+        if (!password.any { it.isLetter() } || !password.any { it.isDigit() }) {
+            updateState { it.copy(error = "Şifre en az bir harf ve bir rakam içermeli.") }
             return
         }
         if (password != confirmPassword) {
@@ -69,7 +77,7 @@ class ResetPasswordViewModel @Inject constructor(
         message == null -> "Şifre güncellenemedi."
         message.contains("network", ignoreCase = true) ||
         message.contains("timeout", ignoreCase = true) -> "İnternet bağlantısını kontrol edin."
-        message.contains("weak", ignoreCase = true)    -> "Şifre çok zayıf. En az 6 karakter kullanın."
+        message.contains("weak", ignoreCase = true)    -> "Şifre çok zayıf. En az 8 karakter kullanın."
         else -> "Şifre güncellenemedi. Tekrar dene."
     }
 }

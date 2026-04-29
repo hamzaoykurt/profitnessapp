@@ -50,6 +50,7 @@ interface ProgramRepository {
 
     /** Yeni bir egzersiz veritabanına ekler. */
     suspend fun addExercise(
+        userId: String,
         name: String,
         nameEn: String,
         targetMuscle: String,

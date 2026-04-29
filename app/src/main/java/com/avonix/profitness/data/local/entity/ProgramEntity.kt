@@ -2,9 +2,16 @@ package com.avonix.profitness.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "programs")
+@Entity(
+    tableName = "programs",
+    indices = [
+        Index(value = ["user_id", "is_active"]),
+        Index(value = ["user_id", "created_at"])
+    ]
+)
 data class ProgramEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "user_id") val userId: String,

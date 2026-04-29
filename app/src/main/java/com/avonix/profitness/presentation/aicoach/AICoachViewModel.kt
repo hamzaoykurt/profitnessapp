@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.aicoach
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.AICoachPrefsManager
 import com.avonix.profitness.data.ai.ChatSession
@@ -180,7 +181,11 @@ class AICoachViewModel @Inject constructor(
     // ── Sohbet Geçmişi ────────────────────────────────────────────────────────
 
     fun openHistory() {
-        val sessions = sessionManager.getAllSessions()
+        val userId = currentUserId() ?: run {
+            updateState { it.copy(sessions = emptyList(), showHistory = true) }
+            return
+        }
+        val sessions = sessionManager.getAllSessions(userId)
         updateState { it.copy(sessions = sessions, showHistory = true) }
     }
 
@@ -221,8 +226,9 @@ class AICoachViewModel @Inject constructor(
     }
 
     fun deleteSession(id: String) {
-        sessionManager.delete(id)
-        val sessions = sessionManager.getAllSessions()
+        val userId = currentUserId() ?: return
+        sessionManager.delete(userId, id)
+        val sessions = sessionManager.getAllSessions(userId)
         updateState { it.copy(sessions = sessions) }
         if (uiState.value.currentSessionId == id) {
             conversationHistory.clear()
@@ -388,8 +394,8 @@ $exerciseList
             if (createResult.isSuccess) {
                 updateState { it.copy(programStatus = ProgramStatus.Success(programName)) }
             } else {
-                val errMsg = createResult.exceptionOrNull()?.message ?: "Bilinmeyen hata"
-                updateState { it.copy(programStatus = ProgramStatus.Error("Kayıt hatası: $errMsg")) }
+                val errMsg = createResult.exceptionOrNull().toUserSafeMessage("Program kaydedilemedi.")
+                updateState { it.copy(programStatus = ProgramStatus.Error(errMsg)) }
             }
         }
     }
@@ -401,6 +407,7 @@ $exerciseList
     // ── Kaydetme ──────────────────────────────────────────────────────────────
 
     private fun persistCurrentSession() {
+        val userId = currentUserId() ?: return
         val state = uiState.value
         val msgs  = state.messages.filter { it.id != "welcome" && it.text.isNotBlank() }
         if (msgs.none { it.isUser }) return
@@ -417,8 +424,10 @@ $exerciseList
             createdAt = state.sessionCreatedAt,
             updatedAt = System.currentTimeMillis()
         )
-        sessionManager.save(session)
+        sessionManager.save(userId, session)
     }
+
+    private fun currentUserId(): String? = supabase.auth.currentUserOrNull()?.id
 
     // ── Sistem Promptu ────────────────────────────────────────────────────────
 

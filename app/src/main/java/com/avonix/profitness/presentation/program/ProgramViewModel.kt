@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.program
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.core.security.toUserSafeMessage
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.program.ManualDayInput
 import com.avonix.profitness.data.program.ManualExerciseInput
@@ -319,7 +320,7 @@ FORMAT:
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
-                updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
+                updateState { it.copy(aiLoading = false, aiError = result.exceptionOrNull().toUserSafeMessage("Bağlantı hatası. Tekrar dene.")) }
                 return@launch
             }
 
@@ -374,6 +375,7 @@ FORMAT:
 
                         if (exercise == null) {
                             exercise = programRepository.addExercise(
+                                userId       = uid,
                                 name         = exName,
                                 nameEn       = "",
                                 targetMuscle = targetMuscle,
@@ -410,7 +412,7 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(aiLoading = false, aiError = "Kayıt hatası: ${err.message}") }
+                    updateState { it.copy(aiLoading = false, aiError = err.toUserSafeMessage("Program kaydedilemedi.")) }
                 }
         }
     }
@@ -431,6 +433,10 @@ FORMAT:
     ) {
         if (userInstruction.isBlank()) {
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
+            return
+        }
+        val uid = currentUserId() ?: run {
+            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
             return
         }
         viewModelScope.launch {
@@ -485,7 +491,7 @@ FORMAT:
             val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
             val rawJson = result.getOrNull()
             if (rawJson == null) {
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
+                updateState { it.copy(aiEditLoading = false, aiEditError = result.exceptionOrNull().toUserSafeMessage("Bağlantı hatası. Tekrar dene.")) }
                 return@launch
             }
 
@@ -538,6 +544,7 @@ FORMAT:
                         var exercise = findExerciseByName(exName, editMap, editMapEn)
                         if (exercise == null) {
                             exercise = programRepository.addExercise(
+                                userId       = uid,
                                 name         = exName,
                                 nameEn       = "",
                                 targetMuscle = targetMuscle,
@@ -600,7 +607,7 @@ FORMAT:
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    updateState { it.copy(isLoading = false, error = err.toUserSafeMessage("Program oluşturulamadı.")) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program oluşturulamadı."))
                 }
         }
@@ -638,7 +645,7 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    updateState { it.copy(isLoading = false, error = err.toUserSafeMessage("Program kaydedilemedi.")) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
                 }
         }
@@ -693,8 +700,9 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: ${err.message ?: "Program kaydedilemedi."}"))
+                    val safeMessage = err.toUserSafeMessage("Program kaydedilemedi.")
+                    updateState { it.copy(isLoading = false, error = safeMessage) }
+                    sendEvent(ProgramEvent.ShowSnackbar(safeMessage))
                 }
         }
     }
@@ -721,7 +729,7 @@ FORMAT:
                     }
                     onFailure?.invoke()
                     loadUserPrograms()
-                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
+                    sendEvent(ProgramEvent.ShowSnackbar(e.toUserSafeMessage("Silme başarısız. Tekrar dene.")))
                 }
         }
     }

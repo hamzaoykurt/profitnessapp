@@ -49,7 +49,7 @@ class GeminiRepositoryImpl(
             }.body()
 
             response.error?.let { err ->
-                error("Gemini API hatası [${err.code}]: ${err.message}")
+                error("Gemini API hatası [${err.code}]")
             }
 
             response.candidates
@@ -88,7 +88,7 @@ class GeminiRepositoryImpl(
             }.body()
 
             response.error?.let { err ->
-                error("Gemini API hatası [${err.code}]: ${err.message}")
+                error("Gemini API hatası [${err.code}]")
             }
 
             response.candidates

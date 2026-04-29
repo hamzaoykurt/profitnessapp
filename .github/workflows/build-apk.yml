@@ -49,21 +49,28 @@ jobs:
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"              >> local.properties
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"    >> local.properties
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"          >> local.properties
-          echo "KEYSTORE_BASE64=${{ secrets.DEBUG_KEYSTORE_BASE64 }}"  >> local.properties
-          echo "KEYSTORE_PASSWORD=android"                              >> local.properties
-          echo "KEY_ALIAS=androiddebugkey"                              >> local.properties
-          echo "KEY_PASSWORD=android"                                   >> local.properties
+          echo "KEYSTORE_BASE64=${{ secrets.RELEASE_KEYSTORE_BASE64 }}" >> local.properties
+          echo "KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> local.properties
+          echo "KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}"             >> local.properties
+          echo "KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}"       >> local.properties
+
+      - name: Validate release signing secrets
+        run: |
+          test -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}"
+          test -n "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}"
+          test -n "${{ secrets.RELEASE_KEY_ALIAS }}"
+          test -n "${{ secrets.RELEASE_KEY_PASSWORD }}"
 
       - name: Grant Gradlew Permission
         run: chmod +x gradlew
 
-      - name: Build Debug Artifact
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
+      - name: Build Release Artifact
+        run: ./gradlew assembleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/debug/app-debug.apk \
-             "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+          mv app/build/outputs/apk/release/app-release.apk \
+             "app/build/outputs/apk/release/${{ steps.version.outputs.apk_name }}"
 
       - name: Create Versioned Release
         uses: softprops/action-gh-release@v2
@@ -77,6 +84,6 @@ jobs:
             - **Timestamp:** ${{ github.event.head_commit.timestamp }}
 
             ${{ github.event.head_commit.message }}
-          files: "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+          files: "app/build/outputs/apk/release/${{ steps.version.outputs.apk_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

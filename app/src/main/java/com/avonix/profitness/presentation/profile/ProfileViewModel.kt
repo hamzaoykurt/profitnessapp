@@ -266,11 +266,11 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun uploadPhoto(imageBytes: ByteArray) {
+    fun uploadPhoto(imageBytes: ByteArray, mimeType: String) {
         viewModelScope.launch {
             val userId = supabase.auth.currentUserOrNull()?.id ?: return@launch
             updateState { it.copy(isSaving = true) }
-            val result = profileRepository.uploadProfilePhoto(userId, imageBytes)
+            val result = profileRepository.uploadProfilePhoto(userId, imageBytes, mimeType)
             if (result.isSuccess) {
                 val url = result.getOrThrow()
                 updateState { it.copy(avatar = url, isSaving = false) }

@@ -53,7 +53,7 @@ interface ProfileRepository {
     suspend fun unlockAchievement(userId: String, achievementKey: String): Result<Unit>
 
     /** Profil fotografi yukler ve URL'ini profiles.avatar_url'e kaydeder */
-    suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray): Result<String>
+    suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray, mimeType: String): Result<String>
 
     /** Tüm tanımlı başarımları achievements tablosundan getirir. */
     suspend fun getAllAchievements(): Result<List<AchievementDto>>
