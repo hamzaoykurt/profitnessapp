@@ -25,6 +25,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
+private const val MAX_AI_INLINE_BASE64_CHARS = 1_600_000
+private const val MAX_AI_TEXT_FILE_CHARS = 30_000
+
 data class AiEditExerciseResult(
     val exerciseId  : String,
     val name        : String,
@@ -249,6 +252,10 @@ class ProgramViewModel @Inject constructor(
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin veya dosya yükleyin."))
             return
         }
+        if (imageBase64 != null && imageBase64.length > MAX_AI_INLINE_BASE64_CHARS) {
+            sendEvent(ProgramEvent.ShowSnackbar("Dosya çok büyük. Lütfen daha küçük bir görsel veya PDF yükleyin."))
+            return
+        }
 
         viewModelScope.launch {
             if (!planRepository.consumeCredit()) {
@@ -271,6 +278,11 @@ class ProgramViewModel @Inject constructor(
                 textFileContent = try {
                     String(android.util.Base64.decode(imageBase64, android.util.Base64.NO_WRAP), Charsets.UTF_8)
                 } catch (_: Exception) { null }
+                if ((textFileContent?.length ?: 0) > MAX_AI_TEXT_FILE_CHARS) {
+                    updateState { it.copy(aiLoading = false, aiError = "Metin dosyası çok büyük. Lütfen daha kısa bir dosya yükleyin.") }
+                    planRepository.refundCredit()
+                    return@launch
+                }
                 // Text dosyaları inline_data olarak gönderilemez, prompt'a eklenecek
                 effectiveBase64 = null
                 effectiveMime = null

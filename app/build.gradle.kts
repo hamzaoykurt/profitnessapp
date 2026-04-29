@@ -18,6 +18,15 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
 fun secureProperty(name: String, default: String = ""): String =
     localProperties.getProperty(name) ?: System.getenv(name) ?: default
 
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val supabaseUrl: String = secureProperty("SUPABASE_URL")
+val supabasePublishableKey: String = secureProperty(
+    "SUPABASE_PUBLISHABLE_KEY",
+    secureProperty("SUPABASE_ANON_KEY")
+)
+
 val releaseKsBase64: String = secureProperty("KEYSTORE_BASE64")
 val releaseKsPassword: String = secureProperty("KEYSTORE_PASSWORD")
 val releaseKsAlias: String = secureProperty("KEY_ALIAS")
@@ -46,9 +55,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
-        buildConfigField("String", "GEMINI_API_KEY",    "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", buildConfigString(supabaseUrl))
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(supabasePublishableKey))
     }
 
     signingConfigs {

@@ -119,7 +119,7 @@ abstract class AppModule {
         @Provides @Singleton
         fun provideSupabaseClient(): SupabaseClient = createSupabaseClient(
             supabaseUrl = BuildConfig.SUPABASE_URL,
-            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+            supabaseKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
         ) {
             install(Auth) { flowType = FlowType.PKCE }
             install(Postgrest)
@@ -129,7 +129,7 @@ abstract class AppModule {
         // ── Gemini ───────────────────────────────────────────────────────────
 
         @Provides @Singleton
-        fun provideGeminiRepository(): GeminiRepository {
+        fun provideGeminiRepository(supabase: SupabaseClient): GeminiRepository {
             val client = HttpClient(Android) {
                 install(HttpTimeout) {
                     requestTimeoutMillis = 30_000
@@ -140,7 +140,12 @@ abstract class AppModule {
                     json(Json { ignoreUnknownKeys = true })
                 }
             }
-            return GeminiRepositoryImpl(client, BuildConfig.GEMINI_API_KEY)
+            return GeminiRepositoryImpl(
+                httpClient = client,
+                supabase = supabase,
+                supabaseUrl = BuildConfig.SUPABASE_URL,
+                supabasePublishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
+            )
         }
     }
 }

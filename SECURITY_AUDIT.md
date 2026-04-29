@@ -600,3 +600,23 @@ if (ids.size > MAX_SESSIONS) {
 * `./gradlew.bat :app:assembleDebug --no-daemon` passed.
 * Supabase security advisors now report only `auth_leaked_password_protection` as remaining.
 * Read-only SQL checks confirmed: public exposed `SECURITY DEFINER` executable count is 0 for `anon` and 0 for `authenticated`; plaintext challenge password count is 0; profile-photo owner policies are present; old open exercise insert policy is removed.
+
+---
+
+## Remediation Addendum - AI Key Isolation
+
+**Applied fixes**
+
+* Gemini direct-from-mobile calls were removed from the Android client path.
+* Android now calls the JWT-protected Supabase Edge Function `gemini-generate`.
+* `GEMINI_API_KEY` was removed from Android `BuildConfig` and GitHub Actions APK secret injection.
+* The Edge Function validates the Supabase session, enforces request/media size limits, clamps generation config, allowlists inline media MIME types, and returns sanitized provider errors.
+* A server-side `public.ai_rate_limits` table and service-role-only `public.check_ai_rate_limit(...)` RPC were added for per-user AI request throttling.
+* Supabase local function env files are ignored by Git.
+
+**Required operations outside code**
+
+* Rotate the Gemini API key and store the new value only as a Supabase Edge Function secret named `GEMINI_API_KEY`.
+* Rotate/revoke the Supabase MCP access token and re-authenticate MCP/Codex if needed.
+* Prefer a Supabase publishable key. Store it as `SUPABASE_PUBLISHABLE_KEY` in `local.properties` and GitHub Actions secrets. Legacy `SUPABASE_ANON_KEY` remains accepted as a compatibility fallback.
+* `SUPABASE_URL` does not need to change unless the app is moved to a different Supabase project.

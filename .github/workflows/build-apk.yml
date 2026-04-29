@@ -46,13 +46,24 @@ jobs:
 
       - name: Inject credentials into local.properties
         run: |
+          SUPABASE_KEY="${{ secrets.SUPABASE_PUBLISHABLE_KEY }}"
+          if [ -z "$SUPABASE_KEY" ]; then
+            SUPABASE_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+          fi
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"              >> local.properties
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"    >> local.properties
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"          >> local.properties
+          echo "SUPABASE_PUBLISHABLE_KEY=$SUPABASE_KEY"                >> local.properties
           echo "KEYSTORE_BASE64=${{ secrets.RELEASE_KEYSTORE_BASE64 }}" >> local.properties
           echo "KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> local.properties
           echo "KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}"             >> local.properties
           echo "KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}"       >> local.properties
+
+      - name: Validate Supabase client config
+        run: |
+          test -n "${{ secrets.SUPABASE_URL }}"
+          if [ -z "${{ secrets.SUPABASE_PUBLISHABLE_KEY }}" ] && [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "Set SUPABASE_PUBLISHABLE_KEY or legacy SUPABASE_ANON_KEY."
+            exit 1
+          fi
 
       - name: Validate release signing secrets
         run: |
