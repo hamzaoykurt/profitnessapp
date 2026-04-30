@@ -8,34 +8,72 @@ enum class UserPlan(val displayName: String) {
     ELITE("Elite")
 }
 
+data class CheckoutResult(
+    val orderId: String?,
+    val status: String,
+    val checkoutUrl: String?,
+    val message: String,
+    val sandboxAvailable: Boolean = false
+)
+
+data class BillingProduct(
+    val sku: String,
+    val kind: String,
+    val plan: UserPlan?,
+    val creditAmount: Int,
+    val title: String,
+    val priceLabel: String,
+    val badge: String? = null,
+    val billingPeriod: String? = null
+)
+
+data class BillingUsage(
+    val tool: String,
+    val status: String,
+    val source: String,
+    val creditCost: Int,
+    val createdAt: String
+)
+
+data class BillingSnapshot(
+    val plan: UserPlan = UserPlan.FREE,
+    val status: String = "free",
+    val credits: Int = UserPlanRepository.FREE_STARTER_CREDITS,
+    val products: List<BillingProduct> = emptyList(),
+    val recentUsage: List<BillingUsage> = emptyList()
+)
+
 interface UserPlanRepository {
+    val billingSnapshotFlow: Flow<BillingSnapshot>
+
     /** Aktif plan değişikliklerini reaktif olarak yayar. */
     val planFlow: Flow<UserPlan>
 
     /** Kalan AI kredi değişikliklerini reaktif olarak yayar. */
     val creditsFlow: Flow<Int>
 
-    /** Planı yükseltir; Pro/Elite → krediyi sıfırlar (artık sınırsız). */
-    suspend fun upgradePlan(plan: UserPlan)
+    /** Server'dan aktif plan/kredi özetini yeniler. */
+    suspend fun refresh()
 
-    /** Ücretli planı iptal edip FREE'ye geçer; başlangıç kredisini geri yükler. */
+    /** Plan checkout kaydı oluşturur; ödeme doğrulanmadan planı hesaba yazmaz. */
+    suspend fun upgradePlan(plan: UserPlan, yearly: Boolean = false): CheckoutResult
+
+    /** Ödeme sağlayıcısı bağlanana kadar client tarafında iptal mutasyonu yapılmaz. */
     suspend fun downgradeFree()
 
-    /** Satın alınan krediyi mevcut bakiyeye ekler. */
-    suspend fun addCredits(amount: Int)
+    /** Kredi checkout kaydı oluşturur; ödeme doğrulanmadan kredi eklemez. */
+    suspend fun addCredits(amount: Int): CheckoutResult
+
+    /** Test ortamında pending siparişi sandbox ödeme gibi tamamlar. */
+    suspend fun completeSandboxCheckout(orderId: String): CheckoutResult
 
     /**
-     * Bir AI işlemi için kredi harcar.
-     * - Pro/Elite plan → her zaman `true` döner (sınırsız).
-     * - FREE plan + yeterli kredi → `true`, krediyi azaltır.
-     * - FREE plan + kredi = 0 → `false` döner (UI paywall göstermeli).
+     * Eski UI kapıları için sadece güvenli ön kontrol.
+     * Gerçek harcama ve limit kontrolü Supabase Edge Function içinde yapılır.
      */
     suspend fun consumeCredit(): Boolean
 
-    /**
-     * AI çağrısı başarısız olduğunda tüketilen krediyi iade eder.
-     * Pro/Elite plan → no-op (zaten sonsuz).
-     */
+    /** Gerçek iade server tarafında yapılır; client no-op. */
     suspend fun refundCredit()
 
     companion object {

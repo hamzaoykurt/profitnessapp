@@ -128,13 +128,18 @@ abstract class AppModule {
         // ── Gemini ───────────────────────────────────────────────────────────
 
         @Provides @Singleton
-        fun provideGeminiRepository(): GeminiRepository {
+        fun provideGeminiRepository(supabase: SupabaseClient): GeminiRepository {
             val client = HttpClient(Android) {
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true })
                 }
             }
-            return GeminiRepositoryImpl(client, BuildConfig.GEMINI_API_KEY)
+            return GeminiRepositoryImpl(
+                httpClient = client,
+                supabase = supabase,
+                supabaseUrl = BuildConfig.SUPABASE_URL,
+                supabaseAnonKey = BuildConfig.SUPABASE_ANON_KEY
+            )
         }
     }
 }

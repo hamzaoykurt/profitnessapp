@@ -2,6 +2,8 @@ package com.avonix.profitness.presentation.weight
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.entity.WeightLogEntity
 import com.avonix.profitness.data.weight.WeightRepository
@@ -277,8 +279,16 @@ class WeightTrackingViewModel @Inject constructor(
             val result = geminiRepository.chat(
                 history      = emptyList(),
                 userMessage  = userMessage,
-                systemPrompt = systemPrompt
+                systemPrompt = systemPrompt,
+                tool         = AiToolType.WEIGHT_TREND_ANALYSIS
             )
+
+            if (result.exceptionOrNull() is AiAccessException) {
+                updateState { it.copy(isAiLoading = false) }
+                sendEvent(WeightTrackingEvent.ShowPaywall)
+                return@launch
+            }
+            planRepository.refresh()
 
             updateState { st ->
                 st.copy(

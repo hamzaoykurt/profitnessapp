@@ -29,6 +29,7 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.data.store.BillingProduct
 import com.avonix.profitness.data.store.UserPlan
 
 // ── Domain ────────────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ private val ALL_FEATURES = listOf(
     MasterFeature(Icons.Rounded.BarChart,          "Temel analitik",                     UserPlan.FREE),
     MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",           UserPlan.FREE),
     MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Coach (kredi tabanlı)",           UserPlan.FREE),
-    MasterFeature(Icons.Rounded.AllInclusive,      "Sınırsız AI Coach sohbeti",          UserPlan.PRO),
+    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli AI Coach sohbeti",    UserPlan.PRO),
     MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program oluşturma",           UserPlan.PRO),
     MasterFeature(Icons.Rounded.TrendingUp,        "Gelişmiş performans analizi",        UserPlan.PRO),
     MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri (AI)",  UserPlan.PRO),
@@ -121,6 +122,43 @@ private val CREDIT_PACKAGES = listOf(
     CreditPackage(200, "₺299", "₺1,5/kredi", null,         CardCyan)
 )
 
+private fun cleanPrice(label: String): String = label.substringBefore("/").trim()
+
+private fun planTiersFrom(products: List<BillingProduct>): List<PlanTier> {
+    if (products.isEmpty()) return PLANS
+    fun product(plan: UserPlan, period: String) =
+        products.firstOrNull { it.kind == "subscription" && it.plan == plan && it.billingPeriod == period }
+
+    return PLANS.map { tier ->
+        when (tier.plan) {
+            UserPlan.FREE -> tier
+            else -> {
+                val monthly = product(tier.plan, "month")
+                val yearly = product(tier.plan, "year")
+                tier.copy(
+                    monthlyPrice = monthly?.priceLabel?.let(::cleanPrice) ?: tier.monthlyPrice,
+                    yearlyPrice = yearly?.priceLabel?.let(::cleanPrice) ?: tier.yearlyPrice
+                )
+            }
+        }
+    }
+}
+
+private fun creditPackagesFrom(products: List<BillingProduct>): List<CreditPackage> {
+    val creditProducts = products.filter { it.kind == "credit_pack" && it.creditAmount > 0 }
+    if (creditProducts.isEmpty()) return CREDIT_PACKAGES
+    val accents = listOf(Lime, Forge500, CardCyan, CardPurple)
+    return creditProducts.mapIndexed { index, product ->
+        CreditPackage(
+            credits = product.creditAmount,
+            price = product.priceLabel,
+            perCredit = "Güvenli checkout",
+            badge = product.badge,
+            accentColor = accents[index % accents.size]
+        )
+    }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -149,7 +187,9 @@ fun StoreScreen(
         if (state.plan != UserPlan.FREE) selectedPlan = state.plan
     }
 
-    val selectedTier = PLANS.first { it.plan == selectedPlan }
+    val plans = remember(state.products) { planTiersFrom(state.products) }
+    val creditPackages = remember(state.products) { creditPackagesFrom(state.products) }
+    val selectedTier = plans.first { it.plan == selectedPlan }
     val isCurrent    = state.plan == selectedPlan
     val isFree       = selectedPlan == UserPlan.FREE
     val hasPaidPlan  = state.plan != UserPlan.FREE
@@ -197,6 +237,7 @@ fun StoreScreen(
                             selectedPlan = it
                         },
                         onYearlyChange  = viewModel::setYearly,
+                        plans           = plans,
                         onPurchase      = { viewModel.purchasePlan(selectedPlan) },
                         onCancelPlan    = { showCancelDialog = true }
                     )
@@ -204,10 +245,25 @@ fun StoreScreen(
                         theme      = theme,
                         haptic     = haptic,
                         state      = state,
+                        packages   = creditPackages,
                         onPurchase = { viewModel.purchaseCredits(it) }
                     )
                 }
             }
+        }
+
+        if (state.pendingOrderId != null) {
+            PendingOrderPanel(
+                state = state,
+                theme = theme,
+                onSandboxComplete = viewModel::completeSandboxCheckout,
+                onDismiss = viewModel::dismissPendingOrder,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .zIndex(15f)
+            )
         }
 
         // Toast
@@ -254,6 +310,82 @@ fun StoreScreen(
                     showCancelDialog = false
                     viewModel.cancelPlan()
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingOrderPanel(
+    state: StoreState,
+    theme: AppThemeState,
+    onSandboxComplete: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(16.dp, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg1)
+            .border(1.dp, Lime.copy(0.28f), RoundedCornerShape(18.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Lime.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.ReceiptLong, null, tint = Lime, modifier = Modifier.size(21.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Test siparişi hazır", color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    state.pendingOrderMessage ?: "Sipariş ödeme sağlayıcısı bekliyor.",
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+                Icon(Icons.Rounded.Close, null, tint = theme.text2, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        if (state.sandboxAvailable) {
+            Spacer(Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Lime.copy(0.14f))
+                    .border(1.dp, Lime.copy(0.35f), RoundedCornerShape(14.dp))
+                    .clickable(enabled = !state.isLoading) { onSandboxComplete() }
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Lime, strokeWidth = 2.dp)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Rounded.Science, null, tint = Lime, modifier = Modifier.size(17.dp))
+                        Text("Sandbox ödeme olarak tamamla", color = Lime, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        } else {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Sandbox kapalı. Supabase ortamında BILLING_SANDBOX_ENABLED=true olduğunda test tamamlama açılır.",
+                color = theme.text2.copy(0.65f),
+                fontSize = 10.sp,
+                lineHeight = 14.sp
             )
         }
     }
@@ -384,6 +516,7 @@ private fun SubscriptionTab(
     hasPaidPlan   : Boolean,
     onSelectPlan  : (UserPlan) -> Unit,
     onYearlyChange: (Boolean) -> Unit,
+    plans         : List<PlanTier>,
     onPurchase    : () -> Unit,
     onCancelPlan  : () -> Unit
 ) {
@@ -412,7 +545,7 @@ private fun SubscriptionTab(
 
             item {
                 PlanSelector(
-                    plans        = PLANS,
+                    plans        = plans,
                     selectedPlan = selectedPlan,
                     currentPlan  = state.plan,
                     isYearly     = state.isYearly,
@@ -462,7 +595,7 @@ private fun SubscriptionTab(
 
             item {
                 Text(
-                    "Abonelikler otomatik yenilenir. İstediğin zaman iptal edebilirsin.\nFiyatlar KDV dahildir.",
+                    "Ödeme sağlayıcısı bağlanana kadar satın alma talepleri hesap bakiyeni değiştirmez.\nAbonelikler otomatik yenilenir; fiyatlar KDV dahildir.",
                     modifier   = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
@@ -517,6 +650,7 @@ private fun CreditsTab(
     theme     : AppThemeState,
     haptic    : androidx.compose.ui.hapticfeedback.HapticFeedback,
     state     : StoreState,
+    packages  : List<CreditPackage>,
     onPurchase: (Int) -> Unit
 ) {
     LazyColumn(
@@ -545,7 +679,7 @@ private fun CreditsTab(
                     color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    "Her AI işlemi 1 kredi harcar. FREE planında geçerlidir.",
+                    "Oracle, program üretimi ve analizler ayrı limitlerle takip edilir. Satın alınan krediler abonelikten bağımsız saklanır.",
                     color     = theme.text2,
                     fontSize  = 12.sp,
                     textAlign = TextAlign.Center,
@@ -572,8 +706,8 @@ private fun CreditsTab(
             }
         }
 
-        items(CREDIT_PACKAGES.size) { idx ->
-            val pkg = CREDIT_PACKAGES[idx]
+        items(packages.size) { idx ->
+            val pkg = packages[idx]
             CreditCard(
                 pkg       = pkg,
                 theme     = theme,
@@ -586,8 +720,18 @@ private fun CreditsTab(
         }
 
         item {
+            BillingSafetyCard(theme = theme)
+        }
+
+        if (state.recentUsage.isNotEmpty()) {
+            item {
+                RecentUsageCard(state = state, theme = theme)
+            }
+        }
+
+        item {
             Text(
-                "Krediler abonelik gerektirmez.\nÖdeme bilgileri şifreli olarak saklanır.",
+                "Ödeme sağlayıcısı bağlanana kadar bu ekran sadece güvenli checkout kaydı oluşturur; hesaba otomatik kredi veya abonelik eklemez.",
                 modifier  = Modifier.fillMaxWidth(),
                 color     = theme.text2.copy(0.4f),
                 fontSize  = 10.sp,
@@ -596,6 +740,89 @@ private fun CreditsTab(
             )
         }
     }
+}
+
+@Composable
+private fun BillingSafetyCard(theme: AppThemeState) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardCyan.copy(0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.VerifiedUser, null, tint = CardCyan, modifier = Modifier.size(21.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text("Güvenli satın alma modu", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "Kredi bakiyesi ve abonelikler sadece doğrulanmış ödeme webhook'u ile değişir.",
+                color = theme.text2,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentUsageCard(state: StoreState, theme: AppThemeState) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Text("Son AI kullanımları", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(10.dp))
+        state.recentUsage.take(5).forEach { usage ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(toolLabel(usage.tool), color = theme.text1, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text(
+                    if (usage.creditCost > 0) "-${usage.creditCost} kredi" else usageLabel(usage.source),
+                    color = if (usage.creditCost > 0) Lime else theme.text2,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun toolLabel(tool: String): String = when (tool) {
+    "ORACLE_CHAT" -> "Oracle sohbet"
+    "PROGRAM_GENERATE_TEXT" -> "AI program"
+    "PROGRAM_GENERATE_MEDIA" -> "Dosyadan program"
+    "PROGRAM_EDIT" -> "Program düzenleme"
+    "WEIGHT_TREND_ANALYSIS" -> "Kilo analizi"
+    "EXERCISE_PROGRESS_ANALYSIS" -> "Egzersiz analizi"
+    "WORKOUT_PROGRESS_ANALYSIS" -> "Antrenman analizi"
+    "ORACLE_TO_PROGRAM" -> "Oracle program ekleme"
+    else -> tool.lowercase().replace('_', ' ')
+}
+
+private fun usageLabel(source: String): String = when (source) {
+    "free_limit" -> "ücretsiz hak"
+    "plan_limit" -> "plan hakkı"
+    else -> source
 }
 
 // ── Billing Toggle ────────────────────────────────────────────────────────────

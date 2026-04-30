@@ -3,6 +3,8 @@ package com.avonix.profitness.presentation.workout
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.notification.WorkoutNotificationManager
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
@@ -504,8 +506,19 @@ class WorkoutViewModel @Inject constructor(
                 Gelişim trendi nasıl? Bir sonraki antrenman için somut öneri ver (kg bazında).
             """.trimIndent()
 
-            val result = geminiRepository.chat(emptyList(), userMessage, systemPrompt)
+            val result = geminiRepository.chat(
+                emptyList(),
+                userMessage,
+                systemPrompt,
+                AiToolType.WORKOUT_PROGRESS_ANALYSIS
+            )
+            if (result.exceptionOrNull() is AiAccessException) {
+                updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
+                sendEvent(WorkoutEvent.ShowPaywall)
+                return@launch
+            }
             result.onSuccess { response ->
+                viewModelScope.launch { planRepository.refresh() }
                 updateState { state ->
                     state.copy(
                         exerciseAiInsight = state.exerciseAiInsight + (exerciseId to response),

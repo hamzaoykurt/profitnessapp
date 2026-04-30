@@ -39,6 +39,8 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
@@ -129,7 +131,18 @@ class ExerciseProgressionViewModel @Inject constructor(
             }
             val systemPrompt = "Sen bir fitness koçusun. Kısa, motive edici ve net Türkçe tavsiye ver."
             val userMessage = "$exerciseName egzersizi için ağırlık geçmişim:\n$summary\nGelişimimi değerlendir, öneri ver. 3-4 cümle yeterli."
-            val result = geminiRepository.chat(emptyList(), userMessage, systemPrompt)
+            val result = geminiRepository.chat(
+                emptyList(),
+                userMessage,
+                systemPrompt,
+                AiToolType.EXERCISE_PROGRESS_ANALYSIS
+            )
+            if (result.exceptionOrNull() is AiAccessException) {
+                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
+                sendEvent(ExerciseProgressionEvent.ShowPaywall)
+                return@launch
+            }
+            planRepository.refresh()
             val insight = result.getOrElse { planRepository.refundCredit(); "Analiz yapılamadı." }
             updateState {
                 it.copy(
@@ -243,7 +256,7 @@ fun ExerciseProgressionScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = "1 kredi / egzersiz analizi",
+                            costLabel = "3 kredi / egzersiz analizi",
                             theme     = theme
                         )
                     }
