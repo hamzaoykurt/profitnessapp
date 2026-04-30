@@ -431,7 +431,7 @@ $exerciseList
             createdAt = state.sessionCreatedAt,
             updatedAt = System.currentTimeMillis()
         )
-        sessionManager.save(session)
+        runCatching { sessionManager.save(session) }
     }
 
     // ── Sistem Promptu ────────────────────────────────────────────────────────

@@ -36,6 +36,7 @@ Deno.serve(async (req: Request) => {
       credits: account?.balance ?? 0,
       products: products ?? [],
       recentUsage: recentUsage ?? [],
+      sandboxAvailable: Deno.env.get("BILLING_SANDBOX_ENABLED") === "true",
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "unknown_error";

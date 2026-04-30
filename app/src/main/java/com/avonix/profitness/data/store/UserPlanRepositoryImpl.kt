@@ -155,6 +155,7 @@ class UserPlanRepositoryImpl @Inject constructor(
         val plan: String,
         val status: String,
         val credits: Int,
+        val sandboxAvailable: Boolean = false,
         val products: List<BillingProductDto> = emptyList(),
         val recentUsage: List<BillingUsageDto> = emptyList()
     ) {
@@ -162,6 +163,7 @@ class UserPlanRepositoryImpl @Inject constructor(
             plan = runCatching { UserPlan.valueOf(plan) }.getOrDefault(UserPlan.FREE),
             status = status,
             credits = credits,
+            sandboxAvailable = sandboxAvailable,
             products = products.map { it.toDomain() },
             recentUsage = recentUsage.map { it.toDomain() }
         )

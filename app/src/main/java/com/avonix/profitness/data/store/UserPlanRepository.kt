@@ -39,6 +39,7 @@ data class BillingSnapshot(
     val plan: UserPlan = UserPlan.FREE,
     val status: String = "free",
     val credits: Int = UserPlanRepository.FREE_STARTER_CREDITS,
+    val sandboxAvailable: Boolean = false,
     val products: List<BillingProduct> = emptyList(),
     val recentUsage: List<BillingUsage> = emptyList()
 )
