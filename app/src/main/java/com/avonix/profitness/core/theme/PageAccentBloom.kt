@@ -1,7 +1,8 @@
 package com.avonix.profitness.core.theme
 
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -9,6 +10,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 /**
  * Sağ üst köşeden tema vurgu rengiyle ışıma efekti.
@@ -29,7 +31,8 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
 
     Spacer(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .height(360.dp)
             .drawWithCache {
                 // Sağ üst köşeden yayılan radyal bloom — büyük yarıçap
                 val radial = Brush.radialGradient(
@@ -40,7 +43,7 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
                         1.0f  to Color.Transparent
                     ),
                     center = Offset(size.width, 0f),
-                    radius = size.width * 2.2f
+                    radius = size.width * 1.15f
                 )
                 // Diyagonal sweep — sağ üstten sol alta rengi uzatır
                 val sweep = Brush.linearGradient(
