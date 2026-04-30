@@ -89,7 +89,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     LaunchedEffect(selectedTab) {
         if (isTabSwitching) {
-            delay(140)
+            delay(220)
             isTabSwitching = false
         }
     }
@@ -152,8 +152,30 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
-        Box(modifier = swipeModifier.fillMaxSize()) {
-            when (selectedTab) {
+        AnimatedContent(
+            targetState  = selectedTab,
+            transitionSpec = {
+                val fromIdx = ALL_TABS.indexOf(initialState)
+                val toIdx   = ALL_TABS.indexOf(targetState)
+                // Keep tab transitions light: full-width slides make two heavy screens draw at once.
+                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+                val enterSlide = tween<IntOffset>(140, easing = easeOut)
+                val enterFade  = tween<Float>(120, easing = easeOut)
+                val exitSlide  = tween<IntOffset>(90, easing = easeIn)
+                val exitFade   = tween<Float>(70)
+                if (toIdx > fromIdx) {
+                    (slideInHorizontally(enterSlide) { it / 10 } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { -it / 14 } + fadeOut(exitFade))
+                } else {
+                    (slideInHorizontally(enterSlide) { -it / 10 } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { it / 14 } + fadeOut(exitFade))
+                }
+            },
+            modifier = swipeModifier,
+            label = "tab_slide"
+        ) { tab ->
+            when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
                     viewModel = workoutViewModel,
@@ -489,7 +511,7 @@ private fun NavCapsuleItem(
     // Pill width: selected shows label, unselected icon-only
     val scale by animateFloatAsState(
         targetValue   = if (isPressed) 0.88f else 1f,
-        animationSpec = tween(70, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "item_scale"
     )
 
@@ -520,7 +542,15 @@ private fun NavCapsuleItem(
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
             modifier           = Modifier.size(24.dp)
         )
-        if (isSelected) {
+        AnimatedVisibility(
+            visible = isSelected,
+            enter   = expandHorizontally(
+                spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+            ) + fadeIn(tween(150, 60)),
+            exit    = shrinkHorizontally(
+                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
+            ) + fadeOut(tween(80))
+        ) {
             Text(
                 text          = tab.label,
                 color         = accent,
