@@ -148,26 +148,16 @@ fun DiscoverScreen(
             )
             DiscoverTabBar(selected) { selected = it }
 
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
-                modifier = Modifier.weight(1f),
-                label = "discover_tab"
-            ) { tab ->
-                when (tab) {
+            Box(modifier = Modifier.weight(1f)) {
+                when (selected) {
                     DiscoverTab.Programs -> Column(Modifier.fillMaxSize()) {
                         ProgramsSubTabBar(
                             selected = programsSub,
                             mineCount = state.myShared.size,
                             onSelect = { programsSub = it }
                         )
-                        AnimatedContent(
-                            targetState = programsSub,
-                            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },
-                            modifier = Modifier.weight(1f),
-                            label = "programs_sub"
-                        ) { sub ->
-                            when (sub) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            when (programsSub) {
                                 ProgramsSubTab.Community -> ProgramsList(
                                      state           = state,
                                      myProgramIds    = myProgramIds,
@@ -686,7 +676,7 @@ private fun AvatarBubble(url: String?, size: Dp) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
-                    .crossfade(true)
+                    .crossfade(false)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(CircleShape)

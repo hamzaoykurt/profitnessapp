@@ -14,11 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
@@ -331,42 +327,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppBackground(modifier: Modifier = Modifier) {
-    val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-
-    // Light mode: much subtler bloom — warm earthy bg doesn't need heavy neon glow
-    val radialPeak = if (theme.isDark) 0.16f else 0.06f
-    val radialMid  = if (theme.isDark) 0.10f else 0.03f
-    val radialEdge = if (theme.isDark) 0.04f else 0.01f
-    val sweepPeak  = if (theme.isDark) 0.07f else 0.03f
-    val sweepMid   = if (theme.isDark) 0.02f else 0.005f
-
-    Box(modifier = modifier.drawWithCache {
-        val radial = Brush.radialGradient(
-            colorStops = arrayOf(
-                0.0f  to accent.copy(alpha = radialPeak),
-                0.30f to accent.copy(alpha = radialMid),
-                0.60f to accent.copy(alpha = radialEdge),
-                1.0f  to Color.Transparent
-            ),
-            center = Offset(size.width, 0f),
-            radius = size.width * 2.2f
-        )
-        val sweep = Brush.linearGradient(
-            colorStops = arrayOf(
-                0.0f to accent.copy(alpha = sweepPeak),
-                0.5f to accent.copy(alpha = sweepMid),
-                1.0f to Color.Transparent
-            ),
-            start = Offset(size.width, 0f),
-            end   = Offset(size.width * 0.3f, size.height)
-        )
-        onDrawBehind {
-            drawRect(theme.bg0)
-            drawRect(radial)
-            drawRect(sweep)
-        }
-    })
+    val theme = LocalAppTheme.current
+    Box(modifier = modifier.background(theme.bg0))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -392,12 +354,6 @@ fun AppNavBar(
         Row(
             modifier = Modifier
                 .wrapContentWidth()
-                .shadow(
-                    elevation    = 20.dp,
-                    shape        = shape,
-                    spotColor    = accent.copy(0.25f),
-                    ambientColor = Color.Black.copy(0.55f)
-                )
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
