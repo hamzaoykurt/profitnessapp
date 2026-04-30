@@ -488,17 +488,47 @@ private fun NavCapsuleItem(
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "item_scale"
     )
+    val selectedGlow by animateFloatAsState(
+        targetValue   = if (isSelected) 1f else 0f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
+        label         = "item_glow"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue   = if (isSelected) 1.08f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        label         = "item_icon_scale"
+    )
+    val itemShape = RoundedCornerShape(32.dp)
 
     Row(
         modifier = Modifier
             .scale(scale)
-            .clip(RoundedCornerShape(32.dp))
+            .drawBehind {
+                if (selectedGlow > 0f) {
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.22f * selectedGlow),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(32.dp.toPx(), 32.dp.toPx())
+                    )
+                }
+            }
+            .clip(itemShape)
             .then(
                 if (isSelected)
                     Modifier.background(
                         Brush.linearGradient(
-                            listOf(accent.copy(0.20f), accent.copy(0.10f))
+                            listOf(accent.copy(0.28f), accent.copy(0.12f), Color.White.copy(0.06f))
                         )
+                    )
+                else Modifier
+            )
+            .then(
+                if (isSelected)
+                    Modifier.border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                        ),
+                        shape = itemShape
                     )
                 else Modifier
             )
@@ -514,7 +544,7 @@ private fun NavCapsuleItem(
             imageVector        = tab.icon,
             contentDescription = tab.label,
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
-            modifier           = Modifier.size(24.dp)
+            modifier           = Modifier.size(24.dp).scale(iconScale)
         )
         AnimatedVisibility(
             visible = isSelected,
