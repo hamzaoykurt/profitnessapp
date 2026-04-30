@@ -211,6 +211,12 @@ fun StoreScreen(
                 onTabChange = { activeTab = it }
             )
 
+            PaymentModeBand(
+                state = state,
+                theme = theme,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
             // Tab content
             AnimatedContent(
                 targetState = activeTab,
@@ -323,6 +329,12 @@ private fun PendingOrderPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var cardNumber by remember { mutableStateOf("") }
+    var expiry by remember { mutableStateOf("") }
+    var cvc by remember { mutableStateOf("") }
+    val digits = cardNumber.filter { it.isDigit() }
+    val canSubmit = state.sandboxAvailable && digits.length >= 12 && expiry.length >= 4 && cvc.length >= 3
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -344,10 +356,11 @@ private fun PendingOrderPanel(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Test siparişi hazır", color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text("Demo ödeme", color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    state.pendingOrderMessage ?: "Sipariş ödeme sağlayıcısı bekliyor.",
+                    if (state.sandboxAvailable) "Test kartı ile satın alma akışını tamamla."
+                    else "Sandbox kapalı; Supabase secret açılmalı.",
                     color = theme.text2,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
@@ -360,13 +373,47 @@ private fun PendingOrderPanel(
 
         if (state.sandboxAvailable) {
             Spacer(Modifier.height(12.dp))
+            DemoField(
+                value = cardNumber,
+                onValueChange = { cardNumber = it.filter { ch -> ch.isDigit() || ch == ' ' }.take(23) },
+                label = "Kart numarası",
+                placeholder = "4242 4242 4242 4242",
+                theme = theme
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DemoField(
+                    value = expiry,
+                    onValueChange = { expiry = it.filter { ch -> ch.isDigit() || ch == '/' }.take(5) },
+                    label = "SKT",
+                    placeholder = "12/30",
+                    theme = theme,
+                    modifier = Modifier.weight(1f)
+                )
+                DemoField(
+                    value = cvc,
+                    onValueChange = { cvc = it.filter { ch -> ch.isDigit() }.take(4) },
+                    label = "CVC",
+                    placeholder = "123",
+                    theme = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Test için 4242 4242 4242 4242, 12/30, 123 kullanabilirsin. Gerçek ödeme alınmaz.",
+                color = theme.text2.copy(0.72f),
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+            Spacer(Modifier.height(12.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Lime.copy(0.14f))
-                    .border(1.dp, Lime.copy(0.35f), RoundedCornerShape(14.dp))
-                    .clickable(enabled = !state.isLoading) { onSandboxComplete() }
+                    .background(if (canSubmit) Lime.copy(0.14f) else theme.bg2)
+                    .border(1.dp, if (canSubmit) Lime.copy(0.35f) else theme.stroke, RoundedCornerShape(14.dp))
+                    .clickable(enabled = !state.isLoading && canSubmit) { onSandboxComplete() }
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -375,7 +422,7 @@ private fun PendingOrderPanel(
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Rounded.Science, null, tint = Lime, modifier = Modifier.size(17.dp))
-                        Text("Sandbox ödeme olarak tamamla", color = Lime, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        Text("Demo kartla ödemeyi tamamla", color = Lime, fontSize = 13.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -389,6 +436,83 @@ private fun PendingOrderPanel(
             )
         }
     }
+}
+
+@Composable
+private fun PaymentModeBand(
+    state: StoreState,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (state.billingSandboxAvailable) Lime.copy(0.08f) else Amber.copy(0.07f))
+            .border(
+                1.dp,
+                if (state.billingSandboxAvailable) Lime.copy(0.24f) else Amber.copy(0.22f),
+                RoundedCornerShape(14.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
+            null,
+            tint = if (state.billingSandboxAvailable) Lime else Amber,
+            modifier = Modifier.size(20.dp)
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (state.billingSandboxAvailable) "Test kartı açık" else "Test ödeme kapalı",
+                color = theme.text0,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                if (state.billingSandboxAvailable)
+                    "Satın alırken demo kart formu açılır; gerçek çekim yapılmaz."
+                else
+                    "Supabase Edge Function secret: BILLING_SANDBOX_ENABLED=true",
+                color = theme.text2,
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DemoField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, fontSize = 11.sp) },
+        placeholder = { Text(placeholder, fontSize = 12.sp, color = theme.text2.copy(0.55f)) },
+        singleLine = true,
+        modifier = modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = theme.text0,
+            unfocusedTextColor = theme.text0,
+            focusedBorderColor = Lime.copy(0.55f),
+            unfocusedBorderColor = theme.stroke,
+            focusedLabelColor = Lime,
+            unfocusedLabelColor = theme.text2,
+            cursorColor = Lime,
+            focusedContainerColor = theme.bg0,
+            unfocusedContainerColor = theme.bg0
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
 }
 
 // ── Top Bar ───────────────────────────────────────────────────────────────────
@@ -534,16 +658,26 @@ private fun SubscriptionTab(
             contentPadding = PaddingValues(bottom = 130.dp)
         ) {
             item {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
+                AccountSummaryHero(state = state, theme = theme)
+                Spacer(Modifier.height(12.dp))
+                AiCostMatrix(theme = theme)
+                Spacer(Modifier.height(16.dp))
                 BillingToggle(
                     isYearly = state.isYearly,
                     onToggle = onYearlyChange,
                     theme    = theme
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
             }
 
             item {
+                SectionLabel(
+                    title = "Plan seçimi",
+                    subtitle = if (state.isYearly) "Yıllık fiyatlandırma aktif" else "Aylık fiyatlandırma aktif",
+                    theme = theme
+                )
+                Spacer(Modifier.height(10.dp))
                 PlanSelector(
                     plans        = plans,
                     selectedPlan = selectedPlan,
@@ -595,7 +729,7 @@ private fun SubscriptionTab(
 
             item {
                 Text(
-                    "Ödeme sağlayıcısı bağlanana kadar satın alma talepleri hesap bakiyeni değiştirmez.\nAbonelikler otomatik yenilenir; fiyatlar KDV dahildir.",
+                    "Test modunda demo kartla tamamlanan sipariş hesaba işlenir; gerçek ödeme alınmaz.\nCanlı ödeme sağlayıcısı bağlanınca aynı akış gerçek checkout'a dönecek.",
                     modifier   = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
@@ -640,6 +774,182 @@ private fun SubscriptionTab(
                 Spacer(Modifier.height(16.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun SectionLabel(
+    title: String,
+    subtitle: String,
+    theme: AppThemeState
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                color = theme.text2,
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountSummaryHero(
+    state: StoreState,
+    theme: AppThemeState
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Hesap durumu",
+                    color = theme.text0,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Abonelik hakları ve kredi bakiyesi ayrı tutulur.",
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Lime.copy(0.1f))
+                    .border(1.dp, Lime.copy(0.24f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.VerifiedUser, null, tint = Lime, modifier = Modifier.size(20.dp))
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SummaryMetric(
+                label = "Aktif plan",
+                value = state.plan.displayName,
+                icon = Icons.Rounded.WorkspacePremium,
+                accent = if (state.plan == UserPlan.FREE) TextSecondary else Forge500,
+                theme = theme,
+                modifier = Modifier.weight(1f)
+            )
+            SummaryMetric(
+                label = "AI kredi",
+                value = "${state.credits}",
+                icon = Icons.Rounded.Bolt,
+                accent = Lime,
+                theme = theme,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    accent: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg0.copy(0.52f))
+            .border(1.dp, accent.copy(0.18f), RoundedCornerShape(12.dp))
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(accent.copy(0.11f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(15.dp))
+        }
+        Column {
+            Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text(value, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun AiCostMatrix(theme: AppThemeState) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.42f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = Lime, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("AI kullanım maliyetleri", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CostPill("Oracle", "1 kredi", Lime, theme, Modifier.weight(1f))
+            CostPill("Program", "8-12", Forge500, theme, Modifier.weight(1f))
+            CostPill("Analiz", "3 kredi", CardCyan, theme, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun CostPill(
+    title: String,
+    value: String,
+    accent: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(accent.copy(0.08f))
+            .border(1.dp, accent.copy(0.2f), RoundedCornerShape(11.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(2.dp))
+        Text(value, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
     }
 }
 

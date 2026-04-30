@@ -18,6 +18,7 @@ data class StoreState(
     val status     : String   = "free",
     val products   : List<BillingProduct> = emptyList(),
     val recentUsage: List<BillingUsage> = emptyList(),
+    val billingSandboxAvailable: Boolean = false,
     val pendingOrderId: String? = null,
     val pendingOrderMessage: String? = null,
     val sandboxAvailable: Boolean = false,
@@ -47,7 +48,8 @@ class StoreViewModel @Inject constructor(
                         credits = snapshot.credits,
                         status = snapshot.status,
                         products = snapshot.products,
-                        recentUsage = snapshot.recentUsage
+                        recentUsage = snapshot.recentUsage,
+                        billingSandboxAvailable = snapshot.sandboxAvailable
                     )
                 }
             }
