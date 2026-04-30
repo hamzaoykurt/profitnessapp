@@ -2,6 +2,8 @@ package com.avonix.profitness.presentation.program
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.program.ManualDayInput
 import com.avonix.profitness.data.program.ManualExerciseInput
@@ -103,9 +105,7 @@ class ProgramViewModel @Inject constructor(
      * @return true → erişim verildi, false → paywall gönderildi
      */
     fun checkAiAccess(): Boolean {
-        val canUse = uiState.value.userPlan != UserPlan.FREE || uiState.value.aiCredits > 0
-        if (!canUse) sendEvent(ProgramEvent.ShowPaywall)
-        return canUse
+        return true
     }
 
     /**
@@ -312,16 +312,28 @@ FORMAT:
             val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
 
             val result = if (effectiveHasMedia) {
-                geminiRepository.chatWithMedia(effectiveBase64!!, effectiveMime!!, geminiPrompt, systemPrompt)
+                geminiRepository.chatWithMedia(
+                    effectiveBase64!!,
+                    effectiveMime!!,
+                    geminiPrompt,
+                    systemPrompt,
+                    AiToolType.PROGRAM_GENERATE_MEDIA
+                )
             } else {
-                geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+                geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_GENERATE_TEXT)
             }
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(aiLoading = false) }
+                    sendEvent(ProgramEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
                 return@launch
             }
+            planRepository.refresh()
 
             // 3. JSON'u çıkar ve parse et (markdown kod bloğu olsa bile yakala)
             val cleaned = rawJson
@@ -482,12 +494,18 @@ FORMAT:
 
             val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
 
-            val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+            val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_EDIT)
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(aiEditLoading = false) }
+                    sendEvent(ProgramEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(aiEditLoading = false, aiEditError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
                 return@launch
             }
+            planRepository.refresh()
 
             val cleaned = rawJson
                 .replace(Regex("```[a-zA-Z]*\\s*"), "")

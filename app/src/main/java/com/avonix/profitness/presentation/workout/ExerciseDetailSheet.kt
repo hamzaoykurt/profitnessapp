@@ -128,7 +128,7 @@ fun ExerciseDetailSheet(
                 AiCreditInfoRow(
                     isFree    = isFree,
                     credits   = aiCredits,
-                    costLabel = "1 kredi / AI analiz",
+                    costLabel = "3 kredi / AI analiz",
                     theme     = theme
                 )
                 Spacer(Modifier.height(8.dp))

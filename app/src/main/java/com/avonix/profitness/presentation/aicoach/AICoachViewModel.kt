@@ -3,6 +3,8 @@ package com.avonix.profitness.presentation.aicoach
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.AICoachPrefsManager
 import com.avonix.profitness.data.ai.ChatSession
@@ -153,6 +155,7 @@ class AICoachViewModel @Inject constructor(
 
             result.fold(
                 onSuccess = { responseText ->
+                    viewModelScope.launch { planRepository.refresh() }
                     conversationHistory.add("user"  to userText)
                     conversationHistory.add("model" to responseText)
 
@@ -165,6 +168,11 @@ class AICoachViewModel @Inject constructor(
                     persistCurrentSession()   // AI yanıtından sonra tekrar kaydet
                 },
                 onFailure = {
+                    if (it is AiAccessException) {
+                        updateState { state -> state.copy(isLoading = false) }
+                        sendEvent(AICoachEvent.ShowPaywall)
+                        return@fold
+                    }
                     planRepository.refundCredit()
                     val errorMessage = ChatMessage(
                         id     = (System.currentTimeMillis() + 1).toString(),
@@ -278,11 +286,17 @@ $exerciseList
             val result = geminiRepository.chat(
                 history      = emptyList(),
                 userMessage  = structurePrompt,
-                systemPrompt = "Sen bir JSON formatter'sın. Sadece geçerli JSON çıktısı ver, başka hiçbir şey yazma, açıklama ekleme."
+                systemPrompt = "Sen bir JSON formatter'sın. Sadece geçerli JSON çıktısı ver, başka hiçbir şey yazma, açıklama ekleme.",
+                tool         = AiToolType.ORACLE_TO_PROGRAM
             )
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(programStatus = ProgramStatus.Idle) }
+                    sendEvent(AICoachEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(programStatus = ProgramStatus.Error("Yapay zeka yanıt vermedi")) }
                 return@launch
             }

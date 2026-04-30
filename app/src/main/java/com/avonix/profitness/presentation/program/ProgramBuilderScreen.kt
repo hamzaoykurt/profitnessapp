@@ -1333,7 +1333,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             AiCreditInfoRow(
                 isFree  = uiState.userPlan == UserPlan.FREE,
                 credits = uiState.aiCredits,
-                costLabel = "1 kredi / program",
+                costLabel = "8 kredi / metin · 12 kredi / dosya",
                 theme   = aiTheme,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )

@@ -181,7 +181,7 @@ fun WeightTrackingScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = "1 kredi / AI analiz",
+                            costLabel = "3 kredi / AI analiz",
                             theme     = theme,
                             modifier  = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                         )
