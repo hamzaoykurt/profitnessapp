@@ -14,11 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
@@ -89,7 +85,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     LaunchedEffect(selectedTab) {
         if (isTabSwitching) {
-            delay(220)
+            delay(140)
             isTabSwitching = false
         }
     }
@@ -152,30 +148,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
-        AnimatedContent(
-            targetState  = selectedTab,
-            transitionSpec = {
-                val fromIdx = ALL_TABS.indexOf(initialState)
-                val toIdx   = ALL_TABS.indexOf(targetState)
-                // Keep tab transitions light: full-width slides make two heavy screens draw at once.
-                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                val enterSlide = tween<IntOffset>(140, easing = easeOut)
-                val enterFade  = tween<Float>(120, easing = easeOut)
-                val exitSlide  = tween<IntOffset>(90, easing = easeIn)
-                val exitFade   = tween<Float>(70)
-                if (toIdx > fromIdx) {
-                    (slideInHorizontally(enterSlide) { it / 10 } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { -it / 14 } + fadeOut(exitFade))
-                } else {
-                    (slideInHorizontally(enterSlide) { -it / 10 } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { it / 14 } + fadeOut(exitFade))
-                }
-            },
-            modifier = swipeModifier,
-            label = "tab_slide"
-        ) { tab ->
-            when (tab) {
+        Box(modifier = swipeModifier.fillMaxSize()) {
+            when (selectedTab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
                     viewModel = workoutViewModel,
@@ -353,42 +327,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppBackground(modifier: Modifier = Modifier) {
-    val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-
-    // Light mode: much subtler bloom — warm earthy bg doesn't need heavy neon glow
-    val radialPeak = if (theme.isDark) 0.16f else 0.06f
-    val radialMid  = if (theme.isDark) 0.10f else 0.03f
-    val radialEdge = if (theme.isDark) 0.04f else 0.01f
-    val sweepPeak  = if (theme.isDark) 0.07f else 0.03f
-    val sweepMid   = if (theme.isDark) 0.02f else 0.005f
-
-    Box(modifier = modifier.drawWithCache {
-        val radial = Brush.radialGradient(
-            colorStops = arrayOf(
-                0.0f  to accent.copy(alpha = radialPeak),
-                0.30f to accent.copy(alpha = radialMid),
-                0.60f to accent.copy(alpha = radialEdge),
-                1.0f  to Color.Transparent
-            ),
-            center = Offset(size.width, 0f),
-            radius = size.width * 2.2f
-        )
-        val sweep = Brush.linearGradient(
-            colorStops = arrayOf(
-                0.0f to accent.copy(alpha = sweepPeak),
-                0.5f to accent.copy(alpha = sweepMid),
-                1.0f to Color.Transparent
-            ),
-            start = Offset(size.width, 0f),
-            end   = Offset(size.width * 0.3f, size.height)
-        )
-        onDrawBehind {
-            drawRect(theme.bg0)
-            drawRect(radial)
-            drawRect(sweep)
-        }
-    })
+    val theme = LocalAppTheme.current
+    Box(modifier = modifier.background(theme.bg0))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -414,12 +354,6 @@ fun AppNavBar(
         Row(
             modifier = Modifier
                 .wrapContentWidth()
-                .shadow(
-                    elevation    = 20.dp,
-                    shape        = shape,
-                    spotColor    = accent.copy(0.25f),
-                    ambientColor = Color.Black.copy(0.55f)
-                )
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
@@ -511,7 +445,7 @@ private fun NavCapsuleItem(
     // Pill width: selected shows label, unselected icon-only
     val scale by animateFloatAsState(
         targetValue   = if (isPressed) 0.88f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        animationSpec = tween(70, easing = FastOutSlowInEasing),
         label         = "item_scale"
     )
 
@@ -542,15 +476,7 @@ private fun NavCapsuleItem(
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
             modifier           = Modifier.size(24.dp)
         )
-        AnimatedVisibility(
-            visible = isSelected,
-            enter   = expandHorizontally(
-                spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
-            ) + fadeIn(tween(150, 60)),
-            exit    = shrinkHorizontally(
-                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
-            ) + fadeOut(tween(80))
-        ) {
+        if (isSelected) {
             Text(
                 text          = tab.label,
                 color         = accent,

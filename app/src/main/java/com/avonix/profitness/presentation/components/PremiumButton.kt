@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
@@ -45,23 +44,15 @@ fun PremiumButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Physical press: scale down + shadow collapse
+    // Keep button feedback crisp on hot paths; bounce + real shadows are expensive in lists.
     val scale by animateFloatAsState(
         targetValue    = when {
             !isEnabled  -> 1f
             isPressed   -> 0.96f
             else        -> 1f
         },
-        animationSpec  = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness    = Spring.StiffnessHigh
-        ),
+        animationSpec  = tween(90, easing = FastOutSlowInEasing),
         label = "btnScale"
-    )
-    val elevation by animateDpAsState(
-        targetValue   = if (isPressed && isEnabled) 4.dp else 18.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "btnElev"
     )
 
     val shape = RoundedCornerShape(18.dp)
@@ -69,13 +60,6 @@ fun PremiumButton(
     Box(
         modifier = modifier
             .scale(scale)
-            // Amber glow shadow — collapses on press
-            .shadow(
-                elevation    = if (isEnabled) elevation else 0.dp,
-                shape        = shape,
-                spotColor    = if (isEnabled) Forge500.copy(0.6f) else Color.Transparent,
-                ambientColor = if (isEnabled) Forge600.copy(0.3f) else Color.Transparent
-            )
             .clip(shape)
             .background(
                 if (isEnabled)
@@ -87,6 +71,7 @@ fun PremiumButton(
                 else
                     Brush.linearGradient(listOf(Depth2, Depth2))
             )
+            .border(1.dp, if (isEnabled) Forge500.copy(0.55f) else BorderSoft, shape)
             .drawWithContent {
                 drawContent()
                 if (isEnabled) {
@@ -159,7 +144,7 @@ fun GhostButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue   = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = tween(90, easing = FastOutSlowInEasing),
         label         = "ghostScale"
     )
     Box(
