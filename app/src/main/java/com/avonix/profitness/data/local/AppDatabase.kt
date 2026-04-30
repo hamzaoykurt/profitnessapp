@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -141,15 +141,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration 6→7 / 7→8: Eski debug kurulumlarında cihazda daha ileri Room
+         * user_version kalabiliyor. 7→8, `programs` index'lerini idempotent şekilde
+         * garanti ederek Room schema validation'ını mevcut yerel DB'lerle hizalar.
+         */
         val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) = Unit
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_is_active " +
-                    "ON programs (user_id, is_active)"
-                )
                 database.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_programs_user_id_created_at " +
                     "ON programs (user_id, created_at)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_is_active " +
+                    "ON programs (user_id, is_active)"
                 )
             }
         }

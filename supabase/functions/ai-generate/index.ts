@@ -32,8 +32,12 @@ type AiGenerateBody = {
   request?: GeminiRequest;
 };
 
-const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_GEMINI_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-2.5-flash",
+];
 
 const MAX_REQUEST_BYTES = Number(Deno.env.get("AI_MAX_REQUEST_BYTES") ?? "1500000");
 const MAX_TEXT_CHARS = Number(Deno.env.get("AI_MAX_TEXT_CHARS") ?? "30000");
@@ -45,6 +49,16 @@ const ALLOWED_INLINE_MIME = new Set([
   "image/webp",
   "application/pdf",
 ]);
+
+function configuredModels(): string[] {
+  const configured = Deno.env.get("GEMINI_MODEL")
+    ?.split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  const models = configured?.length ? configured : DEFAULT_GEMINI_MODELS;
+  return [...new Set(models)];
+}
 
 function estimateBase64Bytes(base64: string): number {
   const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
@@ -162,15 +176,45 @@ Deno.serve(async (req: Request) => {
     }
     usageEventId = reservation.usage_event_id;
 
-    const upstream = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(requiredEnv("GEMINI_API_KEY"))}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sanitized),
-    });
+    const geminiApiKey = requiredEnv("GEMINI_API_KEY", [
+      "Gemini_API_Key",
+      "Gemini_API_KEY",
+      "GEMINI_API_Key",
+      "GEMINI_APIKEY",
+    ]);
 
-    const upstreamJson = await upstream.json().catch(() => ({}));
-    if (!upstream.ok || upstreamJson?.error) {
-      throw new Error("ai_provider_error");
+    let upstreamJson: any | null = null;
+    let lastProviderStatus = 0;
+    let lastProviderCode = "ai_provider_error";
+
+    for (const model of configuredModels()) {
+      const upstream = await fetch(
+        `${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sanitized),
+        },
+      );
+
+      upstreamJson = await upstream.json().catch(() => ({}));
+      lastProviderStatus = upstream.status;
+      lastProviderCode = typeof upstreamJson?.error === "object" &&
+        upstreamJson.error !== null &&
+        "status" in upstreamJson.error
+          ? String((upstreamJson.error as { status?: unknown }).status)
+          : "ai_provider_error";
+
+      if (upstream.ok && !upstreamJson?.error) break;
+      upstreamJson = null;
+    }
+
+    if (!upstreamJson) {
+      console.error("Gemini provider failed", {
+        status: lastProviderStatus,
+        code: lastProviderCode,
+      });
+      throw new Error(lastProviderStatus === 429 ? "ai_quota_exhausted" : "ai_provider_error");
     }
 
     const text = upstreamJson?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -193,6 +237,9 @@ Deno.serve(async (req: Request) => {
     }
     if (code.startsWith("invalid_") || code.endsWith("_too_large") || code === "unsupported_media_type") {
       return jsonResponse(400, { code, message: "AI isteği geçersiz." });
+    }
+    if (code === "ai_quota_exhausted") {
+      return jsonResponse(429, { code, message: "AI kotası doldu. Bir süre sonra tekrar dene." });
     }
     return jsonResponse(502, { code: "ai_provider_error", message: "AI servisi şu anda yanıt veremiyor." });
   }

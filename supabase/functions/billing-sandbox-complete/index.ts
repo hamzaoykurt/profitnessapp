@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, authenticatedUser } from "../_shared/auth.ts";
+import { adminClient, authenticatedUser, truthyEnv } from "../_shared/auth.ts";
 import { jsonResponse, preflight } from "../_shared/cors.ts";
 
 type SandboxBody = {
@@ -14,7 +14,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(405, { code: "method_not_allowed", message: "Method not allowed." });
   }
 
-  if (Deno.env.get("BILLING_SANDBOX_ENABLED") !== "true") {
+  if (!truthyEnv("BILLING_SANDBOX_ENABLED")) {
     return jsonResponse(403, {
       code: "sandbox_disabled",
       message: "Sandbox satın alma bu ortamda kapalı.",

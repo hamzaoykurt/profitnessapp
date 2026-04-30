@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, authenticatedUser } from "../_shared/auth.ts";
+import { adminClient, authenticatedUser, truthyEnv } from "../_shared/auth.ts";
 import { jsonResponse, preflight } from "../_shared/cors.ts";
 
 Deno.serve(async (req: Request) => {
@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
       credits: account?.balance ?? 0,
       products: products ?? [],
       recentUsage: recentUsage ?? [],
-      sandboxAvailable: Deno.env.get("BILLING_SANDBOX_ENABLED") === "true",
+      sandboxAvailable: truthyEnv("BILLING_SANDBOX_ENABLED"),
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "unknown_error";

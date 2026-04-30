@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, authenticatedUser } from "../_shared/auth.ts";
+import { adminClient, authenticatedUser, truthyEnv } from "../_shared/auth.ts";
 import { jsonResponse, preflight } from "../_shared/cors.ts";
 
 type CheckoutBody = {
@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
       orderId: data.order_id,
       status: data.status,
       checkoutUrl: null,
-      sandboxAvailable: Deno.env.get("BILLING_SANDBOX_ENABLED") === "true",
+      sandboxAvailable: truthyEnv("BILLING_SANDBOX_ENABLED"),
       message: data.message,
     });
   } catch (error) {

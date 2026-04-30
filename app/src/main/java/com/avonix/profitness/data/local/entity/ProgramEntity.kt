@@ -8,8 +8,8 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "programs",
     indices = [
-        Index(value = ["user_id", "is_active"]),
-        Index(value = ["user_id", "created_at"])
+        Index(value = ["user_id", "created_at"]),
+        Index(value = ["user_id", "is_active"])
     ]
 )
 data class ProgramEntity(
@@ -20,7 +20,7 @@ data class ProgramEntity(
     @ColumnInfo(name = "is_active") val isActive: Boolean,
     @ColumnInfo(name = "created_at") val createdAt: String = "",
     /** SHA-256 of the program's canonical content (days+exercises). Set by Postgres trigger; mirrored to Room. */
-    @ColumnInfo(name = "content_hash") val contentHash: String? = null,
+    @ColumnInfo(name = "content_hash", defaultValue = "NULL") val contentHash: String? = null,
     /** When this program was created via [apply_shared_program], the source [shared_programs.id]. */
-    @ColumnInfo(name = "applied_from_shared_id") val appliedFromSharedId: String? = null
+    @ColumnInfo(name = "applied_from_shared_id", defaultValue = "NULL") val appliedFromSharedId: String? = null
 )
