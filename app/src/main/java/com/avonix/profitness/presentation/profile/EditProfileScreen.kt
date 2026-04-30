@@ -185,7 +185,7 @@ fun EditProfileScreen(
                                 )
                             } else if (currentAvatar.startsWith("http")) {
                                 AsyncImage(
-                                    model = ImageRequest.Builder(context).data(currentAvatar).crossfade(false).build(),
+                                    model = ImageRequest.Builder(context).data(currentAvatar).crossfade(true).build(),
                                     contentDescription = "Avatar",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize().clip(CircleShape)

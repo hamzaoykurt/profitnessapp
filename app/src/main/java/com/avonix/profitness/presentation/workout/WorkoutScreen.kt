@@ -537,10 +537,25 @@ private fun WorkoutContent(
 
         // ── Header: Greeting + Progress Ring ─────────────────────────────
         item {
-            WorkoutDashboardHeader(
-                day = dayStates[selectedDayIdx].day,
-                progress = dayStates[selectedDayIdx].progress
-            )
+            AnimatedContent(
+                targetState = selectedDayIdx,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { it / 4 } +
+                            fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { -it / 5 } +
+                            fadeOut(tween(120)))
+                    } else {
+                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { -it / 4 } +
+                            fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { it / 5 } +
+                            fadeOut(tween(120)))
+                    }
+                },
+                label = "day_header"
+            ) { dayIdx ->
+                WorkoutDashboardHeader(dayStates[dayIdx].day, dayStates[dayIdx].progress)
+            }
         }
 
         // ── Day Selector Strip ────────────────────────────────────────────
