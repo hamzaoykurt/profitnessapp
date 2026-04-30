@@ -29,6 +29,7 @@ import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.RestTimerState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║   DYNAMIC ISLAND TIMER — Neon Forge Design                      ║
@@ -70,10 +71,17 @@ fun DynamicIslandTimer(
     // Hiç aktif değilse gösterme
     if (!timer.isRunning && !timer.isDone) return
 
-    val glowAlpha = when {
-        timer.isDone -> 0.38f
-        timer.isRunning -> 0.22f
-        else -> 0f
+    // ── Glow pulse when running ───────────────────────────────────────────────
+    val glowAlpha = remember { Animatable(0f) }
+    LaunchedEffect(timer.isRunning) {
+        if (timer.isRunning) {
+            while (isActive) {
+                glowAlpha.animateTo(0.55f, tween(900, easing = FastOutSlowInEasing))
+                glowAlpha.animateTo(0.20f, tween(900, easing = FastOutSlowInEasing))
+            }
+        } else {
+            glowAlpha.animateTo(0f, tween(400))
+        }
     }
 
     // ── Arc progress ─────────────────────────────────────────────────────────
@@ -86,7 +94,7 @@ fun DynamicIslandTimer(
     // ── Island shape animation ────────────────────────────────────────────────
     val cornerRadius by animateDpAsState(
         targetValue   = if (isExpanded) 28.dp else 22.dp,
-        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "corner"
     )
 
@@ -111,7 +119,7 @@ fun DynamicIslandTimer(
                     accent      = accent,
                     theme       = theme,
                     arcProgress = arcProgress,
-                    glowAlpha   = glowAlpha,
+                    glowAlpha   = glowAlpha.value,
                     cornerRadius = cornerRadius,
                     onCollapse  = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -128,7 +136,7 @@ fun DynamicIslandTimer(
                     timer       = timer,
                     accent      = accent,
                     theme       = theme,
-                    glowAlpha   = glowAlpha,
+                    glowAlpha   = glowAlpha.value,
                     onClick     = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         isExpanded = true

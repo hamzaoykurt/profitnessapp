@@ -14,7 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
@@ -55,7 +59,6 @@ import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
-import kotlinx.coroutines.delay
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
@@ -74,22 +77,7 @@ private val ALL_TABS = listOf(
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
-    var isTabSwitching          by remember { mutableStateOf(false) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
-
-    fun requestTab(tab: DashboardTab) {
-        if (tab == selectedTab || isTabSwitching) return
-        isTabSwitching = true
-        selectedTab = tab
-    }
-
-    LaunchedEffect(selectedTab) {
-        if (isTabSwitching) {
-            delay(140)
-            isTabSwitching = false
-        }
-    }
-
     var showPerformanceDetail       by remember { mutableStateOf(false) }
     var showAchievementsDetail      by remember { mutableStateOf(false) }
     var showEditProfile             by remember { mutableStateOf(false) }
@@ -135,10 +123,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 val goNext = if (byVelocity) velocity < 0f else swipeAccum < 0f
                 if (goNext && curIdx < ALL_TABS.lastIndex) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    requestTab(ALL_TABS[curIdx + 1])
+                    selectedTab = ALL_TABS[curIdx + 1]
                 } else if (!goNext && curIdx > 0) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    requestTab(ALL_TABS[curIdx - 1])
+                    selectedTab = ALL_TABS[curIdx - 1]
                 }
             }
             swipeAccum = 0f
@@ -148,18 +136,42 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
-        Box(modifier = swipeModifier.fillMaxSize()) {
-            when (selectedTab) {
+        AnimatedContent(
+            targetState  = selectedTab,
+            transitionSpec = {
+                val fromIdx = ALL_TABS.indexOf(initialState)
+                val toIdx   = ALL_TABS.indexOf(targetState)
+                // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
+                // on the full composable tree which is the #1 cause of jank during transitions.
+                // Short durations (240/160ms) keep double-render window minimal.
+                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+                val enterSlide = tween<IntOffset>(240, easing = easeOut)
+                val enterFade  = tween<Float>(200, easing = easeOut)
+                val exitSlide  = tween<IntOffset>(160, easing = easeIn)
+                val exitFade   = tween<Float>(120)
+                if (toIdx > fromIdx) {
+                    (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                } else {
+                    (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                }
+            },
+            modifier = swipeModifier,
+            label = "tab_slide"
+        ) { tab ->
+            when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
                     viewModel = workoutViewModel,
                     onNavigateToAIBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.AI
-                        requestTab(DashboardTab.Program)
+                        selectedTab = DashboardTab.Program
                     },
                     onNavigateToManualBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Manual
-                        requestTab(DashboardTab.Program)
+                        selectedTab = DashboardTab.Program
                     },
                     onNavigateToStore = { showStore = true }
                 )
@@ -204,7 +216,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         AppNavBar(
             tabs     = ALL_TABS,
             selected = selectedTab,
-            onSelect = { requestTab(it) },
+            onSelect = { selectedTab = it },
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 
@@ -215,18 +227,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
                 onStop    = { workoutViewModel.stopRestTimer() },
                 onDismiss = { workoutViewModel.dismissRestTimer() }
-            )
-        }
-
-        if (isTabSwitching) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(150f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {}
             )
         }
 
@@ -327,8 +327,42 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AppBackground(modifier: Modifier = Modifier) {
-    val theme = LocalAppTheme.current
-    Box(modifier = modifier.background(theme.bg0))
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
+    // Light mode: much subtler bloom — warm earthy bg doesn't need heavy neon glow
+    val radialPeak = if (theme.isDark) 0.16f else 0.06f
+    val radialMid  = if (theme.isDark) 0.10f else 0.03f
+    val radialEdge = if (theme.isDark) 0.04f else 0.01f
+    val sweepPeak  = if (theme.isDark) 0.07f else 0.03f
+    val sweepMid   = if (theme.isDark) 0.02f else 0.005f
+
+    Box(modifier = modifier.drawWithCache {
+        val radial = Brush.radialGradient(
+            colorStops = arrayOf(
+                0.0f  to accent.copy(alpha = radialPeak),
+                0.30f to accent.copy(alpha = radialMid),
+                0.60f to accent.copy(alpha = radialEdge),
+                1.0f  to Color.Transparent
+            ),
+            center = Offset(size.width, 0f),
+            radius = size.width * 2.2f
+        )
+        val sweep = Brush.linearGradient(
+            colorStops = arrayOf(
+                0.0f to accent.copy(alpha = sweepPeak),
+                0.5f to accent.copy(alpha = sweepMid),
+                1.0f to Color.Transparent
+            ),
+            start = Offset(size.width, 0f),
+            end   = Offset(size.width * 0.3f, size.height)
+        )
+        onDrawBehind {
+            drawRect(theme.bg0)
+            drawRect(radial)
+            drawRect(sweep)
+        }
+    })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -354,6 +388,12 @@ fun AppNavBar(
         Row(
             modifier = Modifier
                 .wrapContentWidth()
+                .shadow(
+                    elevation    = 20.dp,
+                    shape        = shape,
+                    spotColor    = accent.copy(0.25f),
+                    ambientColor = Color.Black.copy(0.55f)
+                )
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
@@ -445,20 +485,50 @@ private fun NavCapsuleItem(
     // Pill width: selected shows label, unselected icon-only
     val scale by animateFloatAsState(
         targetValue   = if (isPressed) 0.88f else 1f,
-        animationSpec = tween(70, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "item_scale"
     )
+    val selectedGlow by animateFloatAsState(
+        targetValue   = if (isSelected) 1f else 0f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
+        label         = "item_glow"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue   = if (isSelected) 1.08f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        label         = "item_icon_scale"
+    )
+    val itemShape = RoundedCornerShape(32.dp)
 
     Row(
         modifier = Modifier
             .scale(scale)
-            .clip(RoundedCornerShape(32.dp))
+            .drawBehind {
+                if (selectedGlow > 0f) {
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.22f * selectedGlow),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(32.dp.toPx(), 32.dp.toPx())
+                    )
+                }
+            }
+            .clip(itemShape)
             .then(
                 if (isSelected)
                     Modifier.background(
                         Brush.linearGradient(
-                            listOf(accent.copy(0.20f), accent.copy(0.10f))
+                            listOf(accent.copy(0.28f), accent.copy(0.12f), Color.White.copy(0.06f))
                         )
+                    )
+                else Modifier
+            )
+            .then(
+                if (isSelected)
+                    Modifier.border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                        ),
+                        shape = itemShape
                     )
                 else Modifier
             )
@@ -474,9 +544,17 @@ private fun NavCapsuleItem(
             imageVector        = tab.icon,
             contentDescription = tab.label,
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
-            modifier           = Modifier.size(24.dp)
+            modifier           = Modifier.size(24.dp).scale(iconScale)
         )
-        if (isSelected) {
+        AnimatedVisibility(
+            visible = isSelected,
+            enter   = expandHorizontally(
+                spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+            ) + fadeIn(tween(150, 60)),
+            exit    = shrinkHorizontally(
+                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
+            ) + fadeOut(tween(80))
+        ) {
             Text(
                 text          = tab.label,
                 color         = accent,

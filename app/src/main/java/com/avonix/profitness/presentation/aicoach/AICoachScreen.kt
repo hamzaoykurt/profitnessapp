@@ -743,8 +743,42 @@ private fun SanctuaryInput(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
+            .shadow(
+                elevation    = 24.dp,
+                shape        = shape,
+                clip         = false,
+                spotColor    = accent.copy(alpha = 0.30f),
+                ambientColor = Color.Black.copy(alpha = 0.60f)
+            )
             .clip(shape)
-            .background(theme.bg0.copy(alpha = 0.92f))
+            .drawWithCache {
+                val bgBase      = theme.bg0.copy(alpha = 0.82f)
+                val topMirror   = Brush.verticalGradient(colorStops = arrayOf(
+                    0.00f to Color.White.copy(alpha = 0.09f),
+                    0.30f to Color.White.copy(alpha = 0.02f),
+                    0.55f to Color.Transparent
+                ))
+                val accentBleed = Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0.00f to accent.copy(alpha = 0.18f),
+                        0.28f to accent.copy(alpha = 0.09f),
+                        0.58f to accent.copy(alpha = 0.03f),
+                        1.00f to Color.Transparent
+                    ),
+                    start = Offset(0f, size.height * 0.5f),
+                    end   = Offset(size.width, size.height * 0.5f)
+                )
+                val depthShadow = Brush.verticalGradient(colorStops = arrayOf(
+                    0.42f to Color.Transparent,
+                    1.00f to Color.Black.copy(alpha = 0.38f)
+                ))
+                onDrawBehind {
+                    drawRect(bgBase)
+                    drawRect(accentBleed)
+                    drawRect(depthShadow)
+                    drawRect(topMirror)
+                }
+            }
             .border(1.dp, borderBrush, shape)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically

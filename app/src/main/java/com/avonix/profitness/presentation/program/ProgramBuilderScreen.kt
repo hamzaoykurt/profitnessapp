@@ -308,7 +308,8 @@ fun ProgramBuilderScreen(
         ArchitectGrid()
         PageAccentBloom()
 
-        when (val m = mode) {
+        Crossfade(targetState = mode, label = "builder_fade") { m ->
+            when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
@@ -347,6 +348,7 @@ fun ProgramBuilderScreen(
                     onBack        = { mode = BuilderMode.Choose },
                     timerExtraPad = timerExtraPad
                 )
+            }
         }
 
         snackbarMsg?.let { msg ->

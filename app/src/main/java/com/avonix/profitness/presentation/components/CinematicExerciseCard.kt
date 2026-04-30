@@ -21,7 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -34,7 +33,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
 import kotlinx.coroutines.delay
@@ -66,16 +64,8 @@ fun CinematicExerciseCard(
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
-    val context  = LocalContext.current
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
-    val imageRequest = remember(exercise.image) {
-        ImageRequest.Builder(context)
-            .data(exercise.image)
-            .size(720, 360)
-            .crossfade(false)
-            .build()
-    }
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
     LaunchedEffect(timerRunning) {
@@ -90,13 +80,13 @@ fun CinematicExerciseCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
         targetValue   = if (isPressed) 0.97f else 1f,
-        animationSpec = tween(90, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "card_scale"
     )
 
     val glowAlpha by animateFloatAsState(
         targetValue   = if (isCompleted) 0.25f else 0f,
-        animationSpec = tween(260),
+        animationSpec = tween(600),
         label         = "glow"
     )
 
@@ -118,17 +108,24 @@ fun CinematicExerciseCard(
                     isExpanded = !isExpanded
                     onExpandChanged?.invoke(isExpanded)
                 },
-            glowColor = if (isCompleted) accent else Color.Transparent,
-            elevation = if (isExpanded) 8.dp else 6.dp
+            glowColor = if (isCompleted) accent else Color.Transparent
         ) {
+            // animateContentSize gives the same bouncy height expansion as before,
+            // but is measured via placement — no explicit height state, no layout-per-frame jank
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness    = Spring.StiffnessLow
+                        )
+                    )
             ) {
                 // ── Fixed-height image header ────────────────────────────────────
                 Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
                     AsyncImage(
-                        model = imageRequest,
+                        model = exercise.image,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -229,15 +226,9 @@ fun CinematicExerciseCard(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(
-                        animationSpec = tween(140, easing = FastOutSlowInEasing)
-                    ) + fadeIn(tween(90)),
-                    exit = shrinkVertically(
-                        animationSpec = tween(100, easing = FastOutSlowInEasing)
-                    ) + fadeOut(tween(60))
-                ) {
+                // ── Expanded panel — rendered as part of the same Column so
+                //    animateContentSize handles the height change smoothly ──────────
+                if (isExpanded) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
