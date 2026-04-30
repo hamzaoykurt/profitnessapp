@@ -80,13 +80,13 @@ fun CinematicExerciseCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
         targetValue   = if (isPressed) 0.97f else 1f,
-        animationSpec = tween(90, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
         label         = "card_scale"
     )
 
     val glowAlpha by animateFloatAsState(
         targetValue   = if (isCompleted) 0.25f else 0f,
-        animationSpec = tween(260),
+        animationSpec = tween(600),
         label         = "glow"
     )
 
@@ -108,12 +108,19 @@ fun CinematicExerciseCard(
                     isExpanded = !isExpanded
                     onExpandChanged?.invoke(isExpanded)
                 },
-            glowColor = if (isCompleted) accent else Color.Transparent,
-            elevation = if (isExpanded) 8.dp else 6.dp
+            glowColor = if (isCompleted) accent else Color.Transparent
         ) {
+            // animateContentSize gives the same bouncy height expansion as before,
+            // but is measured via placement — no explicit height state, no layout-per-frame jank
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness    = Spring.StiffnessLow
+                        )
+                    )
             ) {
                 // ── Fixed-height image header ────────────────────────────────────
                 Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
@@ -219,15 +226,9 @@ fun CinematicExerciseCard(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(
-                        animationSpec = tween(140, easing = FastOutSlowInEasing)
-                    ) + fadeIn(tween(90)),
-                    exit = shrinkVertically(
-                        animationSpec = tween(100, easing = FastOutSlowInEasing)
-                    ) + fadeOut(tween(60))
-                ) {
+                // ── Expanded panel — rendered as part of the same Column so
+                //    animateContentSize handles the height change smoothly ──────────
+                if (isExpanded) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

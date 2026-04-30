@@ -55,6 +55,7 @@ import com.avonix.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.avonix.profitness.presentation.dashboard.ChallengeTodayBanner
 import com.avonix.profitness.presentation.dashboard.DashboardViewModel
 import com.avonix.profitness.presentation.dashboard.UpcomingEventsSection
+import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
 
@@ -488,9 +489,29 @@ private fun WorkoutContent(
     }
 
     val listState = rememberLazyListState()
+    // Açılan kartı ekranın ortasına scroll et
+    var expandedExIdx by remember { mutableStateOf(-1) }
+    LaunchedEffect(expandedExIdx, hasTodayBanner) {
+        if (expandedExIdx >= 0) {
+            // Header items: StreakBanner(0), [EventBanner(1)?], Header, DaySelector, SectionLabel
+            val bannerOffset = if (hasTodayBanner) 1 else 0
+            val lazyIdx = 4 + bannerOffset + expandedExIdx
+            kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
+            val viewportHeight = listState.layoutInfo.viewportSize.height
+            listState.animateScrollToItem(lazyIdx, scrollOffset = -(viewportHeight / 5))
+        }
+    }
 
-    // Timer başladığında ilgili kart kendi içinde açılır; otomatik scroll yapmıyoruz.
+    // Timer başladığında o egzersizin kartını otomatik aç ve scroll et
     val timer = restTimer
+    LaunchedEffect(timer.isRunning, timer.exerciseName) {
+        if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
+            val exIdx = currentDay.exercises.indexOfFirst { it.name == timer.exerciseName }
+            if (exIdx >= 0) {
+                expandedExIdx = exIdx
+            }
+        }
+    }
 
     // Timer aktifken içerik pill'in altına kayar, kapanınca geri döner
     val extraTopPad by animateDpAsState(
@@ -620,6 +641,7 @@ private fun WorkoutContent(
                     onComplete        = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
                     onShowDetail      = { showDetail = true },
                     onExpandChanged   = { expanded ->
+                        expandedExIdx = if (expanded) idx else -1
                         if (expanded) viewModel.loadLastSession(exercise.id)
                     },
                     setWeights        = state.setWeights[exercise.id] ?: emptyMap(),

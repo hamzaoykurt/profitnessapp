@@ -59,7 +59,6 @@ import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
-import kotlinx.coroutines.delay
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
@@ -78,22 +77,7 @@ private val ALL_TABS = listOf(
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
-    var isTabSwitching          by remember { mutableStateOf(false) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
-
-    fun requestTab(tab: DashboardTab) {
-        if (tab == selectedTab || isTabSwitching) return
-        isTabSwitching = true
-        selectedTab = tab
-    }
-
-    LaunchedEffect(selectedTab) {
-        if (isTabSwitching) {
-            delay(220)
-            isTabSwitching = false
-        }
-    }
-
     var showPerformanceDetail       by remember { mutableStateOf(false) }
     var showAchievementsDetail      by remember { mutableStateOf(false) }
     var showEditProfile             by remember { mutableStateOf(false) }
@@ -139,10 +123,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 val goNext = if (byVelocity) velocity < 0f else swipeAccum < 0f
                 if (goNext && curIdx < ALL_TABS.lastIndex) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    requestTab(ALL_TABS[curIdx + 1])
+                    selectedTab = ALL_TABS[curIdx + 1]
                 } else if (!goNext && curIdx > 0) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    requestTab(ALL_TABS[curIdx - 1])
+                    selectedTab = ALL_TABS[curIdx - 1]
                 }
             }
             swipeAccum = 0f
@@ -157,19 +141,21 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             transitionSpec = {
                 val fromIdx = ALL_TABS.indexOf(initialState)
                 val toIdx   = ALL_TABS.indexOf(targetState)
-                // Keep tab transitions light: full-width slides make two heavy screens draw at once.
+                // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
+                // on the full composable tree which is the #1 cause of jank during transitions.
+                // Short durations (240/160ms) keep double-render window minimal.
                 val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
                 val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                val enterSlide = tween<IntOffset>(140, easing = easeOut)
-                val enterFade  = tween<Float>(120, easing = easeOut)
-                val exitSlide  = tween<IntOffset>(90, easing = easeIn)
-                val exitFade   = tween<Float>(70)
+                val enterSlide = tween<IntOffset>(240, easing = easeOut)
+                val enterFade  = tween<Float>(200, easing = easeOut)
+                val exitSlide  = tween<IntOffset>(160, easing = easeIn)
+                val exitFade   = tween<Float>(120)
                 if (toIdx > fromIdx) {
-                    (slideInHorizontally(enterSlide) { it / 10 } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { -it / 14 } + fadeOut(exitFade))
+                    (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
                 } else {
-                    (slideInHorizontally(enterSlide) { -it / 10 } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { it / 14 } + fadeOut(exitFade))
+                    (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
+                    (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
                 }
             },
             modifier = swipeModifier,
@@ -181,11 +167,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     viewModel = workoutViewModel,
                     onNavigateToAIBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.AI
-                        requestTab(DashboardTab.Program)
+                        selectedTab = DashboardTab.Program
                     },
                     onNavigateToManualBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Manual
-                        requestTab(DashboardTab.Program)
+                        selectedTab = DashboardTab.Program
                     },
                     onNavigateToStore = { showStore = true }
                 )
@@ -230,7 +216,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         AppNavBar(
             tabs     = ALL_TABS,
             selected = selectedTab,
-            onSelect = { requestTab(it) },
+            onSelect = { selectedTab = it },
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 
@@ -241,18 +227,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
                 onStop    = { workoutViewModel.stopRestTimer() },
                 onDismiss = { workoutViewModel.dismissRestTimer() }
-            )
-        }
-
-        if (isTabSwitching) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(150f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {}
             )
         }
 
