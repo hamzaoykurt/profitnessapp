@@ -27,7 +27,8 @@ class ChatSessionManager(context: Context) {
         if (session.id !in ids) {
             ids.add(0, session.id)
             if (ids.size > MAX_SESSIONS) {
-                prefs.edit().remove("$PREFIX${ids.removeLast()}").apply()
+                val evictedId = ids.removeAt(ids.lastIndex)
+                prefs.edit().remove("$PREFIX$evictedId").apply()
             }
         }
         prefs.edit()
