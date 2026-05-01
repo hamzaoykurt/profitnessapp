@@ -25,11 +25,15 @@ import javax.inject.Inject
 /** Feed ekran state'i — sealed değil, tek state; empty/loading/error alt-bayraklarla. */
 data class DiscoverProgramsState(
     val items       : List<SharedProgram> = emptyList(),
+    val savedItems  : List<SharedProgram> = emptyList(),
     val sort        : DiscoverSort        = DiscoverSort.NEWEST,
     val isLoading   : Boolean             = false,
+    val savedLoading: Boolean             = false,
     val isRefreshing: Boolean             = false,
     val canLoadMore : Boolean             = true,
+    val savedCanLoadMore: Boolean         = true,
     val error       : String?             = null,
+    val savedError  : String?             = null,
     val shareResult : ShareResult?        = null,
     val applyResult : ApplyResult?        = null,
     val applyingProgramIds: Set<String>   = emptySet(),
@@ -65,10 +69,18 @@ class DiscoverViewModel @Inject constructor(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    companion object { private const val PAGE_SIZE = 20 }
+    companion object {
+        private const val PAGE_SIZE = 20
+        private const val SAVED_SCAN_PAGE_SIZE = 50
+        private const val SAVED_TARGET_PAGE_SIZE = 20
+        private const val SAVED_MAX_SCAN_PAGES = 10
+    }
+
+    private var savedFeedOffset = 0
 
     init {
         loadFirstPage()
+        loadSavedFirstPage()
         loadMyShared()
     }
 
@@ -76,11 +88,13 @@ class DiscoverViewModel @Inject constructor(
         if (sort == _state.value.sort) return
         _state.update { it.copy(sort = sort) }
         loadFirstPage()
+        loadSavedFirstPage()
     }
 
     fun refresh() {
         _state.update { it.copy(isRefreshing = true, error = null) }
         loadFirstPage(isRefresh = true)
+        loadSavedFirstPage(isRefresh = true)
         loadMyShared()
     }
 
@@ -128,7 +142,9 @@ class DiscoverViewModel @Inject constructor(
 
     /** Optimistic update: UI anında değişir, hata olursa rollback. */
     fun toggleLike(programId: String) {
-        val before = _state.value.items.firstOrNull { it.id == programId } ?: return
+        val before = _state.value.items.firstOrNull { it.id == programId }
+            ?: _state.value.savedItems.firstOrNull { it.id == programId }
+            ?: return
         mutateLocal(programId) { item ->
             val newLiked = !item.isLikedByMe
             item.copy(
@@ -145,7 +161,9 @@ class DiscoverViewModel @Inject constructor(
     }
 
     fun toggleSave(programId: String) {
-        val before = _state.value.items.firstOrNull { it.id == programId } ?: return
+        val before = _state.value.items.firstOrNull { it.id == programId }
+            ?: _state.value.savedItems.firstOrNull { it.id == programId }
+            ?: return
         mutateLocal(programId) { item ->
             val newSaved = !item.isSavedByMe
             item.copy(
@@ -163,7 +181,90 @@ class DiscoverViewModel @Inject constructor(
 
     private fun mutateLocal(programId: String, block: (SharedProgram) -> SharedProgram) {
         _state.update { s ->
-            s.copy(items = s.items.map { if (it.id == programId) block(it) else it })
+            var mutated: SharedProgram? = null
+            val items = s.items.map {
+                if (it.id == programId) block(it).also { updated -> mutated = updated } else it
+            }
+            val savedItems = s.savedItems
+                .map {
+                    if (it.id == programId) block(it).also { updated -> mutated = updated } else it
+                }
+                .let { list ->
+                    val updated = mutated
+                    when {
+                        updated == null -> list
+                        updated.isSavedByMe && list.none { it.id == updated.id } ->
+                            (list + updated).distinctBy { it.id }.sortedFor(s.sort)
+                        !updated.isSavedByMe -> list.filter { it.id != updated.id }
+                        else -> list
+                    }
+                }
+            s.copy(items = items, savedItems = savedItems)
+        }
+    }
+
+    fun loadMoreSaved() {
+        val s = _state.value
+        if (s.savedLoading || !s.savedCanLoadMore) return
+        loadSavedPage(reset = false)
+    }
+
+    private fun loadSavedFirstPage(isRefresh: Boolean = false) {
+        savedFeedOffset = 0
+        if (!isRefresh) {
+            _state.update {
+                it.copy(
+                    savedItems = emptyList(),
+                    savedLoading = true,
+                    savedError = null,
+                    savedCanLoadMore = true
+                )
+            }
+        }
+        loadSavedPage(reset = true)
+    }
+
+    private fun loadSavedPage(reset: Boolean) {
+        viewModelScope.launch {
+            _state.update { it.copy(savedLoading = true, savedError = null) }
+
+            val existing = if (reset) emptyList() else _state.value.savedItems
+            var offset = if (reset) 0 else savedFeedOffset
+            var canScanMore = true
+            var scannedPages = 0
+            val collected = mutableListOf<SharedProgram>()
+            var failureMessage: String? = null
+
+            while (
+                collected.size < SAVED_TARGET_PAGE_SIZE &&
+                canScanMore &&
+                scannedPages < SAVED_MAX_SCAN_PAGES
+            ) {
+                val result = discoverRepo.getFeed(_state.value.sort, SAVED_SCAN_PAGE_SIZE, offset)
+                val page = result.getOrElse { err ->
+                    failureMessage = err.message ?: "Kaydedilenler yüklenemedi"
+                    emptyList()
+                }
+                if (failureMessage != null) break
+
+                offset += page.size
+                canScanMore = page.size >= SAVED_SCAN_PAGE_SIZE
+                collected += page.filter { it.isSavedByMe }
+                scannedPages++
+            }
+
+            savedFeedOffset = offset
+            _state.update {
+                it.copy(
+                    savedItems = (existing + collected)
+                        .distinctBy { item -> item.id }
+                        .sortedFor(it.sort),
+                    savedLoading = false,
+                    isRefreshing = false,
+                    savedCanLoadMore = canScanMore,
+                    savedError = failureMessage
+                )
+            }
         }
     }
 
