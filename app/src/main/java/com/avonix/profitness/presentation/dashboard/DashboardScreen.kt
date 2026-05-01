@@ -314,7 +314,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             visible  = showStore,
             enter    = slideInVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(200)),
             exit     = slideOutVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) { it } + fadeOut(tween(150)),
-            modifier = Modifier.zIndex(300f)
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(300f)
         ) {
             StoreScreen(onBack = { showStore = false })
         }
