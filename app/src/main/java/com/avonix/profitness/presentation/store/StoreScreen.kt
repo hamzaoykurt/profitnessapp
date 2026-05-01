@@ -20,6 +20,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -197,6 +199,7 @@ fun StoreScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .blockTouchesBehind()
             .background(theme.bg0)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -259,15 +262,25 @@ fun StoreScreen(
         }
 
         if (state.pendingOrderId != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(0.48f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { viewModel.dismissPendingOrder() }
+                    .zIndex(14f)
+            )
             PendingOrderPanel(
                 state = state,
                 theme = theme,
                 onSandboxComplete = viewModel::completeSandboxCheckout,
                 onDismiss = viewModel::dismissPendingOrder,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .align(Alignment.Center)
+                    .imePadding()
+                    .padding(horizontal = 16.dp)
                     .zIndex(15f)
             )
         }
@@ -321,6 +334,15 @@ fun StoreScreen(
     }
 }
 
+private fun Modifier.blockTouchesBehind(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Final)
+            event.changes.forEach { it.consume() }
+        }
+    }
+}
+
 @Composable
 private fun PendingOrderPanel(
     state: StoreState,
@@ -329,11 +351,12 @@ private fun PendingOrderPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var cardNumber by remember { mutableStateOf("") }
-    var expiry by remember { mutableStateOf("") }
-    var cvc by remember { mutableStateOf("") }
+    var cardNumber by remember { mutableStateOf("4242 4242 4242 4242") }
+    var expiry by remember { mutableStateOf("12/30") }
+    var cvc by remember { mutableStateOf("123") }
     val digits = cardNumber.filter { it.isDigit() }
-    val canSubmit = state.sandboxAvailable && digits.length >= 12 && expiry.length >= 4 && cvc.length >= 3
+    val expiryDigits = expiry.filter { it.isDigit() }
+    val canSubmit = state.sandboxAvailable && digits.length == 16 && expiryDigits.length == 4 && cvc.length >= 3
 
     Column(
         modifier = modifier
@@ -342,17 +365,21 @@ private fun PendingOrderPanel(
             .clip(RoundedCornerShape(18.dp))
             .background(theme.bg1)
             .border(1.dp, Lime.copy(0.28f), RoundedCornerShape(18.dp))
-            .padding(16.dp)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { }
+            .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(38.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Lime.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.ReceiptLong, null, tint = Lime, modifier = Modifier.size(21.dp))
+                Icon(Icons.Rounded.ReceiptLong, null, tint = Lime, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -372,10 +399,16 @@ private fun PendingOrderPanel(
         }
 
         if (state.sandboxAvailable) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             DemoField(
                 value = cardNumber,
-                onValueChange = { cardNumber = it.filter { ch -> ch.isDigit() || ch == ' ' }.take(23) },
+                onValueChange = {
+                    cardNumber = it
+                        .filter { ch -> ch.isDigit() }
+                        .take(16)
+                        .chunked(4)
+                        .joinToString(" ")
+                },
                 label = "Kart numarası",
                 placeholder = "4242 4242 4242 4242",
                 theme = theme
@@ -384,7 +417,10 @@ private fun PendingOrderPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DemoField(
                     value = expiry,
-                    onValueChange = { expiry = it.filter { ch -> ch.isDigit() || ch == '/' }.take(5) },
+                    onValueChange = {
+                        val raw = it.filter { ch -> ch.isDigit() }.take(4)
+                        expiry = if (raw.length > 2) "${raw.take(2)}/${raw.drop(2)}" else raw
+                    },
                     label = "SKT",
                     placeholder = "12/30",
                     theme = theme,
@@ -401,12 +437,12 @@ private fun PendingOrderPanel(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Test için 4242 4242 4242 4242, 12/30, 123 kullanabilirsin. Gerçek ödeme alınmaz.",
+                "Test kartı hazır dolduruldu. Gerçek ödeme alınmaz.",
                 color = theme.text2.copy(0.72f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -422,7 +458,7 @@ private fun PendingOrderPanel(
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Rounded.Science, null, tint = Lime, modifier = Modifier.size(17.dp))
-                        Text("Demo kartla ödemeyi tamamla", color = Lime, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        Text("Demo ödemeyi tamamla", color = Lime, fontSize = 13.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -499,7 +535,10 @@ private fun DemoField(
         label = { Text(label, fontSize = 11.sp) },
         placeholder = { Text(placeholder, fontSize = 12.sp, color = theme.text2.copy(0.55f)) },
         singleLine = true,
-        modifier = modifier.fillMaxWidth(),
+        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = theme.text0,
             unfocusedTextColor = theme.text0,
