@@ -2,12 +2,14 @@ package com.avonix.profitness.data.sync
 
 import com.avonix.profitness.data.local.dao.ExerciseDao
 import com.avonix.profitness.data.local.dao.ProgramDao
+import com.avonix.profitness.data.local.dao.SetCompletionDao
 import com.avonix.profitness.data.local.dao.WorkoutDao
 import com.avonix.profitness.data.local.entity.ExerciseEntity
 import com.avonix.profitness.data.local.entity.ExerciseLogEntity
 import com.avonix.profitness.data.local.entity.ProgramDayEntity
 import com.avonix.profitness.data.local.entity.ProgramEntity
 import com.avonix.profitness.data.local.entity.ProgramExerciseEntity
+import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import com.avonix.profitness.data.local.entity.WorkoutLogEntity
 import com.avonix.profitness.data.program.dto.ExerciseDto
 import com.avonix.profitness.data.program.dto.ProgramDayDto
@@ -54,6 +56,17 @@ private data class ExerciseLogUpsert(
     val duration_seconds: Int = 0
 )
 
+@Serializable
+private data class SetCompletionUpsert(
+    val user_id: String,
+    val exercise_id: String,
+    val program_day_id: String,
+    val set_index: Int,
+    val date: String,
+    val weight_kg: Float? = null,
+    val reps_actual: Int? = null
+)
+
 /**
  * Supabase ↔ Room senkronizasyon katmanı.
  *
@@ -67,7 +80,8 @@ class SyncManager @Inject constructor(
     private val supabase: SupabaseClient,
     private val programDao: ProgramDao,
     private val exerciseDao: ExerciseDao,
-    private val workoutDao: WorkoutDao
+    private val workoutDao: WorkoutDao,
+    private val setCompletionDao: SetCompletionDao
 ) {
     private val syncMutex = Mutex()
 
@@ -81,6 +95,8 @@ class SyncManager @Inject constructor(
             runCatching {
                 pullExercises()
                 pullPrograms(userId)
+                pushSetCompletions(userId)
+                pullSetCompletions(userId)
                 pullWorkoutLogs(userId)
                 // Seri sürekliliği için tüm geçmiş tarihleri de çek (uninstall sonrası restore)
                 pullWorkoutLogDates(userId)
@@ -204,6 +220,23 @@ class SyncManager @Inject constructor(
         }
     }
 
+    /** Set bazlı ağırlık/tekrar kayıtlarını Supabase'den Room'a geri yükler. */
+    suspend fun pullSetCompletions(userId: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            val remote = supabase.postgrest["set_completions"]
+                .select {
+                    filter { eq("user_id", userId) }
+                    order("date", Order.ASCENDING)
+                    order("set_index", Order.ASCENDING)
+                }
+                .decodeList<SetCompletionUpsert>()
+
+            if (remote.isNotEmpty()) {
+                setCompletionDao.upsertAll(remote.map { it.toEntity() })
+            }
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     //  PUSH: Room → Supabase
     // ═════════════════════════════════════════════════════════════════════════
@@ -245,6 +278,69 @@ class SyncManager @Inject constructor(
                     supabase.postgrest["exercise_logs"]
                         .upsert(payload, onConflict = "id", defaultToNull = false)
                     unsyncedExLogs.forEach { workoutDao.markExerciseLogSynced(it.id) }
+                }
+            }
+        }
+    }
+
+    /** Mevcut lokal set kayıtlarını profile bağlı kalıcı Supabase tablosuna yazar. */
+    suspend fun pushSetCompletions(userId: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            val entries = setCompletionDao.getAllForUser(userId)
+            if (entries.isEmpty()) return@runCatching
+            supabase.postgrest["set_completions"]
+                .upsert(
+                    entries.map { it.toUpsert() },
+                    onConflict = "user_id,exercise_id,program_day_id,set_index,date",
+                    defaultToNull = false
+                )
+        }
+    }
+
+    suspend fun pushSetCompletion(entity: SetCompletionEntity) = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest["set_completions"]
+                .upsert(
+                    entity.toUpsert(),
+                    onConflict = "user_id,exercise_id,program_day_id,set_index,date",
+                    defaultToNull = false
+                )
+        }
+    }
+
+    suspend fun deleteSetCompletion(
+        userId: String,
+        exerciseId: String,
+        programDayId: String,
+        setIndex: Int,
+        date: String
+    ) = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest["set_completions"].delete {
+                filter {
+                    eq("user_id", userId)
+                    eq("exercise_id", exerciseId)
+                    eq("program_day_id", programDayId)
+                    eq("set_index", setIndex)
+                    eq("date", date)
+                }
+            }
+        }
+    }
+
+    suspend fun deleteSetCompletionsForExercise(
+        userId: String,
+        exerciseId: String,
+        programDayId: String,
+        date: String
+    ) = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest["set_completions"].delete {
+                filter {
+                    eq("user_id", userId)
+                    eq("exercise_id", exerciseId)
+                    eq("program_day_id", programDayId)
+                    eq("date", date)
                 }
             }
         }
@@ -314,5 +410,25 @@ class SyncManager @Inject constructor(
         isCompleted = is_completed,
         durationSeconds = duration_seconds ?: 0,
         synced = synced
+    )
+
+    private fun SetCompletionEntity.toUpsert() = SetCompletionUpsert(
+        user_id = userId,
+        exercise_id = exerciseId,
+        program_day_id = programDayId,
+        set_index = setIndex,
+        date = date,
+        weight_kg = weightKg,
+        reps_actual = repsActual
+    )
+
+    private fun SetCompletionUpsert.toEntity() = SetCompletionEntity(
+        userId = user_id,
+        exerciseId = exercise_id,
+        programDayId = program_day_id,
+        setIndex = set_index,
+        date = date,
+        weightKg = weight_kg,
+        repsActual = reps_actual
     )
 }

@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -41,6 +42,27 @@ interface SetCompletionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: SetCompletionEntity)
 
+    @Upsert
+    suspend fun upsertAll(entities: List<SetCompletionEntity>)
+
+    @Query("""
+        SELECT * FROM set_completions
+        WHERE user_id = :userId
+        ORDER BY date ASC, exercise_id ASC, set_index ASC
+    """)
+    suspend fun getAllForUser(userId: String): List<SetCompletionEntity>
+
+    @Query("""
+        SELECT * FROM set_completions
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+        LIMIT 1
+    """)
+    suspend fun getSet(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String
+    ): SetCompletionEntity?
+
     /** Partial update — sadece weight_kg'yi günceller, reps_actual'a dokunmaz. */
     @Query("""
         UPDATE set_completions
@@ -70,11 +92,13 @@ interface SetCompletionDao {
     suspend fun upsertWeight(
         userId: String, exerciseId: String, programDayId: String,
         setIndex: Int, date: String, weightKg: Float?
-    ) {
+    ): SetCompletionEntity {
         val rows = updateWeight(userId, exerciseId, programDayId, setIndex, date, weightKg)
         if (rows == 0) {
             insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null))
         }
+        return getSet(userId, exerciseId, programDayId, setIndex, date)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null)
     }
 
     /** Upsert reps_actual — kayıt varsa sadece reps_actual'ı günceller, yoksa yeni kayıt oluşturur. */
@@ -82,11 +106,13 @@ interface SetCompletionDao {
     suspend fun upsertRepsActual(
         userId: String, exerciseId: String, programDayId: String,
         setIndex: Int, date: String, repsActual: Int?
-    ) {
+    ): SetCompletionEntity {
         val rows = updateRepsActual(userId, exerciseId, programDayId, setIndex, date, repsActual)
         if (rows == 0) {
             insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual))
         }
+        return getSet(userId, exerciseId, programDayId, setIndex, date)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual)
     }
 
     @Query("""

@@ -93,6 +93,7 @@ class ExerciseProgressionViewModel @Inject constructor(
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
+            workoutRepository.syncFromRemote(userId)
             val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
             updateState { it.copy(summaries = summaries, isLoading = false) }
         }

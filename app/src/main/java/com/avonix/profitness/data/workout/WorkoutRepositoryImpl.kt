@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.LocalDate
@@ -251,6 +252,10 @@ class WorkoutRepositoryImpl @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     override suspend fun syncFromRemote(userId: String) {
+        syncManager.pullExercises()
+        syncManager.pullPrograms(userId)
+        syncManager.pushSetCompletions(userId)
+        syncManager.pullSetCompletions(userId)
         syncManager.pullWorkoutLogs(userId)
         syncManager.pullWorkoutLogDates(userId)
     }
@@ -287,6 +292,9 @@ class WorkoutRepositoryImpl @Inject constructor(
             setCompletionDao.insert(
                 SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual)
             )
+            setCompletionDao.getSet(userId, exerciseId, programDayId, setIndex, today)
+                ?.let { syncSetCompletionBestEffort(it) }
+            Unit
         }
     }
 
@@ -296,6 +304,8 @@ class WorkoutRepositoryImpl @Inject constructor(
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             setCompletionDao.delete(userId, exerciseId, programDayId, setIndex, today)
+            syncSetDeletionBestEffort(userId, exerciseId, programDayId, setIndex, today)
+            Unit
         }
     }
 
@@ -305,6 +315,8 @@ class WorkoutRepositoryImpl @Inject constructor(
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             setCompletionDao.deleteAllForExercise(userId, exerciseId, programDayId, today)
+            syncExerciseSetDeletionBestEffort(userId, exerciseId, programDayId, today)
+            Unit
         }
     }
 
@@ -318,6 +330,11 @@ class WorkoutRepositoryImpl @Inject constructor(
             repeat(totalSets) { i ->
                 setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, i, today, defaultRepsActual)
             }
+            val entries = setCompletionDao.getForDate(userId, exerciseId, today)
+                .filter { it.programDayId == programDayId }
+            entries.forEach { entry ->
+                syncSetCompletionBestEffort(entry)
+            }
         }
     }
 
@@ -327,7 +344,9 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            setCompletionDao.upsertWeight(userId, exerciseId, programDayId, setIndex, today, weightKg)
+            val entity = setCompletionDao.upsertWeight(userId, exerciseId, programDayId, setIndex, today, weightKg)
+            syncSetCompletionBestEffort(entity)
+            Unit
         }
     }
 
@@ -337,7 +356,9 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
+            val entity = setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
+            syncSetCompletionBestEffort(entity)
+            Unit
         }
     }
 
@@ -412,5 +433,38 @@ class WorkoutRepositoryImpl @Inject constructor(
             prev = d
         }
         return count
+    }
+
+    private suspend fun syncSetCompletionBestEffort(entity: SetCompletionEntity) {
+        withTimeoutOrNull(SET_SYNC_TIMEOUT_MS) {
+            syncManager.pushSetCompletion(entity)
+        }
+    }
+
+    private suspend fun syncSetDeletionBestEffort(
+        userId: String,
+        exerciseId: String,
+        programDayId: String,
+        setIndex: Int,
+        date: String
+    ) {
+        withTimeoutOrNull(SET_SYNC_TIMEOUT_MS) {
+            syncManager.deleteSetCompletion(userId, exerciseId, programDayId, setIndex, date)
+        }
+    }
+
+    private suspend fun syncExerciseSetDeletionBestEffort(
+        userId: String,
+        exerciseId: String,
+        programDayId: String,
+        date: String
+    ) {
+        withTimeoutOrNull(SET_SYNC_TIMEOUT_MS) {
+            syncManager.deleteSetCompletionsForExercise(userId, exerciseId, programDayId, date)
+        }
+    }
+
+    private companion object {
+        const val SET_SYNC_TIMEOUT_MS = 750L
     }
 }

@@ -36,7 +36,10 @@ class SyncCoordinator @Inject constructor(
         ttlMillis = ttlMillis,
         debounceMillis = debounceMillis
     ) {
+        syncManager.pullExercises().getOrThrow()
         syncManager.pullPrograms(userId).getOrThrow()
+        syncManager.pushSetCompletions(userId)
+        syncManager.pullSetCompletions(userId)
         syncManager.pullWorkoutLogs(userId).getOrThrow()
         syncManager.pullWorkoutLogDates(userId).getOrThrow()
     }

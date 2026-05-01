@@ -613,16 +613,19 @@ class WorkoutViewModel @Inject constructor(
                     checkAndUnlockAchievements(userId)
                 }
             } else {
+                // Önce egzersiz tamamlanma logunu geri al; kart/ilerleme UI'ı hemen normale döner.
+                // Set kayıtlarını ayrıca temizliyoruz, ama remote set-sync bunu geciktirse bile
+                // "Geri Al" aksiyonu kullanıcıya anında yansımış olur.
+                workoutRepository.uncompleteExercise(
+                    userId = userId,
+                    programDayId = programDayId,
+                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+                )
                 // Tüm setleri Room'dan sil — Flow otomatik UI'ı günceller
                 workoutRepository.clearExerciseSetCompletions(
                     userId = userId,
                     exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
                     programDayId = programDayId
-                )
-                workoutRepository.uncompleteExercise(
-                    userId = userId,
-                    programDayId = programDayId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
                 )
 
                 // Stats rollback + challenge progress tazele (istismar önleme):
