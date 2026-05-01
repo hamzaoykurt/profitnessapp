@@ -49,7 +49,7 @@ class AuthViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val loggedIn = authRepository.awaitSessionLoaded()
+            val loggedIn = runCatching { authRepository.awaitSessionLoaded() }.getOrDefault(false)
             if (loggedIn) {
                 sendEvent(AuthEvent.NavigateToDashboard)
             } else {

@@ -30,6 +30,7 @@
 -keep class io.github.jan.supabase.** { *; }
 -keep class io.ktor.** { *; }
 -dontwarn io.ktor.**
+-dontwarn org.slf4j.impl.StaticLoggerBinder
 
 # Kotlin coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
