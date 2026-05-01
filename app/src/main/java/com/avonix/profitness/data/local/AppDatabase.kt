@@ -152,6 +152,45 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("PRAGMA defer_foreign_keys = TRUE")
+                database.execSQL("DROP TABLE IF EXISTS programs_new")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS programs_new (
+                        id TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        is_active INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        content_hash TEXT DEFAULT NULL,
+                        applied_from_shared_id TEXT DEFAULT NULL,
+                        PRIMARY KEY(id)
+                    )
+                """)
+                database.execSQL("""
+                    INSERT INTO programs_new (
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    )
+                    SELECT
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    FROM programs
+                """)
+                database.execSQL("DROP TABLE programs")
+                database.execSQL("ALTER TABLE programs_new RENAME TO programs")
                 database.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_programs_user_id_created_at " +
                     "ON programs (user_id, created_at)"
