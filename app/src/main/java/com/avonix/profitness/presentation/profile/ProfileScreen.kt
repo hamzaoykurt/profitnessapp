@@ -367,26 +367,40 @@ private fun ProfileHeroBanner(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 52.dp, bottom = 32.dp),
+                .statusBarsPadding()
+                .padding(top = 8.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg1.copy(0.75f))
-                        .border(1.dp, theme.stroke, CircleShape)
-                        .clickable(onClick = onSettingsClick),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(theme.bg1.copy(0.75f))
+                            .border(1.dp, theme.stroke, CircleShape)
+                            .clickable(onClick = onSettingsClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
+                    }
+                    Text(
+                        "PROFİL",
+                        color = theme.text0,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        maxLines = 1
+                    )
                 }
 
                 // Kredi / Plan chip — sağ üst köşe, tıklanınca store'a gider

@@ -170,6 +170,7 @@ private fun CompactPill(
     Box(modifier = Modifier.wrapContentSize()) {
         Row(
             modifier = Modifier
+                .widthIn(max = 168.dp)
                 .clip(RoundedCornerShape(22.dp))
                 .background(
                     Brush.linearGradient(
@@ -215,7 +216,8 @@ private fun CompactPill(
                     color      = TextSecondary,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines   = 1
+                    maxLines   = 1,
+                    modifier   = Modifier.widthIn(max = 58.dp)
                 )
             }
         }

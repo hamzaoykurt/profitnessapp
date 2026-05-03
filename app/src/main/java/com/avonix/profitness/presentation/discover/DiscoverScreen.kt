@@ -135,7 +135,6 @@ fun DiscoverScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = timerExtraPad)
         ) {
             DiscoverHeader(
                 isTrending = state.sort == DiscoverSort.TRENDING,
@@ -263,14 +262,19 @@ private fun DiscoverHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .widthIn(max = 92.dp)
+        ) {
             Text(
                 text       = "KEŞFET",
                 color      = theme.text0,
-                fontSize   = 26.sp,
+                fontSize   = 22.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
@@ -278,7 +282,8 @@ private fun DiscoverHeader(
             Text(
                 text     = "Topluluk programları & challenge'lar",
                 color    = theme.text2.copy(alpha = 0.7f),
-                fontSize = 12.sp
+                fontSize = 9.sp,
+                maxLines = 1
             )
         }
         // Sort toggle
@@ -364,6 +369,7 @@ private fun DiscoverTabPill(
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier = modifier
+            .height(58.dp)
             .clip(shape)
             .background(
                 if (selected) Brush.linearGradient(listOf(accent.copy(0.22f), accent.copy(0.10f)))
@@ -922,7 +928,8 @@ private fun ProgramsSubTabBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SubTabChip(
@@ -958,6 +965,7 @@ private fun SubTabChip(
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = modifier
+            .height(40.dp)
             .clip(shape)
             .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.4f))
             .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.3f), shape)

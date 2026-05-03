@@ -235,49 +235,21 @@ fun AICoachScreen(
                 .padding(horizontal = 8.dp)
                 .padding(top = 8.dp)
         ) {
-            // Sol: Geçmiş
-            IconButton(
-                onClick  = { viewModel.openHistory() },
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Rounded.History,
-                    contentDescription = "Geçmiş",
-                    tint     = theme.text2.copy(0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            val hasPlan = state.userPlan != UserPlan.FREE
 
-            // Orta: Başlık
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .align(Alignment.Center)
-            ) {
-                Text(
-                    "ORACLE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 6.sp,
-                    fontWeight = FontWeight.ExtraLight
-                )
-                Text(
-                    "SANCTUARY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = theme.text2,
-                    letterSpacing = 2.sp,
-                    fontSize = 8.sp
-                )
-            }
-
-            // Sağ: Kredi rozeti + Yeni Sohbet + Ayarlar
+            // Sol: Geçmiş + kredi / plan rozeti
             Row(
-                modifier          = Modifier.align(Alignment.CenterEnd),
+                modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Kredi / plan badge
-                val hasPlan = state.userPlan != UserPlan.FREE
+                IconButton(onClick = { viewModel.openHistory() }) {
+                    Icon(
+                        Icons.Rounded.History,
+                        contentDescription = "Geçmiş",
+                        tint     = theme.text2.copy(0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -312,6 +284,36 @@ fun AICoachScreen(
                         )
                     }
                 }
+            }
+
+            // Orta: Başlık
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .align(Alignment.Center)
+            ) {
+                Text(
+                    "ORACLE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 6.sp,
+                    fontWeight = FontWeight.ExtraLight
+                )
+                Text(
+                    "SANCTUARY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = theme.text2,
+                    letterSpacing = 2.sp,
+                    fontSize = 8.sp
+                )
+            }
+
+            // Sağ: Yeni Sohbet + Ayarlar
+            Row(
+                modifier          = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = {
                     viewModel.startNewSession()
                     viewModel.initWelcome(strings.oracleWelcome)
