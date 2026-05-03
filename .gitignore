@@ -14,6 +14,9 @@ gen/
 out/
 build/
 generated/
+!app/src/release/generated/
+!app/src/release/generated/baselineProfiles/
+!app/src/release/generated/baselineProfiles/*.txt
 
 # Local configuration file (sdk path, etc)
 local.properties

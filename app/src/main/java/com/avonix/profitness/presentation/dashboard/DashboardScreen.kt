@@ -76,6 +76,7 @@ private val ALL_TABS = listOf(
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
     var showPerformanceDetail       by remember { mutableStateOf(false) }
@@ -139,28 +140,37 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         AnimatedContent(
             targetState  = selectedTab,
             transitionSpec = {
-                val fromIdx = ALL_TABS.indexOf(initialState)
-                val toIdx   = ALL_TABS.indexOf(targetState)
-                // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
-                // on the full composable tree which is the #1 cause of jank during transitions.
-                // Short durations (240/160ms) keep double-render window minimal.
-                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                val enterSlide = tween<IntOffset>(240, easing = easeOut)
-                val enterFade  = tween<Float>(200, easing = easeOut)
-                val exitSlide  = tween<IntOffset>(160, easing = easeIn)
-                val exitFade   = tween<Float>(120)
-                if (toIdx > fromIdx) {
-                    (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                val isFirstCompositionForTarget = targetState !in composedTabs
+                if (isFirstCompositionForTarget) {
+                    fadeIn(tween(90)) togetherWith fadeOut(tween(60))
                 } else {
-                    (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                    val fromIdx = ALL_TABS.indexOf(initialState)
+                    val toIdx   = ALL_TABS.indexOf(targetState)
+                    // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
+                    // on the full composable tree which is the #1 cause of jank during transitions.
+                    // Short durations (240/160ms) keep double-render window minimal.
+                    val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                    val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+                    val enterSlide = tween<IntOffset>(240, easing = easeOut)
+                    val enterFade  = tween<Float>(200, easing = easeOut)
+                    val exitSlide  = tween<IntOffset>(160, easing = easeIn)
+                    val exitFade   = tween<Float>(120)
+                    if (toIdx > fromIdx) {
+                        (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                    } else {
+                        (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                    }
                 }
             },
             modifier = swipeModifier,
             label = "tab_slide"
         ) { tab ->
+            LaunchedEffect(tab) {
+                if (tab !in composedTabs) composedTabs.add(tab)
+            }
+
             when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
@@ -216,7 +226,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         AppNavBar(
             tabs     = ALL_TABS,
             selected = selectedTab,
-            onSelect = { selectedTab = it },
+            onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
         )
 

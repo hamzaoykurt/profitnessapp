@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 val localProperties = Properties()
@@ -140,4 +141,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    baselineProfile(project(":baselineprofile"))
 }
