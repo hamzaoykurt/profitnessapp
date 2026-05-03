@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -456,31 +457,42 @@ private fun BuilderChooseScreen(
     ) {
         // ── Header ────────────────────────────────────────────────────────────
         item {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, top = 72.dp, end = 24.dp, bottom = 28.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 8.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    "PROGRAM",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 6.sp,
-                    fontWeight = FontWeight.ExtraLight
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "STUDIO",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = LocalAppTheme.current.text0,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(10.dp))
+                Column(modifier = Modifier.widthIn(max = 86.dp)) {
+                    Text(
+                        "PROGRAM",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 2.sp,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraLight,
+                        maxLines = 1
+                    )
+                    Text(
+                        "STUDIO",
+                        color = LocalAppTheme.current.text0,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
+                }
                 Text(
                     LocalAppTheme.current.strings.programStudioSub,
-                    color = LocalAppTheme.current.text1,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Light
+                    color = LocalAppTheme.current.text1.copy(alpha = 0.76f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    modifier = Modifier.widthIn(max = 108.dp)
                 )
             }
         }
@@ -2549,15 +2561,35 @@ private fun DetailHeader(title: String, sub: String, onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, top = 48.dp, end = 12.dp),
+            .statusBarsPadding()
+            .padding(start = 8.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
             Icon(Icons.Rounded.ArrowBack, null, tint = theme.text1)
         }
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = 2.sp)
-            Text(title, style = MaterialTheme.typography.displayMedium, color = theme.text0, fontWeight = FontWeight.Black)
+        Column(
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .widthIn(max = 108.dp)
+        ) {
+            Text(
+                sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp,
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                title,
+                color = theme.text0,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }
