@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -189,6 +190,12 @@ fun WorkoutScreen(
             when (event) {
                 is WorkoutEvent.ShowPaywall -> showPaywall = true
             }
+        }
+    }
+    BackHandler(enabled = showPaywall || notifPermissionDenied) {
+        when {
+            showPaywall -> showPaywall = false
+            notifPermissionDenied -> notifPermissionDenied = false
         }
     }
     if (showPaywall) {
@@ -491,6 +498,14 @@ private fun WorkoutContent(
     val listState = rememberLazyListState()
     // Açılan kartı ekranın ortasına scroll et
     var expandedExIdx by remember { mutableStateOf(-1) }
+
+    BackHandler(enabled = detailChallengeId != null || expandedExIdx >= 0) {
+        when {
+            detailChallengeId != null -> detailChallengeId = null
+            expandedExIdx >= 0        -> expandedExIdx = -1
+        }
+    }
+
     LaunchedEffect(expandedExIdx, hasTodayBanner) {
         if (expandedExIdx >= 0) {
             // Header items: StreakBanner(0), [EventBanner(1)?], Header, DaySelector, SectionLabel

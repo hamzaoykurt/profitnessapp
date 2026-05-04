@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
+import androidx.activity.compose.BackHandler
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import com.avonix.profitness.core.theme.*
@@ -88,6 +89,26 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var showLeaderboard             by remember { mutableStateOf(false) }
     var leaderboardInitialTab       by remember {
         mutableStateOf(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp)
+    }
+
+    BackHandler(
+        enabled = showStore ||
+            showExerciseProgression ||
+            showWeightTracking ||
+            showEditProfile ||
+            showLeaderboard ||
+            showAchievementsDetail ||
+            showPerformanceDetail
+    ) {
+        when {
+            showStore               -> showStore = false
+            showExerciseProgression -> showExerciseProgression = false
+            showWeightTracking      -> showWeightTracking = false
+            showEditProfile         -> showEditProfile = false
+            showLeaderboard         -> showLeaderboard = false
+            showAchievementsDetail  -> showAchievementsDetail = false
+            showPerformanceDetail   -> showPerformanceDetail = false
+        }
     }
 
     // Nav yüksekliği 78 → 92 dp (item padding 10/12 → 14/16, icon 20 → 24)

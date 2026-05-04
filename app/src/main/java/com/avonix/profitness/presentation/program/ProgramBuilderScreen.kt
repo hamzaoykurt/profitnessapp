@@ -1,6 +1,7 @@
 package com.avonix.profitness.presentation.program
 
 import android.util.Base64
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -291,6 +292,16 @@ fun ProgramBuilderScreen(
     var snackbarMsg by remember { mutableStateOf<String?>(null) }
     val theme   = LocalAppTheme.current
     val strings = theme.strings
+
+    BackHandler(
+        enabled = showPaywall || shareTarget != null || mode !is BuilderMode.Choose
+    ) {
+        when {
+            showPaywall       -> showPaywall = false
+            shareTarget != null -> shareTarget = null
+            mode !is BuilderMode.Choose -> mode = BuilderMode.Choose
+        }
+    }
 
     // Tab geçişinde stale ise yenile (3 dk cache)
     LaunchedEffect(Unit) { viewModel.reloadIfStale() }

@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.aicoach
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -91,9 +92,15 @@ fun AICoachScreen(
 
     // İlk açılış veya ayarlar → onboarding/prefs ekranı
     if (state.showOnboarding) {
+        val currentPrefs = viewModel.loadCurrentPrefs()
         AICoachOnboardingScreen(
-            initialPrefs  = viewModel.loadCurrentPrefs(),
+            initialPrefs  = currentPrefs,
             bottomPadding = bottomPadding,
+            onCancel      = if (currentPrefs.onboardingCompleted) {
+                viewModel::closePreferencesIfCompleted
+            } else {
+                null
+            },
             onComplete    = viewModel::completeOnboarding
         )
         return
@@ -136,6 +143,23 @@ fun AICoachScreen(
         if (text.isBlank() || state.isLoading) return
         inputText = ""
         viewModel.sendMessage(text)
+    }
+
+    BackHandler(
+        enabled = showPaywall ||
+            state.showHistory ||
+            programDialogMsg != null ||
+            state.programStatus is ProgramStatus.Success
+    ) {
+        when {
+            showPaywall -> showPaywall = false
+            programDialogMsg != null && state.programStatus !is ProgramStatus.Loading -> {
+                programDialogMsg = null
+                viewModel.resetProgramStatus()
+            }
+            state.programStatus is ProgramStatus.Success -> viewModel.resetProgramStatus()
+            state.showHistory -> viewModel.closeHistory()
+        }
     }
 
     Box(

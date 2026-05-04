@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -74,6 +75,16 @@ fun AuthScreen(
     if (state.isSessionLoading) {
         AuthLoadingSplash()
         return
+    }
+
+    BackHandler(enabled = state.screen !is AuthFlowScreen.Login) {
+        when (state.screen) {
+            is AuthFlowScreen.Register       -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.ForgotPassword -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.OtpVerify      -> viewModel.navigateTo(AuthFlowScreen.Register)
+            is AuthFlowScreen.EmailSent      -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.Login          -> Unit
+        }
     }
 
     AnimatedContent(

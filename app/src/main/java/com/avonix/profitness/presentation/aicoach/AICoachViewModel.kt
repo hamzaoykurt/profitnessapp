@@ -120,6 +120,12 @@ class AICoachViewModel @Inject constructor(
 
     fun openPreferences() { updateState { it.copy(showOnboarding = true) } }
 
+    fun closePreferencesIfCompleted() {
+        if (currentPrefs.onboardingCompleted) {
+            updateState { it.copy(showOnboarding = false) }
+        }
+    }
+
     // ── Welcome ───────────────────────────────────────────────────────────────
 
     fun initWelcome(welcomeText: String) {

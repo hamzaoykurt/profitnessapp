@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.aicoach
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -30,6 +31,7 @@ private const val TOTAL_STEPS = 3
 fun AICoachOnboardingScreen(
     initialPrefs : AICoachPrefs = AICoachPrefs(),
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    onCancel     : (() -> Unit)? = null,
     onComplete   : (AICoachPrefs) -> Unit
 ) {
     val theme  = LocalAppTheme.current
@@ -40,6 +42,14 @@ fun AICoachOnboardingScreen(
     var selectedStyle   by remember { mutableStateOf(initialPrefs.communicationStyle) }
     var allowProfile    by remember { mutableStateOf(initialPrefs.allowProfileAccess) }
     var allowThirdParty by remember { mutableStateOf(initialPrefs.allowThirdPartyProcessing) }
+
+    BackHandler(enabled = step > 0 || onCancel != null) {
+        if (step > 0) {
+            step--
+        } else {
+            onCancel?.invoke()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()

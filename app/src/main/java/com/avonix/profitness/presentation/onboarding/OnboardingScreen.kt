@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.onboarding
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -63,6 +64,10 @@ fun OnboardingScreen(
 
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+
+    BackHandler(enabled = state.step > 0 && !state.isSaving) {
+        viewModel.prevStep()
+    }
 
     Box(
         modifier = Modifier
