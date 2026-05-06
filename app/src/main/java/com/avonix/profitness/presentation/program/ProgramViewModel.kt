@@ -422,7 +422,7 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(aiLoading = false, aiError = "Kayıt hatası: ${err.message}") }
+                    updateState { it.copy(aiLoading = false, aiError = programSaveErrorMessage(err)) }
                 }
         }
     }
@@ -590,6 +590,22 @@ FORMAT:
     fun clearAiEditResult() { updateState { it.copy(aiEditResult = null) } }
     fun clearAiEditError()  { updateState { it.copy(aiEditError  = null) } }
 
+    private fun programSaveErrorMessage(error: Throwable): String {
+        val message = error.message.orEmpty()
+        return when {
+            message.contains("Oturum", ignoreCase = true) -> message
+            message.contains("permission denied", ignoreCase = true) ||
+            message.contains("JWT", ignoreCase = true) ||
+            message.contains("not authenticated", ignoreCase = true) ->
+                "Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın."
+            message.contains("network", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("Unable to resolve", ignoreCase = true) ->
+                "İnternet bağlantısını kontrol edin."
+            else -> "Program kaydedilemedi. Tekrar deneyin."
+        }
+    }
+
     private fun flexInt(obj: kotlinx.serialization.json.JsonObject, key: String, default: Int): Int {
         val el = obj[key]?.jsonPrimitive ?: return default
         return el.intOrNull
@@ -618,7 +634,7 @@ FORMAT:
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    updateState { it.copy(isLoading = false, error = programSaveErrorMessage(err)) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program oluşturulamadı."))
                 }
         }
@@ -656,7 +672,7 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    updateState { it.copy(isLoading = false, error = programSaveErrorMessage(err)) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
                 }
         }
@@ -711,8 +727,9 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: ${err.message ?: "Program kaydedilemedi."}"))
+                    val message = programSaveErrorMessage(err)
+                    updateState { it.copy(isLoading = false, error = message) }
+                    sendEvent(ProgramEvent.ShowSnackbar("Hata: $message"))
                 }
         }
     }
@@ -739,7 +756,7 @@ FORMAT:
                     }
                     onFailure?.invoke()
                     loadUserPrograms()
-                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
+                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${programSaveErrorMessage(e)}"))
                 }
         }
     }

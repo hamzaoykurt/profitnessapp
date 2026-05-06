@@ -246,8 +246,8 @@ fun WorkoutScreen(
         DynamicIslandTimer(
             timer     = restTimer,
             topOffset = statusBarPad + 8.dp,
-            onStop    = { viewModel.stopRestTimer() },
-            onDismiss = { viewModel.dismissRestTimer() }
+            onStop    = { viewModel.stopVisibleTimer() },
+            onDismiss = { viewModel.dismissVisibleTimer() }
          )
 
         // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
@@ -646,7 +646,8 @@ private fun WorkoutContent(
                 }
                 // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
                 val timer = restTimer
-                val isThisExTimer = timer.exerciseName == exercise.name
+                val isThisExTimer = timer.exerciseId == exercise.id ||
+                    (timer.exerciseId.isBlank() && timer.exerciseName == exercise.name)
                 CinematicExerciseCard(
                     exercise          = exercise,
                     index             = idx,
@@ -667,11 +668,16 @@ private fun WorkoutContent(
                     onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
                     onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
                     onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
-                    timerSeconds      = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
+                    timerSeconds      = if (isThisExTimer) timer.displaySeconds else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
-                    onStartTimer      = { secs -> viewModel.startRestTimer(secs.takeIf { it > 0 } ?: 60, exercise.name) },
-                    onStopTimer       = { viewModel.stopRestTimer() }
+                    onStartTimer      = { secs ->
+                        viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
+                    },
+                    onStartStopwatchTimer = {
+                        viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
+                    },
+                    onStopTimer       = { viewModel.stopVisibleTimer() }
                 )
                 if (showDetail) {
                     LaunchedEffect(exercise.id) {

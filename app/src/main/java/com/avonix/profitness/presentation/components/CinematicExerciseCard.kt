@@ -35,6 +35,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.classifyExerciseMetric
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -63,16 +65,18 @@ fun CinematicExerciseCard(
     timerRunning: Boolean = false,
     timerDone: Boolean = false,
     onStartTimer: (seconds: Int) -> Unit = {},
+    onStartStopwatchTimer: () -> Unit = {},
     onStopTimer: () -> Unit = {}
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
+    var showActivityTimerSetup by remember { mutableStateOf(false) }
     val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
-        exerciseActivityMetric(exercise)
+        classifyExerciseMetric(exercise.category, exercise.name, exercise.target, exercise.reps)
     }
-    val activityBased = activityMetric != ActivityMetric.Strength
+    val activityBased = activityMetric != ExerciseMetric.Strength
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
     LaunchedEffect(timerRunning) {
@@ -252,9 +256,8 @@ fun CinematicExerciseCard(
                             ActivityMetricsPanel(
                                 durationValue = activityDuration,
                                 distanceValue = activityDistance,
-                                supportsDistance = activityMetric == ActivityMetric.DurationDistance,
+                                supportsDistance = activityMetric == ExerciseMetric.DurationDistance,
                                 isDone = isCompleted,
-                                onDurationChanged = onActivityDurationChanged,
                                 onDistanceChanged = onActivityDistanceChanged
                             )
                         } else {
@@ -281,6 +284,20 @@ fun CinematicExerciseCard(
                         }
 
                         Spacer(Modifier.height(14.dp))
+                        if (activityBased && showActivityTimerSetup) {
+                            ActivityTimerSetupPanel(
+                                initialMinutes = activityDuration,
+                                onStartCountdown = { seconds ->
+                                    showActivityTimerSetup = false
+                                    onStartTimer(seconds)
+                                },
+                                onStartStopwatch = {
+                                    showActivityTimerSetup = false
+                                    onStartStopwatchTimer()
+                                }
+                            )
+                            Spacer(Modifier.height(14.dp))
+                        }
                         HorizontalDivider(color = Snow.copy(0.08f))
                         Spacer(Modifier.height(12.dp))
 
@@ -290,19 +307,17 @@ fun CinematicExerciseCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (activityBased) {
-                                val durationSeconds = activityDuration
-                                    .replace(',', '.')
-                                    .toFloatOrNull()
-                                    ?.let { (it * 60f).toInt().coerceAtLeast(1) }
-                                    ?: 0
                                 RestTimerChip(
                                     seconds        = timerSeconds,
                                     isRunning      = timerRunning,
                                     isDone         = timerDone,
-                                    defaultSeconds = durationSeconds,
-                                    idleLabel      = if (durationSeconds > 0) "SÜREYİ BAŞLAT" else "SÜRE GİR",
-                                    doneLabel      = "SÜRE BİTTİ ✓",
-                                    onStart        = { if (durationSeconds > 0) onStartTimer(durationSeconds) },
+                                    defaultSeconds = activityDuration.toDurationSeconds(),
+                                    idleLabel      = "SAYAC",
+                                    doneLabel      = "SURE BITTI",
+                                    onStart        = {
+                                        if (timerRunning) onStopTimer()
+                                        else showActivityTimerSetup = !showActivityTimerSetup
+                                    },
                                     onStop         = onStopTimer
                                 )
                             } else {
@@ -348,7 +363,6 @@ private fun ActivityMetricsPanel(
     distanceValue: String,
     supportsDistance: Boolean,
     isDone: Boolean,
-    onDurationChanged: (String) -> Unit,
     onDistanceChanged: (String) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -367,15 +381,28 @@ private fun ActivityMetricsPanel(
         )
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            WeightInputField(
-                value = durationValue,
-                onValueChange = onDurationChanged,
-                placeholder = "dk",
-                isDone = isDone,
-                accent = accent,
-                suffix = "dk",
-                keyboardType = KeyboardType.Decimal,
-                modifier = Modifier.weight(1f)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Surface3.copy(0.6f))
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = durationValue.toDurationLabel(),
+                    color = if (isDone) accent else Snow,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+            Text(
+                text = "timer ile kaydedilir",
+                color = TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterVertically)
             )
             if (supportsDistance) {
                 WeightInputField(
@@ -391,6 +418,122 @@ private fun ActivityMetricsPanel(
             }
         }
     }
+}
+
+@Composable
+private fun ActivityTimerSetupPanel(
+    initialMinutes: String,
+    onStartCountdown: (Int) -> Unit,
+    onStartStopwatch: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    var mode by remember { mutableStateOf("stopwatch") }
+    val initialSeconds = remember(initialMinutes) { initialMinutes.toDurationSeconds() }
+    var hours by remember(initialSeconds) { mutableStateOf(if (initialSeconds >= 3600) (initialSeconds / 3600).toString() else "") }
+    var minutes by remember(initialSeconds) { mutableStateOf(((initialSeconds % 3600) / 60).takeIf { it > 0 }?.toString() ?: "") }
+    var seconds by remember(initialSeconds) { mutableStateOf((initialSeconds % 60).takeIf { it > 0 }?.toString() ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface3.copy(0.55f))
+            .border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
+            .padding(12.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TimerModeChip(
+                label = "KRONOMETRE",
+                selected = mode == "stopwatch",
+                onClick = { mode = "stopwatch" },
+                modifier = Modifier.weight(1f)
+            )
+            TimerModeChip(
+                label = "GERI SAYIM",
+                selected = mode == "countdown",
+                onClick = { mode = "countdown" },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (mode == "countdown") {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SmallTimeInput(hours, { hours = it }, "saat", Modifier.weight(1f))
+                SmallTimeInput(minutes, { minutes = it }, "dk", Modifier.weight(1f))
+                SmallTimeInput(seconds, { seconds = it }, "sn", Modifier.weight(1f))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        val countdownSeconds = (hours.toIntOrNull() ?: 0) * 3600 +
+            (minutes.toIntOrNull() ?: 0) * 60 +
+            (seconds.toIntOrNull() ?: 0)
+        val enabled = mode == "stopwatch" || countdownSeconds > 0
+        Button(
+            onClick = {
+                if (mode == "stopwatch") onStartStopwatch()
+                else onStartCountdown(countdownSeconds)
+            },
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = accent),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = if (mode == "stopwatch") "KRONOMETREYI BASLAT" else "GERI SAYIMI BASLAT",
+                fontWeight = FontWeight.Black,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimerModeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) accent.copy(0.22f) else Surface3.copy(0.6f))
+            .border(1.dp, if (selected) accent.copy(0.5f) else Snow.copy(0.08f), RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (selected) accent else TextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun SmallTimeInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    suffix: String,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    WeightInputField(
+        value = value,
+        onValueChange = { onValueChange(it.take(2)) },
+        placeholder = "0",
+        isDone = false,
+        accent = accent,
+        suffix = suffix,
+        keyboardType = KeyboardType.Number,
+        modifier = modifier
+    )
 }
 
 // ── Set Row — ağırlık girişli; set/tekrar programdan gelir ───────────────────
@@ -604,7 +747,7 @@ private fun RestTimerChip(
             text = when {
                 isDone    -> doneLabel
                 isRunning -> "${seconds}s"
-                else      -> if (defaultSeconds > 0) "${defaultSeconds}s $idleLabel" else idleLabel
+                else      -> idleLabel
             },
             color = chipColor,
             fontSize = 12.sp,
@@ -634,7 +777,7 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "($done✓)",
+                    text = "(${done} tamam)",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
@@ -644,26 +787,21 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
     }
 }
 
-private enum class ActivityMetric { Strength, Duration, DurationDistance }
+private fun String.toDurationSeconds(): Int =
+    replace(',', '.')
+        .toFloatOrNull()
+        ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+        ?: 0
 
-private fun exerciseActivityMetric(exercise: Exercise): ActivityMetric {
-    val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
-        .joinToString(" ")
-        .lowercase()
-    val distanceKeywords = listOf(
-        "koş", "kos", "run", "jog", "bisiklet", "bike", "cycle", "cycling",
-        "yüz", "yuz", "swim", "yürüy", "yuruy", "walk", "kürek", "kurek", "row"
-    )
-    if (distanceKeywords.any { it in haystack }) return ActivityMetric.DurationDistance
-
-    val durationKeywords = listOf(
-        "kardiyo", "cardio", "dayan", "endurance", "elliptical",
-        "tempo", "interval", "hiit", "plank", "yoga", "pilates", "mobility"
-    )
-    return if (
-        durationKeywords.any { it in haystack } ||
-        exercise.reps.contains("s", ignoreCase = true) ||
-        exercise.reps.contains("dk", ignoreCase = true) ||
-        exercise.reps.contains("min", ignoreCase = true)
-    ) ActivityMetric.Duration else ActivityMetric.Strength
+private fun String.toDurationLabel(): String {
+    val totalSeconds = toDurationSeconds()
+    if (totalSeconds <= 0) return "Timer bekliyor"
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return buildString {
+        if (hours > 0) append("${hours}sa ")
+        if (minutes > 0) append("${minutes}dk ")
+        if (seconds > 0 || isEmpty()) append("${seconds}sn")
+    }.trim()
 }

@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.RestTimerState
+import com.avonix.profitness.presentation.workout.TimerMode
+import com.avonix.profitness.presentation.workout.TimerPurpose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -86,7 +88,7 @@ fun DynamicIslandTimer(
 
     // ── Arc progress ─────────────────────────────────────────────────────────
     val arcProgress by animateFloatAsState(
-        targetValue   = if (timer.totalSeconds > 0) 1f - timer.progress else 0f,
+        targetValue   = if (timer.mode == TimerMode.Countdown && timer.totalSeconds > 0) 1f - timer.progress else 0f,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label         = "arc_progress"
     )
@@ -156,10 +158,11 @@ private fun CompactPill(
     glowAlpha: Float,
     onClick  : () -> Unit
 ) {
-    val min = timer.secondsLeft / 60
-    val sec = timer.secondsLeft % 60
+    val displaySeconds = timer.displaySeconds
+    val min = displaySeconds / 60
+    val sec = displaySeconds % 60
     val timeStr = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
-                  else "${timer.secondsLeft}s"
+                  else "${displaySeconds}s"
 
     val pillColor = when {
         timer.isDone    -> Amber
@@ -237,8 +240,9 @@ private fun ExpandedIsland(
     onStop      : () -> Unit
 ) {
     val pillColor = if (timer.isDone) Amber else accent
-    val min = timer.secondsLeft / 60
-    val sec = timer.secondsLeft % 60
+    val displaySeconds = timer.displaySeconds
+    val min = displaySeconds / 60
+    val sec = displaySeconds % 60
 
     Box(
         modifier = Modifier
@@ -310,7 +314,7 @@ private fun ExpandedIsland(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (timer.isDone) "DİNLENDİN" else "SET ARASI",
+                            text = timer.headerLabel(),
                             color      = pillColor,
                             fontSize   = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -407,7 +411,7 @@ private fun ExpandedIsland(
                         } else {
                             Text(
                                 text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
-                                       else "${timer.secondsLeft}",
+                                       else "$displaySeconds",
                                 color      = TextPrimary,
                                 fontSize   = 38.sp,
                                 fontWeight = FontWeight.Black
@@ -439,7 +443,9 @@ private fun ExpandedIsland(
 
                 // ── Hint ──────────────────────────────────────────────────────
                 Text(
-                    text = if (timer.isDone) "Sonraki seti başlatmak için hazırsın"
+                    text = if (timer.purpose == TimerPurpose.Activity && timer.isDone) "Süre kaydedildi"
+                           else if (timer.isDone) "Sonraki seti başlatmak için hazırsın"
+                           else if (timer.purpose == TimerPurpose.Activity) "Durdurunca süre kaydedilir"
                            else "Kapat için dokun",
                     color      = TextMuted,
                     fontSize   = 10.sp,
@@ -483,4 +489,12 @@ private fun MiniArcIndicator(
             )
         }
     }
+}
+
+private fun RestTimerState.headerLabel(): String = when {
+    purpose == TimerPurpose.Activity && isDone -> "SURE KAYDEDILDI"
+    purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> "KRONOMETRE"
+    purpose == TimerPurpose.Activity -> "GERI SAYIM"
+    isDone -> "DİNLENDİN"
+    else -> "SET ARASI"
 }

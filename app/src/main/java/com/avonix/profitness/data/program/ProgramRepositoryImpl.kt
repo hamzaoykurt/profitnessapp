@@ -18,6 +18,7 @@ import com.avonix.profitness.domain.model.ProgramDay
 import com.avonix.profitness.domain.model.ProgramExercise
 import com.avonix.profitness.domain.model.ProgramType
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -97,6 +98,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun createFromTemplate(userId: String, templateKey: String): Result<Program> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 val template = findTemplate(templateKey)
                     ?: error("Template bulunamadı: $templateKey")
 
@@ -174,6 +177,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun createManual(userId: String, name: String, days: List<ManualDayInput>): Result<Program> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 supabase.postgrest["programs"]
                     .update({ set("is_active", false) }) {
                         filter { eq("user_id", userId); eq("is_active", true) }
@@ -229,6 +234,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun setActive(programId: String, userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 supabase.postgrest["programs"]
                     .update({ set("is_active", false) }) {
                         filter { eq("user_id", userId); eq("is_active", true) }
@@ -247,6 +254,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun updateProgramName(programId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser()
+
                 supabase.postgrest["programs"]
                     .update({ set("name", name) }) { filter { eq("id", programId) } }
                 programDao.updateName(programId, name)
@@ -260,6 +269,8 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
         runCatching {
+            requireAuthenticatedUser()
+
             // Mimari karar (content-addressable snapshot):
             // Düzenleme programın id'sini değiştirmez — mevcut satır mutate edilir.
             // Paylaşılan kopya (shared_programs.program_data) ayrı, immutable bir snapshot
@@ -343,6 +354,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser()
+
                 // Room'dan hemen sil (anında UI yansıması)
                 programDao.deleteProgram(programId)
 
@@ -386,6 +399,8 @@ class ProgramRepositoryImpl @Inject constructor(
         repsDefault: Int
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
         runCatching {
+            val userId = requireAuthenticatedUser()
+
             supabase.postgrest["exercises"]
                 .insert(buildJsonObject {
                     put("name", name)
@@ -395,6 +410,7 @@ class ProgramRepositoryImpl @Inject constructor(
                     put("sets_default", setsDefault)
                     put("reps_default", repsDefault)
                     put("description", "")
+                    put("created_by", userId)
                 })
 
             val dto = supabase.postgrest["exercises"]
@@ -420,6 +436,8 @@ class ProgramRepositoryImpl @Inject constructor(
         notes: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            requireAuthenticatedUser(userId)
+
             supabase.postgrest["exercise_requests"]
                 .insert(buildJsonObject {
                     put("user_id", userId)
@@ -438,6 +456,25 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun syncFromRemote(userId: String) {
         syncManager.pullPrograms(userId)
         syncManager.pullExercises()
+    }
+
+    private suspend fun requireAuthenticatedUser(expectedUserId: String? = null): String {
+        supabase.auth.awaitInitialization()
+
+        var session = supabase.auth.currentSessionOrNull()
+        if (session == null) {
+            runCatching { supabase.auth.loadFromStorage() }
+            session = supabase.auth.currentSessionOrNull()
+        }
+
+        val userId = session?.user?.id
+            ?: throw IllegalStateException("Oturum süresi doldu. Lütfen tekrar giriş yapın.")
+
+        if (expectedUserId != null && expectedUserId != userId) {
+            throw IllegalStateException("Oturum kullanıcı bilgisi güncel değil. Lütfen tekrar giriş yapın.")
+        }
+
+        return userId
     }
 
     // ═════════════════════════════════════════════════════════════════════════

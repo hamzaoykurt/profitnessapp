@@ -116,6 +116,23 @@ fun ProfileScreen(
                 )
             }
             item {
+                PerformanceShortcutsSection(
+                    accent    = accent,
+                    theme     = theme,
+                    weightKg  = state.weightKg,
+                    onWeightClick = onNavigateToWeightTracking,
+                    onExerciseClick = onNavigateToExerciseProgression
+                )
+            }
+            item {
+                LeaderboardPreviewCard(
+                    accent              = accent,
+                    theme               = theme,
+                    onOpenXp            = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
+                    onOpenAchievements  = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
+                )
+            }
+            item {
                 BodyMetricsCard(
                     heightCm   = state.heightCm,
                     weightKg   = state.weightKg,
@@ -126,34 +143,11 @@ fun ProfileScreen(
                 )
             }
             item {
-                WeightTrackingCard(
-                    accent    = accent,
-                    theme     = theme,
-                    weightKg  = state.weightKg,
-                    onClick   = onNavigateToWeightTracking
-                )
-            }
-            item {
-                ExerciseProgressionCard(
-                    accent  = accent,
-                    theme   = theme,
-                    onClick = onNavigateToExerciseProgression
-                )
-            }
-            item {
                 WeeklyActivitySection(
                     accent         = accent,
                     theme          = theme,
                     strings        = strings,
                     weeklyActivity = state.weeklyActivity
-                )
-            }
-            item {
-                LeaderboardPreviewCard(
-                    accent              = accent,
-                    theme               = theme,
-                    onOpenXp            = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
-                    onOpenAchievements  = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -1821,6 +1815,94 @@ private fun BodyMetricTile(
             Spacer(Modifier.height(2.dp))
             Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 0.5.sp)
         }
+    }
+}
+
+@Composable
+private fun PerformanceShortcutsSection(
+    accent         : Color,
+    theme          : AppThemeState,
+    weightKg       : Double,
+    onWeightClick  : () -> Unit,
+    onExerciseClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        PerformanceShortcutCard(
+            title    = "Vücut Kilosu",
+            subtitle = if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
+                       else "Kilo trendi ve AI analiz",
+            icon     = Icons.Rounded.ShowChart,
+            accent   = accent,
+            theme    = theme,
+            onClick  = onWeightClick
+        )
+        PerformanceShortcutCard(
+            title    = "Hareket Performansı",
+            subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+            icon     = Icons.Rounded.TrendingUp,
+            accent   = accent,
+            theme    = theme,
+            onClick  = onExerciseClick
+        )
+    }
+}
+
+@Composable
+private fun PerformanceShortcutCard(
+    title   : String,
+    subtitle: String,
+    icon    : ImageVector,
+    accent  : Color,
+    theme   : AppThemeState,
+    onClick : () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassCard(accent, theme)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(accent.copy(0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint     = accent,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                color      = theme.text0,
+                fontSize   = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                subtitle,
+                color    = theme.text2,
+                fontSize = 11.sp
+            )
+        }
+
+        Icon(
+            Icons.Rounded.ArrowForwardIos,
+            null,
+            tint     = accent.copy(0.6f),
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 

@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.classifyExerciseMetric
 
 private val multiCategoryColors = mapOf(
     "Göğüs"   to CardCoral,
@@ -541,15 +543,12 @@ private fun MultiPickerCategoryChip(
 }
 
 private fun isActivityBasedExercise(exercise: ExerciseItem): Boolean {
-    val haystack = listOf(exercise.category, exercise.name, exercise.nameEn, exercise.targetMuscle)
-        .joinToString(" ")
-        .lowercase()
-    val keywords = listOf(
-        "kardiyo", "cardio", "koş", "kos", "run", "jog", "bisiklet", "bike",
-        "cycle", "cycling", "yüz", "yuz", "swim", "yürüy", "yuruy", "walk",
-        "kürek", "kurek", "row", "elliptical", "hiit", "yoga", "pilates"
-    )
-    return keywords.any { it in haystack }
+    return classifyExerciseMetric(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault.toString()
+    ) != ExerciseMetric.Strength
 }
 
 private fun defaultActivityDurationSeconds(exercise: ExerciseItem): Int {
