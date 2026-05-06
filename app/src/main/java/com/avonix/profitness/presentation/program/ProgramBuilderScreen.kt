@@ -1506,7 +1506,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(3.dp))
-                        Text("1 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text("8-12 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(6.dp))
                         Text("Kalan: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
                     }
@@ -1825,7 +1825,7 @@ private fun EditProgramScreen(
                                     ) {
                                         Icon(Icons.Rounded.Bolt, null, tint = Snow, modifier = Modifier.size(9.dp))
                                         Spacer(Modifier.width(2.dp))
-                                        Text("1 kredi", color = Snow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        Text("6 kredi", color = Snow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

@@ -64,7 +64,8 @@ class ChallengesViewModel @Inject constructor(
             val browseRes = browseDef.await()
             val myRes     = myDef.await()
 
-            val err = browseRes.exceptionOrNull()?.message ?: myRes.exceptionOrNull()?.message
+            val err = browseRes.exceptionOrNull()?.toChallengeUiMessage()
+                ?: myRes.exceptionOrNull()?.toChallengeUiMessage()
 
             _state.update {
                 it.copy(
@@ -135,9 +136,16 @@ class ChallengesViewModel @Inject constructor(
                 password     = password
             )
             res.fold(
-                onSuccess = {
+                onSuccess = { newChallengeId ->
+                    repo.joinChallenge(newChallengeId, password)
                     _state.update {
-                        it.copy(createInFlight = false, showCreateSheet = false, createError = null)
+                        it.copy(
+                            scope = ChallengesScope.Mine,
+                            openDetailId = newChallengeId,
+                            createInFlight = false,
+                            showCreateSheet = false,
+                            createError = null
+                        )
                     }
                     loadAll(isRefresh = true)
                 },
@@ -145,7 +153,7 @@ class ChallengesViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             createInFlight = false,
-                            createError    = t.message ?: "Challenge oluşturulamadı"
+                            createError    = t.toChallengeUiMessage("Challenge oluşturulamadı")
                         )
                     }
                 }
@@ -178,9 +186,16 @@ class ChallengesViewModel @Inject constructor(
         viewModelScope.launch {
             val res = repo.createEventChallenge(req)
             res.fold(
-                onSuccess = {
+                onSuccess = { newChallengeId ->
+                    repo.joinChallenge(newChallengeId, req.password)
                     _state.update {
-                        it.copy(createInFlight = false, showCreateSheet = false, createError = null)
+                        it.copy(
+                            scope = ChallengesScope.Mine,
+                            openDetailId = newChallengeId,
+                            createInFlight = false,
+                            showCreateSheet = false,
+                            createError = null
+                        )
                     }
                     loadAll(isRefresh = true)
                 },
@@ -188,7 +203,7 @@ class ChallengesViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             createInFlight = false,
-                            createError    = t.message ?: "Etkinlik oluşturulamadı"
+                            createError    = t.toChallengeUiMessage("Etkinlik oluşturulamadı")
                         )
                     }
                 }
@@ -222,7 +237,7 @@ class ChallengesViewModel @Inject constructor(
                     _state.update { s ->
                         s.copy(
                             browseList = s.browseList.map { if (it.id == id) it.copy(isJoined = wasJoined) else it },
-                            error      = t.message
+                            error      = t.toChallengeUiMessage()
                         )
                     }
                 }

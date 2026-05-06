@@ -74,7 +74,7 @@ class ChallengeDetailViewModel @Inject constructor(
                         }
                     }
                 },
-                onFailure = { t -> _state.update { it.copy(isLoading = false, error = t.message) } }
+                onFailure = { t -> _state.update { it.copy(isLoading = false, error = t.toChallengeUiMessage()) } }
             )
         }
     }
@@ -85,7 +85,7 @@ class ChallengeDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repo.joinChallenge(id, password).fold(
                 onSuccess = { load(id, force = true); _state.update { it.copy(inFlight = false) } },
-                onFailure = { t -> _state.update { it.copy(inFlight = false, error = t.message) } }
+                onFailure = { t -> _state.update { it.copy(inFlight = false, error = t.toChallengeUiMessage()) } }
             )
         }
     }
@@ -96,7 +96,7 @@ class ChallengeDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repo.leaveChallenge(id).fold(
                 onSuccess = { load(id, force = true); _state.update { it.copy(inFlight = false) } },
-                onFailure = { t -> _state.update { it.copy(inFlight = false, error = t.message) } }
+                onFailure = { t -> _state.update { it.copy(inFlight = false, error = t.toChallengeUiMessage()) } }
             )
         }
     }
@@ -162,7 +162,7 @@ class ChallengeDetailViewModel @Inject constructor(
                                 movements = rolled,
                                 summary = rolledSummary ?: s.detail.summary
                             ),
-                            error = t.message
+                            error = t.toChallengeUiMessage()
                         )
                     }
                 }
@@ -196,7 +196,7 @@ class ChallengeDetailViewModel @Inject constructor(
                     _state.update { it.copy(submittingProgress = false) }
                 },
                 onFailure = { t ->
-                    _state.update { it.copy(submittingProgress = false, error = t.message) }
+                    _state.update { it.copy(submittingProgress = false, error = t.toChallengeUiMessage()) }
                 }
             )
         }
@@ -213,7 +213,7 @@ class ChallengeDetailViewModel @Inject constructor(
                     _state.update { it.copy(ownerActionInFlight = false, deleted = true) }
                 },
                 onFailure = { t ->
-                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.toChallengeUiMessage()) }
                 }
             )
         }
@@ -231,7 +231,7 @@ class ChallengeDetailViewModel @Inject constructor(
                     _state.update { it.copy(ownerActionInFlight = false) }
                 },
                 onFailure = { t ->
-                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.toChallengeUiMessage()) }
                 }
             )
         }
@@ -249,7 +249,7 @@ class ChallengeDetailViewModel @Inject constructor(
                     _state.update { it.copy(ownerActionInFlight = false) }
                 },
                 onFailure = { t ->
-                    _state.update { it.copy(ownerActionInFlight = false, error = t.message) }
+                    _state.update { it.copy(ownerActionInFlight = false, error = t.toChallengeUiMessage()) }
                 }
             )
         }

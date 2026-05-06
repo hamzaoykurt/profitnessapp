@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.notification.WorkoutNotificationManager
 import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiAnalysisPrompts
 import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
@@ -754,14 +755,9 @@ class WorkoutViewModel @Inject constructor(
     fun analyzeProgression(exerciseId: String, exerciseName: String) {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         if (exerciseId in uiState.value.exerciseAiLoading) return
+        updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
 
         viewModelScope.launch {
-            if (!planRepository.consumeCredit()) {
-                sendEvent(WorkoutEvent.ShowPaywall)
-                return@launch
-            }
-
-            updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
             val history = uiState.value.exerciseHistory[exerciseId] ?: run {
                 val state = uiState.value
                 val dbExerciseId = state.dayStates
@@ -774,35 +770,37 @@ class WorkoutViewModel @Inject constructor(
                     .getOrNull() ?: emptyList()
             }
 
-            if (history.isEmpty()) {
-                updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
+            val exercise = uiState.value.dayStates
+                .flatMap { it.day.exercises }
+                .find { it.id == exerciseId }
+            val prompt = AiAnalysisPrompts.exerciseProgression(
+                exerciseName = exerciseName,
+                targetMuscle = listOfNotNull(exercise?.target, exercise?.category)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" / "),
+                history = history
+            )
+
+            if (prompt == null) {
+                updateState {
+                    it.copy(
+                        exerciseAiInsight = it.exerciseAiInsight + (exerciseId to "Bu hareket için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. 1-2 seans veri girdikten sonra net bir hedef çıkarabilirim."),
+                        exerciseAiLoading = it.exerciseAiLoading - exerciseId
+                    )
+                }
                 return@launch
             }
 
-            val summary = history
-                .filter { it.weightKg != null }
-                .groupBy { it.date }
-                .entries
-                .sortedBy { it.key }
-                .joinToString("\n") { (date, sets) ->
-                    val maxKg = sets.maxOf { it.weightKg!! }
-                    val totalSets = sets.size
-                    "$date: ${maxKg}kg x $totalSets set"
-                }
-
-            val systemPrompt = "Sen bir fitness koçusun. Kısa ve öz (3-4 cümle) Türkçe analiz yap."
-            val userMessage = """
-                Egzersiz: $exerciseName
-                Tarih bazlı max ağırlık ve set sayısı:
-                $summary
-
-                Gelişim trendi nasıl? Bir sonraki antrenman için somut öneri ver (kg bazında).
-            """.trimIndent()
+            if (!planRepository.consumeCredit()) {
+                updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
+                sendEvent(WorkoutEvent.ShowPaywall)
+                return@launch
+            }
 
             val result = geminiRepository.chat(
                 emptyList(),
-                userMessage,
-                systemPrompt,
+                prompt.userMessage,
+                prompt.systemPrompt,
                 AiToolType.WORKOUT_PROGRESS_ANALYSIS
             )
             if (result.exceptionOrNull() is AiAccessException) {

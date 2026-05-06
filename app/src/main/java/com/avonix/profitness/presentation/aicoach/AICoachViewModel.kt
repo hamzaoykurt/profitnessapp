@@ -139,6 +139,7 @@ class AICoachViewModel @Inject constructor(
 
     fun sendMessage(userText: String) {
         if (userText.isBlank() || uiState.value.isLoading) return
+        updateState { it.copy(isLoading = true) }
 
         viewModelScope.launch {
             val userMessage = ChatMessage(
@@ -150,12 +151,13 @@ class AICoachViewModel @Inject constructor(
             runCatching {
                 // Kredi kontrolü — FREE plan + 0 kredi → paywall, devam etme
                 if (!planRepository.consumeCredit()) {
+                    updateState { it.copy(isLoading = false) }
                     sendEvent(AICoachEvent.ShowPaywall)
                     return@launch
                 }
                 creditReserved = true
 
-                updateState { it.copy(messages = it.messages + userMessage, isLoading = true) }
+                updateState { it.copy(messages = it.messages + userMessage) }
                 persistCurrentSession()   // Kullanıcı mesajı hemen kaydet — uygulama kapansa bile kaybolmaz
                 val systemPrompt = buildSystemPrompt()
                 geminiRepository.chat(

@@ -40,6 +40,7 @@ import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiAnalysisPrompts
 import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
@@ -109,38 +110,44 @@ class ExerciseProgressionViewModel @Inject constructor(
         }
     }
 
-    fun analyzeProgression(exerciseId: String, exerciseName: String) {
+    fun analyzeProgression(exerciseId: String, exerciseName: String, targetMuscle: String) {
         if (uiState.value.aiLoadingSet.contains(exerciseId)) return
+        updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
+
         viewModelScope.launch {
+            val userId = supabase.auth.currentSessionOrNull()?.user?.id
+            val history = uiState.value.historyMap[exerciseId]
+                ?: userId?.let {
+                    workoutRepository.getExerciseWeightHistory(it, exerciseId, weeks = 12)
+                        .getOrElse { emptyList() }
+                }
+                ?: emptyList()
+
+            val prompt = AiAnalysisPrompts.exerciseProgression(
+                exerciseName = exerciseName,
+                targetMuscle = targetMuscle,
+                history = history
+            )
+            if (prompt == null) {
+                updateState {
+                    it.copy(
+                        aiInsightMap = it.aiInsightMap + (exerciseId to "Bu egzersiz için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. En az 1-2 seansı kaydettikten sonra daha net yorum yapabilirim."),
+                        aiLoadingSet = it.aiLoadingSet - exerciseId
+                    )
+                }
+                return@launch
+            }
+
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
                 sendEvent(ExerciseProgressionEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
-            val history = uiState.value.historyMap[exerciseId] ?: emptyList()
-            val summary = buildString {
-                val grouped = history.groupBy { it.date }
-                    .entries.sortedBy { it.key }.takeLast(8)
-                grouped.forEach { (date, sets) ->
-                    val parts = mutableListOf<String>()
-                    sets.mapNotNull { it.weightKg }.maxOrNull()?.let { parts += "max ${it}kg" }
-                    val duration = sets.sumOf { it.durationSeconds ?: 0 }
-                    val distance = sets.mapNotNull { it.distanceMeters }.sum()
-                    if (duration > 0) parts += "süre ${formatDuration(duration)}"
-                    if (distance > 0f) parts += "mesafe ${formatDistance(distance)}"
-                    if (parts.isNotEmpty()) appendLine("$date: ${parts.joinToString(", ")}")
-                }
-            }
-            if (summary.isBlank()) {
-                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
-                return@launch
-            }
-            val systemPrompt = "Sen bir spor performans koçusun. Kısa, motive edici ve net Türkçe tavsiye ver."
-            val userMessage = "$exerciseName için performans geçmişim:\n$summary\nGelişimimi değerlendir, öneri ver. 3-4 cümle yeterli."
+
             val result = geminiRepository.chat(
                 emptyList(),
-                userMessage,
-                systemPrompt,
+                prompt.userMessage,
+                prompt.systemPrompt,
                 AiToolType.EXERCISE_PROGRESS_ANALYSIS
             )
             if (result.exceptionOrNull() is AiAccessException) {
@@ -277,7 +284,7 @@ fun ExerciseProgressionScreen(
                             isFree       = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             aiCredits    = state.aiCredits,
                             onExpand     = { viewModel.loadHistory(summary.exerciseId) },
-                            onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name) }
+                            onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle) }
                         )
                     }
                 }
@@ -745,7 +752,7 @@ private fun AiInsightCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
                     Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
                 }
@@ -757,7 +764,7 @@ private fun AiInsightCard(
                         .size(26.dp)
                         .clip(CircleShape)
                         .background(theme.bg3)
-                        .clickable(onClick = onRefresh),
+                        .clickable(enabled = !isLoading, onClick = onRefresh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(13.dp))
@@ -779,7 +786,7 @@ private fun AiInsightCard(
                 "AI koçtan gelişim analizi al →",
                 color = theme.text2, fontSize = 11.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
-                    .clickable(onClick = onRefresh).padding(8.dp)
+                    .clickable(enabled = !isLoading, onClick = onRefresh).padding(8.dp)
             )
             else -> Text(insight, color = theme.text1, fontSize = 11.sp, lineHeight = 17.sp)
         }

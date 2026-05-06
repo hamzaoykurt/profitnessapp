@@ -8,6 +8,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 import com.avonix.profitness.domain.challenges.toDomain
@@ -89,8 +90,15 @@ class ChallengeRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createEventChallenge(req: CreateEventChallengeRequest): Result<String> =
-        withContext(Dispatchers.IO) {
+    override suspend fun createEventChallenge(req: CreateEventChallengeRequest): Result<String> {
+        if (req.mode == EventMode.Physical && req.location.isNullOrBlank()) {
+            return Result.failure(IllegalArgumentException("physical_location_required"))
+        }
+        if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
+            return Result.failure(IllegalArgumentException("online_url_required"))
+        }
+
+        return withContext(Dispatchers.IO) {
             runCatching {
                 val movementsJson = buildJsonArray {
                     req.movements.forEach { m ->
@@ -139,6 +147,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 ).decodeAs<String>()
             }
         }
+    }
 
     override suspend fun joinChallenge(challengeId: String, password: String?): Result<Boolean> =
         withContext(Dispatchers.IO) {

@@ -248,13 +248,15 @@ class ProgramViewModel @Inject constructor(
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin veya dosya yükleyin."))
             return
         }
+        if (uiState.value.aiLoading) return
+        updateState { it.copy(aiLoading = true, aiError = null) }
 
         viewModelScope.launch {
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiLoading = true, aiError = null) }
 
             // 1. Egzersiz listesini hazırla (eşleştirme için — prompt'a gönderilmez)
             val baseExercises = uiState.value.exercises.ifEmpty {
@@ -445,12 +447,15 @@ FORMAT:
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
             return
         }
+        if (uiState.value.aiEditLoading) return
+        updateState { it.copy(aiEditLoading = true, aiEditError = null) }
+
         viewModelScope.launch {
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiEditLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiEditLoading = true, aiEditError = null) }
 
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()

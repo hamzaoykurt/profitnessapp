@@ -524,7 +524,7 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(3.dp))
-                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(5.dp))
                     Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
                 }
@@ -532,7 +532,7 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
             }
             if (!isLoading) {
                 Box(
-                    modifier = Modifier.size(32.dp).clip(CircleShape).background(theme.bg3).clickable(onClick = onRefresh),
+                    modifier = Modifier.size(32.dp).clip(CircleShape).background(theme.bg3).clickable(enabled = !isLoading, onClick = onRefresh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(15.dp))

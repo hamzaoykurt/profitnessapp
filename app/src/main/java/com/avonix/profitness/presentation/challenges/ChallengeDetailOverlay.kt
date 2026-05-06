@@ -86,6 +86,7 @@ import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.challenges.ChallengeEventInfo
+import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.challenges.ChallengeLeaderboardEntry
 import com.avonix.profitness.domain.challenges.ChallengeMovement
@@ -403,10 +404,15 @@ fun ChallengeDetailOverlay(
                         }
                     }
 
-                    // ── Leaderboard header ──────────────────────────
+                    val participantRows = detail.visibleParticipantRows(
+                        currentUserId = state.currentUserId,
+                        isOwner = state.isOwner
+                    )
+
+                    // ── Participants header ─────────────────────────
                     item {
                         Text(
-                            "SIRALAMA",
+                            "KATILIMCILAR",
                             color      = theme.text0,
                             fontSize   = 12.sp,
                             fontWeight = FontWeight.Black,
@@ -415,7 +421,7 @@ fun ChallengeDetailOverlay(
                         )
                     }
 
-                    if (detail.leaderboard.isEmpty()) {
+                    if (participantRows.isEmpty()) {
                         item {
                             Box(
                                 Modifier.fillMaxWidth().padding(20.dp),
@@ -430,7 +436,7 @@ fun ChallengeDetailOverlay(
                         }
                     } else {
                         itemsIndexed(
-                            detail.leaderboard.sortedByDescending { it.progress },
+                            participantRows,
                             key = { _, e -> "lb_${e.userId}" }
                         ) { index, entry ->
                             LeaderboardEntryRow(rank = index + 1, entry = entry, unit = c.targetType.unit)
@@ -900,6 +906,7 @@ private fun LocationRow(
             .clip(RoundedCornerShape(12.dp))
             .background(theme.bg2.copy(0.5f))
             .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
+            .then(if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1079,6 +1086,51 @@ private fun MovementRow(
 // ═══════════════════════════════════════════════════════════════════════════
 //  Leaderboard row / hero / stat chip (unchanged)
 // ═══════════════════════════════════════════════════════════════════════════
+
+private fun ChallengeDetail.visibleParticipantRows(
+    currentUserId: String?,
+    isOwner: Boolean
+): List<ChallengeLeaderboardEntry> {
+    if (leaderboard.isNotEmpty()) {
+        return leaderboard.sortedWith(
+            compareByDescending<ChallengeLeaderboardEntry> { it.progress }
+                .thenBy { it.displayName.lowercase() }
+        )
+    }
+
+    val creatorIsMe = currentUserId != null && currentUserId == summary.creatorId
+    val fallback = buildList {
+        if (summary.creatorId.isNotBlank() && (isOwner || creatorIsMe)) {
+            add(
+                ChallengeLeaderboardEntry(
+                    userId = summary.creatorId,
+                    displayName = summary.creatorName.ifBlank { "Anonim" },
+                    avatarUrl = summary.creatorAvatar,
+                    progress = if (creatorIsMe) summary.myProgress else 0L,
+                    isMe = creatorIsMe,
+                    isCompleted = creatorIsMe && summary.isCompleted
+                )
+            )
+        }
+        if (summary.isJoined && currentUserId != null && currentUserId != summary.creatorId) {
+            add(
+                ChallengeLeaderboardEntry(
+                    userId = currentUserId,
+                    displayName = "Sen",
+                    avatarUrl = null,
+                    progress = summary.myProgress,
+                    isMe = true,
+                    isCompleted = summary.isCompleted
+                )
+            )
+        }
+    }
+
+    return fallback.sortedWith(
+        compareByDescending<ChallengeLeaderboardEntry> { it.progress }
+            .thenBy { it.displayName.lowercase() }
+    )
+}
 
 @Composable
 private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry, unit: String = "") {
@@ -2257,10 +2309,18 @@ private fun coordinateQuery(lat: Double?, lng: Double?): String? =
     if (lat != null && lng != null) "$lat,$lng" else null
 
 private fun openInMaps(ctx: android.content.Context, uri: Uri) {
-    val mapsIntent = Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.maps")
+    fun Intent.readyFor(ctx: android.content.Context): Intent = apply {
+        if (ctx !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val mapsIntent = Intent(Intent.ACTION_VIEW, uri)
+        .setPackage("com.google.android.apps.maps")
+        .readyFor(ctx)
+    val fallbackIntent = Intent(Intent.ACTION_VIEW, uri).readyFor(ctx)
+
     runCatching {
         ctx.startActivity(mapsIntent)
     }.recoverCatching {
-        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        ctx.startActivity(fallbackIntent)
     }
 }

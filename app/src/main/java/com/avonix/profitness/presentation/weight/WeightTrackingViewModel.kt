@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.weight
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiAnalysisPrompts
 import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.entity.WeightLogEntity
@@ -238,48 +239,25 @@ class WeightTrackingViewModel @Inject constructor(
      */
     fun generateAiInsight(entries: List<WeightLogEntity> = uiState.value.entries) {
         if (entries.size < 2) return
-        aiInsightJob?.cancel()
+        if (uiState.value.isAiLoading) return
+        updateState { it.copy(isAiLoading = true, aiInsight = "") }
         aiInsightJob = viewModelScope.launch {
+            val prompt = AiAnalysisPrompts.weightTrend(entries)
+            if (prompt == null) {
+                updateState { it.copy(isAiLoading = false, aiInsight = "Trend analizi için en az iki geçerli kilo kaydı gerekiyor.") }
+                return@launch
+            }
+
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(isAiLoading = false) }
                 sendEvent(WeightTrackingEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(isAiLoading = true, aiInsight = "") }
-
-            // Son 30 kaydı AI'a gönder (token limiti gözetilerek)
-            val recent = entries.take(30)
-            val dataStr = recent.joinToString("; ") { entry ->
-                val date = entry.recordedAt.take(10)   // "YYYY-MM-DD"
-                "$date: ${entry.weightKg} kg"
-            }
-
-            val latest   = recent.first().weightKg
-            val oldest   = recent.last().weightKg
-            val deltaKg  = latest - oldest
-            val deltaSign= if (deltaKg >= 0) "+${"%.1f".format(deltaKg)}" else "${"%.1f".format(deltaKg)}"
-            val daySpan  = recent.size.coerceAtLeast(1)
-
-            val systemPrompt = """
-                Sen kişisel bir fitness koçusun. Kullanıcının kilo takip verilerini analiz edip
-                kısa, motive edici ve bilgilendirici Türkçe yorumlar yapıyorsun.
-                Yanıtın 2-4 cümle olsun. Sağlıklı kilo değişim hızını (0.5-1 kg/hafta) göz önünde bulundur.
-                Asla spesifik tıbbi tavsiye verme.
-            """.trimIndent()
-
-            val userMessage = """
-                Kilo geçmişim ($daySpan kayıt):
-                $dataStr
-
-                Toplam değişim: $deltaSign kg
-                Mevcut kilo: $latest kg
-
-                Lütfen bu trendi kısaca yorumla ve motivasyon ver.
-            """.trimIndent()
 
             val result = geminiRepository.chat(
                 history      = emptyList(),
-                userMessage  = userMessage,
-                systemPrompt = systemPrompt,
+                userMessage  = prompt.userMessage,
+                systemPrompt = prompt.systemPrompt,
                 tool         = AiToolType.WEIGHT_TREND_ANALYSIS
             )
 

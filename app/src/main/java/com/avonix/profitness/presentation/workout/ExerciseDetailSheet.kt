@@ -439,7 +439,7 @@ private fun AiProgressionCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
                     Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
                 }
@@ -451,7 +451,7 @@ private fun AiProgressionCard(
                         .size(28.dp)
                         .clip(CircleShape)
                         .background(theme.bg3)
-                        .clickable(onClick = onRefresh),
+                        .clickable(enabled = !isLoading, onClick = onRefresh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(14.dp))
@@ -477,7 +477,7 @@ private fun AiProgressionCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = onRefresh)
+                    .clickable(enabled = !isLoading, onClick = onRefresh)
                     .padding(8.dp)
             )
             else -> Text(insight, color = theme.text1, fontSize = 12.sp, lineHeight = 18.sp)
