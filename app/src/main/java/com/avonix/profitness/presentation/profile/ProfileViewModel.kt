@@ -59,6 +59,8 @@ data class ProfileState(
     val longestStreak        : Int                  = 0,
     val totalWorkouts        : Int                  = 0,
     val totalExercises       : Int                  = 0,
+    val totalDurationSeconds : Int                  = 0,
+    val totalDistanceMeters  : Float                = 0f,
     /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
     val weeklyActivity       : List<Float>           = List(7) { 0f },
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
@@ -142,6 +144,7 @@ class ProfileViewModel @Inject constructor(
             val allAchDef       = async { profileRepository.getAllAchievements() }
             val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
             val localStreakDef   = async { workoutRepository.getStreak(userId) }
+            val trackedDef       = async { workoutRepository.getTrackedExerciseSummaries(userId) }
 
             val profile          = profileDef.await().getOrNull()
             val stats            = statsDef.await().getOrNull()
@@ -150,6 +153,7 @@ class ProfileViewModel @Inject constructor(
             val allAch           = allAchDef.await().getOrNull().orEmpty()
             val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
             val localStreak      = localStreakDef.await().getOrElse { stats?.current_streak ?: 0 }
+            val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
 
             // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
             // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
@@ -180,6 +184,8 @@ class ProfileViewModel @Inject constructor(
             val xpForNext    = 500   // Her seviye sabit 500 XP
             val totalWorkouts= stats?.total_workouts ?: 0
             val totalExercises= stats?.total_exercises ?: 0
+            val totalDurationSeconds = trackedSummaries.sumOf { it.totalDurationSeconds }
+            val totalDistanceMeters = trackedSummaries.sumOf { it.totalDistanceMeters.toDouble() }.toFloat()
             val currentXp    = stats?.xp ?: 0
 
             // BMI ve vücut yağı hesapla
@@ -215,6 +221,8 @@ class ProfileViewModel @Inject constructor(
                     longestStreak       = stats?.longest_streak ?: 0,
                     totalWorkouts       = totalWorkouts,
                     totalExercises      = totalExercises,
+                    totalDurationSeconds= totalDurationSeconds,
+                    totalDistanceMeters = totalDistanceMeters,
                     fitnessGoal         = profile?.fitness_goal.orEmpty(),
                     heightCm            = profile?.height_cm ?: 0.0,
                     weightKg            = profile?.weight_kg ?: 0.0,

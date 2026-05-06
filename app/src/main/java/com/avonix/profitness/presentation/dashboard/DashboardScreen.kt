@@ -120,7 +120,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
     // Timer aktifken diğer ekranlardaki içerik aşağı kayar
     val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive   = restTimer.isRunning || restTimer.isDone
+    val timerActive   = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
     val timerExtraPad by animateDpAsState(
         targetValue   = if (timerActive && selectedTab != DashboardTab.Workout)
                             (statusBarPad + 60.dp) else 0.dp,
@@ -256,8 +256,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             DynamicIslandTimer(
                 timer     = restTimer,
                 topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                onStop    = { workoutViewModel.stopRestTimer() },
-                onDismiss = { workoutViewModel.dismissRestTimer() }
+                onStop    = { workoutViewModel.stopVisibleTimer() },
+                onTogglePause = {
+                    if (restTimer.isPaused) workoutViewModel.resumeVisibleTimer()
+                    else workoutViewModel.pauseVisibleTimer()
+                },
+                onDismiss = { workoutViewModel.dismissVisibleTimer() }
             )
         }
 

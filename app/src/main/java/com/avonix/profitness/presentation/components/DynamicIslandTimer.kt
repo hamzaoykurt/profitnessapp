@@ -6,7 +6,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,7 @@ fun DynamicIslandTimer(
     timer    : RestTimerState,
     topOffset: Dp = 48.dp,
     onStop   : () -> Unit = {},
+    onTogglePause: () -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
     val accent  = MaterialTheme.colorScheme.primary
@@ -71,7 +74,7 @@ fun DynamicIslandTimer(
     }
 
     // Hiç aktif değilse gösterme
-    if (!timer.isRunning && !timer.isDone) return
+    if (!timer.isRunning && !timer.isPaused && !timer.isDone) return
 
     // ── Glow pulse when running ───────────────────────────────────────────────
     val glowAlpha = remember { Animatable(0f) }
@@ -131,6 +134,10 @@ fun DynamicIslandTimer(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onStop()
                         onDismiss()
+                    },
+                    onTogglePause = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onTogglePause()
                     }
                 )
             } else {
@@ -166,6 +173,7 @@ private fun CompactPill(
 
     val pillColor = when {
         timer.isDone    -> Amber
+        timer.isPaused  -> Amber
         timer.isRunning -> accent
         else            -> accent
     }
@@ -207,6 +215,14 @@ private fun CompactPill(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 0.5.sp
                 )
+            } else if (timer.isPaused) {
+                Text(
+                    "Duraklatıldı",
+                    color      = Amber,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.4.sp
+                )
             } else {
                 Text(
                     timeStr,
@@ -237,9 +253,10 @@ private fun ExpandedIsland(
     glowAlpha   : Float,
     cornerRadius: Dp,
     onCollapse  : () -> Unit,
-    onStop      : () -> Unit
+    onStop      : () -> Unit,
+    onTogglePause: () -> Unit
 ) {
-    val pillColor = if (timer.isDone) Amber else accent
+    val pillColor = if (timer.isDone || timer.isPaused) Amber else accent
     val displaySeconds = timer.displaySeconds
     val min = displaySeconds / 60
     val sec = displaySeconds % 60
@@ -321,21 +338,13 @@ private fun ExpandedIsland(
                             letterSpacing = 2.sp
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(theme.bg3)
-                            .clickable(onClick = onStop),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Close,
-                            null,
-                            tint     = TextMuted,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    Text(
+                        text = if (timer.isPaused) "DURAKLATILDI" else "AKTİF",
+                        color = if (timer.isPaused) Amber else TextMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.4.sp
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -408,6 +417,21 @@ private fun ExpandedIsland(
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 2.sp
                             )
+                        } else if (timer.isPaused) {
+                            Text(
+                                text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
+                                       else "$displaySeconds",
+                                color      = TextPrimary,
+                                fontSize   = 38.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                "duraklatıldı",
+                                color      = Amber,
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
                         } else {
                             Text(
                                 text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
@@ -445,14 +469,76 @@ private fun ExpandedIsland(
                 Text(
                     text = if (timer.purpose == TimerPurpose.Activity && timer.isDone) "Süre kaydedildi"
                            else if (timer.isDone) "Sonraki seti başlatmak için hazırsın"
+                           else if (timer.isPaused) "Devam ettirebilir veya durdurup kaydedebilirsin"
                            else if (timer.purpose == TimerPurpose.Activity) "Durdurunca süre kaydedilir"
-                           else "Kapat için dokun",
+                           else "Durdur veya duraklat",
                     color      = TextMuted,
                     fontSize   = 10.sp,
                     letterSpacing = 0.5.sp
                 )
+
+                if (!timer.isDone) {
+                    Spacer(Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        TimerActionButton(
+                            text = if (timer.isPaused) "DEVAM" else "DURAKLAT",
+                            icon = if (timer.isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                            color = if (timer.isPaused) accent else Amber,
+                            theme = theme,
+                            onClick = onTogglePause,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TimerActionButton(
+                            text = "DURDUR",
+                            icon = Icons.Rounded.StopCircle,
+                            color = accent,
+                            theme = theme,
+                            onClick = onStop,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun TimerActionButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    theme: AppThemeState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 46.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(color.copy(0.24f), theme.bg3.copy(0.88f))
+                )
+            )
+            .border(1.dp, color.copy(0.55f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(17.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = text,
+            color = TextPrimary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.1.sp
+        )
     }
 }
 
@@ -492,9 +578,10 @@ private fun MiniArcIndicator(
 }
 
 private fun RestTimerState.headerLabel(): String = when {
-    purpose == TimerPurpose.Activity && isDone -> "SURE KAYDEDILDI"
+    purpose == TimerPurpose.Activity && isDone -> "SÜRE KAYDEDİLDİ"
+    isPaused -> "DURAKLATILDI"
     purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> "KRONOMETRE"
-    purpose == TimerPurpose.Activity -> "GERI SAYIM"
+    purpose == TimerPurpose.Activity -> "GERİ SAYIM"
     isDone -> "DİNLENDİN"
     else -> "SET ARASI"
 }

@@ -39,6 +39,7 @@ enum class TimerMode { Countdown, Stopwatch }
 
 data class RestTimerState(
     val isRunning: Boolean = false,
+    val isPaused: Boolean = false,
     val isDone: Boolean = false,
     val secondsLeft: Int = 0,
     val totalSeconds: Int = 0,
@@ -114,7 +115,7 @@ class WorkoutViewModel @Inject constructor(
     fun startRestTimer(restSeconds: Int, exerciseName: String, exerciseId: String = "") {
         timerJob?.cancel()
         _restTimer.value = RestTimerState(
-            isRunning = true, isDone = false,
+            isRunning = true, isPaused = false, isDone = false,
             secondsLeft = restSeconds, totalSeconds = restSeconds,
             exerciseName = exerciseName,
             exerciseId = exerciseId,
@@ -137,7 +138,7 @@ class WorkoutViewModel @Inject constructor(
                     notificationManager.updateRestTimer(exerciseName, remaining, restSeconds)
                 }
             }
-            _restTimer.update { it.copy(isRunning = false, isDone = true, secondsLeft = 0) }
+            _restTimer.update { it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0) }
             // Ses + "Hazırsın!" bildirimi
             withContext(Dispatchers.IO) {
                 notificationManager.notifyTimerDone(exerciseName)
@@ -147,7 +148,7 @@ class WorkoutViewModel @Inject constructor(
 
     fun stopRestTimer() {
         timerJob?.cancel()
-        _restTimer.update { it.copy(isRunning = false) }
+        _restTimer.update { it.copy(isRunning = false, isPaused = false) }
         notificationManager.stopWorkoutSession()
     }
 
@@ -163,6 +164,7 @@ class WorkoutViewModel @Inject constructor(
         notificationManager.stopWorkoutSession()
         _restTimer.value = RestTimerState(
             isRunning = true,
+            isPaused = false,
             isDone = false,
             secondsLeft = total,
             totalSeconds = total,
@@ -171,6 +173,12 @@ class WorkoutViewModel @Inject constructor(
             purpose = TimerPurpose.Activity,
             mode = TimerMode.Countdown,
             elapsedSeconds = 0
+        )
+        notificationManager.updateActivityTimer(
+            exerciseName = exerciseName,
+            elapsedSeconds = 0,
+            totalSeconds = total,
+            isStopwatch = false
         )
         timerJob = viewModelScope.launch {
             var remaining = total
@@ -183,10 +191,17 @@ class WorkoutViewModel @Inject constructor(
                         elapsedSeconds = total - remaining
                     )
                 }
+                notificationManager.updateActivityTimer(
+                    exerciseName = exerciseName,
+                    elapsedSeconds = total - remaining,
+                    totalSeconds = total,
+                    isStopwatch = false
+                )
             }
             saveActivityDuration(exerciseId, total)
+            notificationManager.notifyActivityTimerSaved(exerciseName, total)
             _restTimer.update {
-                it.copy(isRunning = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
+                it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
             }
         }
     }
@@ -196,6 +211,7 @@ class WorkoutViewModel @Inject constructor(
         notificationManager.stopWorkoutSession()
         _restTimer.value = RestTimerState(
             isRunning = true,
+            isPaused = false,
             isDone = false,
             secondsLeft = 0,
             totalSeconds = 0,
@@ -205,12 +221,24 @@ class WorkoutViewModel @Inject constructor(
             mode = TimerMode.Stopwatch,
             elapsedSeconds = 0
         )
+        notificationManager.updateActivityTimer(
+            exerciseName = exerciseName,
+            elapsedSeconds = 0,
+            totalSeconds = 0,
+            isStopwatch = true
+        )
         timerJob = viewModelScope.launch {
             var elapsed = 0
             while (true) {
                 delay(1000L)
                 elapsed++
                 _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
+                notificationManager.updateActivityTimer(
+                    exerciseName = exerciseName,
+                    elapsedSeconds = elapsed,
+                    totalSeconds = 0,
+                    isStopwatch = true
+                )
             }
         }
     }
@@ -224,11 +252,45 @@ class WorkoutViewModel @Inject constructor(
             }
             timerJob?.cancel()
             if (secondsToSave > 0) saveActivityDuration(timer.exerciseId, secondsToSave)
+            if (secondsToSave > 0) notificationManager.notifyActivityTimerSaved(timer.exerciseName, secondsToSave)
             _restTimer.update {
-                it.copy(isRunning = false, isDone = secondsToSave > 0, elapsedSeconds = secondsToSave)
+                it.copy(isRunning = false, isPaused = false, isDone = secondsToSave > 0, elapsedSeconds = secondsToSave)
             }
         } else {
             stopRestTimer()
+        }
+    }
+
+    fun pauseVisibleTimer() {
+        val timer = _restTimer.value
+        if (!timer.isRunning) return
+        timerJob?.cancel()
+        if (timer.purpose == TimerPurpose.Activity) {
+            notificationManager.updateActivityTimer(
+                exerciseName = timer.exerciseName,
+                elapsedSeconds = timer.elapsedSeconds,
+                totalSeconds = timer.totalSeconds,
+                isStopwatch = timer.mode == TimerMode.Stopwatch,
+                isPaused = true
+            )
+        } else {
+            notificationManager.stopWorkoutSession()
+        }
+        _restTimer.update { it.copy(isRunning = false, isPaused = true, isDone = false) }
+    }
+
+    fun resumeVisibleTimer() {
+        val timer = _restTimer.value
+        if (!timer.isPaused || timer.isDone) return
+        timerJob?.cancel()
+        _restTimer.update { it.copy(isRunning = true, isPaused = false) }
+
+        when (timer.purpose) {
+            TimerPurpose.Rest -> resumeRestCountdown(timer)
+            TimerPurpose.Activity -> when (timer.mode) {
+                TimerMode.Countdown -> resumeActivityCountdown(timer)
+                TimerMode.Stopwatch -> resumeActivityStopwatch(timer)
+            }
         }
     }
 
@@ -237,8 +299,87 @@ class WorkoutViewModel @Inject constructor(
         if (timer.purpose == TimerPurpose.Activity) {
             timerJob?.cancel()
             _restTimer.value = RestTimerState()
+            notificationManager.stopWorkoutSession()
         } else {
             dismissRestTimer()
+        }
+    }
+
+    private fun resumeRestCountdown(timer: RestTimerState) {
+        val total = timer.totalSeconds.coerceAtLeast(timer.secondsLeft)
+        var remaining = timer.secondsLeft.coerceAtLeast(0)
+        notificationManager.startWorkoutSession(timer.exerciseName)
+        notificationManager.updateRestTimer(timer.exerciseName, remaining, total)
+        timerJob = viewModelScope.launch {
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+                _restTimer.update { it.copy(secondsLeft = remaining) }
+                withContext(Dispatchers.IO) {
+                    notificationManager.updateRestTimer(timer.exerciseName, remaining, total)
+                }
+            }
+            _restTimer.update { it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0) }
+            withContext(Dispatchers.IO) {
+                notificationManager.notifyTimerDone(timer.exerciseName)
+            }
+        }
+    }
+
+    private fun resumeActivityCountdown(timer: RestTimerState) {
+        val total = timer.totalSeconds.coerceAtLeast(1)
+        var remaining = timer.secondsLeft.coerceIn(0, total)
+        notificationManager.updateActivityTimer(
+            exerciseName = timer.exerciseName,
+            elapsedSeconds = total - remaining,
+            totalSeconds = total,
+            isStopwatch = false
+        )
+        timerJob = viewModelScope.launch {
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+                _restTimer.update {
+                    it.copy(
+                        secondsLeft = remaining,
+                        elapsedSeconds = total - remaining
+                    )
+                }
+                notificationManager.updateActivityTimer(
+                    exerciseName = timer.exerciseName,
+                    elapsedSeconds = total - remaining,
+                    totalSeconds = total,
+                    isStopwatch = false
+                )
+            }
+            saveActivityDuration(timer.exerciseId, total)
+            notificationManager.notifyActivityTimerSaved(timer.exerciseName, total)
+            _restTimer.update {
+                it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
+            }
+        }
+    }
+
+    private fun resumeActivityStopwatch(timer: RestTimerState) {
+        var elapsed = timer.elapsedSeconds.coerceAtLeast(0)
+        notificationManager.updateActivityTimer(
+            exerciseName = timer.exerciseName,
+            elapsedSeconds = elapsed,
+            totalSeconds = 0,
+            isStopwatch = true
+        )
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000L)
+                elapsed++
+                _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
+                notificationManager.updateActivityTimer(
+                    exerciseName = timer.exerciseName,
+                    elapsedSeconds = elapsed,
+                    totalSeconds = 0,
+                    isStopwatch = true
+                )
+            }
         }
     }
 
@@ -363,13 +504,35 @@ class WorkoutViewModel @Inject constructor(
                 // Tik ekle: tekrar sayısı programda tanımlı olan değerden gelir.
                 val reps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
                 // Ağırlık fallback: kullanıcı girdisi > son seans > program planı > vücut ağırlığı hareketinde profil kilosu.
+                val hasStateWeight = currentState.lastSessionData[exerciseId]?.get(setIndex)?.first != null
+                val persistedWeights = if (hasStateWeight) emptyMap() else loadPersistedExerciseWeights(userId, dbExerciseId)
                 val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
                     ?: currentState.lastSessionData[exerciseId]?.get(setIndex)?.first
+                    ?: persistedWeights[setIndex]
                     ?: defaultWeightFor(exercise, currentState.profileWeightKg)
                 if (weight != null) {
                     workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, weight)
                 }
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, reps)
+
+                val completedAfter = (currentState.setCompletions[dbExerciseId] ?: emptySet()) + setIndex
+                val shouldAutoComplete =
+                    !isActivityBased(exercise) &&
+                    exercise.sets > 0 &&
+                    completedAfter.size >= exercise.sets &&
+                    exerciseId !in dayState.completedIds
+
+                if (shouldAutoComplete) {
+                    autoCompleteStrengthExercise(
+                        userId = userId,
+                        dayIdx = currentState.selectedDayIdx,
+                        exercise = exercise,
+                        programDayId = programDayId,
+                        exerciseId = exerciseId,
+                        dbExerciseId = dbExerciseId,
+                        currentState = currentState
+                    )
+                }
             }
         }
     }
@@ -574,8 +737,15 @@ class WorkoutViewModel @Inject constructor(
     fun loadExerciseHistory(exerciseId: String) {
         if (uiState.value.exerciseHistory.containsKey(exerciseId)) return
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val state = uiState.value
+        val dbExerciseId = state.dayStates
+            .flatMap { it.day.exercises }
+            .find { it.id == exerciseId }
+            ?.exerciseTableId
+            ?.ifBlank { exerciseId }
+            ?: exerciseId
         viewModelScope.launch {
-            workoutRepository.getExerciseWeightHistory(userId, exerciseId).onSuccess { history ->
+            workoutRepository.getExerciseWeightHistory(userId, dbExerciseId).onSuccess { history ->
                 updateState { it.copy(exerciseHistory = it.exerciseHistory + (exerciseId to history)) }
             }
         }
@@ -593,7 +763,14 @@ class WorkoutViewModel @Inject constructor(
 
             updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
             val history = uiState.value.exerciseHistory[exerciseId] ?: run {
-                workoutRepository.getExerciseWeightHistory(userId, exerciseId)
+                val state = uiState.value
+                val dbExerciseId = state.dayStates
+                    .flatMap { it.day.exercises }
+                    .find { it.id == exerciseId }
+                    ?.exerciseTableId
+                    ?.ifBlank { exerciseId }
+                    ?: exerciseId
+                workoutRepository.getExerciseWeightHistory(userId, dbExerciseId)
                     .getOrNull() ?: emptyList()
             }
 
@@ -700,24 +877,14 @@ class WorkoutViewModel @Inject constructor(
                         totalSets = exercise.sets,
                         defaultRepsActual = plannedReps
                     )
-                    // Her set için efektif ağırlığı persist et (progresyon ekranı + sonraki hafta prefill için).
-                    val userWeights    = currentState.setWeights[exerciseId].orEmpty()
-                    val lastSessionMap = currentState.lastSessionData[exerciseId].orEmpty()
-                    val defaultWeight  = defaultWeightFor(exercise, currentState.profileWeightKg)
-                    repeat(exercise.sets) { i ->
-                        val w = userWeights[i]?.toFloatOrNull()
-                            ?: lastSessionMap[i]?.first
-                            ?: defaultWeight
-                        if (w != null) {
-                            workoutRepository.upsertSetWeightDraft(
-                                userId = userId,
-                                exerciseId = dbExerciseId,
-                                programDayId = programDayId,
-                                setIndex = i,
-                                weightKg = w
-                            )
-                        }
-                    }
+                    persistStrengthSetWeights(
+                        userId = userId,
+                        exercise = exercise,
+                        exerciseId = exerciseId,
+                        dbExerciseId = dbExerciseId,
+                        programDayId = programDayId,
+                        currentState = currentState
+                    )
                 }
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(
@@ -769,6 +936,102 @@ class WorkoutViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun autoCompleteStrengthExercise(
+        userId: String,
+        dayIdx: Int,
+        exercise: Exercise,
+        programDayId: String,
+        exerciseId: String,
+        dbExerciseId: String,
+        currentState: WorkoutScreenState
+    ) {
+        val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
+        workoutRepository.fillExerciseSetCompletions(
+            userId = userId,
+            exerciseId = dbExerciseId,
+            programDayId = programDayId,
+            totalSets = exercise.sets,
+            defaultRepsActual = plannedReps
+        )
+
+        persistStrengthSetWeights(
+            userId = userId,
+            exercise = exercise,
+            exerciseId = exerciseId,
+            dbExerciseId = dbExerciseId,
+            programDayId = programDayId,
+            currentState = currentState
+        )
+
+        workoutRepository.completeExercise(
+            userId = userId,
+            programDayId = programDayId,
+            exerciseId = dbExerciseId,
+            setsCompleted = exercise.sets,
+            repsCompleted = exercise.reps.toIntOrNull() ?: 0,
+            durationSeconds = 0
+        )
+
+        viewModelScope.launch {
+            workoutRepository.updateStreak(userId)
+            profileRepository.invalidateStatsCache()
+            runCatching { challengeRepository.refreshMyProgress() }
+        }
+        viewModelScope.launch {
+            checkDayCompletion(dayIdx, userId)
+            checkAndUnlockAchievements(userId)
+        }
+    }
+
+    private suspend fun persistStrengthSetWeights(
+        userId: String,
+        exercise: Exercise,
+        exerciseId: String,
+        dbExerciseId: String,
+        programDayId: String,
+        currentState: WorkoutScreenState
+    ) {
+        val userWeights = currentState.setWeights[exerciseId].orEmpty()
+        val stateLastSessionMap = currentState.lastSessionData[exerciseId].orEmpty()
+        val persistedWeights = loadPersistedExerciseWeights(userId, dbExerciseId)
+        val defaultWeight = defaultWeightFor(exercise, currentState.profileWeightKg)
+
+        repeat(exercise.sets) { i ->
+            val w = userWeights[i]?.toFloatOrNull()
+                ?: stateLastSessionMap[i]?.first
+                ?: persistedWeights[i]
+                ?: defaultWeight
+            if (w != null) {
+                workoutRepository.upsertSetWeightDraft(
+                    userId = userId,
+                    exerciseId = dbExerciseId,
+                    programDayId = programDayId,
+                    setIndex = i,
+                    weightKg = w
+                )
+            }
+        }
+    }
+
+    private suspend fun loadPersistedExerciseWeights(
+        userId: String,
+        dbExerciseId: String
+    ): Map<Int, Float> {
+        val today = LocalDate.now().toString()
+        val todayWeights = workoutRepository.getSetsForDate(userId, dbExerciseId, today)
+            .getOrNull()
+            .orEmpty()
+            .filter { it.weightKg != null }
+            .associate { it.setIndex to it.weightKg!! }
+        if (todayWeights.isNotEmpty()) return todayWeights
+
+        return workoutRepository.getLastSessionSets(userId, dbExerciseId)
+            .getOrNull()
+            .orEmpty()
+            .filter { it.weightKg != null }
+            .associate { it.setIndex to it.weightKg!! }
     }
 
     // ═════════════════════════════════════════════════════════════════════════

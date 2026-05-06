@@ -4,7 +4,9 @@ import android.app.*
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.avonix.profitness.R
 import com.avonix.profitness.MainActivity
 
 /**
@@ -16,6 +18,7 @@ import com.avonix.profitness.MainActivity
 class WorkoutForegroundService : Service() {
 
     companion object {
+        const val TAG = "WorkoutFgService"
         const val CHANNEL_WORKOUT = "ch_workout_status"
         const val CHANNEL_ALERTS  = "ch_workout_alerts"
         const val NOTIF_ID_STATUS = 1001
@@ -24,15 +27,21 @@ class WorkoutForegroundService : Service() {
         const val ACTION_START        = "com.avonix.profitness.START_WORKOUT"
         const val ACTION_TIMER_UPDATE = "com.avonix.profitness.TIMER_UPDATE"
         const val ACTION_TIMER_DONE   = "com.avonix.profitness.TIMER_DONE"
+        const val ACTION_ACTIVITY_TIMER_UPDATE = "com.avonix.profitness.ACTIVITY_TIMER_UPDATE"
+        const val ACTION_ACTIVITY_TIMER_SAVED  = "com.avonix.profitness.ACTIVITY_TIMER_SAVED"
         const val ACTION_STOP         = "com.avonix.profitness.STOP_WORKOUT"
 
         const val EXTRA_DAY_TITLE     = "day_title"
         const val EXTRA_EXERCISE_NAME = "exercise_name"
         const val EXTRA_SECONDS_LEFT  = "seconds_left"
         const val EXTRA_TOTAL_SECONDS = "total_seconds"
+        const val EXTRA_ELAPSED_SECONDS = "elapsed_seconds"
+        const val EXTRA_IS_STOPWATCH = "is_stopwatch"
+        const val EXTRA_IS_PAUSED = "is_paused"
     }
 
     private lateinit var notifManager: NotificationManager
+    private var isForeground = false
 
     override fun onCreate() {
         super.onCreate()
@@ -41,54 +50,102 @@ class WorkoutForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> {
-                val dayTitle = intent.getStringExtra(EXTRA_DAY_TITLE) ?: "Antrenman"
-                val notif = buildStatusNotification(
-                    title   = "🏋️ Antrenman Devam Ediyor",
-                    content = dayTitle,
-                    progress = 0, maxProgress = 0
-                )
-                startForeground(NOTIF_ID_STATUS, notif)
-            }
+        runCatching {
+            when (intent?.action) {
+                ACTION_START -> {
+                    val dayTitle = intent.getStringExtra(EXTRA_DAY_TITLE) ?: "Antrenman"
+                    val notif = buildStatusNotification(
+                        title   = "🏋️ Antrenman Devam Ediyor",
+                        content = dayTitle,
+                        progress = 0, maxProgress = 0
+                    )
+                    promoteOrNotify(notif)
+                }
 
-            ACTION_TIMER_UPDATE -> {
-                val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
-                val secondsLeft  = intent.getIntExtra(EXTRA_SECONDS_LEFT, 0)
-                val totalSeconds = intent.getIntExtra(EXTRA_TOTAL_SECONDS, 0)
-                val min = secondsLeft / 60
-                val sec = secondsLeft % 60
-                val timeStr = if (min > 0) "${min}d ${sec.toString().padStart(2,'0')}s"
-                              else "${secondsLeft}s"
-                val notif = buildStatusNotification(
-                    title       = "⏱️  $timeStr  —  Dinlenme süresi",
-                    content     = exerciseName,
-                    progress    = totalSeconds - secondsLeft,
-                    maxProgress = totalSeconds
-                )
-                notifManager.notify(NOTIF_ID_STATUS, notif)
-            }
+                ACTION_TIMER_UPDATE -> {
+                    val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
+                    val secondsLeft  = intent.getIntExtra(EXTRA_SECONDS_LEFT, 0)
+                    val totalSeconds = intent.getIntExtra(EXTRA_TOTAL_SECONDS, 0)
+                    val min = secondsLeft / 60
+                    val sec = secondsLeft % 60
+                    val timeStr = if (min > 0) "${min}d ${sec.toString().padStart(2,'0')}s"
+                                  else "${secondsLeft}s"
+                    val notif = buildStatusNotification(
+                        title       = "⏱️  $timeStr  —  Dinlenme süresi",
+                        content     = exerciseName,
+                        progress    = totalSeconds - secondsLeft,
+                        maxProgress = totalSeconds
+                    )
+                    promoteOrNotify(notif)
+                }
 
-            ACTION_TIMER_DONE -> {
-                val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
-                // Durum bildirimini güncelle
-                val statusNotif = buildStatusNotification(
-                    title   = "✅ Hazırsın! Sonraki seti başlat",
-                    content = exerciseName,
-                    progress = 0, maxProgress = 0
-                )
-                notifManager.notify(NOTIF_ID_STATUS, statusNotif)
+                ACTION_ACTIVITY_TIMER_UPDATE -> {
+                    val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
+                    val elapsedSeconds = intent.getIntExtra(EXTRA_ELAPSED_SECONDS, 0)
+                    val totalSeconds = intent.getIntExtra(EXTRA_TOTAL_SECONDS, 0)
+                    val isStopwatch = intent.getBooleanExtra(EXTRA_IS_STOPWATCH, true)
+                    val isPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false)
+                    val secondsToShow = if (isStopwatch) elapsedSeconds else (totalSeconds - elapsedSeconds).coerceAtLeast(0)
+                    val timeStr = formatDuration(secondsToShow)
+                val title = exerciseName.ifBlank { "Sayaç" }
+                val content = when {
+                    isPaused -> "Duraklatıldı • $timeStr"
+                    isStopwatch -> "Kronometre çalışıyor"
+                    else -> "Geri sayım • $timeStr kaldı"
+                }
+                    val notif = buildStatusNotification(
+                        title = title,
+                        content = content,
+                        progress = if (isStopwatch) 0 else elapsedSeconds,
+                        maxProgress = if (isStopwatch) 0 else totalSeconds,
+                        chronometerBaseMillis = if (isStopwatch && !isPaused)
+                            System.currentTimeMillis() - elapsedSeconds * 1000L else null,
+                        showChronometer = isStopwatch && !isPaused,
+                        color = if (isPaused) 0xFFFFB020.toInt() else 0xFFFF444B.toInt()
+                    )
+                    promoteOrNotify(notif)
+                }
 
-                // Yüksek öncelikli uyarı bildirimi (ses/titreşim)
-                val alertNotif = buildAlertNotification(exerciseName)
-                notifManager.notify(NOTIF_ID_ALERT, alertNotif)
-            }
+                ACTION_ACTIVITY_TIMER_SAVED -> {
+                    val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
+                    val elapsedSeconds = intent.getIntExtra(EXTRA_ELAPSED_SECONDS, 0)
+                    val notif = buildStatusNotification(
+                    title = exerciseName.ifBlank { "Sayaç" },
+                    content = "Süre kaydedildi • ${formatDuration(elapsedSeconds)}",
+                        progress = 0,
+                        maxProgress = 0,
+                        color = 0xFFFF444B.toInt()
+                    )
+                    promoteOrNotify(notif)
+                }
 
-            ACTION_STOP -> {
-                notifManager.cancel(NOTIF_ID_ALERT)
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                ACTION_TIMER_DONE -> {
+                    val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
+                    // Durum bildirimini güncelle
+                    val statusNotif = buildStatusNotification(
+                        title   = "✅ Hazırsın! Sonraki seti başlat",
+                        content = exerciseName,
+                        progress = 0, maxProgress = 0
+                    )
+                    promoteOrNotify(statusNotif)
+
+                    // Yüksek öncelikli uyarı bildirimi (ses/titreşim)
+                    val alertNotif = buildAlertNotification(exerciseName)
+                    notifManager.notify(NOTIF_ID_ALERT, alertNotif)
+                }
+
+                ACTION_STOP -> {
+                    notifManager.cancel(NOTIF_ID_ALERT)
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    isForeground = false
+                    stopSelf()
+                }
             }
+        }.onFailure { error ->
+            Log.e(TAG, "Workout foreground service failed", error)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            isForeground = false
+            stopSelf()
         }
         return START_NOT_STICKY
     }
@@ -101,11 +158,18 @@ class WorkoutForegroundService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         notifManager.cancel(NOTIF_ID_ALERT)
         stopForeground(STOP_FOREGROUND_REMOVE)
+        isForeground = false
         stopSelf()
         super.onTaskRemoved(rootIntent)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        runCatching { notifManager.cancel(NOTIF_ID_ALERT) }
+        isForeground = false
+        super.onDestroy()
+    }
 
     // ── Notification Builders ─────────────────────────────────────────────────
 
@@ -113,7 +177,10 @@ class WorkoutForegroundService : Service() {
         title: String,
         content: String,
         progress: Int,
-        maxProgress: Int
+        maxProgress: Int,
+        chronometerBaseMillis: Long? = null,
+        showChronometer: Boolean = false,
+        color: Int = 0xFFFF444B.toInt()
     ): Notification {
         val tapIntent = PendingIntent.getActivity(
             this, 0,
@@ -125,14 +192,25 @@ class WorkoutForegroundService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_WORKOUT)
             .setContentTitle(title)
             .setContentText(content)
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentIntent(tapIntent)
             .setOngoing(true)
             .setSilent(true)
             .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setSubText("Forge Sayaç")
+            .setColor(color)
 
         if (maxProgress > 0) {
             builder.setProgress(maxProgress, progress, false)
+        }
+        if (showChronometer && chronometerBaseMillis != null) {
+            builder
+                .setWhen(chronometerBaseMillis)
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+        } else {
+            builder.setShowWhen(false)
         }
         return builder.build()
     }
@@ -148,7 +226,7 @@ class WorkoutForegroundService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ALERTS)
             .setContentTitle("💪 Hazırsın! Set zamanı!")
             .setContentText("$exerciseName — Sonraki seti başlat")
-            .setSmallIcon(android.R.drawable.ic_media_next)
+            .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentIntent(tapIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVibrate(longArrayOf(0, 300, 150, 300, 150, 300))
@@ -167,7 +245,7 @@ class WorkoutForegroundService : Service() {
             "Antrenman Durumu",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Antrenman sırasında timer ve durum göstergesi"
+            description = "Antrenman sırasında sayaç, kronometre ve durum göstergesi"
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
@@ -185,5 +263,31 @@ class WorkoutForegroundService : Service() {
         }
 
         notifManager.createNotificationChannels(listOf(workoutChannel, alertChannel))
+    }
+
+    private fun promoteOrNotify(notification: Notification) {
+        runCatching {
+            if (!isForeground) {
+                startForeground(NOTIF_ID_STATUS, notification)
+                isForeground = true
+            } else {
+                notifManager.notify(NOTIF_ID_STATUS, notification)
+            }
+        }.onFailure { error ->
+            Log.e(TAG, "Timer notification could not be shown", error)
+            throw error
+        }
+    }
+
+    private fun formatDuration(totalSeconds: Int): String {
+        val safe = totalSeconds.coerceAtLeast(0)
+        val hours = safe / 3600
+        val minutes = (safe % 3600) / 60
+        val seconds = safe % 60
+        return if (hours > 0) {
+            "%d:%02d:%02d".format(hours, minutes, seconds)
+        } else {
+            "%d:%02d".format(minutes, seconds)
+        }
     }
 }

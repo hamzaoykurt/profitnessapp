@@ -297,6 +297,12 @@ private fun RealMetricsGrid(
     val metrics = listOfNotNull(
         RealMetric(state.totalWorkouts.toString(),  "antrenman", "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
         RealMetric(state.totalExercises.toString(), "kez",       "TOPLAM EGZERSİZ",   Icons.Rounded.Timer,         CardCyan),
+        state.totalDurationSeconds.takeIf { it > 0 }?.let {
+            RealMetric((it / 60).coerceAtLeast(1).toString(), "dk", "TOPLAM SÜRE", Icons.Rounded.Timer, CardGreen)
+        },
+        state.totalDistanceMeters.takeIf { it > 0f }?.let {
+            RealMetric(formatDetailDistanceValue(it), formatDetailDistanceUnit(it), "TOPLAM MESAFE", Icons.Rounded.Straighten, Color(0xFF64D2FF))
+        },
         RealMetric(state.currentStreak.toString(), "gün",        "AKTİF SERİ",         Icons.Rounded.Whatshot,      CardCoral),
         RealMetric(state.longestStreak.toString(), "gün",        "EN UZUN SERİ",       Icons.Rounded.EmojiEvents,   CardGreen),
         RealMetric(state.level.toString(),         "seviye",     "MEVCUT SEVİYE",      Icons.Rounded.Star,          Color(0xFFFFD700)),
@@ -346,6 +352,12 @@ private fun RealMetricsGrid(
         }
     }
 }
+
+private fun formatDetailDistanceValue(meters: Float): String =
+    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
+
+private fun formatDetailDistanceUnit(meters: Float): String =
+    if (meters >= 1000f) "km" else "m"
 
 // ── Gerçek Hedef İlerlemesi ───────────────────────────────────────────────────
 

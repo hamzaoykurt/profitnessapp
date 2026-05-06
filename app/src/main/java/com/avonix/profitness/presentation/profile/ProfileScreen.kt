@@ -112,6 +112,8 @@ fun ProfileScreen(
                     longestStreak      = state.longestStreak,
                     totalWorkouts      = state.totalWorkouts,
                     totalExercises     = state.totalExercises,
+                    totalDurationSeconds = state.totalDurationSeconds,
+                    totalDistanceMeters  = state.totalDistanceMeters,
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
@@ -595,6 +597,15 @@ private data class PerformanceMetric(
     val color : Color
 )
 
+private fun formatProfileDurationValue(seconds: Int): String =
+    (seconds / 60).coerceAtLeast(1).toString()
+
+private fun formatProfileDistanceValue(meters: Float): String =
+    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
+
+private fun formatProfileDistanceUnit(meters: Float): String =
+    if (meters >= 1000f) "km" else "m"
+
 @Composable
 private fun PerformanceMetricsSection(
     accent            : Color,
@@ -604,14 +615,22 @@ private fun PerformanceMetricsSection(
     longestStreak     : Int,
     totalWorkouts     : Int,
     totalExercises    : Int,
+    totalDurationSeconds: Int,
+    totalDistanceMeters : Float,
     onNavigateToDetail: () -> Unit
 ) {
-    val metrics = listOf(
-        PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple),
-        PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral),
-        PerformanceMetric(longestStreak.toString(),  strings.unitStreak, "EN UZUN SERİ",            Icons.Rounded.EmojiEvents,   CardGreen),
-        PerformanceMetric(totalExercises.toString(), "kez",              "TOPLAM EGZERSİZ",         Icons.Rounded.FitnessCenter, CardCyan),
-    )
+    val metrics = buildList {
+        add(PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral))
+        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, "EN UZUN SERİ",            Icons.Rounded.EmojiEvents,   CardGreen))
+        add(PerformanceMetric(totalExercises.toString(), "kez",              "TOPLAM EGZERSİZ",         Icons.Rounded.FitnessCenter, CardCyan))
+        if (totalDurationSeconds > 0) {
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), "dk", "TOPLAM SÜRE", Icons.Rounded.Timer, CardGreen))
+        }
+        if (totalDistanceMeters > 0f) {
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), "TOPLAM MESAFE", Icons.Rounded.Straighten, Color(0xFF64D2FF)))
+        }
+    }
 
     Column(modifier = Modifier.padding(top = 32.dp)) {
         Row(

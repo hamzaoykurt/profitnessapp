@@ -210,7 +210,7 @@ fun WorkoutScreen(
 
     // Timer değişkenleri — hem overlay hem içerik için kullanılır
     val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive  = restTimer.isRunning || restTimer.isDone
+    val timerActive  = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
     val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
@@ -247,6 +247,10 @@ fun WorkoutScreen(
             timer     = restTimer,
             topOffset = statusBarPad + 8.dp,
             onStop    = { viewModel.stopVisibleTimer() },
+            onTogglePause = {
+                if (restTimer.isPaused) viewModel.resumeVisibleTimer()
+                else viewModel.pauseVisibleTimer()
+            },
             onDismiss = { viewModel.dismissVisibleTimer() }
          )
 
