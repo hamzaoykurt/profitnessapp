@@ -1835,7 +1835,7 @@ fun WeightTrackingCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp)) {
         Text(
-            "AĞIRLIK TAKİBİ",
+            "PERFORMANS ÖLÇÜTLERİ",
             style         = androidx.compose.material3.MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -1868,14 +1868,14 @@ fun WeightTrackingCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Kilo Takip Et",
+                    "Vücut Kilosu",
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
-                    else "Ölçümlerini kaydet, AI koçun analiz etsin",
+                    else "Kilo ölçümlerini performans verilerinle birlikte takip et",
                     color    = theme.text2,
                     fontSize = 11.sp
                 )
@@ -1901,7 +1901,7 @@ fun ExerciseProgressionCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) {
         Text(
-            "ANTRENMAN GELİŞİMİ",
+            "SPOR PERFORMANSI",
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -1932,13 +1932,13 @@ fun ExerciseProgressionCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Egzersiz Gelişimi",
+                    "Hareket Performansı",
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Set başına ağırlık · Grafik · AI Analiz",
+                    "Ağırlık · Süre · Mesafe · AI Analiz",
                     color    = theme.text2,
                     fontSize = 11.sp
                 )

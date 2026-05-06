@@ -282,7 +282,7 @@ class ProgramViewModel @Inject constructor(
             val mediaAnalysisBlock = when {
                 textFileContent != null -> """
 Aşağıdaki dosya içeriğini analiz et ve içindeki antrenman programını aynen çıkar.
-Her egzersizin set, tekrar ve dinlenme sürelerini dosyada yazdığı gibi koru, değiştirme.
+Her egzersizin set ve tekrar değerlerini dosyada yazdığı gibi koru, değiştirme. Dinlenme süresi açıkça verilmişse iç veride koru.
 
 --- DOSYA İÇERİĞİ BAŞLANGIÇ ---
 $textFileContent
@@ -291,7 +291,7 @@ $userInstruction"""
 
                 effectiveHasMedia -> """
 Yüklenen görseli/PDF'i dikkatle analiz et ve içindeki antrenman programını eksiksiz çıkar.
-KRİTİK: Her egzersizin set sayısı, tekrar sayısı ve dinlenme süresini dosyada/görselde yazdığı gibi aynen aktar. Hiçbir değeri tahmin etme veya değiştirme.
+KRİTİK: Her egzersizin set ve tekrar sayısını dosyada/görselde yazdığı gibi aynen aktar. Dinlenme süresi açıkça verilmişse iç veride koru; hiçbir değeri tahmin etme veya değiştirme.
 $userInstruction"""
 
                 else -> "Kullanıcının istediği antrenman programı: $userPrompt"

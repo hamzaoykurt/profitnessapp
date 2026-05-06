@@ -54,6 +54,9 @@ fun ExerciseDetailSheet(
     val theme = LocalAppTheme.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val accent = MaterialTheme.colorScheme.primary
+    val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
+        exerciseActivityMetric(exercise)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -106,9 +109,21 @@ fun ExerciseDetailSheet(
 
             // Stats row
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile(label = "SET", value = exercise.sets.toString(), accent = accent, modifier = Modifier.weight(1f))
-                StatTile(label = "TEKRAR", value = exercise.reps, accent = accent, modifier = Modifier.weight(1f))
-                StatTile(label = "DİNLENME", value = "${exercise.restSeconds}s", accent = accent, modifier = Modifier.weight(1f))
+                if (activityMetric == ActivityMetric.Strength) {
+                    StatTile(label = "SET", value = exercise.sets.toString(), accent = accent, modifier = Modifier.weight(1f))
+                    StatTile(label = "TEKRAR", value = exercise.reps, accent = accent, modifier = Modifier.weight(1f))
+                } else {
+                    val totalDistance = weightHistory.mapNotNull { it.distanceMeters }.sum()
+                    StatTile(label = "SÜRE", value = plannedDurationLabel(exercise.reps), accent = accent, modifier = Modifier.weight(1f))
+                    if (activityMetric == ActivityMetric.DurationDistance) {
+                        StatTile(
+                            label = "MESAFE",
+                            value = totalDistance.takeIf { it > 0f }?.let { formatDistance(it) } ?: "—",
+                            accent = accent,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
 
             // ── Progressive Overload Chart ──────────────────────────────────
@@ -154,13 +169,21 @@ fun ExerciseDetailSheet(
             )
             Spacer(Modifier.height(12.dp))
 
-            val steps = listOf(
-                "Doğru başlangıç pozisyonunu al ve postürüne dikkat et.",
-                "Hareketi kontrollü ve yavaş bir tempoda gerçekleştir.",
-                "Hedef kas grubunu kasılırken hissetmeye odaklan.",
-                "Baskı anında nefes ver, geri dönüşte nefes al.",
-                "Egzersizler arasında belirtilen dinlenme süresine uy."
-            )
+            val steps = if (activityMetric == ActivityMetric.Strength) {
+                listOf(
+                    "Doğru başlangıç pozisyonunu al ve postürüne dikkat et.",
+                    "Hareketi kontrollü ve yavaş bir tempoda gerçekleştir.",
+                    "Hedef kas grubunu kasılırken hissetmeye odaklan.",
+                    "Baskı anında nefes ver, geri dönüşte nefes al."
+                )
+            } else {
+                listOf(
+                    "Süre hedefini antrenman kartında gir ve sayacı başlat.",
+                    "Mesafe kullanılan sporlarda tamamladığın metreyi ekle.",
+                    "Temponu sürdürülebilir tut ve performansı seanslar arasında karşılaştır.",
+                    "Bitirdiğinde hareketi tamamlayarak kaydı performans ölçütlerine aktar."
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 steps.forEachIndexed { i, step ->
                     Row(
@@ -211,6 +234,43 @@ private fun buildChartData(history: List<SetCompletionEntity>): List<Progression
             )
         }
         .sortedBy { it.date }
+
+private enum class ActivityMetric { Strength, Duration, DurationDistance }
+
+private fun exerciseActivityMetric(exercise: Exercise): ActivityMetric {
+    val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
+        .joinToString(" ")
+        .lowercase()
+    val distanceKeywords = listOf(
+        "koş", "kos", "run", "jog", "bisiklet", "bike", "cycle", "cycling",
+        "yüz", "yuz", "swim", "yürüy", "yuruy", "walk", "kürek", "kurek", "row"
+    )
+    if (distanceKeywords.any { it in haystack }) return ActivityMetric.DurationDistance
+    val durationKeywords = listOf(
+        "kardiyo", "cardio", "dayan", "endurance", "elliptical",
+        "tempo", "interval", "hiit", "plank", "yoga", "pilates", "mobility"
+    )
+    return if (
+        durationKeywords.any { it in haystack } ||
+        exercise.reps.contains("s", ignoreCase = true) ||
+        exercise.reps.contains("dk", ignoreCase = true) ||
+        exercise.reps.contains("min", ignoreCase = true)
+    ) ActivityMetric.Duration else ActivityMetric.Strength
+}
+
+private fun plannedDurationLabel(reps: String): String {
+    val raw = reps.trim()
+    val number = raw.filter { it.isDigit() }.toIntOrNull()
+    return when {
+        raw.contains("dk", ignoreCase = true) || raw.contains("min", ignoreCase = true) -> raw
+        raw.contains("s", ignoreCase = true) -> raw
+        number != null -> "$number dk"
+        else -> raw.ifBlank { "—" }
+    }
+}
+
+private fun formatDistance(meters: Float): String =
+    if (meters >= 1000f) "${"%.1f".format(meters / 1000f)} km" else "${meters.toInt()} m"
 
 @Composable
 private fun ProgressionSection(

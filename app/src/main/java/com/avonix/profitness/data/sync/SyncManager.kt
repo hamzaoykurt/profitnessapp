@@ -64,7 +64,9 @@ private data class SetCompletionUpsert(
     val set_index: Int,
     val date: String,
     val weight_kg: Float? = null,
-    val reps_actual: Int? = null
+    val reps_actual: Int? = null,
+    val duration_seconds: Int? = null,
+    val distance_meters: Float? = null
 )
 
 /**
@@ -419,7 +421,9 @@ class SyncManager @Inject constructor(
         set_index = setIndex,
         date = date,
         weight_kg = weightKg,
-        reps_actual = repsActual
+        reps_actual = repsActual,
+        duration_seconds = durationSeconds,
+        distance_meters = distanceMeters
     )
 
     private fun SetCompletionUpsert.toEntity() = SetCompletionEntity(
@@ -429,6 +433,8 @@ class SyncManager @Inject constructor(
         setIndex = set_index,
         date = date,
         weightKg = weight_kg,
-        repsActual = reps_actual
+        repsActual = reps_actual,
+        durationSeconds = duration_seconds,
+        distanceMeters = distance_meters
     )
 }

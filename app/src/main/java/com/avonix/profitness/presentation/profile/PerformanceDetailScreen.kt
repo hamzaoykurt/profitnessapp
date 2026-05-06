@@ -30,6 +30,8 @@ import com.avonix.profitness.core.theme.*
 @Composable
 fun PerformanceDetailScreen(
     onBack   : () -> Unit,
+    onNavigateToWeightTracking      : () -> Unit = {},
+    onNavigateToExerciseProgression : () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
@@ -105,6 +107,35 @@ fun PerformanceDetailScreen(
                 }
             }
 
+            item {
+                Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
+                    Text(
+                        "PERFORMANS KAYITLARI",
+                        style         = MaterialTheme.typography.labelSmall,
+                        color         = accent,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    PerformanceShortcutCard(
+                        title = "Vücut Kilosu",
+                        subtitle = "Kilo trendi ve AI analiz",
+                        icon = Icons.Rounded.ShowChart,
+                        accent = accent,
+                        theme = theme,
+                        onClick = onNavigateToWeightTracking
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    PerformanceShortcutCard(
+                        title = "Hareket Performansı",
+                        subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+                        icon = Icons.Rounded.TrendingUp,
+                        accent = accent,
+                        theme = theme,
+                        onClick = onNavigateToExerciseProgression
+                    )
+                }
+            }
+
             // ── Hedef İlerleme ────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
@@ -121,6 +152,43 @@ fun PerformanceDetailScreen(
 
             // Rank yol haritası artık Başarımlar ekranında
         }
+    }
+}
+
+@Composable
+private fun PerformanceShortcutCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accent: Color,
+    theme: AppThemeState,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(accent.copy(0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = theme.text2, fontSize = 11.sp)
+        }
+        Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent.copy(0.65f), modifier = Modifier.size(14.dp))
     }
 }
 
@@ -335,4 +403,3 @@ private fun RealGoalProgressList(
         }
     }
 }
-

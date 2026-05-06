@@ -290,7 +290,7 @@ class WorkoutRepositoryImpl @Inject constructor(
             }
 
             setCompletionDao.insert(
-                SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual)
+                SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual, null, null)
             )
             setCompletionDao.getSet(userId, exerciseId, programDayId, setIndex, today)
                 ?.let { syncSetCompletionBestEffort(it) }
@@ -357,6 +357,26 @@ class WorkoutRepositoryImpl @Inject constructor(
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             val entity = setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
+            syncSetCompletionBestEffort(entity)
+            Unit
+        }
+    }
+
+    override suspend fun upsertSetActivityMetrics(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val entity = setCompletionDao.upsertActivityMetrics(
+                userId = userId,
+                exerciseId = exerciseId,
+                programDayId = programDayId,
+                setIndex = setIndex,
+                date = today,
+                durationSeconds = durationSeconds,
+                distanceMeters = distanceMeters
+            )
             syncSetCompletionBestEffort(entity)
             Unit
         }

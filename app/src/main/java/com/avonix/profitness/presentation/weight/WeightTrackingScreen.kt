@@ -272,7 +272,7 @@ private fun WeightHeader(
                 Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text1, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(12.dp))
-            Text("Ağırlık Takibi", color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+            Text("Vücut Kilosu", color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
         }
 
         Spacer(Modifier.height(20.dp))

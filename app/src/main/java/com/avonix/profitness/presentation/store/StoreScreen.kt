@@ -71,7 +71,7 @@ private val ALL_FEATURES = listOf(
     MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program oluşturma",           UserPlan.PRO),
     MasterFeature(Icons.Rounded.TrendingUp,        "Gelişmiş performans analizi",        UserPlan.PRO),
     MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri (AI)",  UserPlan.PRO),
-    MasterFeature(Icons.Rounded.MonitorWeight,     "Ağırlık takibi + AI trend analizi",  UserPlan.PRO),
+        MasterFeature(Icons.Rounded.MonitorWeight,     "Performans ölçütleri + AI trend analizi",  UserPlan.PRO),
     MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",        UserPlan.ELITE),
     MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                   UserPlan.ELITE),
     MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",           UserPlan.ELITE),

@@ -49,12 +49,15 @@ fun CinematicExerciseCard(
     onComplete: () -> Unit = {},
     onShowDetail: (() -> Unit)? = null,
     onExpandChanged: ((Boolean) -> Unit)? = null,
-    // Progressive overload — per-set weight & reps
+    // Progressive overload — per-set weight input
     setWeights: Map<Int, String> = emptyMap(),
-    setReps: Map<Int, String> = emptyMap(),
     lastSessionData: Map<Int, Pair<Float?, Int?>> = emptyMap(),
+    profileWeightKg: Float = 0f,
+    activityDuration: String = "",
+    activityDistance: String = "",
     onSetWeightChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
-    onSetRepsChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
+    onActivityDurationChanged: (String) -> Unit = {},
+    onActivityDistanceChanged: (String) -> Unit = {},
     // Timer — ViewModel'den gelir, lokal state yok
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
@@ -66,6 +69,10 @@ fun CinematicExerciseCard(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
+    val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
+        exerciseActivityMetric(exercise)
+    }
+    val activityBased = activityMetric != ActivityMetric.Strength
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
     LaunchedEffect(timerRunning) {
@@ -221,7 +228,12 @@ fun CinematicExerciseCard(
                                 Text(text = exercise.target, color = Mist, style = MaterialTheme.typography.bodySmall)
                             }
                             val doneCount = doneSetIndices.size
-                            StatBadge(sets = exercise.sets, reps = exercise.reps, done = doneCount)
+                            StatBadge(
+                                sets = exercise.sets,
+                                reps = exercise.reps,
+                                done = doneCount,
+                                isActivity = activityBased
+                            )
                         }
                     }
                 }
@@ -236,26 +248,36 @@ fun CinematicExerciseCard(
                             .padding(20.dp)
                     ) {
                         Spacer(Modifier.height(4.dp))
-                        repeat(exercise.sets) { i ->
-                            val lastData = lastSessionData[i]
-                            SetRow(
-                                setNumber       = i + 1,
-                                reps            = exercise.reps,
-                                isDone          = i in doneSetIndices,
-                                weightValue     = setWeights[i] ?: "",
-                                repsValue       = setReps[i] ?: "",
-                                lastWeightKg    = lastData?.first,
-                                lastRepsActual  = lastData?.second,
-                                plannedWeightKg = exercise.weightKg,
-                                onWeightChanged = { onSetWeightChanged(i, it) },
-                                onRepsChanged   = { onSetRepsChanged(i, it) },
-                                onToggle        = {
-                                    val wasAlreadyDone = i in doneSetIndices
-                                    onToggleSet(i)
-                                    if (!wasAlreadyDone) onStartTimer(exercise.restSeconds)
-                                }
+                        if (activityBased) {
+                            ActivityMetricsPanel(
+                                durationValue = activityDuration,
+                                distanceValue = activityDistance,
+                                supportsDistance = activityMetric == ActivityMetric.DurationDistance,
+                                isDone = isCompleted,
+                                onDurationChanged = onActivityDurationChanged,
+                                onDistanceChanged = onActivityDistanceChanged
                             )
-                            if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
+                        } else {
+                            repeat(exercise.sets) { i ->
+                                val lastData = lastSessionData[i]
+                                val defaultWeightKg = when {
+                                    exercise.weightKg > 0f -> exercise.weightKg
+                                    exercise.category.equals("Bodyweight", ignoreCase = true) && profileWeightKg > 0f -> profileWeightKg
+                                    else -> 0f
+                                }
+                                SetRow(
+                                    setNumber       = i + 1,
+                                    reps            = exercise.reps,
+                                    isDone          = i in doneSetIndices,
+                                    weightValue     = setWeights[i] ?: "",
+                                    lastWeightKg    = lastData?.first,
+                                    lastRepsActual  = lastData?.second,
+                                    defaultWeightKg = defaultWeightKg,
+                                    onWeightChanged = { onSetWeightChanged(i, it) },
+                                    onToggle        = { onToggleSet(i) }
+                                )
+                                if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
+                            }
                         }
 
                         Spacer(Modifier.height(14.dp))
@@ -267,14 +289,25 @@ fun CinematicExerciseCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RestTimerChip(
-                                seconds        = timerSeconds,
-                                isRunning      = timerRunning,
-                                isDone         = timerDone,
-                                defaultSeconds = exercise.restSeconds,
-                                onStart        = { onStartTimer(exercise.restSeconds) },
-                                onStop         = onStopTimer
-                            )
+                            if (activityBased) {
+                                val durationSeconds = activityDuration
+                                    .replace(',', '.')
+                                    .toFloatOrNull()
+                                    ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+                                    ?: 0
+                                RestTimerChip(
+                                    seconds        = timerSeconds,
+                                    isRunning      = timerRunning,
+                                    isDone         = timerDone,
+                                    defaultSeconds = durationSeconds,
+                                    idleLabel      = if (durationSeconds > 0) "SÜREYİ BAŞLAT" else "SÜRE GİR",
+                                    doneLabel      = "SÜRE BİTTİ ✓",
+                                    onStart        = { if (durationSeconds > 0) onStartTimer(durationSeconds) },
+                                    onStop         = onStopTimer
+                                )
+                            } else {
+                                Spacer(Modifier.weight(1f))
+                            }
 
                             Button(
                                 onClick = {
@@ -309,19 +342,68 @@ fun CinematicExerciseCard(
     }
 }
 
-// ── Set Row — ağırlık & tekrar girişli ───────────────────────────────────────
+@Composable
+private fun ActivityMetricsPanel(
+    durationValue: String,
+    distanceValue: String,
+    supportsDistance: Boolean,
+    isDone: Boolean,
+    onDurationChanged: (String) -> Unit,
+    onDistanceChanged: (String) -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isDone) accent.copy(0.14f) else Surface3.copy(0.5f))
+            .padding(12.dp)
+    ) {
+        Text(
+            text = if (supportsDistance) "Süre ve mesafe" else "Süre",
+            color = if (isDone) accent else TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WeightInputField(
+                value = durationValue,
+                onValueChange = onDurationChanged,
+                placeholder = "dk",
+                isDone = isDone,
+                accent = accent,
+                suffix = "dk",
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f)
+            )
+            if (supportsDistance) {
+                WeightInputField(
+                    value = distanceValue,
+                    onValueChange = onDistanceChanged,
+                    placeholder = "metre",
+                    isDone = isDone,
+                    accent = accent,
+                    suffix = "m",
+                    keyboardType = KeyboardType.Decimal,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+// ── Set Row — ağırlık girişli; set/tekrar programdan gelir ───────────────────
 @Composable
 private fun SetRow(
     setNumber: Int,
     reps: String,
     isDone: Boolean,
     weightValue: String,
-    repsValue: String,
     lastWeightKg: Float?,
     lastRepsActual: Int?,
-    plannedWeightKg: Float,
+    defaultWeightKg: Float,
     onWeightChanged: (String) -> Unit,
-    onRepsChanged: (String) -> Unit,
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -339,7 +421,7 @@ private fun SetRow(
             .background(if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.5f))
             .padding(12.dp, 8.dp)
     ) {
-        // Üst satır: checkbox + set no + ağırlık input + tekrar input
+        // Üst satır: checkbox + set no + program tekrarı + ağırlık input
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -369,29 +451,25 @@ private fun SetRow(
 
             Spacer(Modifier.width(8.dp))
 
+            Text(
+                text = "$reps rep",
+                color = TextMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.widthIn(min = 44.dp)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
             // Ağırlık input
             WeightInputField(
                 value = weightValue,
                 onValueChange = onWeightChanged,
-                placeholder = if (plannedWeightKg > 0) "${"%.0f".format(plannedWeightKg)}" else "kg",
+                placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "kg",
                 isDone = isDone,
                 accent = accent,
                 suffix = "kg",
                 keyboardType = KeyboardType.Decimal,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(Modifier.width(6.dp))
-
-            // Tekrar input
-            WeightInputField(
-                value = repsValue,
-                onValueChange = onRepsChanged,
-                placeholder = reps,
-                isDone = isDone,
-                accent = accent,
-                suffix = "rep",
-                keyboardType = KeyboardType.Number,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -482,6 +560,8 @@ private fun RestTimerChip(
     isRunning: Boolean,
     isDone: Boolean,
     defaultSeconds: Int = 90,
+    idleLabel: String = "SÜRE",
+    doneLabel: String = "DİNLENDİN! ✓",
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
@@ -522,9 +602,9 @@ private fun RestTimerChip(
         Spacer(Modifier.width(6.dp))
         Text(
             text = when {
-                isDone    -> "DİNLENDİN! ✓"
+                isDone    -> doneLabel
                 isRunning -> "${seconds}s"
-                else      -> "${defaultSeconds}s REST"
+                else      -> if (defaultSeconds > 0) "${defaultSeconds}s $idleLabel" else idleLabel
             },
             color = chipColor,
             fontSize = 12.sp,
@@ -534,7 +614,7 @@ private fun RestTimerChip(
 }
 
 @Composable
-fun StatBadge(sets: Int, reps: String, done: Int = 0) {
+fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = false) {
     Box(
         modifier = Modifier
             .background(Color.White.copy(0.1f), RoundedCornerShape(12.dp))
@@ -542,9 +622,15 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0) {
             .padding(12.dp, 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
-            Spacer(Modifier.width(4.dp))
-            Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            if (isActivity) {
+                Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            } else {
+                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
                 Text(
@@ -556,4 +642,28 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0) {
             }
         }
     }
+}
+
+private enum class ActivityMetric { Strength, Duration, DurationDistance }
+
+private fun exerciseActivityMetric(exercise: Exercise): ActivityMetric {
+    val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
+        .joinToString(" ")
+        .lowercase()
+    val distanceKeywords = listOf(
+        "koş", "kos", "run", "jog", "bisiklet", "bike", "cycle", "cycling",
+        "yüz", "yuz", "swim", "yürüy", "yuruy", "walk", "kürek", "kurek", "row"
+    )
+    if (distanceKeywords.any { it in haystack }) return ActivityMetric.DurationDistance
+
+    val durationKeywords = listOf(
+        "kardiyo", "cardio", "dayan", "endurance", "elliptical",
+        "tempo", "interval", "hiit", "plank", "yoga", "pilates", "mobility"
+    )
+    return if (
+        durationKeywords.any { it in haystack } ||
+        exercise.reps.contains("s", ignoreCase = true) ||
+        exercise.reps.contains("dk", ignoreCase = true) ||
+        exercise.reps.contains("min", ignoreCase = true)
+    ) ActivityMetric.Duration else ActivityMetric.Strength
 }

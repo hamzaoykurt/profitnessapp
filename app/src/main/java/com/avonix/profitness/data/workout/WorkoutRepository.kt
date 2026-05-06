@@ -116,17 +116,23 @@ interface WorkoutRepository {
         setIndex: Int, repsActual: Int?
     ): Result<Unit>
 
+    /** Süre/mesafe odaklı hareketler için aktivite metriklerini draft olarak günceller. */
+    suspend fun upsertSetActivityMetrics(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?
+    ): Result<Unit>
+
     // ── Progressive Overload ─────────────────────────────────────────────────
 
-    /** Belirli bir güne ait set kayıtlarını getirir (bugünkü taslak ağırlıklar dahil). */
+    /** Belirli bir güne ait set kayıtlarını getirir (bugünkü taslak performans verileri dahil). */
     suspend fun getSetsForDate(userId: String, exerciseId: String, date: String): Result<List<SetCompletionEntity>>
 
-    /** Önceki antrenmanın set verilerini getirir (ağırlık ön-doldurma için). */
+    /** Önceki antrenmanın set verilerini getirir (ön-doldurma için). */
     suspend fun getLastSessionSets(userId: String, exerciseId: String): Result<List<SetCompletionEntity>>
 
-    /** Egzersiz bazlı ağırlık geçmişi (progresyon grafiği için). */
+    /** Egzersiz bazlı performans geçmişi (progresyon ekranı için). */
     suspend fun getExerciseWeightHistory(userId: String, exerciseId: String, weeks: Int = 8): Result<List<SetCompletionEntity>>
 
-    /** Ağırlık takibi yapılmış egzersizlerin özet listesi. */
+    /** Performans kaydı yapılmış egzersizlerin özet listesi. */
     suspend fun getTrackedExerciseSummaries(userId: String): Result<List<ExerciseProgressSummary>>
 }

@@ -321,6 +321,7 @@ fun CreateChallengeOverlay(
                     accent = accent,
                     mode = eventMode,
                     onMode = { eventMode = it },
+                    exercises = exercises,
                     dateIso = eventDateIso,
                     onPickDate = { showDatePicker = true },
                     timeIso = eventTimeIso,
@@ -605,6 +606,7 @@ private fun EventForm(
     accent: Color,
     mode: EventMode,
     onMode: (EventMode) -> Unit,
+    exercises: List<ExerciseItem>,
     dateIso: String,
     onPickDate: () -> Unit,
     timeIso: String?,
@@ -627,6 +629,7 @@ private fun EventForm(
 ) {
     val theme = LocalAppTheme.current
     val strings = theme.strings
+    val exerciseNameById = remember(exercises) { exercises.associate { it.id to it.name } }
 
     // ── Mode selector ────────────────────────────────────────────────────
     FieldLabel(strings.challengeKindEvent)
@@ -782,20 +785,13 @@ private fun EventForm(
                                 modifier = Modifier.width(22.dp)
                             )
                             Text(
-                                mv.exerciseId.take(8) + "…",
+                                exerciseNameById[mv.exerciseId] ?: mv.exerciseId.take(8) + "…",
                                 color = theme.text0,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
-                            val suffix = buildString {
-                                mv.suggestedSets?.let { append("${it}×") }
-                                mv.suggestedReps?.let { append("$it") }
-                                mv.suggestedDurSec?.let {
-                                    if (isNotEmpty()) append(" · ")
-                                    append("${it}s")
-                                }
-                            }
+                            val suffix = movementSpecLabel(mv)
                             if (suffix.isNotEmpty()) {
                                 Text(suffix, color = theme.text2, fontSize = 11.sp)
                             }
@@ -1161,6 +1157,22 @@ private fun TargetTypeOption(
         }
     }
 }
+
+private fun movementSpecLabel(movement: MovementInput): String = buildString {
+    val hasStrength = movement.suggestedSets != null || movement.suggestedReps != null
+    if (hasStrength) {
+        movement.suggestedSets?.let { append("${it} set") }
+        movement.suggestedReps?.let {
+            if (isNotEmpty()) append(" · ")
+            append("${it} tekrar")
+        }
+        return@buildString
+    }
+    movement.suggestedDurSec?.let { append(formatChallengeDuration(it)) }
+}
+
+private fun formatChallengeDuration(seconds: Int): String =
+    if (seconds >= 60) "${(seconds / 60).coerceAtLeast(1)} dk" else "${seconds}s"
 
 @Composable
 private fun KindChip(

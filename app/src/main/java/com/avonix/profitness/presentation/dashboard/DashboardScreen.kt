@@ -278,7 +278,17 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
             modifier = Modifier.zIndex(200f)
         ) {
-            PerformanceDetailScreen(onBack = { showPerformanceDetail = false })
+            PerformanceDetailScreen(
+                onBack = { showPerformanceDetail = false },
+                onNavigateToWeightTracking = {
+                    showPerformanceDetail = false
+                    showWeightTracking = true
+                },
+                onNavigateToExerciseProgression = {
+                    showPerformanceDetail = false
+                    showExerciseProgression = true
+                }
+            )
         }
 
         // ── Achievements Detail Overlay ─────────────────────────────────

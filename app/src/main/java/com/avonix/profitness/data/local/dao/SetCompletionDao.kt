@@ -10,7 +10,7 @@ import androidx.room.Upsert
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
-/** Egzersiz başına ağırlık takip özeti — profil/progresyon ekranı için */
+/** Hareket başına performans özeti — profil/progresyon ekranı için */
 data class ExerciseProgressSummary(
     @ColumnInfo(name = "exercise_id")   val exerciseId    : String,
     @ColumnInfo(name = "name")          val name          : String,
@@ -23,7 +23,9 @@ data class ExerciseProgressSummary(
     @ColumnInfo(name = "session_count") val sessionCount  : Int,
     @ColumnInfo(name = "total_sets")    val totalSets     : Int,
     @ColumnInfo(name = "total_reps")    val totalReps     : Int,
-    @ColumnInfo(name = "total_volume")  val totalVolume   : Float
+    @ColumnInfo(name = "total_volume")  val totalVolume   : Float,
+    @ColumnInfo(name = "total_duration_seconds") val totalDurationSeconds: Int,
+    @ColumnInfo(name = "total_distance_meters")  val totalDistanceMeters : Float
 )
 
 @Dao
@@ -95,10 +97,10 @@ interface SetCompletionDao {
     ): SetCompletionEntity {
         val rows = updateWeight(userId, exerciseId, programDayId, setIndex, date, weightKg)
         if (rows == 0) {
-            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null))
+            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null, null, null))
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
-            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null, null, null)
     }
 
     /** Upsert reps_actual — kayıt varsa sadece reps_actual'ı günceller, yoksa yeni kayıt oluşturur. */
@@ -109,10 +111,37 @@ interface SetCompletionDao {
     ): SetCompletionEntity {
         val rows = updateRepsActual(userId, exerciseId, programDayId, setIndex, date, repsActual)
         if (rows == 0) {
-            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual))
+            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual, null, null))
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
-            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual, null, null)
+    }
+
+    /** Partial update — süre ve mesafeyi günceller, ağırlık/tekrar/tik durumuna dokunmaz. */
+    @Query("""
+        UPDATE set_completions
+        SET duration_seconds = :durationSeconds,
+            distance_meters = :distanceMeters
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+    """)
+    suspend fun updateActivityMetrics(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?
+    ): Int
+
+    /** Upsert süre/mesafe — kayıt varsa metrikleri günceller, yoksa draft oluşturur. */
+    @Transaction
+    suspend fun upsertActivityMetrics(
+        userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?
+    ): SetCompletionEntity {
+        val rows = updateActivityMetrics(userId, exerciseId, programDayId, setIndex, date, durationSeconds, distanceMeters)
+        if (rows == 0) {
+            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, null, durationSeconds, distanceMeters))
+        }
+        return getSet(userId, exerciseId, programDayId, setIndex, date)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, null, durationSeconds, distanceMeters)
     }
 
     @Query("""
@@ -155,18 +184,19 @@ interface SetCompletionDao {
     """)
     suspend fun getLastSessionSets(userId: String, exerciseId: String, today: String): List<SetCompletionEntity>
 
-    /** Egzersiz bazlı ağırlık geçmişi (progresyon grafiği için) */
+    /** Egzersiz bazlı performans geçmişi (progresyon ekranı için) */
     @Query("""
         SELECT * FROM set_completions
         WHERE user_id = :userId AND exercise_id = :exerciseId
-          AND date >= :since AND weight_kg IS NOT NULL
+          AND date >= :since
+          AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)
         ORDER BY date ASC, set_index ASC
     """)
     suspend fun getHistoryForExercise(userId: String, exerciseId: String, since: String): List<SetCompletionEntity>
 
     /**
-     * Ağırlık takibi yapılmış egzersizlerin özet listesi (profil/progresyon ekranı için).
-     * Her egzersiz için: max/avg/last weight, total sets/reps/volume ve son antrenman tarihi.
+     * Performans kaydı yapılmış egzersizlerin özet listesi (profil/progresyon ekranı için).
+     * Her egzersiz için: ağırlık, süre, mesafe, set/tekrar/hacim ve son antrenman tarihi.
      * last_weight = son antrenmandaki max ağırlık (subquery ile).
      */
     @Query("""
@@ -174,23 +204,26 @@ interface SetCompletionDao {
                e.name,
                COALESCE(e.image_url, '')                                AS image_url,
                e.target_muscle,
-               MAX(sc.weight_kg)                                        AS max_weight,
-               AVG(sc.weight_kg)                                        AS avg_weight,
+               COALESCE(MAX(sc.weight_kg), 0)                           AS max_weight,
+               COALESCE(AVG(sc.weight_kg), 0)                           AS avg_weight,
                COUNT(DISTINCT sc.date)                                  AS session_count,
                COUNT(*)                                                 AS total_sets,
                COALESCE(SUM(sc.reps_actual), 0)                         AS total_reps,
                COALESCE(SUM(sc.weight_kg * sc.reps_actual), 0)          AS total_volume,
+               COALESCE(SUM(sc.duration_seconds), 0)                    AS total_duration_seconds,
+               COALESCE(SUM(sc.distance_meters), 0)                     AS total_distance_meters,
                (SELECT MAX(date) FROM set_completions
                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
-                    AND weight_kg IS NOT NULL)                          AS last_date,
-               (SELECT MAX(weight_kg) FROM set_completions
+                    AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)) AS last_date,
+               COALESCE((SELECT MAX(weight_kg) FROM set_completions
                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
-                    AND date = (SELECT MAX(date) FROM set_completions
+                  AND date = (SELECT MAX(date) FROM set_completions
                                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
-                                    AND weight_kg IS NOT NULL))         AS last_weight
+                                    AND weight_kg IS NOT NULL)), 0)     AS last_weight
         FROM set_completions sc
         INNER JOIN exercises e ON e.id = sc.exercise_id
-        WHERE sc.user_id = :userId AND sc.weight_kg IS NOT NULL
+        WHERE sc.user_id = :userId
+          AND (sc.weight_kg IS NOT NULL OR sc.duration_seconds IS NOT NULL OR sc.distance_meters IS NOT NULL)
         GROUP BY sc.exercise_id
         ORDER BY last_date DESC, max_weight DESC
     """)

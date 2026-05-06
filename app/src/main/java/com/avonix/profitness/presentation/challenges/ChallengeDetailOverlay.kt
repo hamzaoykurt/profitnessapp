@@ -1068,17 +1068,7 @@ private fun MovementRow(
                 fontWeight = FontWeight.Bold,
                 textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
             )
-            val sub = buildString {
-                movement.suggestedSets?.let { append("${it} set") }
-                movement.suggestedReps?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("${it} tekrar")
-                }
-                movement.suggestedDurSec?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("${it}s")
-                }
-            }
+            val sub = movementSpecLabel(movement)
             if (sub.isNotEmpty()) {
                 Text(sub, color = theme.text2, fontSize = 11.sp)
             }
@@ -1984,6 +1974,22 @@ private fun metricTargetIcon(type: ChallengeTargetType): ImageVector = when (typ
     ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
     ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
 }
+
+private fun movementSpecLabel(movement: ChallengeMovement): String = buildString {
+    val hasStrength = movement.suggestedSets != null || movement.suggestedReps != null
+    if (hasStrength) {
+        movement.suggestedSets?.let { append("${it} set") }
+        movement.suggestedReps?.let {
+            if (isNotEmpty()) append(" · ")
+            append("${it} tekrar")
+        }
+        return@buildString
+    }
+    movement.suggestedDurSec?.let { append(formatMovementDuration(it)) }
+}
+
+private fun formatMovementDuration(seconds: Int): String =
+    if (seconds >= 60) "${(seconds / 60).coerceAtLeast(1)} dk" else "${seconds}s"
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  EDIT EVENT CHALLENGE OVERLAY (owner only — minimal field set)

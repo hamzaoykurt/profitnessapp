@@ -1738,7 +1738,7 @@ private fun EditProgramScreen(
                             decorationBox = { inner ->
                                 if (aiPrompt.isEmpty()) {
                                     Text(
-                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, dinlenme süresini azalt...",
+                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
                                         color      = editTheme.text2,
                                         fontSize   = 14.sp,
                                         lineHeight = 20.sp
@@ -2331,15 +2331,6 @@ private fun ManualDayCard(
                                     ) {
                                         Text("${ex.reps} TEK", color = accent.copy(0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     }
-                                    // Rest badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(theme.stroke)
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.restSeconds}s", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                                    }
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
@@ -2400,7 +2391,6 @@ private fun ExerciseEditDialog(
 ) {
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
-    var rest by remember { mutableIntStateOf(exercise.restSeconds) }
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
@@ -2467,15 +2457,6 @@ private fun ExerciseEditDialog(
                     onIncrement = { if (reps < 100) reps++ },
                     accent      = accent
                 )
-                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                EditCounterField(
-                    label           = "DİNLENME",
-                    value           = rest,
-                    onDecrement     = { if (rest > 15) rest -= 15 },
-                    onIncrement     = { if (rest < 300) rest += 15 },
-                    accent          = accent,
-                    displayOverride = "${rest}s"
-                )
             }
 
             // Action buttons
@@ -2492,7 +2473,7 @@ private fun ExerciseEditDialog(
                     Text("İptal", color = theme.text1, fontWeight = FontWeight.Medium)
                 }
                 Button(
-                    onClick  = { onConfirm(sets, reps, rest) },
+                    onClick  = { onConfirm(sets, reps, exercise.restSeconds) },
                     modifier = Modifier.weight(1f).height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = accent),
                     shape    = RoundedCornerShape(14.dp)

@@ -51,10 +51,13 @@ data class WorkoutScreenState(
     val currentProgramId: String = "",
     val currentStreak: Int = 0,
     val setCompletions: Map<String, Set<Int>> = emptyMap(),
-    // Progressive overload — per-set weight & reps input
+    // Progressive overload — per-set weight input. Reps are read from the program.
     val setWeights: Map<String, Map<Int, String>> = emptyMap(),
     val setReps: Map<String, Map<Int, String>> = emptyMap(),
     val lastSessionData: Map<String, Map<Int, Pair<Float?, Int?>>> = emptyMap(),
+    val activityDurations: Map<String, String> = emptyMap(),
+    val activityDistances: Map<String, String> = emptyMap(),
+    val profileWeightKg: Float = 0f,
     // ExerciseDetailSheet — progresyon
     val exerciseHistory: Map<String, List<SetCompletionEntity>> = emptyMap(),
     val exerciseAiInsight: Map<String, String> = emptyMap(),
@@ -163,6 +166,7 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             syncCoordinator.refreshWorkout(userId)
         }
+        loadProfileWeight(userId)
 
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
@@ -222,6 +226,7 @@ class WorkoutViewModel @Inject constructor(
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         // Observe zaten aktifse tekrar başlatma — sadece sync tetikle
         if (observeJob?.isActive != true) startObserving()
+        loadProfileWeight(userId)
         viewModelScope.launch {
             syncCoordinator.refreshWorkout(userId)
         }
@@ -258,14 +263,12 @@ class WorkoutViewModel @Inject constructor(
                 // Tik'i kaldır: reps_actual'ı null yap (weight draft olarak korunur)
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, null)
             } else {
-                // Tik ekle: kullanıcı reps girmemişse planlanan reps'i kullan
-                val plannedReps = exercise.reps.toIntOrNull()
-                val reps = currentState.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
-                    ?: plannedReps?.takeIf { it > 0 } ?: 1
-                // Ağırlık fallback: kullanıcı girdisi > son seans > program planı. Hiçbiri yoksa null.
+                // Tik ekle: tekrar sayısı programda tanımlı olan değerden gelir.
+                val reps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
+                // Ağırlık fallback: kullanıcı girdisi > son seans > program planı > vücut ağırlığı hareketinde profil kilosu.
                 val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
                     ?: currentState.lastSessionData[exerciseId]?.get(setIndex)?.first
-                    ?: exercise.weightKg.takeIf { it > 0f }
+                    ?: defaultWeightFor(exercise, currentState.profileWeightKg)
                 if (weight != null) {
                     workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, weight)
                 }
@@ -286,6 +289,20 @@ class WorkoutViewModel @Inject constructor(
         }
         // Set tik atılmış olsa da olmasa da Room'a draft olarak yaz (debounced).
         scheduleDraftPersist(exerciseId, setIndex, weight = true, reps = false)
+    }
+
+    fun updateActivityDuration(exerciseId: String, value: String) {
+        updateState { state ->
+            state.copy(activityDurations = state.activityDurations + (exerciseId to value))
+        }
+        scheduleActivityDraftPersist(exerciseId)
+    }
+
+    fun updateActivityDistance(exerciseId: String, value: String) {
+        updateState { state ->
+            state.copy(activityDistances = state.activityDistances + (exerciseId to value))
+        }
+        scheduleActivityDraftPersist(exerciseId)
     }
 
     fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
@@ -399,6 +416,7 @@ class WorkoutViewModel @Inject constructor(
                         }
                     }
                 }
+                prefillActivityInputs(exerciseId, todaySets)
                 // Tekrar sayılarını doldur: bugünkü repsActual > program planı
                 val currentReps = uiState.value.setReps[exerciseId]
                 if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
@@ -441,6 +459,7 @@ class WorkoutViewModel @Inject constructor(
                         }
                     }
                 }
+                prefillActivityInputs(exerciseId, sets)
                 // Tekrar sayılarını doldur: önceki seans repsActual > program planı
                 val currentReps = uiState.value.setReps[exerciseId]
                 if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
@@ -551,51 +570,66 @@ class WorkoutViewModel @Inject constructor(
 
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
             val isCompleting = exerciseId !in dayState.completedIds
+            val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+            val activityBased = isActivityBased(exercise)
 
             if (isCompleting) {
-                // Egzersiz tamamlandı — sonraki harekete geçmeden önce uzun dinlenme
-                startRestTimer(
-                    restSeconds = exercise.exerciseRestSeconds.takeIf { it > 0 } ?: 180,
-                    exerciseName = exercise.name
-                )
+                val durationSeconds = currentState.activityDurations[exerciseId]?.toDurationSecondsOrNull()
+                val distanceMeters = currentState.activityDistances[exerciseId]?.toFloatInputOrNull()
 
-                // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller.
-                // Planlanan reps, reps_actual default'u olarak kullanılır (observer "tick" göstermesi için şart).
-                val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
-                val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
-                workoutRepository.fillExerciseSetCompletions(
-                    userId = userId,
-                    exerciseId = dbExerciseId,
-                    programDayId = programDayId,
-                    totalSets = exercise.sets,
-                    defaultRepsActual = plannedReps
-                )
-                // Her set için efektif ağırlığı persist et (progresyon ekranı + sonraki hafta prefill için).
-                // Fallback: kullanıcı girdisi > son seans > program planı. Hiçbiri yoksa yazılmaz.
-                val userWeights    = currentState.setWeights[exerciseId].orEmpty()
-                val lastSessionMap = currentState.lastSessionData[exerciseId].orEmpty()
-                val plannedWeight  = exercise.weightKg.takeIf { it > 0f }
-                repeat(exercise.sets) { i ->
-                    val w = userWeights[i]?.toFloatOrNull()
-                        ?: lastSessionMap[i]?.first
-                        ?: plannedWeight
-                    if (w != null) {
-                        workoutRepository.upsertSetWeightDraft(
-                            userId = userId,
-                            exerciseId = dbExerciseId,
-                            programDayId = programDayId,
-                            setIndex = i,
-                            weightKg = w
-                        )
+                if (activityBased) {
+                    workoutRepository.upsertSetActivityMetrics(
+                        userId = userId,
+                        exerciseId = dbExerciseId,
+                        programDayId = programDayId,
+                        setIndex = ACTIVITY_SET_INDEX,
+                        durationSeconds = durationSeconds,
+                        distanceMeters = distanceMeters
+                    )
+                    workoutRepository.upsertSetRepsActual(
+                        userId = userId,
+                        exerciseId = dbExerciseId,
+                        programDayId = programDayId,
+                        setIndex = ACTIVITY_SET_INDEX,
+                        repsActual = 1
+                    )
+                } else {
+                    // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller.
+                    val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
+                    workoutRepository.fillExerciseSetCompletions(
+                        userId = userId,
+                        exerciseId = dbExerciseId,
+                        programDayId = programDayId,
+                        totalSets = exercise.sets,
+                        defaultRepsActual = plannedReps
+                    )
+                    // Her set için efektif ağırlığı persist et (progresyon ekranı + sonraki hafta prefill için).
+                    val userWeights    = currentState.setWeights[exerciseId].orEmpty()
+                    val lastSessionMap = currentState.lastSessionData[exerciseId].orEmpty()
+                    val defaultWeight  = defaultWeightFor(exercise, currentState.profileWeightKg)
+                    repeat(exercise.sets) { i ->
+                        val w = userWeights[i]?.toFloatOrNull()
+                            ?: lastSessionMap[i]?.first
+                            ?: defaultWeight
+                        if (w != null) {
+                            workoutRepository.upsertSetWeightDraft(
+                                userId = userId,
+                                exerciseId = dbExerciseId,
+                                programDayId = programDayId,
+                                setIndex = i,
+                                weightKg = w
+                            )
+                        }
                     }
                 }
                 // exerciseTableId = exercises tablosundaki gerçek ID (DB logları için)
                 workoutRepository.completeExercise(
                     userId = userId,
                     programDayId = programDayId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
-                    setsCompleted = exercise.sets,
-                    repsCompleted = exercise.reps.toIntOrNull() ?: 0
+                    exerciseId = dbExerciseId,
+                    setsCompleted = if (activityBased) 1 else exercise.sets,
+                    repsCompleted = if (activityBased) 0 else exercise.reps.toIntOrNull() ?: 0,
+                    durationSeconds = durationSeconds ?: 0
                 )
 
                 // Stats güncelle (Supabase, arka plan) + challenge progress refresh
@@ -619,12 +653,12 @@ class WorkoutViewModel @Inject constructor(
                 workoutRepository.uncompleteExercise(
                     userId = userId,
                     programDayId = programDayId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+                    exerciseId = dbExerciseId
                 )
                 // Tüm setleri Room'dan sil — Flow otomatik UI'ı günceller
                 workoutRepository.clearExerciseSetCompletions(
                     userId = userId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exerciseId },
+                    exerciseId = dbExerciseId,
                     programDayId = programDayId
                 )
 
@@ -740,7 +774,94 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    private fun defaultWeightFor(exercise: Exercise, profileWeightKg: Float): Float? {
+        exercise.weightKg.takeIf { it > 0f }?.let { return it }
+        return profileWeightKg
+            .takeIf { it > 0f && exercise.category.equals("Bodyweight", ignoreCase = true) }
+    }
+
+    private fun prefillActivityInputs(exerciseId: String, sets: List<SetCompletionEntity>) {
+        val activity = sets.firstOrNull {
+            it.durationSeconds != null || it.distanceMeters != null
+        } ?: return
+        updateState { state ->
+            val duration = activity.durationSeconds
+                ?.takeIf { it > 0 }
+                ?.let { (it / 60f).trimmedString() }
+            val distance = activity.distanceMeters
+                ?.takeIf { it > 0f }
+                ?.trimmedString()
+            state.copy(
+                activityDurations = duration
+                    ?.let { state.activityDurations + (exerciseId to it) }
+                    ?: state.activityDurations,
+                activityDistances = distance
+                    ?.let { state.activityDistances + (exerciseId to it) }
+                    ?: state.activityDistances
+            )
+        }
+    }
+
+    private fun isActivityBased(exercise: Exercise): Boolean {
+        val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
+            .joinToString(" ")
+            .lowercase()
+        val keywords = listOf(
+            "kardiyo", "cardio", "dayan", "endurance", "koş", "kos", "run",
+            "bisiklet", "bike", "cycle", "cycling", "yüz", "yuz", "swim",
+            "yürüy", "yuruy", "walk", "kürek", "kurek", "row", "elliptical",
+            "tempo", "interval", "hiit"
+        )
+        return keywords.any { it in haystack } ||
+            exercise.reps.contains("s", ignoreCase = true) ||
+            exercise.reps.contains("dk", ignoreCase = true) ||
+            exercise.reps.contains("min", ignoreCase = true)
+    }
+
+    private fun String.toFloatInputOrNull(): Float? =
+        replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }
+
+    private fun String.toDurationSecondsOrNull(): Int? =
+        toFloatInputOrNull()?.let { (it * 60f).toInt().coerceAtLeast(1) }
+
+    private fun Float.trimmedString(): String =
+        if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+
+    private fun loadProfileWeight(userId: String) {
+        viewModelScope.launch {
+            profileRepository.getProfile(userId).onSuccess { profile ->
+                updateState { it.copy(profileWeightKg = profile.weight_kg?.toFloat() ?: 0f) }
+            }
+        }
+    }
+
+    private fun scheduleActivityDraftPersist(exerciseId: String) {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val state = uiState.value
+        val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
+        val programDayId = dayState.day.programDayId
+        if (programDayId.isBlank()) return
+        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
+            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+
+        val key = "$exerciseId:activity"
+        draftPersistJobs[key]?.cancel()
+        draftPersistJobs[key] = viewModelScope.launch {
+            delay(500L)
+            val latest = uiState.value
+            workoutRepository.upsertSetActivityMetrics(
+                userId = userId,
+                exerciseId = dbExerciseId,
+                programDayId = programDayId,
+                setIndex = ACTIVITY_SET_INDEX,
+                durationSeconds = latest.activityDurations[exerciseId]?.toDurationSecondsOrNull(),
+                distanceMeters = latest.activityDistances[exerciseId]?.toFloatInputOrNull()
+            )
+        }
+    }
+
     companion object {
+        private const val ACTIVITY_SET_INDEX = 0
         private val DAY_LABELS = listOf("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
 
         private fun categoryImageFallback(category: String): String = when {
