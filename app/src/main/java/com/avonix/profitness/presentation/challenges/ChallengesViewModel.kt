@@ -170,6 +170,18 @@ class ChallengesViewModel @Inject constructor(
             _state.update { it.copy(createError = "Fiziksel etkinlik için başlangıç konumu gerekli") }
             return
         }
+        if (req.mode == EventMode.Physical && (req.geoLat == null || req.geoLng == null)) {
+            _state.update { it.copy(createError = "Başlangıç konumunu arama sonuçlarından seç") }
+            return
+        }
+        if (
+            req.mode == EventMode.Physical &&
+            !req.endLocation.isNullOrBlank() &&
+            (req.endGeoLat == null || req.endGeoLng == null)
+        ) {
+            _state.update { it.copy(createError = "Bitiş konumunu arama sonuçlarından seç") }
+            return
+        }
         if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
             _state.update { it.copy(createError = "Online etkinlik için bağlantı gerekli") }
             return

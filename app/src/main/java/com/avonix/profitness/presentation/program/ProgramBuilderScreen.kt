@@ -699,9 +699,7 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 7.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg1.copy(alpha = 0.9f))
-            .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+            .glassCard(accent, theme, RoundedCornerShape(20.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
         // Left accent bar
@@ -2198,9 +2196,7 @@ private fun ManualDayCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1.copy(0.9f))
-            .border(1.dp, if (day.isRestDay) theme.stroke else accent.copy(0.3f), RoundedCornerShape(16.dp))
+            .glassCard(accent, theme, RoundedCornerShape(18.dp))
     ) {
         // Day header row
         Row(
@@ -2297,7 +2293,12 @@ private fun ManualDayCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(theme.bg2)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(accent.copy(0.10f), theme.bg2.copy(0.82f))
+                                    )
+                                )
+                                .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
                                 .clickable { onEditExercise(i) }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically

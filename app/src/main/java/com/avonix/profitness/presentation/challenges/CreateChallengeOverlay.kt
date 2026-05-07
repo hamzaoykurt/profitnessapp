@@ -1,5 +1,7 @@
 package com.avonix.profitness.presentation.challenges
 
+import android.location.Address
+import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Straighten
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -44,6 +47,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +68,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.avonix.profitness.core.theme.LocalAppTheme
@@ -83,13 +88,27 @@ import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.presentation.program.ExerciseMultiPickerSheet
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private enum class CreateFormKind { Metric, Event }
+
+private data class PlaceCandidate(
+    val title: String,
+    val subtitle: String,
+    val lat: Double,
+    val lng: Double
+) {
+    val displayName: String
+        get() = listOf(title, subtitle).filter { it.isNotBlank() }.joinToString(", ")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,6 +155,10 @@ fun CreateChallengeOverlay(
     var eventTimeIso by rememberSaveable { mutableStateOf<String?>(null) }
     var eventLocation by rememberSaveable { mutableStateOf("") }
     var eventEndLocation by rememberSaveable { mutableStateOf("") }
+    var eventGeoLat by rememberSaveable { mutableStateOf<Double?>(null) }
+    var eventGeoLng by rememberSaveable { mutableStateOf<Double?>(null) }
+    var eventEndGeoLat by rememberSaveable { mutableStateOf<Double?>(null) }
+    var eventEndGeoLng by rememberSaveable { mutableStateOf<Double?>(null) }
     var eventOnlineUrl by rememberSaveable { mutableStateOf("") }
     var eventTargetEnabled by rememberSaveable { mutableStateOf(false) }
     var eventTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalDistanceM) }
@@ -328,9 +351,29 @@ fun CreateChallengeOverlay(
                     onPickTime = { showTimePicker = true },
                     onClearTime = { eventTimeIso = null },
                     location = eventLocation,
-                    onLocation = { eventLocation = it },
+                    onLocation = {
+                        eventLocation = it
+                        eventGeoLat = null
+                        eventGeoLng = null
+                    },
+                    locationResolved = eventGeoLat != null && eventGeoLng != null,
+                    onLocationSelected = {
+                        eventLocation = it.displayName
+                        eventGeoLat = it.lat
+                        eventGeoLng = it.lng
+                    },
                     endLocation = eventEndLocation,
-                    onEndLocation = { eventEndLocation = it },
+                    onEndLocation = {
+                        eventEndLocation = it
+                        eventEndGeoLat = null
+                        eventEndGeoLng = null
+                    },
+                    endLocationResolved = eventEndGeoLat != null && eventEndGeoLng != null,
+                    onEndLocationSelected = {
+                        eventEndLocation = it.displayName
+                        eventEndGeoLat = it.lat
+                        eventEndGeoLng = it.lng
+                    },
                     onlineUrl = eventOnlineUrl,
                     onOnlineUrl = { eventOnlineUrl = it },
                     movements = selectedMovements,
@@ -428,11 +471,11 @@ fun CreateChallengeOverlay(
                                 timeIso     = eventTimeIso,
                                 timezone    = timezone,
                                 location    = eventLocation.trim().ifBlank { null },
-                                geoLat      = null,
-                                geoLng      = null,
+                                geoLat      = eventGeoLat,
+                                geoLng      = eventGeoLng,
                                 endLocation = eventEndLocation.trim().ifBlank { null },
-                                endGeoLat   = null,
-                                endGeoLng   = null,
+                                endGeoLat   = eventEndGeoLat,
+                                endGeoLng   = eventEndGeoLng,
                                 onlineUrl   = eventOnlineUrl.trim().ifBlank { null },
                                 movements   = if (eventMode == EventMode.MovementList)
                                     selectedMovements.toList() else emptyList(),
@@ -614,8 +657,12 @@ private fun EventForm(
     onClearTime: () -> Unit,
     location: String,
     onLocation: (String) -> Unit,
+    locationResolved: Boolean,
+    onLocationSelected: (PlaceCandidate) -> Unit,
     endLocation: String,
     onEndLocation: (String) -> Unit,
+    endLocationResolved: Boolean,
+    onEndLocationSelected: (PlaceCandidate) -> Unit,
     onlineUrl: String,
     onOnlineUrl: (String) -> Unit,
     movements: List<MovementInput>,
@@ -706,21 +753,25 @@ private fun EventForm(
     when (mode) {
         EventMode.Physical -> {
             FieldLabel("BAŞLANGIÇ KONUMU")
-            TextInputBox(
+            PlaceSearchField(
                 value = location,
                 onValueChange = onLocation,
                 placeholder = "ör. Maçka Parkı, İstanbul",
-                imeAction = ImeAction.Default
+                isResolved = locationResolved,
+                required = true,
+                onPlaceSelected = onLocationSelected
             )
             FieldLabel("BİTİŞ KONUMU (opsiyonel)")
-            TextInputBox(
+            PlaceSearchField(
                 value = endLocation,
                 onValueChange = onEndLocation,
                 placeholder = "ör. Caddebostan Sahil, İstanbul",
-                imeAction = ImeAction.Default
+                isResolved = endLocationResolved,
+                required = false,
+                onPlaceSelected = onEndLocationSelected
             )
             Text(
-                "Başlangıç ve bitiş girilirse detayda Google Maps rotası açılır.",
+                "Konumu listeden seç; aynı isimli yerlerde il/ilçe bilgisiyle doğru adayı kaydederiz.",
                 color = LocalAppTheme.current.text2,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
@@ -928,6 +979,218 @@ private fun FieldLabel(text: String, padded: Boolean = true) {
             top = 14.dp,
             bottom = 6.dp
         )
+    )
+}
+
+@Composable
+private fun PlaceSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    isResolved: Boolean,
+    required: Boolean,
+    onPlaceSelected: (PlaceCandidate) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val context = LocalContext.current
+    val hasResolvedValue = isResolved && value.isNotBlank()
+    var candidates by remember { mutableStateOf<List<PlaceCandidate>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(value, isResolved) {
+        val query = value.trim()
+        candidates = emptyList()
+        message = null
+        loading = false
+        if (hasResolvedValue || query.length < 3) return@LaunchedEffect
+
+        delay(350)
+        loading = true
+        val result = searchPlaceCandidates(context, query)
+        loading = false
+        candidates = result
+        message = when {
+            result.isEmpty() -> "Sonuç bulunamadı; il/ilçe ekleyerek tekrar dene."
+            else -> null
+        }
+    }
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 58.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(theme.bg1.copy(0.72f))
+                .border(
+                    1.dp,
+                    if (hasResolvedValue) MaterialTheme.colorScheme.primary.copy(0.70f) else theme.stroke.copy(0.70f),
+                    RoundedCornerShape(14.dp)
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    textStyle = TextStyle(color = theme.text0, fontSize = 15.sp, lineHeight = 20.sp),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { inner ->
+                        if (value.isEmpty()) {
+                            Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
+                        }
+                        inner()
+                    }
+                )
+                Spacer(Modifier.width(10.dp))
+                when {
+                    loading -> CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    hasResolvedValue -> Icon(
+                        Icons.Rounded.Check,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    else -> Icon(
+                        Icons.Rounded.TravelExplore,
+                        null,
+                        tint = theme.text2,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
+        if (hasResolvedValue) {
+            Text(
+                "Seçili konum kaydedilecek.",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 5.dp)
+            )
+        } else if (value.isNotBlank() && required) {
+            Text(
+                "Devam etmek için aşağıdaki sonuçlardan bir konum seç.",
+                color = theme.text2,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 5.dp)
+            )
+        }
+
+        if (candidates.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(theme.bg1.copy(0.84f))
+                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+            ) {
+                candidates.forEachIndexed { index, candidate ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPlaceSelected(candidate) }
+                            .padding(horizontal = 12.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary.copy(if (index == 0) 0.22f else 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Rounded.LocationOn,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                candidate.title,
+                                color = theme.text0,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                            if (candidate.subtitle.isNotBlank()) {
+                                Text(
+                                    candidate.subtitle,
+                                    color = theme.text2,
+                                    fontSize = 10.5.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (message != null) {
+            Text(
+                message.orEmpty(),
+                color = theme.text2,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+            )
+        }
+    }
+}
+
+@Suppress("DEPRECATION")
+private suspend fun searchPlaceCandidates(
+    context: android.content.Context,
+    query: String
+): List<PlaceCandidate> = withContext(Dispatchers.IO) {
+    if (!Geocoder.isPresent()) return@withContext emptyList()
+
+    runCatching {
+        Geocoder(context, Locale("tr", "TR"))
+            .getFromLocationName(query, 6)
+            .orEmpty()
+            .asSequence()
+            .filter { it.hasLatitude() && it.hasLongitude() }
+            .map { it.toPlaceCandidate(query) }
+            .distinctBy { "${it.title}|${it.subtitle}|${"%.5f".format(Locale.US, it.lat)}|${"%.5f".format(Locale.US, it.lng)}" }
+            .toList()
+    }.getOrDefault(emptyList())
+}
+
+private fun Address.toPlaceCandidate(query: String): PlaceCandidate {
+    val title = listOfNotNull(
+        featureName,
+        thoroughfare,
+        subLocality,
+        locality,
+        getAddressLine(0)?.substringBefore(",")
+    ).firstOrNull { it.isNotBlank() } ?: query
+
+    val subtitle = listOfNotNull(
+        subLocality,
+        locality,
+        subAdminArea,
+        adminArea,
+        countryName
+    )
+        .filter { it.isNotBlank() && !it.equals(title, ignoreCase = true) }
+        .distinct()
+        .joinToString(", ")
+
+    return PlaceCandidate(
+        title = title,
+        subtitle = subtitle,
+        lat = latitude,
+        lng = longitude
     )
 }
 

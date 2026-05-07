@@ -70,6 +70,7 @@ import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.presentation.components.AppToast
 import com.avonix.profitness.presentation.components.AppToastData
 import com.avonix.profitness.presentation.components.AppToastType
+import com.avonix.profitness.presentation.components.glassCard
 
 enum class DiscoverTab { Programs, Friends, Challenges }
 
@@ -576,9 +577,8 @@ private fun SharedProgramCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.55f), theme.bg1.copy(0.55f))))
-            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .heightIn(min = 184.dp)
+            .glassCard(accent, theme, shape)
             .padding(16.dp)
     ) {
         // Author row
@@ -607,14 +607,14 @@ private fun SharedProgramCard(
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         // Title + description
         Text(
             text       = program.title,
             color      = theme.text0,
-            fontSize   = 18.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize   = 19.sp,
+            fontWeight = FontWeight.Black,
             maxLines   = 2
         )
         if (!program.description.isNullOrBlank()) {
@@ -698,7 +698,16 @@ private fun ActionChip(
 ) {
     val theme = LocalAppTheme.current
     Row(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) activeColor.copy(0.14f) else theme.bg2.copy(0.55f))
+            .border(
+                1.dp,
+                if (active) activeColor.copy(0.26f) else theme.stroke.copy(0.35f),
+                RoundedCornerShape(999.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -735,6 +744,7 @@ private fun ApplyButton(
     val textColor = if (applied) accent else Color.Black
     Row(
         modifier = Modifier
+            .heightIn(min = 44.dp)
             .clip(shape)
             .background(background)
             .border(

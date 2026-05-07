@@ -1011,8 +1011,7 @@ private fun SettingsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(accent.copy(0.08f))
-                .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
+                .glassCard(accent, theme, RoundedCornerShape(16.dp))
                 .clickable(onClick = onEditProfile)
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
@@ -1073,9 +1072,7 @@ private fun SettingsSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                .glassCard(accent, theme, RoundedCornerShape(16.dp))
         ) {
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive
                               else strings.notificationsOff
@@ -1084,6 +1081,7 @@ private fun SettingsSection(
                 label   = strings.notificationsLabel,
                 sub     = notifStatus,
                 theme   = theme,
+                accent  = accent,
                 onClick = onNotificationsClick
             )
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
@@ -1092,15 +1090,8 @@ private fun SettingsSection(
                 label   = strings.languageLabel,
                 sub     = strings.currentLanguageName,
                 theme   = theme,
+                accent  = accent,
                 onClick = onLanguageClick
-            )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(
-                icon    = Icons.Rounded.Security,
-                label   = strings.securityLabel,
-                sub     = strings.securityValue,
-                theme   = theme,
-                onClick = {}
             )
         }
 
@@ -1149,6 +1140,7 @@ private fun SettingsRow(
     label  : String,
     sub    : String,
     theme  : AppThemeState,
+    accent : Color,
     onClick: () -> Unit = {}
 ) {
     Row(
@@ -1163,16 +1155,17 @@ private fun SettingsRow(
             Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(theme.bg2),
+                .background(accent.copy(0.12f))
+                .border(1.dp, accent.copy(0.24f), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = theme.text1, modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(label, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(sub,   color = theme.text2, fontSize = 11.sp)
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = theme.text2, modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = accent.copy(0.55f), modifier = Modifier.size(16.dp))
     }
 }
 
@@ -1823,12 +1816,21 @@ private fun BodyMetricTile(
 ) {
     Box(
         modifier = modifier
+            .heightIn(min = 92.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(1.dp, color.copy(0.25f), RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(color.copy(0.12f), theme.bg1.copy(0.92f))
+                )
+            )
+            .border(1.dp, color.copy(0.30f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
             Text(value, color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
             Text(unit, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))

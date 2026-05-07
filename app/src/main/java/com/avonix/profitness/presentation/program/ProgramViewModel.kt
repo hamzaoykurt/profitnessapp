@@ -11,6 +11,7 @@ import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.store.UserPlanRepository
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -132,7 +133,17 @@ class ProgramViewModel @Inject constructor(
         enMap: Map<String, ExerciseItem>,
         threshold: Double = 0.82
     ): ExerciseItem? {
-        val key = aiName.trim().lowercase()
+        return ExerciseNameRules.splitAlternatives(aiName)
+            .firstNotNullOfOrNull { findSingleExerciseByName(it, trMap, enMap, threshold) }
+    }
+
+    private fun findSingleExerciseByName(
+        aiName: String,
+        trMap: Map<String, ExerciseItem>,
+        enMap: Map<String, ExerciseItem>,
+        threshold: Double
+    ): ExerciseItem? {
+        val key = ExerciseNameRules.normalizedKey(aiName)
 
         // 1. Tam eşleşme
         trMap[key]?.let { return it }
@@ -303,6 +314,7 @@ $userInstruction"""
 $mediaAnalysisBlock
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 
@@ -362,9 +374,10 @@ FORMAT:
             }
 
             // 4. Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
-            val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val skippedExercises = linkedSetOf<String>()
+            val currentMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
-                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
+                .associateBy { ExerciseNameRules.normalizedKey(it.nameEn) }.toMutableMap()
 
             val days = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -384,20 +397,9 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExerciseByName(exName, currentMap, currentMapEn)
-
+                        val exercise = findExerciseByName(exName, currentMap, currentMapEn)
                         if (exercise == null) {
-                            exercise = programRepository.addExercise(
-                                name         = exName,
-                                nameEn       = "",
-                                targetMuscle = targetMuscle,
-                                category     = category,
-                                setsDefault  = sets,
-                                repsDefault  = reps
-                            ).getOrNull()
-                            exercise?.let { newEx ->
-                                currentMap[newEx.name.trim().lowercase()] = newEx
-                            }
+                            skippedExercises += exName
                         }
 
                         exercise?.let { ManualExerciseInput(it.id, sets, reps, rest, exIdx) }
@@ -420,7 +422,11 @@ FORMAT:
                             .also { it.add(0, program) }
                         state.copy(aiLoading = false, userPrograms = updated)
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!"))
+                    val skippedMessage = skippedExercises.takeIf { it.isNotEmpty() }
+                        ?.joinToString(limit = 3, truncated = "...")
+                        ?.let { " Listede olmayan hareketler eklenmedi: $it" }
+                        .orEmpty()
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!$skippedMessage"))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
@@ -488,6 +494,7 @@ $currentProgramJson
 Kullanıcının düzenleme isteği: $userInstruction
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
@@ -536,9 +543,10 @@ FORMAT:
             }
 
             // Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
-            val editMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val skippedEditExercises = linkedSetOf<String>()
+            val editMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val editMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
-                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
+                .associateBy { ExerciseNameRules.normalizedKey(it.nameEn) }.toMutableMap()
 
             val editedDays = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -558,19 +566,9 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExerciseByName(exName, editMap, editMapEn)
+                        val exercise = findExerciseByName(exName, editMap, editMapEn)
                         if (exercise == null) {
-                            exercise = programRepository.addExercise(
-                                name         = exName,
-                                nameEn       = "",
-                                targetMuscle = targetMuscle,
-                                category     = category,
-                                setsDefault  = sets,
-                                repsDefault  = reps
-                            ).getOrNull()
-                            exercise?.let { newEx ->
-                                editMap[newEx.name.trim().lowercase()] = newEx
-                            }
+                            skippedEditExercises += exName
                         }
 
                         exercise?.let {
@@ -589,6 +587,9 @@ FORMAT:
             }
 
             updateState { it.copy(aiEditLoading = false, aiEditResult = Pair(newName, editedDays)) }
+            skippedEditExercises.takeIf { it.isNotEmpty() }
+                ?.joinToString(limit = 3, truncated = "...")
+                ?.let { sendEvent(ProgramEvent.ShowSnackbar("Listede olmayan hareketler eklenmedi: $it")) }
         }
     }
 

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.glassCard
 
 @Composable
 fun PerformanceDetailScreen(
@@ -208,9 +209,7 @@ private fun WorkoutBarChart(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(22.dp))
+            .glassCard(accent, theme, RoundedCornerShape(22.dp))
             .padding(20.dp)
     ) {
         Column {
@@ -220,7 +219,7 @@ private fun WorkoutBarChart(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("HAFTALIK ANTRENMANlar", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("HAFTALIK ANTRENMANLAR", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text("Son 13 hafta", color = theme.text2, fontSize = 10.sp)
                 }
                 Box(
@@ -321,12 +320,20 @@ private fun RealMetricsGrid(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .heightIn(min = 128.dp)
                             .clip(RoundedCornerShape(18.dp))
-                            .background(theme.bg1)
-                            .border(1.dp, m.color.copy(0.2f), RoundedCornerShape(18.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(m.color.copy(0.10f), theme.bg1.copy(0.92f))
+                                )
+                            )
+                            .border(1.dp, m.color.copy(0.28f), RoundedCornerShape(18.dp))
                             .padding(16.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Box(
                                 Modifier
                                     .size(34.dp)

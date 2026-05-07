@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -44,6 +45,7 @@ import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.Difficulty
 import com.avonix.profitness.domain.model.Program
+import com.avonix.profitness.presentation.components.glassCard
 
 /**
  * Paylaş sheet'i — iki adımlı:
@@ -150,16 +152,24 @@ fun ShareProgramSheet(
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(accent.copy(0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
                     Text(
                         text = selectedProgram.name,
                         color = accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(Modifier.width(8.dp))
                     // Preselected değilse kullanıcı geri dönüp başka program seçebilir
                     if (preselectedProgramId == null) {
                         Text(
@@ -215,8 +225,7 @@ fun ShareProgramSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(theme.bg2.copy(0.7f))
-                            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(14.dp))
+                            .glassCard(theme.text2, theme, RoundedCornerShape(14.dp))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
@@ -367,6 +376,16 @@ private fun LabeledField(
             singleLine = !multiline,
             minLines = if (multiline) 2 else 1,
             maxLines = if (multiline) 4 else 1,
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(0.70f),
+                unfocusedBorderColor = theme.stroke.copy(0.70f),
+                focusedContainerColor = theme.bg2.copy(0.35f),
+                unfocusedContainerColor = theme.bg2.copy(0.28f),
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = theme.text0,
+                unfocusedTextColor = theme.text0
+            ),
             keyboardOptions = if (numeric)
                 KeyboardOptions(keyboardType = KeyboardType.Number)
             else KeyboardOptions.Default

@@ -1072,17 +1072,40 @@ private fun RestDayView() {
             modifier = Modifier.padding(0.dp, 8.dp, 0.dp, 0.dp)
         )
         Spacer(Modifier.height(32.dp))
-        val tips = listOf(strings.recoveryTip1, strings.recoveryTip2, strings.recoveryTip3)
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            tips.forEach { tip ->
-                Box(
+        val tips = listOf(
+            Triple(Icons.Rounded.WaterDrop, CardCyan, strings.recoveryTip1),
+            Triple(Icons.Rounded.Bedtime, CardPurple, strings.recoveryTip2),
+            Triple(Icons.Rounded.Restaurant, CardGreen, strings.recoveryTip3)
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            tips.forEach { (icon, color, tip) ->
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(theme.bg2)
-                        .padding(20.dp, 14.dp)
+                        .glassCard(color, theme, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(tip, color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(color.copy(0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+                    }
+                    Text(
+                        tip,
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }

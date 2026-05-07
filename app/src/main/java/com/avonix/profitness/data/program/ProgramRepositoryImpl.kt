@@ -13,6 +13,7 @@ import com.avonix.profitness.data.program.dto.ProgramDto
 import com.avonix.profitness.data.program.dto.ProgramExerciseWithNameDto
 import com.avonix.profitness.data.sync.SyncManager
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramDay
 import com.avonix.profitness.domain.model.ProgramExercise
@@ -56,7 +57,7 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override fun observeExercises(): Flow<List<ExerciseItem>> =
         exerciseDao.observeAll()
-            .map { list -> list.map { it.toDomain() } }
+            .map { list -> list.map { it.toDomain() }.filterValidExerciseNames() }
             .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -85,9 +86,9 @@ class ProgramRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val local = exerciseDao.getAll()
-                if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }
+                if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }.filterValidExerciseNames()
                 syncManager.pullExercises()
-                exerciseDao.getAll().map { it.toDomain() }
+                exerciseDao.getAll().map { it.toDomain() }.filterValidExerciseNames()
             }
         }
 
@@ -400,6 +401,9 @@ class ProgramRepositoryImpl @Inject constructor(
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
         runCatching {
             val userId = requireAuthenticatedUser()
+            require(!ExerciseNameRules.isCompositeName(name)) {
+                "Tek kayitta birden fazla hareket adi kullanilamaz."
+            }
 
             supabase.postgrest["exercises"]
                 .insert(buildJsonObject {
@@ -437,6 +441,9 @@ class ProgramRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             requireAuthenticatedUser(userId)
+            require(!ExerciseNameRules.isCompositeName(name)) {
+                "Tek talepte birden fazla hareket adi kullanilamaz."
+            }
 
             supabase.postgrest["exercise_requests"]
                 .insert(buildJsonObject {
@@ -504,7 +511,8 @@ class ProgramRepositoryImpl @Inject constructor(
                     dayIndex = dwe.day.dayIndex,
                     title = dwe.day.title,
                     isRestDay = dwe.day.isRestDay,
-                    exercises = (exerciseMap[dwe.day.id] ?: emptyList()).map { pe ->
+                    exercises = (exerciseMap[dwe.day.id] ?: emptyList()).mapNotNull { pe ->
+                        if (ExerciseNameRules.isCompositeName(pe.exerciseName)) return@mapNotNull null
                         ProgramExercise(
                             id = pe.id,
                             programDayId = pe.programDayId,
@@ -538,4 +546,7 @@ class ProgramRepositoryImpl @Inject constructor(
         setsDefault = sets_default, repsDefault = reps_default,
         description = description
     )
+
+    private fun List<ExerciseItem>.filterValidExerciseNames(): List<ExerciseItem> =
+        filterNot { ExerciseNameRules.isCompositeName(it.name) }
 }

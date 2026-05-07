@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
 
 private val categoryColors = mapOf(
     "Göğüs"     to CardCoral,
@@ -446,6 +447,7 @@ private fun ExerciseRequestDialog(
     var name   by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf("") }
     var notes  by remember { mutableStateOf("") }
+    val isCompositeName = ExerciseNameRules.isCompositeName(name)
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -478,6 +480,15 @@ private fun ExerciseRequestDialog(
                 placeholder = "ör. Cable Fly, Hack Squat",
                 theme = theme
             )
+            if (isCompositeName) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Tek talepte yalnızca bir hareket adı kullan. Alternatifleri ayrı ayrı gönder.",
+                    color = CardCoral,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
             Spacer(Modifier.height(10.dp))
             RequestInputField(
                 label = "Kas grubu",
@@ -511,7 +522,7 @@ private fun ExerciseRequestDialog(
                     onClick = {
                         if (name.isNotBlank()) onSubmit(name.trim(), muscle.trim(), notes.trim())
                     },
-                    enabled = name.isNotBlank() && !requestLoading,
+                    enabled = name.isNotBlank() && !isCompositeName && !requestLoading,
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
