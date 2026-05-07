@@ -105,6 +105,12 @@ class ChallengesViewModel @Inject constructor(
 
     fun closeCreate() { _state.update { it.copy(showCreateSheet = false, createError = null) } }
 
+    fun clearCreateError() {
+        if (_state.value.createError != null) {
+            _state.update { it.copy(createError = null) }
+        }
+    }
+
     fun submitCreate(
         title: String,
         description: String,

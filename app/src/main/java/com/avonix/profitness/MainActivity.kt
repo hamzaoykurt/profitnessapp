@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
             val persisted by themeRepository.themeFlow.collectAsState(initial = null)
             LaunchedEffect(persisted) {
                 persisted?.let { saved ->
-                    themeState = themeState.copy(isDark = saved.isDark, accent = saved.accent)
+                    themeState = saved
                 }
             }
 

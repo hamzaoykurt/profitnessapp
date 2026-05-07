@@ -226,6 +226,7 @@ fun ChallengesTab(
                 error    = state.createError,
                 exercises = state.exercises,
                 onDismiss = { vm.closeCreate() },
+                onFormChanged = { vm.clearCreateError() },
                 onSubmit  = { title, desc, tt, tv, sd, ed, vis, pw ->
                     vm.submitCreate(title, desc, tt, tv, sd, ed, vis, pw)
                 },

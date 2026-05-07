@@ -50,6 +50,7 @@ private val GOAL_SUGGESTIONS = listOf(
 @Composable
 fun OnboardingScreen(
     onNavigateToDashboard: () -> Unit,
+    onThemeChange        : (AppThemeState) -> Unit,
     viewModel            : OnboardingViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,7 +90,7 @@ fun OnboardingScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Üst ilerleme çubuğu
             Spacer(Modifier.height(52.dp))
-            OnboardingProgressBar(currentStep = state.step, totalSteps = 4, accent = accent, theme = theme)
+            OnboardingProgressBar(currentStep = state.step, totalSteps = 5, accent = accent, theme = theme)
             Spacer(Modifier.height(8.dp))
 
             // Adım içeriği (animasyonlu)
@@ -109,9 +110,10 @@ fun OnboardingScreen(
             ) { step ->
                 when (step) {
                     0 -> StepName(state, viewModel, accent, theme)
-                    1 -> StepGenderBirth(state, viewModel, accent, theme)
-                    2 -> StepBodyMetrics(state, viewModel, accent, theme)
-                    3 -> StepGoal(state, viewModel, accent, theme)
+                    1 -> StepTheme(current = theme, onThemeChange = onThemeChange, vm = viewModel)
+                    2 -> StepGenderBirth(state, viewModel, accent, theme)
+                    3 -> StepBodyMetrics(state, viewModel, accent, theme)
+                    4 -> StepGoal(state, viewModel, accent, theme)
                 }
             }
         }
@@ -158,6 +160,112 @@ private fun OnboardingProgressBar(
                 )
             }
         }
+    }
+}
+
+// ── Adım 1: Tema ──────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StepTheme(
+    current      : AppThemeState,
+    onThemeChange: (AppThemeState) -> Unit,
+    vm           : OnboardingViewModel
+) {
+    var accent       by remember { mutableStateOf(current.accent) }
+    var surfaceStyle by remember { mutableStateOf(current.surfaceStyle) }
+    var intensity    by remember { mutableStateOf(current.intensity) }
+    val preview = current.copy(
+        accent       = accent,
+        surfaceStyle = surfaceStyle,
+        intensity    = intensity
+    )
+    val previewAccent   = preview.effectiveAccentColor
+    val previewOnAccent = preview.effectiveOnAccentColor
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(Modifier.height(32.dp))
+
+        StepHeader(
+            step     = "2 / 5",
+            title    = "Temanı seç",
+            subtitle = "Uygulamanın sana nasıl görüneceğini ayarla",
+            accent   = previewAccent,
+            theme    = preview
+        )
+
+        Spacer(Modifier.height(24.dp))
+        ThemePreviewCard(preview)
+        Spacer(Modifier.height(22.dp))
+
+        Text("VURGU RENGİ", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Spacer(Modifier.height(10.dp))
+        FlowRow(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement   = Arrangement.spacedBy(10.dp)
+        ) {
+            AccentPreset.entries.forEach { preset ->
+                ThemeColorSwatch(
+                    preset     = preset,
+                    isSelected = accent == preset,
+                    onClick    = { accent = preset }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(22.dp))
+
+        Text("ARKA PLAN TONU", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Spacer(Modifier.height(8.dp))
+        ThemeSegmentedSelector(
+            options = listOf(
+                SurfaceStyle.CLASSIC to "KLASİK",
+                SurfaceStyle.OLED to "OLED",
+                SurfaceStyle.GRAPHITE to "GRAFİT"
+            ),
+            selected = surfaceStyle,
+            accent = previewAccent,
+            onAccent = previewOnAccent,
+            theme = current,
+            onSelect = { surfaceStyle = it }
+        )
+
+        Spacer(Modifier.height(18.dp))
+
+        Text("YOĞUNLUK", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Spacer(Modifier.height(8.dp))
+        ThemeSegmentedSelector(
+            options = listOf(
+                AccentIntensity.NEON to "NEON",
+                AccentIntensity.PASTEL to "PASTEL"
+            ),
+            selected = intensity,
+            accent = previewAccent,
+            onAccent = previewOnAccent,
+            theme = current,
+            onSelect = { intensity = it }
+        )
+
+        Spacer(Modifier.height(28.dp))
+
+        StepNavButtons(
+            onBack    = { vm.prevStep() },
+            onNext    = {
+                onThemeChange(preview)
+                vm.nextStep()
+            },
+            nextLabel = "Temayı Uygula",
+            accent    = previewAccent,
+            theme     = preview
+        )
+
+        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -268,7 +376,7 @@ private fun StepName(
             onClick  = { vm.nextStep() },
             modifier = Modifier.fillMaxWidth().height(54.dp),
             shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
+            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
             Text("Devam Et", fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
             Spacer(Modifier.width(8.dp))
@@ -297,7 +405,7 @@ private fun StepGenderBirth(
         Spacer(Modifier.height(32.dp))
 
         StepHeader(
-            step    = "2 / 4",
+            step    = "3 / 5",
             title   = "Biraz daha bilgi",
             subtitle = "Cinsiyet ve doğum tarihin",
             accent  = accent,
@@ -392,7 +500,7 @@ private fun StepBodyMetrics(
         Spacer(Modifier.height(32.dp))
 
         StepHeader(
-            step     = "3 / 4",
+            step     = "4 / 5",
             title    = "Vücut ölçülerin",
             subtitle = "Boy ve kilonu gir",
             accent   = accent,
@@ -504,7 +612,7 @@ private fun StepGoal(
         Spacer(Modifier.height(32.dp))
 
         StepHeader(
-            step     = "4 / 4",
+            step     = "5 / 5",
             title    = "Hedefin ne?",
             subtitle = "Seni motive edecek hedefi seç",
             accent   = accent,
@@ -578,10 +686,10 @@ private fun StepGoal(
             enabled  = !state.isSaving,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
+            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
             if (state.isSaving) {
-                CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
             } else {
                 Icon(Icons.Rounded.RocketLaunch, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -637,7 +745,7 @@ private fun StepNavButtons(
             onClick  = onNext,
             modifier = Modifier.fillMaxWidth().height(54.dp),
             shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
+            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
             Text(nextLabel, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
             Spacer(Modifier.width(8.dp))
@@ -659,6 +767,127 @@ private fun StepNavButtons(
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Rounded.ArrowForwardIos, null, tint = theme.text2, modifier = Modifier.size(13.dp))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemePreviewCard(preview: AppThemeState) {
+    val accent = preview.effectiveAccentColor
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(preview.bg1)
+            .border(1.dp, preview.stroke, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(accent)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                preview.accent.label,
+                color         = accent,
+                fontSize      = 12.sp,
+                fontWeight    = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+        Text("Profitness", color = preview.text0, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("Merhaba, Atlet 👋", color = preview.text1, fontSize = 12.sp)
+        Box(
+            Modifier
+                .padding(top = 4.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(accent)
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            Text(
+                "UYGULA",
+                color         = preview.effectiveOnAccentColor,
+                fontSize      = 11.sp,
+                fontWeight    = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeColorSwatch(
+    preset    : AccentPreset,
+    isSelected: Boolean,
+    onClick   : () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(if (isSelected) preset.color.copy(0.15f) else Color.Transparent)
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = if (isSelected) preset.color else Color.Transparent,
+                shape = CircleShape
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(preset.color),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(Icons.Rounded.Check, null, tint = preset.onColor, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> ThemeSegmentedSelector(
+    options : List<Pair<T, String>>,
+    selected: T,
+    accent  : Color,
+    onAccent: Color,
+    theme   : AppThemeState,
+    onSelect: (T) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg2)
+            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .padding(4.dp)
+    ) {
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (isSelected) accent else Color.Transparent)
+                    .clickable { onSelect(value) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    label,
+                    color         = if (isSelected) onAccent else theme.text1,
+                    fontSize      = 11.sp,
+                    fontWeight    = FontWeight.Black,
+                    letterSpacing = 1.4.sp
+                )
             }
         }
     }

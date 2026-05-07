@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.challenges
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -88,6 +89,7 @@ import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.presentation.program.ExerciseMultiPickerSheet
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
@@ -106,6 +108,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private enum class CreateFormKind { Metric, Event }
+
+private const val PLACES_LOG_TAG = "CreateChallengePlaces"
 
 private data class PlaceCandidate(
     val placeId: String,
@@ -137,6 +141,7 @@ fun CreateChallengeOverlay(
         password: String?
     ) -> Unit,
     /** Event challenge submit — new. */
+    onFormChanged: () -> Unit,
     onSubmitEvent: (CreateEventChallengeRequest) -> Unit
 ) {
     val theme = LocalAppTheme.current
@@ -184,6 +189,33 @@ fun CreateChallengeOverlay(
         today.plusDays(d.toLong())
     }
     val timezone = remember { ZoneId.systemDefault().id }
+
+    LaunchedEffect(
+        kind,
+        title,
+        description,
+        visibility,
+        password,
+        metricTargetType,
+        metricTargetValue,
+        days,
+        eventMode,
+        eventDateIso,
+        eventTimeIso,
+        eventLocation,
+        eventGeoLat,
+        eventGeoLng,
+        eventEndLocation,
+        eventEndGeoLat,
+        eventEndGeoLng,
+        eventOnlineUrl,
+        eventTargetEnabled,
+        eventTargetType,
+        eventTargetValue,
+        selectedMovements.size
+    ) {
+        if (error != null) onFormChanged()
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -594,6 +626,11 @@ fun CreateChallengeOverlay(
             }
         )
     }
+}
+
+private sealed interface PlaceSearchResult {
+    data class Success(val candidates: List<PlaceCandidate>) : PlaceSearchResult
+    data class Failure(val message: String) : PlaceSearchResult
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1025,10 +1062,18 @@ private fun PlaceSearchField(
         loading = true
         val result = searchPlaceCandidates(placesClient, sessionToken, query)
         loading = false
-        candidates = result
-        message = when {
-            result.isEmpty() -> "Sonuç bulunamadı; il/ilçe ekleyerek tekrar dene."
-            else -> null
+        when (result) {
+            is PlaceSearchResult.Success -> {
+                candidates = result.candidates
+                message = when {
+                    result.candidates.isEmpty() -> "Sonuç bulunamadı; il/ilçe ekleyerek tekrar dene."
+                    else -> null
+                }
+            }
+            is PlaceSearchResult.Failure -> {
+                candidates = emptyList()
+                message = result.message
+            }
         }
     }
 
@@ -1204,7 +1249,7 @@ private suspend fun searchPlaceCandidates(
     placesClient: PlacesClient,
     sessionToken: AutocompleteSessionToken,
     query: String
-): List<PlaceCandidate> = withContext(Dispatchers.IO) {
+): PlaceSearchResult = withContext(Dispatchers.IO) {
     runCatching {
         val request = FindAutocompletePredictionsRequest.builder()
             .setQuery(query)
@@ -1224,7 +1269,35 @@ private suspend fun searchPlaceCandidates(
                     lng = null
                 )
             }
-    }.getOrDefault(emptyList())
+    }.fold(
+        onSuccess = { PlaceSearchResult.Success(it) },
+        onFailure = { error ->
+            Log.w(PLACES_LOG_TAG, "Places autocomplete failed", error)
+            PlaceSearchResult.Failure(error.toPlacesMessage())
+        }
+    )
+}
+
+private fun Throwable.toPlacesMessage(): String {
+    val apiException = this as? ApiException
+    val status = apiException?.status
+    val detail = listOfNotNull(
+        status?.statusMessage?.takeIf { it.isNotBlank() },
+        message?.takeIf { it.isNotBlank() }
+    )
+        .distinct()
+        .joinToString(" - ")
+
+    return when {
+        apiException != null && detail.isNotBlank() ->
+            "Google Places hatası (${apiException.statusCode}): $detail"
+        apiException != null ->
+            "Google Places hatası (${apiException.statusCode}). API key kısıtlarını ve Places API (New) ayarını kontrol et."
+        detail.isNotBlank() ->
+            "Google Places hatası: $detail"
+        else ->
+            "Google Places isteği tamamlanamadı. API key, billing ve Places API (New) ayarlarını kontrol et."
+    }
 }
 
 private suspend fun resolvePlaceCandidate(

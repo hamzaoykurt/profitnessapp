@@ -105,7 +105,8 @@ fun AppNavigation(
                     navController.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
-                }
+                },
+                onThemeChange = onThemeChange
             )
         }
 

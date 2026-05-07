@@ -376,18 +376,27 @@ private fun ProfileHeroBanner(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(18.dp))
                             .background(theme.bg1.copy(0.75f))
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onSettingsClick),
-                        contentAlignment = Alignment.Center
+                            .border(1.dp, accent.copy(0.40f), RoundedCornerShape(18.dp))
+                            .clickable(onClick = onSettingsClick)
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
+                        Text(
+                            "TEMA",
+                            color      = accent,
+                            fontSize   = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
                     }
                     Text(
                         "PROFİL",

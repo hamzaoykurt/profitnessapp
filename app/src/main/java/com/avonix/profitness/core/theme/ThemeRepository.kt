@@ -27,9 +27,11 @@ class ThemeRepository @Inject constructor(
         val ACCENT_ORD    = intPreferencesKey("accent_ordinal")
         val SURFACE_ORD   = intPreferencesKey("surface_style_ordinal")
         val INTENSITY_ORD = intPreferencesKey("intensity_ordinal")
+        val LANGUAGE_ORD  = intPreferencesKey("language_ordinal")
+        val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
     }
 
-    /** Emits the persisted [AppThemeState] (language/notifications handled elsewhere). */
+    /** Emits the persisted [AppThemeState]. */
     val themeFlow: Flow<AppThemeState> = context.themeDataStore.data
         .catch { error ->
             if (error is IOException) {
@@ -43,14 +45,19 @@ class ThemeRepository @Inject constructor(
             val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: 0
             val surfaceOrd    = prefs[Keys.SURFACE_ORD]   ?: 0
             val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: 0
+            val languageOrd   = prefs[Keys.LANGUAGE_ORD]  ?: 0
+            val notifications = prefs[Keys.NOTIFICATIONS] ?: true
             val accent        = AccentPreset.entries.getOrElse(accentOrd)    { AccentPreset.LIME }
             val surfaceStyle  = SurfaceStyle.entries.getOrElse(surfaceOrd)   { SurfaceStyle.CLASSIC }
             val intensity     = AccentIntensity.entries.getOrElse(intensityOrd) { AccentIntensity.NEON }
+            val language      = AppLanguage.entries.getOrElse(languageOrd) { AppLanguage.TURKISH }
             AppThemeState(
-                isDark       = isDark,
-                accent       = accent,
-                surfaceStyle = surfaceStyle,
-                intensity    = intensity
+                isDark               = isDark,
+                accent               = accent,
+                surfaceStyle         = surfaceStyle,
+                intensity            = intensity,
+                language             = language,
+                notificationsEnabled = notifications
             )
         }
 
@@ -60,6 +67,8 @@ class ThemeRepository @Inject constructor(
             prefs[Keys.ACCENT_ORD]    = state.accent.ordinal
             prefs[Keys.SURFACE_ORD]   = state.surfaceStyle.ordinal
             prefs[Keys.INTENSITY_ORD] = state.intensity.ordinal
+            prefs[Keys.LANGUAGE_ORD]  = state.language.ordinal
+            prefs[Keys.NOTIFICATIONS] = state.notificationsEnabled
         }
     }
 }
