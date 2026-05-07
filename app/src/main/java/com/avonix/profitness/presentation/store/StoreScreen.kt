@@ -63,19 +63,19 @@ private data class MasterFeature(
 )
 
 private val ALL_FEATURES = listOf(
-    MasterFeature(Icons.Rounded.FitnessCenter,    "Antrenman takibi",                   UserPlan.FREE),
-    MasterFeature(Icons.Rounded.BarChart,          "Temel analitik",                     UserPlan.FREE),
-    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",           UserPlan.FREE),
-    MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Coach (kredi tabanlı)",           UserPlan.FREE),
-    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli AI Coach sohbeti",    UserPlan.PRO),
-    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program oluşturma",           UserPlan.PRO),
-    MasterFeature(Icons.Rounded.TrendingUp,        "Gelişmiş performans analizi",        UserPlan.PRO),
-    MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri (AI)",  UserPlan.PRO),
-        MasterFeature(Icons.Rounded.MonitorWeight,     "Performans ölçütleri + AI trend analizi",  UserPlan.PRO),
-    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",        UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                   UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",           UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Diamond,           "Tüm özellikler dahil",               UserPlan.ELITE)
+    MasterFeature(Icons.Rounded.FitnessCenter,    "Forge antrenman takibi",              UserPlan.FREE),
+    MasterFeature(Icons.Rounded.BarChart,          "Temel gelişim metrikleri",            UserPlan.FREE),
+    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",            UserPlan.FREE),
+    MasterFeature(Icons.Rounded.ChatBubbleOutline, "Oracle sohbeti (kredi ile)",          UserPlan.FREE),
+    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli Oracle sohbeti",       UserPlan.PRO),
+    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program üretimi",              UserPlan.PRO),
+    MasterFeature(Icons.Rounded.TrendingUp,        "Antrenman performans analizi",        UserPlan.PRO),
+    MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri",        UserPlan.PRO),
+    MasterFeature(Icons.Rounded.MonitorWeight,     "Kilo ve trend yorumları",             UserPlan.PRO),
+    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",         UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                    UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",            UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Diamond,           "Tüm Forge özellikleri dahil",         UserPlan.ELITE)
 )
 
 // Plan sıralaması: FREE < PRO < ELITE
@@ -202,6 +202,8 @@ fun StoreScreen(
             .blockTouchesBehind()
             .background(theme.bg0)
     ) {
+        PageAccentBloom()
+
         Column(modifier = Modifier.fillMaxSize()) {
 
             // Top bar
@@ -214,11 +216,13 @@ fun StoreScreen(
                 onTabChange = { activeTab = it }
             )
 
-            PaymentModeBand(
-                state = state,
-                theme = theme,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+            if (state.billingSandboxAvailable) {
+                PaymentModeBand(
+                    state = state,
+                    theme = theme,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
             // Tab content
             AnimatedContent(
@@ -387,7 +391,7 @@ private fun PendingOrderPanel(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     if (state.sandboxAvailable) "Test kartı ile satın alma akışını tamamla."
-                    else "Sandbox kapalı; Supabase secret açılmalı.",
+                    else "Demo ödeme modu şu an kapalı.",
                     color = theme.text2,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
@@ -465,7 +469,7 @@ private fun PendingOrderPanel(
         } else {
             Spacer(Modifier.height(10.dp))
             Text(
-                "Sandbox kapalı. Supabase ortamında BILLING_SANDBOX_ENABLED=true olduğunda test tamamlama açılır.",
+                "Ödeme tamamlandığında üyelik ve kredi hakların otomatik olarak hesabına yansır.",
                 color = theme.text2.copy(0.65f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp
@@ -480,14 +484,15 @@ private fun PaymentModeBand(
     theme: AppThemeState,
     modifier: Modifier = Modifier
 ) {
+    val accent = if (state.billingSandboxAvailable) Lime else Amber
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (state.billingSandboxAvailable) Lime.copy(0.08f) else Amber.copy(0.07f))
+            .background(accent.copy(0.08f))
             .border(
                 1.dp,
-                if (state.billingSandboxAvailable) Lime.copy(0.24f) else Amber.copy(0.22f),
+                accent.copy(0.24f),
                 RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -497,21 +502,21 @@ private fun PaymentModeBand(
         Icon(
             if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
             null,
-            tint = if (state.billingSandboxAvailable) Lime else Amber,
+            tint = accent,
             modifier = Modifier.size(20.dp)
         )
         Column(Modifier.weight(1f)) {
             Text(
-                if (state.billingSandboxAvailable) "Test kartı açık" else "Test ödeme kapalı",
+                if (state.billingSandboxAvailable) "Demo ödeme modu açık" else "Demo ödeme modu kapalı",
                 color = theme.text0,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
                 if (state.billingSandboxAvailable)
-                    "Satın alırken demo kart formu açılır; gerçek çekim yapılmaz."
+                    "Satın alma akışını güvenle deneyebilirsin; gerçek çekim yapılmaz."
                 else
-                    "Supabase Edge Function secret: BILLING_SANDBOX_ENABLED=true",
+                    "Satın alma isteği oluşturulur, ödeme tamamlanınca haklar hesabına işlenir.",
                 color = theme.text2,
                 fontSize = 10.sp,
                 lineHeight = 14.sp
@@ -570,29 +575,34 @@ private fun StoreTopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(theme.bg0)
             .statusBarsPadding()
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
                 Icon(Icons.Rounded.ArrowBackIosNew, null,
                     tint = theme.text1, modifier = Modifier.size(20.dp))
             }
-            Text(
-                "MAĞAZA",
-                color         = theme.text0,
-                fontSize      = 14.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp,
-                modifier      = Modifier.weight(1f),
-                textAlign     = TextAlign.Center
-            )
-            // Plan/kredi chip
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Forge Merkezi",
+                    color      = theme.text0,
+                    fontSize   = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Üyelik, Oracle kredisi ve analiz hakları",
+                    color      = theme.text2,
+                    fontSize   = 10.sp,
+                    lineHeight = 13.sp
+                )
+            }
+
             val isPaid    = plan != UserPlan.FREE
             val chipColor = if (isPaid) accent.copy(0.12f) else accent.copy(0.08f)
             Row(
@@ -609,40 +619,37 @@ private fun StoreTopBar(
                     null, tint = accent, modifier = Modifier.size(13.dp)
                 )
                 Text(
-                    if (isPaid) "${plan.displayName} · $credits" else "$credits",
+                    if (isPaid) "${plan.displayName} · $credits" else "$credits kredi",
                     color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        Spacer(Modifier.height(6.dp))
-
-        // Tab row
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(theme.bg1.copy(0.72f))
+                .border(1.dp, theme.stroke.copy(0.42f), RoundedCornerShape(18.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            listOf("Abonelik" to Icons.Rounded.WorkspacePremium,
+            listOf("Üyelik" to Icons.Rounded.WorkspacePremium,
                    "AI Kredi"  to Icons.Rounded.Bolt
             ).forEachIndexed { idx, (label, icon) ->
                 val isActive = activeTab == idx
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isActive) Lime.copy(0.12f) else theme.bg1)
-                        .border(
-                            1.dp,
-                            if (isActive) Lime.copy(0.45f) else theme.stroke,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (isActive) Lime.copy(0.16f) else Color.Transparent)
+                        .border(1.dp, if (isActive) Lime.copy(0.36f) else Color.Transparent, RoundedCornerShape(14.dp))
                         .clickable(
                             indication        = null,
                             interactionSource = remember { MutableInteractionSource() }
                         ) { onTabChange(idx) }
-                        .padding(vertical = 11.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
@@ -660,8 +667,7 @@ private fun StoreTopBar(
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = theme.stroke.copy(0.25f), thickness = 0.5.dp)
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -768,7 +774,7 @@ private fun SubscriptionTab(
 
             item {
                 Text(
-                    "Test modunda demo kartla tamamlanan sipariş hesaba işlenir; gerçek ödeme alınmaz.\nCanlı ödeme sağlayıcısı bağlanınca aynı akış gerçek checkout'a dönecek.",
+                    "Plan değişiklikleri güvenli ödeme onayından sonra hesabına yansır. İstediğin zaman ücretsiz plana dönebilirsin.",
                     modifier   = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
@@ -851,26 +857,39 @@ private fun AccountSummaryHero(
     state: StoreState,
     theme: AppThemeState
 ) {
+    val planAccent = when (state.plan) {
+        UserPlan.FREE -> Lime
+        UserPlan.PRO -> Forge500
+        UserPlan.ELITE -> CardPurple
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
-            .padding(14.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        planAccent.copy(0.18f),
+                        theme.bg1.copy(0.92f),
+                        theme.bg2.copy(0.82f)
+                    )
+                )
+            )
+            .border(1.dp, planAccent.copy(0.24f), RoundedCornerShape(22.dp))
+            .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Hesap durumu",
+                    "Forge hesabın",
                     color = theme.text0,
-                    fontSize = 15.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Black
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Abonelik hakları ve kredi bakiyesi ayrı tutulur.",
+                    "Antrenman takibi, Oracle sohbeti ve AI analizleri aynı merkezden yönetilir.",
                     color = theme.text2,
                     fontSize = 11.sp,
                     lineHeight = 16.sp
@@ -880,11 +899,11 @@ private fun AccountSummaryHero(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Lime.copy(0.1f))
-                    .border(1.dp, Lime.copy(0.24f), RoundedCornerShape(12.dp)),
+                    .background(planAccent.copy(0.14f))
+                    .border(1.dp, planAccent.copy(0.28f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.VerifiedUser, null, tint = Lime, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.VerifiedUser, null, tint = planAccent, modifier = Modifier.size(20.dp))
             }
         }
 
@@ -895,7 +914,7 @@ private fun AccountSummaryHero(
                 label = "Aktif plan",
                 value = state.plan.displayName,
                 icon = Icons.Rounded.WorkspacePremium,
-                accent = if (state.plan == UserPlan.FREE) TextSecondary else Forge500,
+                accent = planAccent,
                 theme = theme,
                 modifier = Modifier.weight(1f)
             )
@@ -905,6 +924,29 @@ private fun AccountSummaryHero(
                 icon = Icons.Rounded.Bolt,
                 accent = Lime,
                 theme = theme,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(theme.bg0.copy(0.36f))
+                .border(1.dp, theme.stroke.copy(0.26f), RoundedCornerShape(14.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = Lime, modifier = Modifier.size(16.dp))
+            Text(
+                if (state.plan == UserPlan.FREE)
+                    "Oracle ve AI özellikleri kredi kullandıkça çalışır."
+                else
+                    "${state.plan.displayName} hakların aktif; ekstra AI işlemleri krediyle tamamlanır.",
+                color = theme.text1,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -952,19 +994,19 @@ private fun AiCostMatrix(theme: AppThemeState) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.42f), RoundedCornerShape(16.dp))
+            .background(theme.bg1.copy(0.86f))
+            .border(1.dp, Lime.copy(0.18f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = Lime, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text("AI kullanım maliyetleri", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text("Oracle kredi rehberi", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CostPill("Oracle", "1 kredi", Lime, theme, Modifier.weight(1f))
-            CostPill("Program", "8-12", Forge500, theme, Modifier.weight(1f))
+            CostPill("Sohbet", "1 kredi", Lime, theme, Modifier.weight(1f))
+            CostPill("Program", "8-12 kredi", Forge500, theme, Modifier.weight(1f))
             CostPill("Analiz", "3 kredi", CardCyan, theme, Modifier.weight(1f))
         }
     }
@@ -1009,7 +1051,16 @@ private fun CreditsTab(
     ) {
         item {
             Column(
-                modifier            = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Lime.copy(0.16f), theme.bg1.copy(0.92f), theme.bg2.copy(0.78f))
+                        )
+                    )
+                    .border(1.dp, Lime.copy(0.24f), RoundedCornerShape(22.dp))
+                    .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -1024,11 +1075,11 @@ private fun CreditsTab(
                         tint = Lime, modifier = Modifier.size(32.dp))
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("AI Kredisi",
+                Text("Oracle kredileri",
                     color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    "Oracle, program üretimi ve analizler ayrı limitlerle takip edilir. Satın alınan krediler abonelikten bağımsız saklanır.",
+                    "Sohbet, program üretimi ve performans analizlerinde kullandığın AI enerjisi.",
                     color     = theme.text2,
                     fontSize  = 12.sp,
                     textAlign = TextAlign.Center,
@@ -1040,7 +1091,7 @@ private fun CreditsTab(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Lime.copy(0.08f))
+                        .background(theme.bg0.copy(0.36f))
                         .border(1.dp, Lime.copy(0.2f), RoundedCornerShape(20.dp))
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                     verticalAlignment     = Alignment.CenterVertically,
@@ -1080,7 +1131,7 @@ private fun CreditsTab(
 
         item {
             Text(
-                "Ödeme sağlayıcısı bağlanana kadar bu ekran sadece güvenli checkout kaydı oluşturur; hesaba otomatik kredi veya abonelik eklemez.",
+                "Krediler abonelikten bağımsız saklanır ve güvenli ödeme onayı sonrası bakiyene eklenir.",
                 modifier  = Modifier.fillMaxWidth(),
                 color     = theme.text2.copy(0.4f),
                 fontSize  = 10.sp,
@@ -1113,10 +1164,10 @@ private fun BillingSafetyCard(theme: AppThemeState) {
             Icon(Icons.Rounded.VerifiedUser, null, tint = CardCyan, modifier = Modifier.size(21.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text("Güvenli satın alma modu", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Text("Güvenli Forge bakiyesi", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(3.dp))
             Text(
-                "Kredi bakiyesi ve abonelikler sadece doğrulanmış ödeme webhook'u ile değişir.",
+                "Kredi ve üyelik hakları ödeme onayından sonra korunarak hesabına işlenir.",
                 color = theme.text2,
                 fontSize = 11.sp,
                 lineHeight = 16.sp
