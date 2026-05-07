@@ -48,6 +48,7 @@ jobs:
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"              >> local.properties
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"    >> local.properties
+          echo "MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}"              >> local.properties
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"          >> local.properties
           echo "KEYSTORE_BASE64=${{ secrets.DEBUG_KEYSTORE_BASE64 }}"  >> local.properties
           echo "KEYSTORE_PASSWORD=android"                              >> local.properties
