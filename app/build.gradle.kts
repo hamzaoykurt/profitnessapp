@@ -47,6 +47,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "MAPS_API_KEY",      "\"${localProperties.getProperty("MAPS_API_KEY", "")}\"")
     }
 
     signingConfigs {
@@ -116,6 +117,10 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+
+    // Google Places autocomplete
+    implementation(libs.google.places)
+    implementation(libs.google.material)
 
     // DataStore (theme persistence)
     implementation(libs.androidx.datastore.preferences)

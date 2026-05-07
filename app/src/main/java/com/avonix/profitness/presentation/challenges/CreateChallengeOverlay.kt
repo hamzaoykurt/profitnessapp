@@ -1,7 +1,5 @@
 package com.avonix.profitness.presentation.challenges
 
-import android.location.Address
-import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.avonix.profitness.BuildConfig
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.PageAccentBloom
 import com.avonix.profitness.core.theme.strings
@@ -88,23 +88,31 @@ import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.presentation.program.ExerciseMultiPickerSheet
+import com.google.android.gms.tasks.Tasks
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.android.libraries.places.api.net.PlacesClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private enum class CreateFormKind { Metric, Event }
 
 private data class PlaceCandidate(
+    val placeId: String,
     val title: String,
     val subtitle: String,
-    val lat: Double,
-    val lng: Double
+    val lat: Double?,
+    val lng: Double?
 ) {
     val displayName: String
         get() = listOf(title, subtitle).filter { it.isNotBlank() }.joinToString(", ")
@@ -993,9 +1001,13 @@ private fun PlaceSearchField(
 ) {
     val theme = LocalAppTheme.current
     val context = LocalContext.current
+    val placesClient = remember(context) { createPlacesClientOrNull(context) }
+    val sessionToken = remember { AutocompleteSessionToken.newInstance() }
+    val scope = rememberCoroutineScope()
     val hasResolvedValue = isResolved && value.isNotBlank()
     var candidates by remember { mutableStateOf<List<PlaceCandidate>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var resolvingPlaceId by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(value, isResolved) {
@@ -1004,10 +1016,14 @@ private fun PlaceSearchField(
         message = null
         loading = false
         if (hasResolvedValue || query.length < 3) return@LaunchedEffect
+        if (placesClient == null) {
+            message = "Google Places API key eksik; local.properties içine MAPS_API_KEY ekle."
+            return@LaunchedEffect
+        }
 
         delay(350)
         loading = true
-        val result = searchPlaceCandidates(context, query)
+        val result = searchPlaceCandidates(placesClient, sessionToken, query)
         loading = false
         candidates = result
         message = when {
@@ -1048,7 +1064,7 @@ private fun PlaceSearchField(
                 )
                 Spacer(Modifier.width(10.dp))
                 when {
-                    loading -> CircularProgressIndicator(
+                    loading || resolvingPlaceId != null -> CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(16.dp)
@@ -1094,10 +1110,24 @@ private fun PlaceSearchField(
                     .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             ) {
                 candidates.forEachIndexed { index, candidate ->
+                    val isResolving = resolvingPlaceId == candidate.placeId
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onPlaceSelected(candidate) }
+                            .clickable(enabled = resolvingPlaceId == null) {
+                                val client = placesClient ?: return@clickable
+                                resolvingPlaceId = candidate.placeId
+                                message = null
+                                scope.launch {
+                                    val resolved = resolvePlaceCandidate(client, sessionToken, candidate)
+                                    resolvingPlaceId = null
+                                    if (resolved?.lat != null && resolved.lng != null) {
+                                        onPlaceSelected(resolved)
+                                    } else {
+                                        message = "Konum koordinatı alınamadı; başka bir sonuç seç."
+                                    }
+                                }
+                            }
                             .padding(horizontal = 12.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1133,8 +1163,22 @@ private fun PlaceSearchField(
                                 )
                             }
                         }
+                        if (isResolving) {
+                            Spacer(Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
+                Text(
+                    "Powered by Google",
+                    color = theme.text2.copy(0.82f),
+                    fontSize = 9.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
             }
         } else if (message != null) {
             Text(
@@ -1147,51 +1191,64 @@ private fun PlaceSearchField(
     }
 }
 
-@Suppress("DEPRECATION")
+private fun createPlacesClientOrNull(context: android.content.Context): PlacesClient? {
+    val apiKey = BuildConfig.MAPS_API_KEY.trim()
+    if (apiKey.isEmpty()) return null
+    if (!Places.isInitialized()) {
+        Places.initializeWithNewPlacesApiEnabled(context.applicationContext, apiKey)
+    }
+    return Places.createClient(context.applicationContext)
+}
+
 private suspend fun searchPlaceCandidates(
-    context: android.content.Context,
+    placesClient: PlacesClient,
+    sessionToken: AutocompleteSessionToken,
     query: String
 ): List<PlaceCandidate> = withContext(Dispatchers.IO) {
-    if (!Geocoder.isPresent()) return@withContext emptyList()
-
     runCatching {
-        Geocoder(context, Locale("tr", "TR"))
-            .getFromLocationName(query, 6)
-            .orEmpty()
-            .asSequence()
-            .filter { it.hasLatitude() && it.hasLongitude() }
-            .map { it.toPlaceCandidate(query) }
-            .distinctBy { "${it.title}|${it.subtitle}|${"%.5f".format(Locale.US, it.lat)}|${"%.5f".format(Locale.US, it.lng)}" }
-            .toList()
+        val request = FindAutocompletePredictionsRequest.builder()
+            .setQuery(query)
+            .setCountries("TR")
+            .setSessionToken(sessionToken)
+            .build()
+
+        Tasks.await(placesClient.findAutocompletePredictions(request))
+            .autocompletePredictions
+            .take(5)
+            .map { prediction ->
+                PlaceCandidate(
+                    placeId = prediction.placeId,
+                    title = prediction.getPrimaryText(null).toString(),
+                    subtitle = prediction.getSecondaryText(null).toString(),
+                    lat = null,
+                    lng = null
+                )
+            }
     }.getOrDefault(emptyList())
 }
 
-private fun Address.toPlaceCandidate(query: String): PlaceCandidate {
-    val title = listOfNotNull(
-        featureName,
-        thoroughfare,
-        subLocality,
-        locality,
-        getAddressLine(0)?.substringBefore(",")
-    ).firstOrNull { it.isNotBlank() } ?: query
+private suspend fun resolvePlaceCandidate(
+    placesClient: PlacesClient,
+    sessionToken: AutocompleteSessionToken,
+    candidate: PlaceCandidate
+): PlaceCandidate? = withContext(Dispatchers.IO) {
+    runCatching {
+        val request = FetchPlaceRequest.builder(
+            candidate.placeId,
+            listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.FORMATTED_ADDRESS, Place.Field.LAT_LNG)
+        )
+            .setSessionToken(sessionToken)
+            .build()
 
-    val subtitle = listOfNotNull(
-        subLocality,
-        locality,
-        subAdminArea,
-        adminArea,
-        countryName
-    )
-        .filter { it.isNotBlank() && !it.equals(title, ignoreCase = true) }
-        .distinct()
-        .joinToString(", ")
-
-    return PlaceCandidate(
-        title = title,
-        subtitle = subtitle,
-        lat = latitude,
-        lng = longitude
-    )
+        val place = Tasks.await(placesClient.fetchPlace(request)).place
+        val latLng = place.latLng ?: return@runCatching null
+        candidate.copy(
+            title = place.displayName ?: candidate.title,
+            subtitle = place.formattedAddress ?: candidate.subtitle,
+            lat = latLng.latitude,
+            lng = latLng.longitude
+        )
+    }.getOrNull()
 }
 
 @Composable
