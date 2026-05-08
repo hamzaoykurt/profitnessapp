@@ -13,6 +13,7 @@ data class PublicChallengeRowDto(
     val start_date         : String,
     val end_date           : String,
     val participants_count : Int = 0,
+    val visibility         : String = "public",
     val creator_id         : String,
     val creator_name       : String? = null,
     val creator_avatar     : String? = null,

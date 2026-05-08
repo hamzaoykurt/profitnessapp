@@ -33,7 +33,7 @@ class ChallengeRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 supabase.postgrest.rpc(
-                    "list_public_challenges",
+                    "list_visible_challenges",
                     buildJsonObject {
                         put("p_limit", limit)
                         put("p_offset", offset)
@@ -319,6 +319,20 @@ class ChallengeRepositoryImpl @Inject constructor(
                     buildJsonObject { put("p_challenge_id", challengeId) }
                 )
                 Unit
+            }
+        }
+
+    override suspend fun inviteFriendsToChallenge(challengeId: String, userIds: List<String>): Result<Int> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val idsJson = buildJsonArray { userIds.distinct().forEach { add(it) } }
+                supabase.postgrest.rpc(
+                    "invite_friends_to_challenge",
+                    buildJsonObject {
+                        put("p_challenge_id", challengeId)
+                        put("p_user_ids", idsJson)
+                    }
+                ).decodeAs<Int>()
             }
         }
 }

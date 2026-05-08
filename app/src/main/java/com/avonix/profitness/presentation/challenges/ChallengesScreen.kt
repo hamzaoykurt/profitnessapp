@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.FitnessCenter
@@ -25,9 +26,11 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Straighten
 import androidx.compose.material.icons.rounded.Timer
@@ -54,8 +57,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
@@ -70,6 +76,7 @@ import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.discover.DiscoverSort
+import com.avonix.profitness.domain.social.UserSummary
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -232,6 +239,209 @@ fun ChallengesTab(
                 },
                 onSubmitEvent = { req -> vm.submitCreateEvent(req) }
             )
+        }
+
+        state.pendingInviteChallengeId?.let {
+            InviteFriendsDialog(
+                title = state.pendingInviteTitle,
+                friends = state.inviteFriends,
+                selected = state.inviteSelected,
+                loading = state.inviteLoading,
+                inFlight = state.inviteInFlight,
+                message = state.inviteMessage,
+                onToggle = vm::toggleInviteFriend,
+                onSend = vm::sendChallengeInvites,
+                onSkip = { vm.clearInviteSheet(openDetailAfter = true) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun InviteFriendsDialog(
+    title: String,
+    friends: List<UserSummary>,
+    selected: Set<String>,
+    loading: Boolean,
+    inFlight: Boolean,
+    message: String?,
+    onToggle: (String) -> Unit,
+    onSend: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+
+    Dialog(
+        onDismissRequest = onSkip,
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(0.72f)),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(theme.bg1)
+                    .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(24.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("ARKADAŞLARINI DAVET ET", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                        Text(title.ifBlank { "Yeni challenge" }, color = theme.text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Icon(
+                        Icons.Rounded.Close,
+                        null,
+                        tint = theme.text2,
+                        modifier = Modifier.size(22.dp).clickable(enabled = !inFlight) { onSkip() }
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                when {
+                    loading -> Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = accent, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                    friends.isEmpty() -> Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(theme.bg2.copy(0.55f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Davet göndermek için karşılıklı takip ettiğin arkadaşların olmalı.",
+                            color = theme.text2,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                    }
+                    else -> LazyColumn(
+                        modifier = Modifier.heightIn(max = 260.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(friends, key = { it.userId }) { friend ->
+                            InviteFriendRow(
+                                user = friend,
+                                selected = friend.userId in selected,
+                                enabled = !inFlight,
+                                onClick = { onToggle(friend.userId) }
+                            )
+                        }
+                    }
+                }
+
+                message?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Text(it, color = theme.text2, fontSize = 11.sp)
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(theme.bg2)
+                            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(14.dp))
+                            .clickable(enabled = !inFlight) { onSkip() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("GEÇ", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1.4f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (selected.isEmpty()) accent.copy(0.35f) else accent)
+                            .clickable(enabled = selected.isNotEmpty() && !inFlight) { onSend() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (inFlight) {
+                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Send, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    if (selected.isEmpty()) "DAVET GÖNDER" else "${selected.size} DAVET GÖNDER",
+                                    color = Color.Black,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InviteFriendRow(
+    user: UserSummary,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) accent.copy(0.14f) else theme.bg2.copy(0.55f))
+            .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), RoundedCornerShape(16.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(theme.bg1), contentAlignment = Alignment.Center) {
+            if (user.avatarUrl != null) {
+                AsyncImage(model = user.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
+            } else {
+                Text(user.displayName.take(1).uppercase(), color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(user.displayName, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            user.username?.let { Text("@$it", color = theme.text2, fontSize = 11.sp, maxLines = 1) }
+        }
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(if (selected) accent else Color.Transparent)
+                .border(1.dp, if (selected) accent else theme.stroke, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
         }
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import com.avonix.profitness.BuildConfig
 import com.avonix.profitness.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -150,6 +151,18 @@ private fun AuthLoadingSplash() {
                     alpha  = iconAlpha
                 }
                 .clip(RoundedCornerShape(20.dp))
+        )
+        Text(
+            text = "v${BuildConfig.VERSION_NAME}",
+            color = theme.text2.copy(0.55f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 28.dp)
+                .graphicsLayer { alpha = iconAlpha }
         )
     }
 }

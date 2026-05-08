@@ -3,6 +3,8 @@ package com.avonix.profitness.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.data.social.SocialRepository
+import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.domain.social.PublicProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +16,10 @@ import javax.inject.Inject
 
 data class PublicProfileState(
     val profile : PublicProfile? = null,
+    val challenges: List<ChallengeSummary> = emptyList(),
+    val sharedPrograms: List<SharedProgram> = emptyList(),
     val isLoading: Boolean       = false,
+    val activityLoading: Boolean = false,
     val error   : String?        = null
 )
 
@@ -34,8 +39,26 @@ class PublicProfileViewModel @Inject constructor(
         _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             socialRepo.getPublicProfile(userId)
-                .onSuccess { p -> _state.update { it.copy(profile = p, isLoading = false) } }
+                .onSuccess { p ->
+                    _state.update { it.copy(profile = p, isLoading = false) }
+                    loadActivity(userId)
+                }
                 .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.message ?: "Yüklenemedi") } }
+        }
+    }
+
+    private fun loadActivity(userId: String) {
+        _state.update { it.copy(activityLoading = true) }
+        viewModelScope.launch {
+            val challenges = socialRepo.listUserCreatedChallenges(userId).getOrDefault(emptyList())
+            val programs = socialRepo.listUserSharedPrograms(userId).getOrDefault(emptyList())
+            _state.update {
+                it.copy(
+                    challenges = challenges,
+                    sharedPrograms = programs,
+                    activityLoading = false
+                )
+            }
         }
     }
 

@@ -121,6 +121,8 @@ fun ChallengeDetailOverlay(
     LaunchedEffect(challengeId) { vm.load(challengeId) }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
+            showDeleteConfirm = false
+            vm.consumeDeleted()
             onChanged()
             onBack()
         }
@@ -471,7 +473,6 @@ fun ChallengeDetailOverlay(
                 onCancel = { showDeleteConfirm = false },
                 onConfirm = {
                     vm.deleteChallenge()
-                    onChanged()
                 }
             )
         }

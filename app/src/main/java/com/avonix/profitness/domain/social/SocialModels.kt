@@ -5,6 +5,9 @@ import com.avonix.profitness.data.social.dto.FriendXpRowDto
 import com.avonix.profitness.data.social.dto.PublicProfileDto
 import com.avonix.profitness.data.social.dto.UserSearchRowDto
 
+internal fun cleanAvatarUrl(value: String?): String? =
+    value?.trim()?.takeIf { it.isNotEmpty() && it.startsWith("http", ignoreCase = true) }
+
 /** Arama/takip listesi satırı — hem search sonucunda hem "takip edilenler" listesinde kullanılır. */
 data class UserSummary(
     val userId      : String,
@@ -66,7 +69,7 @@ internal fun UserSearchRowDto.toDomain() = UserSummary(
     userId      = user_id,
     username    = username,
     displayName = display_name ?: username ?: "Anonim",
-    avatarUrl   = avatar_url,
+    avatarUrl   = cleanAvatarUrl(avatar_url),
     totalXp     = total_xp,
     isFollowing = is_following,
     isFollower  = is_follower
@@ -76,7 +79,7 @@ internal fun PublicProfileDto.toDomain() = PublicProfile(
     userId            = user_id,
     username          = username,
     displayName       = display_name ?: username ?: "Anonim",
-    avatarUrl         = avatar_url,
+    avatarUrl         = cleanAvatarUrl(avatar_url),
     currentRank       = current_rank,
     totalXp           = total_xp,
     level             = level,
@@ -94,7 +97,7 @@ internal fun FriendXpRowDto.toDomain() = FriendXpRow(
     userId       = user_id,
     username     = username,
     displayName  = display_name ?: username ?: "Anonim",
-    avatarUrl    = avatar_url,
+    avatarUrl    = cleanAvatarUrl(avatar_url),
     totalXp      = total_xp,
     rankPosition = rank_position,
     isMe         = is_me
@@ -104,7 +107,7 @@ internal fun FriendAchievementRowDto.toDomain() = FriendAchievementRow(
     userId           = user_id,
     username         = username,
     displayName      = display_name ?: username ?: "Anonim",
-    avatarUrl        = avatar_url,
+    avatarUrl        = cleanAvatarUrl(avatar_url),
     achievementCount = achievement_count,
     rankPosition     = rank_position,
     isMe             = is_me
@@ -113,5 +116,6 @@ internal fun FriendAchievementRowDto.toDomain() = FriendAchievementRow(
 /** list_my_follows RPC'si bu enum'u kullanır. */
 enum class FollowListKind(val raw: String) {
     FOLLOWING("following"),
-    FOLLOWERS("followers")
+    FOLLOWERS("followers"),
+    MUTUALS("mutuals")
 }

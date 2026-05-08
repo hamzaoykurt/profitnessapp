@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.data.program.ProgramRepository
+import com.avonix.profitness.data.social.SocialRepository
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.social.FollowListKind
+import com.avonix.profitness.domain.social.UserSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +36,13 @@ data class ChallengesUiState(
     val createInFlight : Boolean               = false,
     val createError    : String?               = null,
     val joinInFlight   : Set<String>           = emptySet(),
+    val pendingInviteChallengeId: String?      = null,
+    val pendingInviteTitle: String             = "",
+    val inviteFriends  : List<UserSummary>     = emptyList(),
+    val inviteLoading  : Boolean               = false,
+    val inviteSelected : Set<String>           = emptySet(),
+    val inviteInFlight : Boolean               = false,
+    val inviteMessage  : String?               = null,
     /** Event mode'da hareket seçici için yüklenen tüm hareketler (lazy). */
     val exercises      : List<ExerciseItem>    = emptyList(),
     val exercisesLoading: Boolean              = false
@@ -41,7 +51,8 @@ data class ChallengesUiState(
 @HiltViewModel
 class ChallengesViewModel @Inject constructor(
     private val repo        : ChallengeRepository,
-    private val programRepo : ProgramRepository
+    private val programRepo : ProgramRepository,
+    private val socialRepo  : SocialRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChallengesUiState())
@@ -147,12 +158,14 @@ class ChallengesViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             scope = ChallengesScope.Mine,
-                            openDetailId = newChallengeId,
+                            pendingInviteChallengeId = newChallengeId,
+                            pendingInviteTitle = title.trim(),
                             createInFlight = false,
                             showCreateSheet = false,
                             createError = null
                         )
                     }
+                    loadInviteFriends()
                     loadAll(isRefresh = true)
                 },
                 onFailure = { t ->
@@ -209,12 +222,14 @@ class ChallengesViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             scope = ChallengesScope.Mine,
-                            openDetailId = newChallengeId,
+                            pendingInviteChallengeId = newChallengeId,
+                            pendingInviteTitle = req.title.trim(),
                             createInFlight = false,
                             showCreateSheet = false,
                             createError = null
                         )
                     }
+                    loadInviteFriends()
                     loadAll(isRefresh = true)
                 },
                 onFailure = { t ->
@@ -269,6 +284,75 @@ class ChallengesViewModel @Inject constructor(
             it.copy(
                 joinInFlight = if (inFlight) it.joinInFlight + id else it.joinInFlight - id
             )
+        }
+    }
+
+    fun toggleInviteFriend(userId: String) {
+        _state.update {
+            it.copy(
+                inviteSelected = if (userId in it.inviteSelected) it.inviteSelected - userId else it.inviteSelected + userId,
+                inviteMessage = null
+            )
+        }
+    }
+
+    fun clearInviteSheet(openDetailAfter: Boolean = false) {
+        val id = _state.value.pendingInviteChallengeId
+        _state.update {
+            it.copy(
+                pendingInviteChallengeId = null,
+                pendingInviteTitle = "",
+                inviteSelected = emptySet(),
+                inviteInFlight = false,
+                inviteMessage = null,
+                openDetailId = if (openDetailAfter && id != null) id else it.openDetailId
+            )
+        }
+    }
+
+    fun sendChallengeInvites() {
+        val id = _state.value.pendingInviteChallengeId ?: return
+        val targets = _state.value.inviteSelected.toList()
+        if (targets.isEmpty() || _state.value.inviteInFlight) return
+        _state.update { it.copy(inviteInFlight = true, inviteMessage = null) }
+        viewModelScope.launch {
+            repo.inviteFriendsToChallenge(id, targets)
+                .onSuccess { count ->
+                    _state.update {
+                        it.copy(
+                            inviteInFlight = false,
+                            inviteMessage = "$count arkadaşına davet gönderildi"
+                        )
+                    }
+                    clearInviteSheet(openDetailAfter = true)
+                }
+                .onFailure { t ->
+                    _state.update {
+                        it.copy(
+                            inviteInFlight = false,
+                            inviteMessage = t.toChallengeUiMessage("Davet gönderilemedi")
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun loadInviteFriends() {
+        _state.update { it.copy(inviteLoading = true, inviteSelected = emptySet(), inviteMessage = null) }
+        viewModelScope.launch {
+            socialRepo.listMyFollows(FollowListKind.MUTUALS, limit = 100)
+                .onSuccess { friends ->
+                    _state.update { it.copy(inviteFriends = friends, inviteLoading = false) }
+                }
+                .onFailure { t ->
+                    _state.update {
+                        it.copy(
+                            inviteFriends = emptyList(),
+                            inviteLoading = false,
+                            inviteMessage = t.toChallengeUiMessage("Arkadaşlar yüklenemedi")
+                        )
+                    }
+                }
         }
     }
 

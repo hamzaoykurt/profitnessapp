@@ -5,6 +5,12 @@ import com.avonix.profitness.data.social.dto.FriendAchievementRowDto
 import com.avonix.profitness.data.social.dto.FriendXpRowDto
 import com.avonix.profitness.data.social.dto.PublicProfileDto
 import com.avonix.profitness.data.social.dto.UserSearchRowDto
+import com.avonix.profitness.data.challenges.dto.PublicChallengeRowDto
+import com.avonix.profitness.data.discover.dto.DiscoverFeedRowDto
+import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.challenges.toDomain
+import com.avonix.profitness.domain.discover.SharedProgram
+import com.avonix.profitness.domain.discover.toDomain
 import com.avonix.profitness.domain.social.FollowListKind
 import com.avonix.profitness.domain.social.FriendAchievementRow
 import com.avonix.profitness.domain.social.FriendXpRow
@@ -65,10 +71,12 @@ class SocialRepositoryImpl @Inject constructor(
                     val iAmFollowingThem = when (kind) {
                         FollowListKind.FOLLOWING -> true
                         FollowListKind.FOLLOWERS -> r.is_mutual
+                        FollowListKind.MUTUALS -> true
                     }
                     val theyFollowMe = when (kind) {
                         FollowListKind.FOLLOWING -> r.is_mutual
                         FollowListKind.FOLLOWERS -> true
+                        FollowListKind.MUTUALS -> true
                     }
                     UserSummary(
                         userId      = r.user_id,
@@ -120,6 +128,32 @@ class SocialRepositoryImpl @Inject constructor(
                     "get_friend_leaderboard_achievements",
                     buildJsonObject { put("p_limit", limit) }
                 ).decodeList<FriendAchievementRowDto>().map { it.toDomain() }
+            }
+        }
+
+    override suspend fun listUserCreatedChallenges(userId: String, limit: Int): Result<List<ChallengeSummary>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "list_user_created_challenges",
+                    buildJsonObject {
+                        put("p_user_id", userId)
+                        put("p_limit", limit)
+                    }
+                ).decodeList<PublicChallengeRowDto>().map { it.toDomain() }
+            }
+        }
+
+    override suspend fun listUserSharedPrograms(userId: String, limit: Int): Result<List<SharedProgram>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "list_user_shared_programs",
+                    buildJsonObject {
+                        put("p_user_id", userId)
+                        put("p_limit", limit)
+                    }
+                ).decodeList<DiscoverFeedRowDto>().map { it.toDomain() }
             }
         }
 }
