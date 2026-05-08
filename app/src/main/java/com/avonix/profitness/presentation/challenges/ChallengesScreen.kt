@@ -187,7 +187,7 @@ fun ChallengesTab(
                                         onTap      = { vm.openDetail(c.id) },
                                         onToggle   = {
                                             // Private + not joined → detail'e git (password dialog orada)
-                                            if (!c.isJoined && c.visibility == com.avonix.profitness.domain.challenges.ChallengeVisibility.Private) {
+                                            if (!c.isJoined && c.visibility == com.avonix.profitness.domain.challenges.ChallengeVisibility.Private && !c.isInvited) {
                                                 vm.openDetail(c.id)
                                             } else {
                                                 vm.toggleJoin(c)
@@ -280,13 +280,14 @@ private fun InviteFriendsDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(0.72f)),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(16.dp)
+                    .widthIn(max = 460.dp)
+                    .heightIn(max = 560.dp)
+                    .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(theme.bg1)
                     .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(24.dp))
@@ -338,7 +339,9 @@ private fun InviteFriendsDialog(
                         )
                     }
                     else -> LazyColumn(
-                        modifier = Modifier.heightIn(max = 260.dp),
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .heightIn(max = 260.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(friends, key = { it.userId }) { friend ->
@@ -609,6 +612,10 @@ private fun ChallengeCard(
                 // ── Header chips + status ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     KindBadge(isEvent = isEvent, accent = accent, theme = theme)
+                    if (c.isInvited && !c.isJoined) {
+                        Spacer(Modifier.width(6.dp))
+                        InviteBadge(accent = accent, theme = theme)
+                    }
                     if (isEvent && c.event != null) {
                         Spacer(Modifier.width(6.dp))
                         EventModeBadge(mode = c.event.mode, theme = theme)
@@ -831,6 +838,7 @@ private fun ChallengeCard(
                     // CTA
                     JoinPill(
                         isJoined = c.isJoined,
+                        isInvited = c.isInvited,
                         inFlight = inFlight,
                         canAct   = !c.isCompleted && status != CardStatus.Ended,
                         accent   = accent,
@@ -886,6 +894,7 @@ private fun StatusPill(
 @Composable
 private fun JoinPill(
     isJoined: Boolean,
+    isInvited: Boolean,
     inFlight: Boolean,
     canAct: Boolean,
     accent: Color,
@@ -923,6 +932,7 @@ private fun JoinPill(
             val label = when {
                 !canAct  -> "KAPALI"
                 isJoined -> "KATILDIN"
+                isInvited -> "DAVET"
                 else     -> "KATIL"
             }
             val fg = when {
@@ -994,6 +1004,31 @@ private fun KindBadge(
         Text(
             label,
             color = tint,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun InviteBadge(
+    accent: Color,
+    theme: com.avonix.profitness.core.theme.AppThemeState
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(accent.copy(0.16f))
+            .border(1.dp, accent.copy(0.38f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            "DAVET",
+            color = theme.text0,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp

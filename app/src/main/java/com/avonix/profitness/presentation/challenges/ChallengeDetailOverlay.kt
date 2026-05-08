@@ -48,6 +48,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,15 +63,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -137,6 +142,7 @@ fun ChallengeDetailOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
     Box(Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
         LazyColumn(
@@ -286,7 +292,7 @@ fun ChallengeDetailOverlay(
                                 .clickable(enabled = !state.inFlight) {
                                     when {
                                         c.isJoined -> { vm.leave(); onChanged() }
-                                        c.visibility == ChallengeVisibility.Private -> {
+                                        c.visibility == ChallengeVisibility.Private && !c.isInvited -> {
                                             showJoinPasswordDialog = true
                                         }
                                         else -> { vm.join(null); onChanged() }
@@ -507,6 +513,23 @@ fun ChallengeDetailOverlay(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun EdgeToEdgeDialogBars() {
+    val theme = LocalAppTheme.current
+    val view = LocalView.current
+
+    SideEffect {
+        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
+        window.statusBarColor = Color.Transparent.toArgb()
+        window.navigationBarColor = Color.Transparent.toArgb()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, view).run {
+            isAppearanceLightStatusBars = !theme.isDark
+            isAppearanceLightNavigationBars = !theme.isDark
+        }
     }
 }
 
@@ -1830,6 +1853,7 @@ private fun EditMetricChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
         Box(Modifier.fillMaxSize().background(theme.bg0)) {
             PageAccentBloom()
             LazyColumn(
@@ -2055,6 +2079,7 @@ private fun EditEventChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
         Box(Modifier.fillMaxSize().background(theme.bg0)) {
             PageAccentBloom()
             LazyColumn(

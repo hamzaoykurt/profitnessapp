@@ -585,6 +585,7 @@ private fun StoreTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+            Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Forge Merkezi",

@@ -441,109 +441,247 @@ private fun ProfileHeroBanner(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
+            val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
+            val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
+            val rankColor = rankColor(rank)
 
-            Box(modifier = Modifier.size(110.dp)) {
+            Spacer(Modifier.height(18.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                theme.bg1.copy(0.90f),
+                                theme.bg2.copy(0.52f),
+                                theme.bg1.copy(0.74f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(900f, 680f)
+                        )
+                    )
+                    .border(1.dp, accent.copy(0.30f), RoundedCornerShape(28.dp))
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(106.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(accent)
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(accent.copy(0.20f), Color.Transparent),
+                                center = Offset(520f, 80f),
+                                radius = 520f
+                            )
+                        )
                 )
                 Box(
                     modifier = Modifier
-                        .size(98.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(theme.bg2),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (avatar.startsWith("http")) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(rankColor.copy(0.16f), Color.Transparent),
+                                center = Offset(20f, 440f),
+                                radius = 460f
+                            )
                         )
-                    } else {
-                        Text(avatar, fontSize = 40.sp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(modifier = Modifier.size(122.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(accent.copy(0.24f), Color.Transparent)
+                                    )
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(106.dp)
+                                .clip(CircleShape)
+                                .background(Brush.sweepGradient(listOf(accent, rankColor, accent)))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(94.dp)
+                                .clip(CircleShape)
+                                .background(theme.bg0)
+                                .border(1.dp, theme.stroke.copy(0.55f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (avatar.startsWith("http")) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            } else {
+                                Text(avatar, fontSize = 42.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        name.uppercase(),
+                        color = theme.text0,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                        maxLines = 1
+                    )
+
+                    if (fitnessGoal.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            fitnessGoal,
+                            color = theme.text1,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BadgeChip("★ ${rank.uppercase()}", rankColor)
+                        BadgeChip("LVL $level", accent)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(theme.bg0.copy(0.46f))
+                            .border(1.dp, theme.stroke.copy(0.38f), RoundedCornerShape(18.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Column {
+                                Text(
+                                    "LEVEL $level → ${level + 1}",
+                                    color = theme.text2,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(Modifier.height(3.dp))
+                                Text(
+                                    "$xpInLevel / $xpPerLevel XP",
+                                    color = theme.text0,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Text(
+                                if (xpLeft == 0) "SEVİYE HAZIR" else "$xpLeft XP KALDI",
+                                color = accent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape)
+                                .background(theme.stroke.copy(0.32f))
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
+                                    .fillMaxHeight()
+                                    .clip(CircleShape)
+                                    .background(Brush.horizontalGradient(listOf(rankColor, accent)))
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 54.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        HeroMiniStat("TOPLAM XP", "$xp", Icons.Rounded.Bolt, accent, theme, Modifier.weight(1f))
+                        HeroMiniStat("RÜTBE", rank.uppercase(), Icons.Rounded.EmojiEvents, rankColor, theme, Modifier.weight(1f))
                     }
                 }
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(14.dp))
-
+@Composable
+private fun HeroMiniStat(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(0.11f))
+            .border(1.dp, color.copy(0.28f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 11.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(color.copy(0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
             Text(
-                name.uppercase(),
-                color         = theme.text0,
-                fontSize      = 18.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                value,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
             )
-
-            if (fitnessGoal.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    fitnessGoal,
-                    color    = theme.text1,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                val rankColor = rankColor(rank)
-                BadgeChip("★ ${rank.uppercase()}", rankColor)
-                BadgeChip("LVL $level", accent)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
-            Column(
-                modifier              = Modifier.width(220.dp),
-                horizontalAlignment   = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "LEVEL $level → ${level + 1}",
-                        color         = theme.text2,
-                        fontSize      = 8.sp,
-                        fontWeight    = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Text("${xp % xpPerLevel} XP", color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(5.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(5.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg3)
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(accent, accent.copy(0.65f))
-                                )
-                            )
-                    )
-                }
-            }
+            Text(
+                label,
+                color = theme.text2,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.8.sp,
+                maxLines = 1
+            )
         }
     }
 }
