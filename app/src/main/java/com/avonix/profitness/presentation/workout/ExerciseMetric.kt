@@ -68,21 +68,21 @@ fun activityTrackingSpec(
 ): ActivityTrackingSpec {
     val explicitSport = SportType.fromRaw(sportTypeRaw).takeUnless { sportTypeRaw.isNullOrBlank() }
     val sportType = explicitSport ?: classifySportType(category, name, target, reps)
+    val normalizedReps = reps.lowercase().normalizeTurkishAscii()
+    val repsLooksTimed = listOf("sn", "sec", "second", "saniye", " dk", "min", "minute", "dakika")
+        .any { it in normalizedReps }
+    val isTimedHold = timedHoldKeywords.any {
+        it in listOf(category, name, target).joinToString(" ").lowercase().normalizeTurkishAscii()
+    }
     val explicitMetric = when (trackingModeRaw) {
         "duration" -> ExerciseMetric.Duration
         "duration_distance", "duration_distance_elevation" -> ExerciseMetric.DurationDistance
-        "strength" -> ExerciseMetric.Strength
+        "strength" -> if (repsLooksTimed || isTimedHold) ExerciseMetric.Duration else ExerciseMetric.Strength
         else -> null
     }
     val metric = explicitMetric ?: when (sportType) {
         SportType.Strength -> {
-            val repsLooksTimed = reps.lowercase().normalizeTurkishAscii().let { value ->
-                listOf("sn", "sec", "second", "saniye", " dk", "min", "minute", "dakika").any { it in value }
-            }
-            if (repsLooksTimed || timedHoldKeywords.any {
-                    it in listOf(category, name, target).joinToString(" ").lowercase().normalizeTurkishAscii()
-                }
-            ) ExerciseMetric.Duration else ExerciseMetric.Strength
+            if (repsLooksTimed || isTimedHold) ExerciseMetric.Duration else ExerciseMetric.Strength
         }
         SportType.YogaPilates, SportType.Boxing, SportType.JumpRopeHiit -> ExerciseMetric.Duration
         else -> ExerciseMetric.DurationDistance

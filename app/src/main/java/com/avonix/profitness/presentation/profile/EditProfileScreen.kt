@@ -142,15 +142,7 @@ fun EditProfileScreen(
                 ) {
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Text("PROFİLİ DÜZENLE", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp).clip(CircleShape)
-                            .background(accent)
-                            .clickable(onClick = ::saveAndExit),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(20.dp))
-                    }
+                    Spacer(Modifier.size(48.dp))
                 }
             }
 

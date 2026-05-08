@@ -46,6 +46,7 @@ data class ProgramUiState(
     val isLoading    : Boolean          = false,
     val error        : String?          = null,
     val userPrograms : List<Program>    = emptyList(),
+    val applyingTemplateKey: String?    = null,
     val deletingProgramIds: Set<String> = emptySet(),
     val exercises    : List<ExerciseItem> = emptyList(),
     // AI builder
@@ -87,6 +88,7 @@ class ProgramViewModel @Inject constructor(
 
     private var lastSyncTime = 0L
     private val syncStaleMs  = 3 * 60 * 1000L // 3 dakika
+    private var templateApplyInFlight = false
 
     init {
         viewModelScope.launch {
@@ -175,7 +177,7 @@ class ProgramViewModel @Inject constructor(
             programRepository.observeUserPrograms(uid).collect { programs ->
                 updateState { state ->
                     state.copy(
-                        isLoading = false,
+                        isLoading = state.applyingTemplateKey != null,
                         userPrograms = programs,
                         deletingProgramIds = state.deletingProgramIds.intersect(programs.map { it.id }.toSet())
                     )
@@ -622,25 +624,29 @@ FORMAT:
     // ── Create From Template ──────────────────────────────────────────────────
 
     fun selectTemplate(templateKey: String) {
+        if (templateApplyInFlight || uiState.value.applyingTemplateKey != null) return
         val uid = currentUserId() ?: run {
             sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
             return
         }
+        templateApplyInFlight = true
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true, error = null) }
+            updateState { it.copy(isLoading = true, applyingTemplateKey = templateKey, error = null) }
             programRepository.createFromTemplate(uid, templateKey)
                 .onSuccess { program ->
+                    templateApplyInFlight = false
                     updateState { state ->
                         val updated = state.userPrograms
                             .map { it.copy(isActive = false) }
                             .toMutableList()
                             .also { it.add(0, program) }
-                        state.copy(isLoading = false, userPrograms = updated)
+                        state.copy(isLoading = false, applyingTemplateKey = null, userPrograms = updated)
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = programSaveErrorMessage(err)) }
+                    templateApplyInFlight = false
+                    updateState { it.copy(isLoading = false, applyingTemplateKey = null, error = programSaveErrorMessage(err)) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program oluşturulamadı."))
                 }
         }

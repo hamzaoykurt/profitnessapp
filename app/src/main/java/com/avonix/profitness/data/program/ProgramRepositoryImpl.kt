@@ -121,7 +121,9 @@ class ProgramRepositoryImpl @Inject constructor(
 
                 val programDto = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId); eq("is_active", true) } }
-                    .decodeSingle<ProgramDto>()
+                    .decodeList<ProgramDto>()
+                    .maxByOrNull { it.created_at }
+                    ?: error("Aktif program bulunamadı")
 
                 // Tüm egzersizleri çek
                 val allExercises = supabase.postgrest["exercises"]
@@ -199,7 +201,9 @@ class ProgramRepositoryImpl @Inject constructor(
 
                 val programDto = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId); eq("is_active", true) } }
-                    .decodeSingle<ProgramDto>()
+                    .decodeList<ProgramDto>()
+                    .maxByOrNull { it.created_at }
+                    ?: error("Aktif program bulunamadı")
 
                 days.forEachIndexed { dayIdx, dayInput ->
                     supabase.postgrest["program_days"]

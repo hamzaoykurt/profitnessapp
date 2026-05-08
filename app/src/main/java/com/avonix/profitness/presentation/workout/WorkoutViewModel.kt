@@ -13,6 +13,9 @@ import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.sync.SyncCoordinator
 import com.avonix.profitness.data.workout.WorkoutRepository
+import com.avonix.profitness.domain.challenges.ChallengeKind
+import com.avonix.profitness.domain.challenges.ChallengeMovement
+import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,11 +68,13 @@ data class WorkoutScreenState(
     // Progressive overload — per-set weight input. Reps are read from the program.
     val setWeights: Map<String, Map<Int, String>> = emptyMap(),
     val setReps: Map<String, Map<Int, String>> = emptyMap(),
+    val setDurations: Map<String, Map<Int, String>> = emptyMap(),
     val lastSessionData: Map<String, Map<Int, Pair<Float?, Int?>>> = emptyMap(),
     val activityDurations: Map<String, String> = emptyMap(),
     val activityDistances: Map<String, String> = emptyMap(),
     val activityElevations: Map<String, String> = emptyMap(),
     val activityInclines: Map<String, String> = emptyMap(),
+    val challengeSyncVersion: Int = 0,
     val profileWeightKg: Float = 0f,
     // ExerciseDetailSheet — progresyon
     val exerciseHistory: Map<String, List<SetCompletionEntity>> = emptyMap(),
@@ -499,12 +504,29 @@ class WorkoutViewModel @Inject constructor(
 
         val isCurrentlyDone = setIndex in (currentState.setCompletions[dbExerciseId] ?: emptySet())
         markSetCompletionOptimistically(dbExerciseId, setIndex, !isCurrentlyDone)
+        val isDurationSet = isDurationSetBased(exercise)
 
         viewModelScope.launch {
             if (isCurrentlyDone) {
                 // Tik'i kaldır: reps_actual'ı null yap (weight draft olarak korunur)
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, null)
             } else {
+                if (isDurationSet) {
+                    val durationSeconds = currentState.setDurations[exerciseId]?.get(setIndex)
+                        ?.toIntOrNull()
+                        ?.takeIf { it > 0 }
+                        ?: exercise.plannedDurationSeconds()
+                        ?: 60
+                    workoutRepository.upsertSetActivityMetrics(
+                        userId = userId,
+                        exerciseId = dbExerciseId,
+                        programDayId = programDayId,
+                        setIndex = setIndex,
+                        durationSeconds = durationSeconds,
+                        distanceMeters = null
+                    )
+                    workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, 1)
+                } else {
                 // Tik ekle: tekrar sayısı programda tanımlı olan değerden gelir.
                 val reps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
                 // Ağırlık fallback: kullanıcı girdisi > son seans > program planı > vücut ağırlığı hareketinde profil kilosu.
@@ -518,6 +540,7 @@ class WorkoutViewModel @Inject constructor(
                     workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, weight)
                 }
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, reps)
+                }
 
                 val completedAfter = (currentState.setCompletions[dbExerciseId] ?: emptySet()) + setIndex
                 val shouldAutoComplete =
@@ -553,6 +576,16 @@ class WorkoutViewModel @Inject constructor(
         }
         // Set tik atılmış olsa da olmasa da Room'a draft olarak yaz (debounced).
         scheduleDraftPersist(exerciseId, setIndex, weight = true, reps = false)
+    }
+
+    fun updateSetDuration(exerciseId: String, setIndex: Int, value: String) {
+        val clean = value.filter { it.isDigit() }.take(4)
+        updateState { state ->
+            val exerciseMap = state.setDurations[exerciseId].orEmpty().toMutableMap()
+            exerciseMap[setIndex] = clean
+            state.copy(setDurations = state.setDurations + (exerciseId to exerciseMap))
+        }
+        persistSetDurationDraft(exerciseId, setIndex, clean.toIntOrNull())
     }
 
     fun updateActivityDuration(exerciseId: String, value: String) {
@@ -647,6 +680,30 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    private fun persistSetDurationDraft(exerciseId: String, setIndex: Int, durationSeconds: Int?) {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val state = uiState.value
+        val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
+        val programDayId = dayState.day.programDayId
+        if (programDayId.isBlank()) return
+        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
+            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+
+        val key = "$exerciseId:$setIndex:dur"
+        draftPersistJobs[key]?.cancel()
+        draftPersistJobs[key] = viewModelScope.launch {
+            delay(500L)
+            workoutRepository.upsertSetActivityMetrics(
+                userId = userId,
+                exerciseId = dbExerciseId,
+                programDayId = programDayId,
+                setIndex = setIndex,
+                durationSeconds = durationSeconds,
+                distanceMeters = null
+            )
+        }
+    }
+
     /**
      * Seçili günün tüm egzersizleri için önceki oturum verisini yükler.
      * Kart açılmadan da önceki haftanın ağırlık/reps değerleri setWeights'e pre-fill olur.
@@ -695,6 +752,7 @@ class WorkoutViewModel @Inject constructor(
                     }
                 }
                 prefillActivityInputs(exerciseId, todaySets)
+                prefillSetDurations(exerciseId, todaySets)
                 // Tekrar sayılarını doldur: bugünkü repsActual > program planı
                 val currentReps = uiState.value.setReps[exerciseId]
                 if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
@@ -738,6 +796,7 @@ class WorkoutViewModel @Inject constructor(
                     }
                 }
                 prefillActivityInputs(exerciseId, sets)
+                prefillSetDurations(exerciseId, sets)
                 // Tekrar sayılarını doldur: önceki seans repsActual > program planı
                 val currentReps = uiState.value.setReps[exerciseId]
                 if (currentReps.isNullOrEmpty() && totalSets > 0 && !plannedReps.isNullOrEmpty()) {
@@ -917,6 +976,7 @@ class WorkoutViewModel @Inject constructor(
                     repsCompleted = if (activityBased) 0 else exercise.reps.toIntOrNull() ?: 0,
                     durationSeconds = durationSeconds ?: 0
                 )
+                syncMatchingMovementListEvents(exercise, dbExerciseId)
 
                 // Stats güncelle (Supabase, arka plan) + challenge progress refresh
                 viewModelScope.launch {
@@ -1000,6 +1060,7 @@ class WorkoutViewModel @Inject constructor(
             repsCompleted = exercise.reps.toIntOrNull() ?: 0,
             durationSeconds = 0
         )
+        syncMatchingMovementListEvents(exercise, dbExerciseId)
 
         viewModelScope.launch {
             workoutRepository.updateStreak(userId)
@@ -1061,6 +1122,7 @@ class WorkoutViewModel @Inject constructor(
                     repsCompleted = 0,
                     durationSeconds = durationSeconds
                 )
+                syncMatchingMovementListEvents(exercise, dbExerciseId)
 
                 viewModelScope.launch {
                     workoutRepository.updateStreak(userId)
@@ -1074,6 +1136,54 @@ class WorkoutViewModel @Inject constructor(
             }
         }
     }
+
+    private suspend fun syncMatchingMovementListEvents(exercise: Exercise, dbExerciseId: String) {
+        if (exercise.challengeId != null) return
+        val today = LocalDate.now().toString()
+        val events = challengeRepository.listMyEventsForDate(today)
+            .getOrNull()
+            .orEmpty()
+            .filter { summary ->
+                summary.isJoined &&
+                    summary.kind == ChallengeKind.Event &&
+                    summary.event?.mode == EventMode.MovementList
+            }
+        if (events.isEmpty()) return
+
+        var completedAny = false
+        events.forEach { summary ->
+            val detail = challengeRepository.getChallengeDetail(summary.id).getOrNull() ?: return@forEach
+            val movementIds = detail.movements
+                .filter { movement ->
+                    !movement.myCompleted && movement.matchesExercise(exercise, dbExerciseId)
+                }
+                .map { it.id }
+            if (movementIds.isNotEmpty()) {
+                val completedCount = challengeRepository.completeMultipleMovements(summary.id, movementIds)
+                    .getOrNull()
+                    ?: 0
+                completedAny = completedAny || completedCount > 0
+            }
+        }
+
+        if (completedAny) {
+            runCatching { challengeRepository.refreshMyProgress() }
+            updateState { state -> state.copy(challengeSyncVersion = state.challengeSyncVersion + 1) }
+        }
+    }
+
+    private fun ChallengeMovement.matchesExercise(exercise: Exercise, dbExerciseId: String): Boolean {
+        val ids = listOf(exercise.id, exercise.exerciseTableId, dbExerciseId)
+            .filter { it.isNotBlank() }
+            .toSet()
+        if (exerciseId.isNotBlank() && exerciseId in ids) return true
+        return exerciseName.normalizedExerciseMatchKey() == exercise.name.normalizedExerciseMatchKey()
+    }
+
+    private fun String.normalizedExerciseMatchKey(): String =
+        lowercase()
+            .normalizeWorkoutVmText()
+            .filter { it.isLetterOrDigit() }
 
     private fun markExerciseCompletedOptimistically(dayIdx: Int, exerciseId: String) {
         updateState { state ->
@@ -1344,6 +1454,17 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    private fun prefillSetDurations(exerciseId: String, sets: List<SetCompletionEntity>) {
+        val durations = sets
+            .filter { it.durationSeconds != null && it.durationSeconds > 0 }
+            .associate { it.setIndex to it.durationSeconds!!.toString() }
+        if (durations.isEmpty()) return
+        updateState { state ->
+            val current = state.setDurations[exerciseId].orEmpty()
+            state.copy(setDurations = state.setDurations + (exerciseId to (durations + current)))
+        }
+    }
+
     fun toggleChallengeActivity(dayIdx: Int, exercise: Exercise) {
         viewModelScope.launch {
             val currentState = uiState.value
@@ -1423,8 +1544,47 @@ class WorkoutViewModel @Inject constructor(
             reps = exercise.reps,
             sportTypeRaw = exercise.sportType,
             trackingModeRaw = exercise.trackingMode
-        ) != ExerciseMetric.Strength
+        ) != ExerciseMetric.Strength && !isDurationSetBased(exercise)
     }
+
+    private fun isDurationSetBased(exercise: Exercise): Boolean {
+        val metric = classifyExerciseMetric(
+            category = exercise.category,
+            name = exercise.name,
+            target = exercise.target,
+            reps = exercise.reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        )
+        if (metric != ExerciseMetric.Duration || exercise.sets <= 1) return false
+        val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
+            .joinToString(" ")
+            .lowercase()
+            .normalizeWorkoutVmText()
+        return listOf("plank", "wall sit", "hollow hold", "dead hang", "jump rope", "mountain climber")
+            .any { it in haystack }
+    }
+
+    private fun Exercise.plannedDurationSeconds(): Int? {
+        targetDurationSeconds?.let { return it }
+        val value = reps.lowercase().normalizeWorkoutVmText()
+        return when {
+            value.contains("dk") || value.contains("min") || value.contains("dakika") ->
+                value.filter { it.isDigit() || it == ',' || it == '.' }
+                    .replace(',', '.')
+                    .toFloatOrNull()
+                    ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+            else -> value.filter { it.isDigit() }.toIntOrNull()?.coerceAtLeast(1)
+        }
+    }
+
+    private fun String.normalizeWorkoutVmText(): String =
+        replace('\u0131', 'i')
+            .replace('\u011f', 'g')
+            .replace('\u00fc', 'u')
+            .replace('\u015f', 's')
+            .replace('\u00f6', 'o')
+            .replace('\u00e7', 'c')
 
     private fun String.toFloatInputOrNull(): Float? =
         replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }

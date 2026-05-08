@@ -496,6 +496,9 @@ private fun WorkoutContent(
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
     WorkoutRefreshOnResumeEffect { dashboardVm.reloadIfStale() }
+    LaunchedEffect(state.challengeSyncVersion) {
+        if (state.challengeSyncVersion > 0) dashboardVm.refresh(force = true)
+    }
 
     // Event banner verisi stale ise resume sonrası yenilenir; UI tab geçişi bloklanmaz.
     val todayEvents = dashState.today
@@ -680,10 +683,12 @@ private fun WorkoutContent(
                         if (expanded) viewModel.loadLastSession(exercise.id)
                     },
                     setWeights        = state.setWeights[exercise.id] ?: emptyMap(),
+                    setDurations      = state.setDurations[exercise.id] ?: emptyMap(),
                     lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
                     profileWeightKg   = state.profileWeightKg,
                     activityDuration  = state.activityDurations[exercise.id]
                         ?: exercise.targetDurationSeconds?.let { (it / 60f).trimmedUi() }
+                        ?: exercise.inferredHoldDurationSeconds()?.let { (it / 60f).trimmedUi() }
                         ?: "",
                     activityDistance  = state.activityDistances[exercise.id]
                         ?: exercise.targetDistanceMeters?.trimmedUi()
@@ -695,6 +700,7 @@ private fun WorkoutContent(
                         ?: exercise.targetInclinePercent?.trimmedUi()
                         ?: "",
                     onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
+                    onSetDurationChanged = { si, v -> viewModel.updateSetDuration(exercise.id, si, v) },
                     onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
                     onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
                     onActivityElevationChanged = { v -> viewModel.updateActivityElevation(exercise.id, v) },
@@ -785,6 +791,38 @@ private fun challengeExerciseForHome(
 
 private fun Float.trimmedUi(): String =
     if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+
+private fun Exercise.inferredHoldDurationSeconds(): Int? {
+    val metric = classifyExerciseMetric(category, name, target, reps, sportType, trackingMode)
+    if (metric != ExerciseMetric.Duration) return null
+    val haystack = listOf(category, name, target)
+        .joinToString(" ")
+        .lowercase()
+        .normalizeWorkoutText()
+    val isTimedHold = listOf("plank", "wall sit", "hollow hold", "dead hang")
+        .any { it in haystack }
+    if (!isTimedHold) return null
+    val cleaned = reps.lowercase().normalizeWorkoutText().trim()
+    return when {
+        cleaned.contains("dk") || cleaned.contains("min") || cleaned.contains("dakika") ->
+            cleaned.filter { it.isDigit() || it == ',' || it == '.' }
+                .replace(',', '.')
+                .toFloatOrNull()
+                ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+        else ->
+            cleaned.filter { it.isDigit() }
+                .toIntOrNull()
+                ?.coerceAtLeast(1)
+    }
+}
+
+private fun String.normalizeWorkoutText(): String =
+    replace('\u0131', 'i')
+        .replace('\u011f', 'g')
+        .replace('\u00fc', 'u')
+        .replace('\u015f', 's')
+        .replace('\u00f6', 'o')
+        .replace('\u00e7', 'c')
 
 @Composable
 private fun SkippedProgramNotice() {
