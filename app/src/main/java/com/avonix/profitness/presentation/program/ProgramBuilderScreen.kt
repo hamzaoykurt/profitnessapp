@@ -234,80 +234,113 @@ private val READY_PROGRAMS = listOf(
     ),
     ReadyProgram(
         "Bisiklet 4 Hafta",
-        "Temel Sürüş & Kondisyon",
-        ProgramCategory.ENDURANCE, 3, 4, "Başlangıç",
+        "Sürüş + Bacak Kuvveti",
+        ProgramCategory.ENDURANCE, 5, 4, "Başlangıç",
         "Bisiklet",
-        "Haftada 3 gün süre, mesafe ve hafif eğim hedefleriyle bisiklet kondisyonu kurar.",
-        "📌 Paz: Kolay sürüş\n📌 Çar: Tempo sürüş\n📌 Cum: Uzun sürüş",
-        listOf("BİSİKLET", "KARDİYO", "ALT VÜCUT"),
-        listOf("86%", "82%", "58%"),
-        listOf(0.86f, 0.82f, 0.58f)
+        "Bisikletçi mantığında kurulmuş haftalık yapı: zone 2 sürüş, tırmanış/tempo, uzun sürüş, bacak kuvveti ve core stabilizasyonu. Sadece pedal çevirmek değil, sele üstündeki gücü taşıyacak alt vücut ve posterior chain de çalışır.",
+        "📌 Pzt: Zone 2 Ride + Core\n📌 Sal: Cyclist Strength\n📌 Per: Tempo & Climb Ride\n📌 Cum: Bike Conditioning\n📌 Paz: Long Ride",
+        listOf("BİSİKLET", "ALT VÜCUT", "CORE"),
+        listOf("88%", "78%", "62%"),
+        listOf(0.88f, 0.78f, 0.62f)
     ),
     ReadyProgram(
         "5K Koşu Temeli",
-        "Koşuya Başlangıç",
-        ProgramCategory.ENDURANCE, 3, 6, "Başlangıç",
+        "Koşu + Runner Strength",
+        ProgramCategory.ENDURANCE, 4, 6, "Başlangıç",
         "Koşu",
-        "Koşu/yürüyüş geçişleriyle 5K mesafesine güvenli hazırlık sağlar.",
-        "📌 Paz: Kolay koşu\n📌 Çar: Interval\n📌 Cum: Uzun koşu",
-        listOf("KOŞU", "KARDİYO", "CORE"),
-        listOf("88%", "72%", "46%"),
-        listOf(0.88f, 0.72f, 0.46f)
+        "5K için yalnızca koşu değil; kolay koşu, interval, uzun koşu, tek bacak kuvveti, kalça/hamstring ve calf dayanıklılığı içerir. Koşucuda sakatlık riskini azaltan stabilite işleri de eklenmiştir.",
+        "📌 Pzt: Easy Run + Stability\n📌 Sal: Runner Strength\n📌 Per: Interval Run\n📌 Cmt: Long Run + Mobility",
+        listOf("KOŞU", "ALT VÜCUT", "CORE"),
+        listOf("86%", "64%", "52%"),
+        listOf(0.86f, 0.64f, 0.52f)
     ),
     ReadyProgram(
         "Yüzme Temel",
-        "Havuz Dayanıklılığı",
-        ProgramCategory.ENDURANCE, 3, 4, "Başlangıç",
+        "Yüzme + Omuz/Sırt Dayanıklılığı",
+        ProgramCategory.ENDURANCE, 4, 4, "Başlangıç",
         "Yüzme",
-        "Süre ve mesafe odaklı yüzme seanslarıyla teknik ve kapasite geliştirir.",
-        "📌 Paz: Teknik\n📌 Çar: Mesafe\n📌 Cum: Karışık tempo",
-        listOf("YÜZME", "KARDİYO", "CORE"),
-        listOf("80%", "74%", "55%"),
-        listOf(0.80f, 0.74f, 0.55f)
+        "Havuz mesafesiyle birlikte lat, scapula, omuz stabilitesi ve core çalışır. Teknik yüzme, threshold yüzme, mesafe günü ve kuru kara kuvveti gerçekçi şekilde dengelenir.",
+        "📌 Pzt: Technique Swim + Scapula\n📌 Çar: Swimmer Strength\n📌 Cum: Threshold Swim\n📌 Paz: Distance Swim",
+        listOf("YÜZME", "SIRT/OMUZ", "CORE"),
+        listOf("78%", "64%", "58%"),
+        listOf(0.78f, 0.64f, 0.58f)
     ),
     ReadyProgram(
         "Kürek Erg Temel",
-        "Rowing Kondisyonu",
-        ProgramCategory.ENDURANCE, 3, 4, "Orta",
+        "Erg + Total Body Kuvvet",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
         "Kürek",
-        "Kürek makinesinde tempo, mesafe ve interval bloklarıyla kondisyon kurar.",
-        "📌 Paz: Teknik tempo\n📌 Çar: Interval\n📌 Cum: Uzun erg",
-        listOf("KÜREK", "KARDİYO", "SIRT"),
-        listOf("82%", "76%", "50%"),
-        listOf(0.82f, 0.76f, 0.50f)
+        "Kürekçinin ihtiyacı olan bacak itişi, kalça menteşesi, sırt çekişi ve core transferi için erg günlerini deadlift/squat/row kuvvet günüyle birleştirir.",
+        "📌 Pzt: Technique Erg + Core\n📌 Sal: Rowing Strength\n📌 Per: Erg Intervals\n📌 Cmt: Long Erg",
+        listOf("KÜREK", "SIRT", "ALT VÜCUT"),
+        listOf("80%", "70%", "72%"),
+        listOf(0.80f, 0.70f, 0.72f)
     ),
     ReadyProgram(
         "Yürüyüş & Hiking",
         "Düşük Etki Dayanıklılık",
         ProgramCategory.ENDURANCE, 4, 4, "Başlangıç",
         "Yürüyüş",
-        "Mesafe, süre ve yükselti takibiyle yürüyüş/hiking alışkanlığı kazandırır.",
-        "📌 Pzt: Kolay yürüyüş\n📌 Çar: Tempo\n📌 Cum: Eğim\n📌 Paz: Uzun yürüyüş",
-        listOf("YÜRÜYÜŞ", "KARDİYO", "MOBİLİTE"),
-        listOf("74%", "66%", "42%"),
-        listOf(0.74f, 0.66f, 0.42f)
+        "Uzun yürüyüş ve eğim günlerinin yanına hiking için bacak kuvveti, calf dayanıklılığı, kalça/hamstring ve mobilite ekler. Doğa yürüyüşüne daha gerçekçi hazırlanır.",
+        "📌 Pzt: Easy Walk + Mobility\n📌 Sal: Hiking Strength\n📌 Per: Incline Walk\n📌 Paz: Long Walk",
+        listOf("YÜRÜYÜŞ", "ALT VÜCUT", "MOBİLİTE"),
+        listOf("76%", "58%", "48%"),
+        listOf(0.76f, 0.58f, 0.48f)
     ),
     ReadyProgram(
         "Boks Kondisyon",
-        "Round Bazlı Antrenman",
-        ProgramCategory.FAT_LOSS, 3, 4, "Orta",
+        "Round + Kuvvet + Kondisyon",
+        ProgramCategory.FAT_LOSS, 4, 4, "Orta",
         "Boks",
-        "Shadow boxing ve ip atlama bloklarıyla round/süre odaklı kondisyon sağlar.",
-        "📌 Paz: Teknik round\n📌 Çar: Kondisyon\n📌 Cum: Karma interval",
-        listOf("BOKS", "HIIT", "OMUZ"),
-        listOf("78%", "84%", "56%"),
-        listOf(0.78f, 0.84f, 0.56f)
+        "Boks için round çalışması, ip atlama, omuz/sırt dayanıklılığı, core rotasyonu ve fight conditioning bloklarını birleştirir. Sadece shadow boxing değil, ring kondisyonuna yakın bir yapı.",
+        "📌 Pzt: Skill Rounds + Rope\n📌 Sal: Boxing Strength\n📌 Per: Fight Conditioning\n📌 Cmt: Mixed Intervals",
+        listOf("BOKS", "HIIT", "CORE"),
+        listOf("78%", "86%", "62%"),
+        listOf(0.78f, 0.86f, 0.62f)
     ),
     ReadyProgram(
         "Yoga Mobilite",
-        "Esneklik & Toparlanma",
-        ProgramCategory.BEGINNER, 3, 4, "Başlangıç",
+        "Mobilite + Destek Kuvveti",
+        ProgramCategory.BEGINNER, 4, 4, "Başlangıç",
         "Mobilite",
-        "Süre bazlı yoga ve mobilite seanslarıyla toparlanma kalitesini artırır.",
-        "📌 Paz: Akış\n📌 Çar: Mobilite\n📌 Cum: Derin esneme",
+        "Yoga akışlarını core, posterior chain ve kontrollü kuvvet destekleriyle tamamlar. Esneklik/toparlanma hedefini korurken vücudu daha dayanıklı hale getirir.",
+        "📌 Pzt: Flow + Core\n📌 Sal: Posterior Chain Support\n📌 Per: Mobility + Breath\n📌 Paz: Deep Stretch",
         listOf("YOGA", "MOBİLİTE", "CORE"),
-        listOf("42%", "52%", "64%"),
-        listOf(0.42f, 0.52f, 0.64f)
+        listOf("46%", "58%", "68%"),
+        listOf(0.46f, 0.58f, 0.68f)
+    ),
+    ReadyProgram(
+        "Futbol Atletik",
+        "Saha Kondisyonu + Alt Vücut",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Futbol",
+        "Futbol için aerobik taban, alt vücut kuvveti, sprint/interval kondisyonu, core ve patlayıcı güç bloklarını birleştirir. Maç temposuna yakın ama spor salonunda uygulanabilir yapı.",
+        "📌 Pzt: Aerobic Base + Core\n📌 Sal: Lower Strength\n📌 Per: Speed Conditioning\n📌 Cmt: Power + Mobility",
+        listOf("FUTBOL", "ALT VÜCUT", "KONDİSYON"),
+        listOf("82%", "76%", "72%"),
+        listOf(0.82f, 0.76f, 0.72f)
+    ),
+    ReadyProgram(
+        "Basketbol Atletik",
+        "Sıçrama + Court Conditioning",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Basketbol",
+        "Basketbolcu için sıçrama mekaniği, tek bacak kuvveti, calf dayanıklılığı, üst vücut denge çalışması ve kısa aralıklı kondisyon içerir.",
+        "📌 Pzt: Jump Mechanics\n📌 Sal: Strength Base\n📌 Per: Court Conditioning\n📌 Cmt: Unilateral + Core",
+        listOf("BASKETBOL", "PATLAYICI GÜÇ", "CORE"),
+        listOf("74%", "82%", "58%"),
+        listOf(0.74f, 0.82f, 0.58f)
+    ),
+    ReadyProgram(
+        "Tenis Atletik",
+        "Ayak Çalışması + Rotasyon",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Tenis",
+        "Tenis için ayak çalışması kondisyonu, rotasyonel core, omuz/sırt dayanıklılığı ve alt vücut destek kuvvetini birleştirir.",
+        "📌 Pzt: Footwork Conditioning\n📌 Sal: Rotational Strength\n📌 Per: Lower Body Support\n📌 Cmt: Match Conditioning",
+        listOf("TENİS", "ROTASYON", "ALT VÜCUT"),
+        listOf("78%", "64%", "62%"),
+        listOf(0.78f, 0.64f, 0.62f)
     ),
     // ── BAŞLANGIÇ ────────────────────────────────────────────────────────────
     ReadyProgram(
@@ -372,9 +405,10 @@ fun ProgramBuilderScreen(
     val strings = theme.strings
 
     BackHandler(
-        enabled = showPaywall || shareTarget != null || mode !is BuilderMode.Choose
+        enabled = uiState.applyingTemplateKey != null || showPaywall || shareTarget != null || mode !is BuilderMode.Choose
     ) {
         when {
+            uiState.applyingTemplateKey != null -> Unit
             showPaywall       -> showPaywall = false
             shareTarget != null -> shareTarget = null
             mode !is BuilderMode.Choose -> mode = BuilderMode.Choose
@@ -403,6 +437,7 @@ fun ProgramBuilderScreen(
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
+                    applyingTemplateKey = uiState.applyingTemplateKey,
                     onMode           = { newMode ->
                         // AI Builder → ViewModel'in checkAiAccess'ini çağır;
                         // yetersizse ProgramEvent.ShowPaywall fırlatır.
@@ -514,6 +549,7 @@ private fun ArchitectGrid() {
 private fun BuilderChooseScreen(
     userPrograms   : List<Program>,
     isLoading      : Boolean,
+    applyingTemplateKey: String?,
     onMode         : (BuilderMode) -> Unit,
     onSelectTemplate: (String) -> Unit,
     onSetActive    : (String) -> Unit,
@@ -524,12 +560,27 @@ private fun BuilderChooseScreen(
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
+    var closeDialogAfterApply by remember { mutableStateOf(false) }
+    val isApplyingTemplate = applyingTemplateKey != null
+
+    LaunchedEffect(applyingTemplateKey) {
+        if (closeDialogAfterApply && applyingTemplateKey == null) {
+            selectedProgram = null
+            closeDialogAfterApply = false
+        }
+    }
 
     selectedProgram?.let { prog ->
         ProgramDetailDialog(
             program   = prog,
-            onDismiss = { selectedProgram = null },
-            onApply   = { onSelectTemplate(prog.title); selectedProgram = null }
+            isApplying = isApplyingTemplate,
+            onDismiss = { if (!isApplyingTemplate) selectedProgram = null },
+            onApply   = {
+                if (!isApplyingTemplate) {
+                    closeDialogAfterApply = true
+                    onSelectTemplate(prog.title)
+                }
+            }
         )
     }
 
@@ -1242,12 +1293,17 @@ private fun SavedProgramTile(
 // ── Program Detail Dialog ─────────────────────────────────────────────────────
 
 @Composable
-private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit, onApply: () -> Unit = onDismiss) {
+private fun ProgramDetailDialog(
+    program: ReadyProgram,
+    isApplying: Boolean,
+    onDismiss: () -> Unit,
+    onApply: () -> Unit = onDismiss
+) {
     val accent  = program.category.color
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { if (!isApplying) onDismiss() }) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1355,18 +1411,71 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit, on
 
                 Button(
                     onClick = onApply,
+                    enabled = !isApplying,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent,
+                        contentColor = Surface0,
+                        disabledContainerColor = accent.copy(0.72f),
+                        disabledContentColor = Surface0.copy(0.82f)
+                    ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text(
-                        strings.applyProtocol,
-                        color = Surface0,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
-                    )
+                    if (isApplying) {
+                        CircularProgressIndicator(
+                            color = Surface0,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "UYGULANIYOR",
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    } else {
+                        Text(
+                            strings.applyProtocol,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
+
+            if (isApplying) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(theme.bg0.copy(alpha = 0.58f))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = {}
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = accent, modifier = Modifier.size(42.dp), strokeWidth = 3.dp)
+                        Spacer(Modifier.height(14.dp))
+                        Text(
+                            "PROTOKOL UYGULANIYOR",
+                            color = theme.text0,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp,
+                            letterSpacing = 1.5.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Tamamlanana kadar bekleyin",
+                            color = theme.text1,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -1645,6 +1754,8 @@ private fun EditProgramScreen(
     val exercises  = uiState.exercises
     val editTheme  = LocalAppTheme.current
     val editStrings = editTheme.strings
+    val editAccent = editTheme.effectiveAccentColor
+    val editOnAccent = editTheme.effectiveOnAccentColor
 
     var programName      by remember { mutableStateOf(program.name) }
     var showPickerForDay by remember { mutableStateOf<Int?>(null) }
@@ -1750,7 +1861,7 @@ private fun EditProgramScreen(
                     .border(
                         1.dp,
                         Brush.linearGradient(
-                            listOf(CardCyan.copy(0.65f), editTheme.stroke, CardCyan.copy(0.22f))
+                            listOf(editAccent.copy(0.65f), editTheme.stroke, editAccent.copy(0.22f))
                         ),
                         modalShape
                     )
@@ -1761,7 +1872,7 @@ private fun EditProgramScreen(
                         .background(editTheme.bg2)
                         .drawWithCache {
                             val glow = Brush.radialGradient(
-                                listOf(CardCyan.copy(0.20f), Color.Transparent),
+                                listOf(editAccent.copy(0.20f), Color.Transparent),
                                 center = Offset(size.width, 0f),
                                 radius = size.width * 0.9f
                             )
@@ -1777,21 +1888,21 @@ private fun EditProgramScreen(
                             modifier = Modifier
                                 .size(46.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(CardCyan.copy(0.13f))
-                                .border(1.dp, CardCyan.copy(0.36f), RoundedCornerShape(14.dp)),
+                                .background(editAccent.copy(0.13f))
+                                .border(1.dp, editAccent.copy(0.36f), RoundedCornerShape(14.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
-                                tint     = CardCyan,
+                                tint     = editAccent,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "AI İLE DÜZENLE",
-                                color         = CardCyan,
+                                color         = editAccent,
                                 fontWeight    = FontWeight.ExtraBold,
                                 fontSize      = 11.sp,
                                 letterSpacing = 1.8.sp
@@ -1807,13 +1918,13 @@ private fun EditProgramScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(CardCyan.copy(0.10f))
-                                    .border(1.dp, CardCyan.copy(0.28f), RoundedCornerShape(999.dp))
+                                    .background(editAccent.copy(0.10f))
+                                    .border(1.dp, editAccent.copy(0.28f), RoundedCornerShape(999.dp))
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     "${uiState.aiCredits} kredi",
-                                    color = CardCyan,
+                                    color = editAccent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 )
@@ -1831,7 +1942,7 @@ private fun EditProgramScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(editTheme.bg0)
-                            .border(1.dp, CardCyan.copy(0.34f), RoundedCornerShape(14.dp))
+                            .border(1.dp, editAccent.copy(0.34f), RoundedCornerShape(14.dp))
                             .padding(16.dp)
                     ) {
                         BasicTextField(
@@ -1927,15 +2038,15 @@ private fun EditProgramScreen(
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
                             colors   = ButtonDefaults.buttonColors(
-                                containerColor = CardCyan,
-                                contentColor = Surface0,
+                                containerColor = editAccent,
+                                contentColor = editOnAccent,
                                 disabledContainerColor = editTheme.bg3,
                                 disabledContentColor = editTheme.text2
                             )
                         ) {
                             if (uiState.aiEditLoading) {
                                 CircularProgressIndicator(
-                                    color       = Surface0,
+                                    color       = editOnAccent,
                                     modifier    = Modifier.size(18.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -1948,13 +2059,13 @@ private fun EditProgramScreen(
                                     Row(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(20.dp))
-                                            .background(Surface0.copy(alpha = 0.14f))
+                                            .background(editOnAccent.copy(alpha = 0.14f))
                                             .padding(horizontal = 6.dp, vertical = 2.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Rounded.Bolt, null, tint = Surface0, modifier = Modifier.size(9.dp))
+                                        Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(9.dp))
                                         Spacer(Modifier.width(2.dp))
-                                        Text("6 kredi", color = Surface0, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        Text("6 kredi", color = editOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1974,20 +2085,20 @@ private fun EditProgramScreen(
             .fillMaxSize()
             .background(editTheme.bg0)
             .drawWithCache {
-                val cyanBloom = Brush.radialGradient(
+                val accentBloom = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f to CardCyan.copy(alpha = 0.12f),
-                        0.42f to CardCyan.copy(alpha = 0.045f),
+                        0.0f to editAccent.copy(alpha = 0.12f),
+                        0.42f to editAccent.copy(alpha = 0.045f),
                         1.0f to Color.Transparent
                     ),
                     center = Offset(size.width, 0f),
                     radius = size.width * 1.45f
                 )
-                onDrawBehind { drawRect(cyanBloom) }
+                onDrawBehind { drawRect(accentBloom) }
             }
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp + timerExtraPad)) {
-            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack, accent = CardCyan)
+            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack, accent = editAccent)
 
             // Program adı
             Box(
@@ -1996,7 +2107,7 @@ private fun EditProgramScreen(
                     .padding(horizontal = 24.dp, vertical = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(editTheme.bg1.copy(alpha = 0.92f))
-                    .border(1.dp, CardCyan.copy(0.26f), RoundedCornerShape(16.dp))
+                    .border(1.dp, editAccent.copy(0.26f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2004,10 +2115,10 @@ private fun EditProgramScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(CardCyan.copy(0.10f)),
+                            .background(editAccent.copy(0.10f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.EditNote, null, tint = CardCyan, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.EditNote, null, tint = editAccent, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     androidx.compose.foundation.text.BasicTextField(
@@ -2056,11 +2167,11 @@ private fun EditProgramScreen(
                             onClick  = { days.add(MutableManualDay()) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Rounded.Add, null, tint = CardCyan, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Add, null, tint = editAccent, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 "+ YENİ GÜN  (${days.size}/7)",
-                                color      = CardCyan,
+                                color      = editAccent,
                                 fontWeight = FontWeight.Bold,
                                 fontSize   = 13.sp
                             )
@@ -2098,13 +2209,13 @@ private fun EditProgramScreen(
                     shape           = RoundedCornerShape(16.dp),
                     contentPadding  = PaddingValues(horizontal = 16.dp),
                     colors          = ButtonDefaults.outlinedButtonColors(
-                        containerColor = CardCyan.copy(0.10f),
-                        contentColor = CardCyan,
+                        containerColor = editAccent.copy(0.10f),
+                        contentColor = editAccent,
                         disabledContentColor = editTheme.text2
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        Brush.linearGradient(listOf(CardCyan.copy(0.85f), CardCyan.copy(0.28f)))
+                        Brush.linearGradient(listOf(editAccent.copy(0.85f), editAccent.copy(0.28f)))
                     )
                 ) {
                     Column(
@@ -2114,12 +2225,12 @@ private fun EditProgramScreen(
                         Icon(
                             Icons.Rounded.AutoAwesome,
                             contentDescription = null,
-                            tint     = CardCyan,
+                            tint     = editAccent,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             "AI",
-                            color         = CardCyan,
+                            color         = editAccent,
                             fontWeight    = FontWeight.Black,
                             fontSize      = 11.sp,
                             letterSpacing = 1.sp
@@ -2153,8 +2264,8 @@ private fun EditProgramScreen(
                     },
                     modifier = Modifier.weight(1f).height(64.dp),
                     colors   = ButtonDefaults.buttonColors(
-                        containerColor = CardCyan,
-                        contentColor = Surface0,
+                        containerColor = editAccent,
+                        contentColor = editOnAccent,
                         disabledContainerColor = editTheme.bg3,
                         disabledContentColor = editTheme.text2
                     ),
@@ -2162,7 +2273,7 @@ private fun EditProgramScreen(
                     enabled  = !isLoading && !uiState.aiEditLoading
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = Surface0, modifier = Modifier.size(22.dp))
+                        CircularProgressIndicator(color = editOnAccent, modifier = Modifier.size(22.dp))
                     } else {
                         Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
@@ -2189,6 +2300,8 @@ private fun ManualBuilderScreen(
     val exercises   = uiState.exercises
     val manTheme    = LocalAppTheme.current
     val manStrings  = manTheme.strings
+    val manAccent   = manTheme.effectiveAccentColor
+    val manOnAccent = manTheme.effectiveOnAccentColor
 
     var programName       by remember { mutableStateOf("") }
     val days              = remember { mutableStateListOf<MutableManualDay>().also { it.add(MutableManualDay()) } }
@@ -2233,7 +2346,7 @@ private fun ManualBuilderScreen(
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + timerExtraPad)) {
-        DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
+        DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack, accent = manAccent)
 
         // ── Program name input ────────────────────────────────────────────────
         Box(
@@ -2291,11 +2404,11 @@ private fun ManualBuilderScreen(
                         onClick = { days.add(MutableManualDay()) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Rounded.Add, null, tint = CardCyan, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Add, null, tint = manAccent, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
                             "+ YENİ GÜN  (${days.size}/7)",
-                            color = CardCyan,
+                            color = manAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -2332,14 +2445,19 @@ private fun ManualBuilderScreen(
                 .fillMaxWidth()
                 .height(64.dp)
                 .padding(horizontal = 24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = manAccent,
+                contentColor = manOnAccent,
+                disabledContainerColor = manTheme.bg3,
+                disabledContentColor = manTheme.text2
+            ),
             shape = RoundedCornerShape(16.dp),
             enabled = !isLoading
         ) {
             if (isLoading) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                CircularProgressIndicator(color = manOnAccent, modifier = Modifier.size(22.dp))
             } else {
-                Text(manStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+                Text(manStrings.saveProtocol, color = manOnAccent, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -2357,7 +2475,7 @@ private fun ManualDayCard(
     onEditExercise  : (Int) -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
-    val accent = if (day.isRestDay) Mist else CardCyan
+    val accent = if (day.isRestDay) Mist else theme.effectiveAccentColor
 
     Column(
         modifier = Modifier
@@ -2559,7 +2677,8 @@ private fun ExerciseEditDialog(
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
+    val onAccent = theme.effectiveOnAccentColor
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -2642,12 +2761,12 @@ private fun ExerciseEditDialog(
                 Button(
                     onClick  = { onConfirm(sets, reps, exercise.restSeconds) },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent),
+                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Kaydet", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                    Text("Kaydet", color = onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         }

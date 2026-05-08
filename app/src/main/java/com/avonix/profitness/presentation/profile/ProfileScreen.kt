@@ -99,7 +99,6 @@ fun ProfileScreen(
                     accent           = accent,
                     theme            = theme,
                     onSettingsClick  = { showAppearance = true },
-                    onEditAvatar     = onEditProfile,
                     onNavigateToStore = onNavigateToStore
                 )
             }
@@ -345,7 +344,6 @@ private fun ProfileHeroBanner(
     accent          : Color,
     theme           : AppThemeState,
     onSettingsClick : () -> Unit,
-    onEditAvatar    : () -> Unit = {},
     onNavigateToStore: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -471,25 +469,6 @@ private fun ProfileHeroBanner(
                     } else {
                         Text(avatar, fontSize = 40.sp)
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(theme.bg0)
-                        .padding(3.dp)
-                        .clip(CircleShape)
-                        .background(accent)
-                        .clickable(onClick = onEditAvatar),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Edit,
-                        null,
-                        tint     = Color.Black,
-                        modifier = Modifier.size(12.dp)
-                    )
                 }
             }
 
