@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -56,6 +55,7 @@ import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.social.PublicProfile
+import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -124,16 +124,7 @@ fun PublicProfileOverlay(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (theme.isDark) Color.Black.copy(0.55f) else theme.bg2.copy(0.9f))
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
-                }
+                AppBackButton(onClick = onBack, size = 48.dp)
             }
         }
     }

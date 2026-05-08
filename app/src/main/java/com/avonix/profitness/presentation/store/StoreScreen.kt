@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.store.BillingProduct
 import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.presentation.components.AppBackButton
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
@@ -583,10 +584,7 @@ private fun StoreTopBar(
                 .padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBackIosNew, null,
-                    tint = theme.text1, modifier = Modifier.size(20.dp))
-            }
+            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Forge Merkezi",

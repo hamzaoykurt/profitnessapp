@@ -39,6 +39,7 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
+import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.data.ai.AiAccessException
 import com.avonix.profitness.data.ai.AiAnalysisPrompts
 import com.avonix.profitness.data.ai.AiToolType
@@ -210,17 +211,7 @@ fun ExerciseProgressionScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, CircleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.ArrowBack, null, tint = accent, modifier = Modifier.size(18.dp))
-            }
+            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(

@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -29,7 +31,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -88,6 +89,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.local.entity.WeightLogEntity
+import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.glassCard
 import java.time.LocalDate
@@ -128,6 +130,7 @@ fun WeightTrackingScreen(
 
     Scaffold(
         containerColor       = Color.Transparent,
+        contentWindowInsets  = WindowInsets(left = 0.dp, top = 0.dp, right = 0.dp, bottom = 0.dp),
         snackbarHost         = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -257,21 +260,13 @@ private fun WeightHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .padding(horizontal = 20.dp)
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(theme.bg2)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text1, modifier = Modifier.size(16.dp))
-            }
-            Spacer(Modifier.width(12.dp))
+            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+            Spacer(Modifier.width(14.dp))
             Text("Vücut Kilosu", color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
         }
 

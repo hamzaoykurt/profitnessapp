@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
@@ -96,6 +95,7 @@ import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
+import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
@@ -150,21 +150,7 @@ fun ChallengeDetailOverlay(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg1)
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.ArrowBackIosNew, null,
-                            tint = theme.text0,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Spacer(Modifier.width(12.dp))
                     Text(
                         if (state.detail?.summary?.kind == ChallengeKind.Event) strings.eventLabel else strings.challengeLabel,
@@ -1857,17 +1843,7 @@ private fun EditMetricChallengeOverlay(
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg1)
-                                .border(1.dp, theme.stroke, CircleShape)
-                                .clickable(onClick = onClose),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
-                        }
+                        AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             "CHALLENGE'I DÜZENLE",
@@ -2092,17 +2068,7 @@ private fun EditEventChallengeOverlay(
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg1)
-                                .border(1.dp, theme.stroke, CircleShape)
-                                .clickable(onClick = onClose),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
-                        }
+                        AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             "ETKİNLİĞİ DÜZENLE",

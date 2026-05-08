@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AppBackButton
 
 data class ProfileData(
     val name  : String = "Kullanıcı",
@@ -139,16 +140,7 @@ fun EditProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp).clip(CircleShape)
-                            .background(theme.bg1.copy(0.8f))
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(17.dp))
-                    }
+                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Text("PROFİLİ DÜZENLE", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                     Box(
                         modifier = Modifier

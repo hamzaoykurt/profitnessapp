@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AppBackButton
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -370,9 +371,11 @@ private fun OtpVerifyScreen(
     AuthCenteredScaffold {
         // Back
         Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = { viewModel.navigateTo(AuthFlowScreen.Register) }) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = theme.text1)
-            }
+            AppBackButton(
+                onClick = { viewModel.navigateTo(AuthFlowScreen.Register) },
+                accent = accent,
+                size = 42.dp
+            )
         }
         Spacer(Modifier.height(12.dp))
 
@@ -980,12 +983,9 @@ fun AuthLiquidField(
 private fun BackRow(onBack: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onBack)
-            .padding(vertical = 4.dp, horizontal = 2.dp)
+        modifier = Modifier.padding(vertical = 2.dp, horizontal = 2.dp)
     ) {
-        Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = ObsidianSub, modifier = Modifier.size(18.dp))
+        AppBackButton(onClick = onBack, accent = MaterialTheme.colorScheme.primary, size = 36.dp)
         Spacer(Modifier.width(8.dp))
         Text("Giriş sayfasına dön", color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }

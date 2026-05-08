@@ -51,6 +51,7 @@ import com.avonix.profitness.data.program.autoTitle
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramType
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
+import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
@@ -1739,66 +1740,98 @@ private fun EditProgramScreen(
                 viewModel.clearAiEditError()
             }
         }) {
+            val modalShape = RoundedCornerShape(26.dp)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .widthIn(max = 520.dp)
+                    .clip(modalShape)
                     .background(editTheme.bg1)
-                    .border(1.dp, editTheme.stroke, RoundedCornerShape(24.dp))
+                    .border(
+                        1.dp,
+                        Brush.linearGradient(
+                            listOf(CardCyan.copy(0.65f), editTheme.stroke, CardCyan.copy(0.22f))
+                        ),
+                        modalShape
+                    )
             ) {
-                // Gradient header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(listOf(CardPurple.copy(0.35f), CardCyan.copy(0.2f)))
-                        )
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                        .background(editTheme.bg2)
+                        .drawWithCache {
+                            val glow = Brush.radialGradient(
+                                listOf(CardCyan.copy(0.20f), Color.Transparent),
+                                center = Offset(size.width, 0f),
+                                radius = size.width * 0.9f
+                            )
+                            onDrawBehind { drawRect(glow) }
+                        }
+                        .padding(horizontal = 18.dp, vertical = 18.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(CardPurple, CardCyan))),
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(CardCyan.copy(0.13f))
+                                .border(1.dp, CardCyan.copy(0.36f), RoundedCornerShape(14.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
-                                tint     = Snow,
+                                tint     = CardCyan,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(Modifier.width(14.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "AI ile Düzenle",
-                                color      = Snow,
-                                fontWeight = FontWeight.Black,
-                                fontSize   = 18.sp
+                                "AI İLE DÜZENLE",
+                                color         = CardCyan,
+                                fontWeight    = FontWeight.ExtraBold,
+                                fontSize      = 11.sp,
+                                letterSpacing = 1.8.sp
                             )
                             Text(
                                 "Programı nasıl değiştireyim?",
-                                color    = Snow.copy(0.65f),
-                                fontSize = 12.sp
+                                color      = Snow,
+                                fontWeight = FontWeight.Black,
+                                fontSize   = 19.sp
                             )
+                        }
+                        if (uiState.userPlan == UserPlan.FREE) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(CardCyan.copy(0.10f))
+                                    .border(1.dp, CardCyan.copy(0.28f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    "${uiState.aiCredits} kredi",
+                                    color = CardCyan,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
                         }
                     }
                 }
 
-                // İçerik
                 Column(
                     modifier            = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Prompt alanı
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(editTheme.bg0)
-                            .border(1.dp, editTheme.stroke, RoundedCornerShape(14.dp))
+                            .border(1.dp, CardCyan.copy(0.34f), RoundedCornerShape(14.dp))
                             .padding(16.dp)
                     ) {
                         BasicTextField(
@@ -1814,9 +1847,9 @@ private fun EditProgramScreen(
                                 if (aiPrompt.isEmpty()) {
                                     Text(
                                         "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
-                                        color      = editTheme.text2,
+                                        color      = editTheme.text2.copy(0.82f),
                                         fontSize   = 14.sp,
-                                        lineHeight = 20.sp
+                                        lineHeight = 21.sp
                                     )
                                 }
                                 inner()
@@ -1824,16 +1857,31 @@ private fun EditProgramScreen(
                         )
                     }
 
-                    // Hata
                     if (uiState.aiEditError != null) {
-                        Text(
-                            uiState.aiEditError!!,
-                            color    = MaterialTheme.colorScheme.error,
-                            fontSize = 13.sp
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.error.copy(0.10f))
+                                .border(1.dp, MaterialTheme.colorScheme.error.copy(0.22f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.ErrorOutline,
+                                null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                uiState.aiEditError!!,
+                                color    = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
 
-                    // Butonlar
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1846,7 +1894,8 @@ private fun EditProgramScreen(
                             enabled  = !uiState.aiEditLoading,
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
-                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke)
+                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke),
+                            colors   = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent)
                         ) {
                             Text("İptal", color = editTheme.text1, fontWeight = FontWeight.Medium)
                         }
@@ -1877,30 +1926,35 @@ private fun EditProgramScreen(
                             enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
-                            colors   = ButtonDefaults.buttonColors(containerColor = CardPurple)
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = CardCyan,
+                                contentColor = Surface0,
+                                disabledContainerColor = editTheme.bg3,
+                                disabledContentColor = editTheme.text2
+                            )
                         ) {
                             if (uiState.aiEditLoading) {
                                 CircularProgressIndicator(
-                                    color       = Snow,
+                                    color       = Surface0,
                                     modifier    = Modifier.size(18.dp),
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                                Text("Uygula", fontWeight = FontWeight.Black)
                                 if (uiState.userPlan == UserPlan.FREE) {
                                     Spacer(Modifier.width(8.dp))
                                     Row(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(20.dp))
-                                            .background(Snow.copy(alpha = 0.20f))
+                                            .background(Surface0.copy(alpha = 0.14f))
                                             .padding(horizontal = 6.dp, vertical = 2.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Rounded.Bolt, null, tint = Snow, modifier = Modifier.size(9.dp))
+                                        Icon(Icons.Rounded.Bolt, null, tint = Surface0, modifier = Modifier.size(9.dp))
                                         Spacer(Modifier.width(2.dp))
-                                        Text("6 kredi", color = Snow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        Text("6 kredi", color = Surface0, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1915,9 +1969,25 @@ private fun EditProgramScreen(
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(editTheme.bg0)
+            .drawWithCache {
+                val cyanBloom = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to CardCyan.copy(alpha = 0.12f),
+                        0.42f to CardCyan.copy(alpha = 0.045f),
+                        1.0f to Color.Transparent
+                    ),
+                    center = Offset(size.width, 0f),
+                    radius = size.width * 1.45f
+                )
+                onDrawBehind { drawRect(cyanBloom) }
+            }
+    ) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp + timerExtraPad)) {
-            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack)
+            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack, accent = CardCyan)
 
             // Program adı
             Box(
@@ -1925,31 +1995,43 @@ private fun EditProgramScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(editTheme.bg1)
-                    .border(1.dp, editTheme.stroke, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                    .background(editTheme.bg1.copy(alpha = 0.92f))
+                    .border(1.dp, CardCyan.copy(0.26f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                androidx.compose.foundation.text.BasicTextField(
-                    value       = programName,
-                    onValueChange = { programName = it },
-                    textStyle   = MaterialTheme.typography.titleMedium.copy(
-                        color      = editTheme.text0,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    singleLine  = true,
-                    modifier    = Modifier.fillMaxWidth(),
-                    decorationBox = { inner ->
-                        if (programName.isEmpty()) {
-                            Text(
-                                "Program adı...",
-                                color      = editTheme.text2,
-                                fontWeight = FontWeight.Light,
-                                fontSize   = 16.sp
-                            )
-                        }
-                        inner()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CardCyan.copy(0.10f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.EditNote, null, tint = CardCyan, modifier = Modifier.size(18.dp))
                     }
-                )
+                    Spacer(Modifier.width(12.dp))
+                    androidx.compose.foundation.text.BasicTextField(
+                        value       = programName,
+                        onValueChange = { programName = it },
+                        textStyle   = MaterialTheme.typography.titleMedium.copy(
+                            color      = editTheme.text0,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        singleLine  = true,
+                        modifier    = Modifier.weight(1f),
+                        decorationBox = { inner ->
+                            if (programName.isEmpty()) {
+                                Text(
+                                    "Program adı...",
+                                    color      = editTheme.text2,
+                                    fontWeight = FontWeight.Light,
+                                    fontSize   = 16.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
             }
 
             // Günler listesi
@@ -2016,11 +2098,13 @@ private fun EditProgramScreen(
                     shape           = RoundedCornerShape(16.dp),
                     contentPadding  = PaddingValues(horizontal = 16.dp),
                     colors          = ButtonDefaults.outlinedButtonColors(
-                        containerColor = CardPurple.copy(0.18f)
+                        containerColor = CardCyan.copy(0.10f),
+                        contentColor = CardCyan,
+                        disabledContentColor = editTheme.text2
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        Brush.linearGradient(listOf(CardPurple, CardCyan))
+                        Brush.linearGradient(listOf(CardCyan.copy(0.85f), CardCyan.copy(0.28f)))
                     )
                 ) {
                     Column(
@@ -2030,12 +2114,12 @@ private fun EditProgramScreen(
                         Icon(
                             Icons.Rounded.AutoAwesome,
                             contentDescription = null,
-                            tint     = CardPurple,
+                            tint     = CardCyan,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             "AI",
-                            color         = Snow,
+                            color         = CardCyan,
                             fontWeight    = FontWeight.Black,
                             fontSize      = 11.sp,
                             letterSpacing = 1.sp
@@ -2068,16 +2152,21 @@ private fun EditProgramScreen(
                         )
                     },
                     modifier = Modifier.weight(1f).height(64.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = CardCyan,
+                        contentColor = Surface0,
+                        disabledContainerColor = editTheme.bg3,
+                        disabledContentColor = editTheme.text2
+                    ),
                     shape    = RoundedCornerShape(16.dp),
                     enabled  = !isLoading && !uiState.aiEditLoading
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                        CircularProgressIndicator(color = Surface0, modifier = Modifier.size(22.dp))
                     } else {
                         Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text("KAYDET", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                 }
             }
@@ -2626,36 +2715,39 @@ private fun EditCounterField(
 // ── Detail Header ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun DetailHeader(title: String, sub: String, onBack: () -> Unit) {
+private fun DetailHeader(
+    title : String,
+    sub   : String,
+    onBack: () -> Unit,
+    accent: Color = MaterialTheme.colorScheme.primary
+) {
     val theme = LocalAppTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 8.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+            .padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Rounded.ArrowBack, null, tint = theme.text1)
-        }
+        AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+        Spacer(Modifier.width(14.dp))
         Column(
-            modifier = Modifier
-                .padding(start = 4.dp)
-                .widthIn(max = 108.dp)
+            modifier = Modifier.weight(1f)
         ) {
             Text(
                 sub,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                letterSpacing = 1.sp,
-                fontSize = 9.sp,
+                color = accent,
+                letterSpacing = 2.sp,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
                 title,
                 color = theme.text0,
-                fontSize = 22.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis

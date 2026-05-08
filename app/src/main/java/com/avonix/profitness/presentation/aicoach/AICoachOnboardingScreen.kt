@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +23,7 @@ import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.CommunicationStyle
 import com.avonix.profitness.data.ai.ResponseLength
+import com.avonix.profitness.presentation.components.AppBackButton
 
 private const val TOTAL_STEPS = 3
 
@@ -69,9 +69,12 @@ fun AICoachOnboardingScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 if (step > 0) {
-                    IconButton(onClick = { step-- }, modifier = Modifier.align(Alignment.CenterStart)) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = null, tint = theme.text2)
-                    }
+                    AppBackButton(
+                        onClick = { step-- },
+                        accent = accent,
+                        size = 48.dp,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    )
                 }
                 Text(
                     "ORACLE",

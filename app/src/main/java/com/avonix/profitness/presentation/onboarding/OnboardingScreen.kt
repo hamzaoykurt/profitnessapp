@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AppBackButton
 
 private val AVATAR_ROWS = listOf(
     listOf("🏋️‍♂️","🤸‍♂️","🏃‍♂️","🚴‍♂️","⛹️‍♂️","🏊‍♂️"),
@@ -700,13 +701,19 @@ private fun StepGoal(
         Spacer(Modifier.height(8.dp))
 
         // Geri
-        TextButton(
-            onClick  = { vm.prevStep() },
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Rounded.ArrowBackIos, null, tint = theme.text2, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(4.dp))
-            Text("Geri", color = theme.text2, fontSize = 13.sp)
+            AppBackButton(onClick = { vm.prevStep() }, accent = accent, size = 32.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Geri",
+                color = theme.text2,
+                fontSize = 13.sp,
+                modifier = Modifier.clickable { vm.prevStep() }
+            )
         }
 
         Spacer(Modifier.height(48.dp))
@@ -756,10 +763,15 @@ private fun StepNavButtons(
             modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBackIos, null, tint = theme.text2, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Geri", color = theme.text2, fontSize = 13.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppBackButton(onClick = onBack, accent = accent, size = 32.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Geri",
+                    color = theme.text2,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable(onClick = onBack)
+                )
             }
             if (canSkip) {
                 TextButton(onClick = onSkip) {
