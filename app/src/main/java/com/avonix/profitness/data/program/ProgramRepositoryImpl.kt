@@ -160,6 +160,10 @@ class ProgramRepositoryImpl @Inject constructor(
                                     put("reps", templateEx.reps)
                                     put("rest_seconds", templateEx.restSeconds)
                                     put("order_index", exIdx)
+                                    templateEx.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                                    templateEx.targetDistanceMeters?.let { put("target_distance_meters", it) }
+                                    templateEx.targetElevationMeters?.let { put("target_elevation_meters", it) }
+                                    templateEx.targetInclinePercent?.let { put("target_incline_percent", it) }
                                 })
                         }
                     }
@@ -525,7 +529,13 @@ class ProgramRepositoryImpl @Inject constructor(
                             restSeconds = pe.restSeconds,
                             orderIndex = pe.orderIndex,
                             category = pe.category,
-                            imageUrl = pe.imageUrl
+                            imageUrl = pe.imageUrl,
+                            sportType = pe.sportType,
+                            trackingMode = pe.trackingMode,
+                            targetDurationSeconds = pe.targetDurationSeconds,
+                            targetDistanceMeters = pe.targetDistanceMeters,
+                            targetElevationMeters = pe.targetElevationMeters,
+                            targetInclinePercent = pe.targetInclinePercent
                         )
                     }
                 )
@@ -537,14 +547,18 @@ class ProgramRepositoryImpl @Inject constructor(
         id = id, name = name, nameEn = nameEn,
         targetMuscle = targetMuscle, category = category,
         setsDefault = setsDefault, repsDefault = repsDefault,
-        description = description
+        description = description,
+        sportType = sportType,
+        trackingMode = trackingMode
     )
 
     private fun ExerciseDto.toDomain() = ExerciseItem(
         id = id, name = name, nameEn = name_en,
         targetMuscle = target_muscle, category = category,
         setsDefault = sets_default, repsDefault = reps_default,
-        description = description
+        description = description,
+        sportType = sport_type,
+        trackingMode = tracking_mode
     )
 
     private fun List<ExerciseItem>.filterValidExerciseNames(): List<ExerciseItem> =

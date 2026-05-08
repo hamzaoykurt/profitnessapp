@@ -89,6 +89,7 @@ import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.presentation.program.ExerciseMultiPickerSheet
+import com.avonix.profitness.presentation.workout.SportType
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.places.api.Places
@@ -149,7 +150,7 @@ fun CreateChallengeOverlay(
     val accent = MaterialTheme.colorScheme.primary
 
     // ── Top-level mode ────────────────────────────────────────────────────
-    var kind by rememberSaveable { mutableStateOf(CreateFormKind.Metric) }
+    var kind by rememberSaveable { mutableStateOf(CreateFormKind.Event) }
 
     // ── Shared ────────────────────────────────────────────────────────────
     var title       by rememberSaveable { mutableStateOf("") }
@@ -173,9 +174,10 @@ fun CreateChallengeOverlay(
     var eventEndGeoLat by rememberSaveable { mutableStateOf<Double?>(null) }
     var eventEndGeoLng by rememberSaveable { mutableStateOf<Double?>(null) }
     var eventOnlineUrl by rememberSaveable { mutableStateOf("") }
-    var eventTargetEnabled by rememberSaveable { mutableStateOf(false) }
+    var eventSportType by rememberSaveable { mutableStateOf(SportType.Running) }
+    var eventTargetEnabled by rememberSaveable { mutableStateOf(true) }
     var eventTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalDistanceM) }
-    var eventTargetValue by rememberSaveable { mutableStateOf("100") }
+    var eventTargetValue by rememberSaveable { mutableStateOf("5000") }
     val selectedMovements = remember { mutableStateListOf<MovementInput>() }
 
     var showDatePicker by remember { mutableStateOf(false) }
@@ -209,6 +211,7 @@ fun CreateChallengeOverlay(
         eventEndGeoLat,
         eventEndGeoLng,
         eventOnlineUrl,
+        eventSportType,
         eventTargetEnabled,
         eventTargetType,
         eventTargetValue,
@@ -416,6 +419,15 @@ fun CreateChallengeOverlay(
                     },
                     onlineUrl = eventOnlineUrl,
                     onOnlineUrl = { eventOnlineUrl = it },
+                    sportType = eventSportType,
+                    onSportType = {
+                        eventSportType = it
+                        if (eventMode != EventMode.MovementList) {
+                            eventTargetEnabled = true
+                            eventTargetType = defaultTargetTypeForSport(it)
+                            eventTargetValue = defaultTargetValueForSport(it)
+                        }
+                    },
                     movements = selectedMovements,
                     onOpenMultiPicker = { showMultiPicker = true },
                     targetEnabled = eventTargetEnabled,
@@ -507,6 +519,8 @@ fun CreateChallengeOverlay(
                                 title       = title,
                                 description = description.trim().ifBlank { null },
                                 mode        = eventMode,
+                                sportType   = eventSportType,
+                                exerciseId  = canonicalExerciseIdForSport(eventSportType, exercises),
                                 dateIso     = eventDateIso,
                                 timeIso     = eventTimeIso,
                                 timezone    = timezone,
@@ -710,6 +724,8 @@ private fun EventForm(
     onEndLocationSelected: (PlaceCandidate) -> Unit,
     onlineUrl: String,
     onOnlineUrl: (String) -> Unit,
+    sportType: SportType,
+    onSportType: (SportType) -> Unit,
     movements: List<MovementInput>,
     onOpenMultiPicker: () -> Unit,
     targetEnabled: Boolean,
@@ -759,6 +775,15 @@ private fun EventForm(
             accent = accent,
             onClick = { onMode(EventMode.MovementList) },
             modifier = Modifier.weight(1f)
+        )
+    }
+
+    if (mode != EventMode.MovementList) {
+        FieldLabel("SPOR TÜRÜ")
+        LazySportTypeRow(
+            selected = sportType,
+            accent = accent,
+            onSelect = onSportType
         )
     }
 
@@ -929,6 +954,40 @@ private fun EventForm(
                 fontSize = 11.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun LazySportTypeRow(
+    selected: SportType,
+    accent: Color,
+    onSelect: (SportType) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        items(SportType.challengeChoices.size) { idx ->
+            val sport = SportType.challengeChoices[idx]
+            val active = sport == selected
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(if (active) accent else theme.bg1.copy(0.72f))
+                    .border(1.dp, if (active) accent else theme.stroke.copy(0.68f), RoundedCornerShape(999.dp))
+                    .clickable { onSelect(sport) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            ) {
+                Text(
+                    sport.label.uppercase(),
+                    color = if (active) Color.Black else theme.text1,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.8.sp
+                )
+            }
         }
     }
 }
@@ -1471,6 +1530,51 @@ private fun iconForTargetType(type: ChallengeTargetType): ImageVector = when (ty
     ChallengeTargetType.TotalDistanceM       -> Icons.Rounded.Straighten
     ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
     ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
+}
+
+private fun defaultTargetTypeForSport(sport: SportType): ChallengeTargetType = when (sport) {
+    SportType.YogaPilates,
+    SportType.Boxing,
+    SportType.JumpRopeHiit,
+    SportType.Football,
+    SportType.BasketballTennis -> ChallengeTargetType.TotalDurationMinutes
+    else -> ChallengeTargetType.TotalDistanceM
+}
+
+private fun defaultTargetValueForSport(sport: SportType): String = when (sport) {
+    SportType.Cycling -> "10000"
+    SportType.Running -> "5000"
+    SportType.Swimming -> "1000"
+    SportType.Rowing -> "2000"
+    SportType.WalkingHiking -> "5000"
+    SportType.YogaPilates -> "45"
+    SportType.Boxing -> "30"
+    SportType.JumpRopeHiit -> "20"
+    SportType.Football -> "60"
+    SportType.BasketballTennis -> "45"
+    SportType.Strength -> "1"
+}
+
+private fun canonicalExerciseIdForSport(sport: SportType, exercises: List<ExerciseItem>): String? {
+    val needles = when (sport) {
+        SportType.Cycling -> listOf("cycling", "bisiklet", "bike")
+        SportType.Running -> listOf("treadmill run", "running", "kos", "run")
+        SportType.Swimming -> listOf("swimming", "yuzme", "yuz")
+        SportType.Rowing -> listOf("rowing machine", "outdoor rowing", "kurek", "row")
+        SportType.WalkingHiking -> listOf("walk", "walking", "yuruyus", "hike")
+        SportType.JumpRopeHiit -> listOf("jump rope", "hiit", "burpee")
+        SportType.YogaPilates -> listOf("yoga", "pilates", "mobility")
+        SportType.Boxing -> listOf("shadow boxing", "boxing", "boks")
+        SportType.Football -> listOf("football", "soccer", "futbol")
+        SportType.BasketballTennis -> listOf("basketball", "tennis", "basket", "tenis")
+        SportType.Strength -> emptyList()
+    }
+    return exercises.firstOrNull { ex ->
+        val haystack = listOf(ex.name, ex.nameEn, ex.category, ex.targetMuscle)
+            .joinToString(" ")
+            .lowercase()
+        needles.any { it in haystack }
+    }?.id
 }
 
 @Composable

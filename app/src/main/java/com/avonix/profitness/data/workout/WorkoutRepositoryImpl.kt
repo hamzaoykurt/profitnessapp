@@ -364,7 +364,8 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun upsertSetActivityMetrics(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?
+        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?,
+        elevationMeters: Float?, inclinePercent: Float?
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -375,7 +376,9 @@ class WorkoutRepositoryImpl @Inject constructor(
                 setIndex = setIndex,
                 date = today,
                 durationSeconds = durationSeconds,
-                distanceMeters = distanceMeters
+                distanceMeters = distanceMeters,
+                elevationMeters = elevationMeters,
+                inclinePercent = inclinePercent
             )
             syncSetCompletionBestEffort(entity)
             Unit

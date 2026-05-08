@@ -72,7 +72,14 @@ data class Exercise(
     val restSeconds: Int = 60,           // set arası dinlenme
     val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu — sonraki harekete geçmeden önce
     val exerciseTableId: String = "", // FK to exercises table — used for DB logging
-    val weightKg: Float = 0f          // programdan gelen planlı ağırlık
+    val weightKg: Float = 0f,         // programdan gelen planlı ağırlık
+    val sportType: String = "",
+    val trackingMode: String = "",
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null,
+    val challengeId: String? = null
 )
 
 data class WorkoutDay(
@@ -498,6 +505,11 @@ private fun WorkoutContent(
     val hasUpcomingSection = upcomingEvents.any {
         it.event?.dateIso != java.time.LocalDate.now().toString()
     }
+    val visibleExercises = remember(currentDay.exercises, todayEvents) {
+        currentDay.exercises + todayEvents.mapNotNull { event ->
+            challengeExerciseForHome(event, currentDay.exercises)
+        }
+    }
 
     val listState = rememberLazyListState()
     // Açılan kartı ekranın ortasına scroll et
@@ -525,7 +537,7 @@ private fun WorkoutContent(
     val timer = restTimer
     LaunchedEffect(timer.isRunning, timer.exerciseName) {
         if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
-            val exIdx = currentDay.exercises.indexOfFirst { it.name == timer.exerciseName }
+            val exIdx = visibleExercises.indexOfFirst { it.name == timer.exerciseName }
             if (exIdx >= 0) {
                 expandedExIdx = exIdx
             }
@@ -608,7 +620,7 @@ private fun WorkoutContent(
         }
 
         // ── Section Label ─────────────────────────────────────────────────
-        if (!currentDay.isRestDay && currentDay.exercises.isNotEmpty() && !skipProgramToday) {
+        if (visibleExercises.isNotEmpty() && !skipProgramToday) {
             item {
                 Row(
                     modifier = Modifier
@@ -625,7 +637,7 @@ private fun WorkoutContent(
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = "${currentState.completedCount}/${currentDay.exercises.size} ${strings.completedLabel}",
+                        text = "${currentState.completedIds.count { id -> visibleExercises.any { it.id == id } }}/${visibleExercises.size} ${strings.completedLabel}",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -635,12 +647,12 @@ private fun WorkoutContent(
         }
 
         // ── Content: Rest day or exercise cards ──────────────────────────
-        if (currentDay.isRestDay) {
+        if (currentDay.isRestDay && visibleExercises.isEmpty()) {
             item { RestDayView() }
         } else if (skipProgramToday) {
             item { SkippedProgramNotice() }
         } else {
-            itemsIndexed(currentDay.exercises, key = { _, ex -> ex.id }) { idx, exercise ->
+            itemsIndexed(visibleExercises, key = { _, ex -> ex.id }) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
                 val doneSetIndices = if (isCompleted) {
@@ -658,7 +670,10 @@ private fun WorkoutContent(
                     isCompleted       = isCompleted,
                     doneSetIndices    = doneSetIndices,
                     onToggleSet       = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
-                    onComplete        = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
+                    onComplete        = {
+                        if (exercise.challengeId != null) viewModel.toggleChallengeActivity(selectedDayIdx, exercise)
+                        else viewModel.toggleExercise(selectedDayIdx, exercise.id)
+                    },
                     onShowDetail      = { showDetail = true },
                     onExpandChanged   = { expanded ->
                         expandedExIdx = if (expanded) idx else -1
@@ -667,11 +682,23 @@ private fun WorkoutContent(
                     setWeights        = state.setWeights[exercise.id] ?: emptyMap(),
                     lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
                     profileWeightKg   = state.profileWeightKg,
-                    activityDuration  = state.activityDurations[exercise.id] ?: "",
-                    activityDistance  = state.activityDistances[exercise.id] ?: "",
+                    activityDuration  = state.activityDurations[exercise.id]
+                        ?: exercise.targetDurationSeconds?.let { (it / 60f).trimmedUi() }
+                        ?: "",
+                    activityDistance  = state.activityDistances[exercise.id]
+                        ?: exercise.targetDistanceMeters?.trimmedUi()
+                        ?: "",
+                    activityElevation = state.activityElevations[exercise.id]
+                        ?: exercise.targetElevationMeters?.trimmedUi()
+                        ?: "",
+                    activityIncline   = state.activityInclines[exercise.id]
+                        ?: exercise.targetInclinePercent?.trimmedUi()
+                        ?: "",
                     onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
                     onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
                     onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
+                    onActivityElevationChanged = { v -> viewModel.updateActivityElevation(exercise.id, v) },
+                    onActivityInclineChanged = { v -> viewModel.updateActivityIncline(exercise.id, v) },
                     timerSeconds      = if (isThisExTimer) timer.displaySeconds else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
@@ -715,6 +742,49 @@ private fun WorkoutContent(
         )
     }
 }
+
+private fun challengeExerciseForHome(
+    event: com.avonix.profitness.domain.challenges.ChallengeSummary,
+    programExercises: List<Exercise>
+): Exercise? {
+    val ev = event.event ?: return null
+    if (ev.mode == com.avonix.profitness.domain.challenges.EventMode.MovementList) return null
+
+    val sameExercise = ev.exerciseId?.let { id ->
+        programExercises.any { it.exerciseTableId == id || it.id == id }
+    } ?: false
+    val sameSport = programExercises.any { exercise ->
+        val sport = SportType.fromRaw(exercise.sportType).takeUnless { exercise.sportType.isBlank() }
+            ?: classifySportType(exercise.category, exercise.name, exercise.target, exercise.reps)
+        sport == ev.sportType
+    }
+    if (sameExercise || sameSport) return null
+
+    val canonicalExerciseId = ev.exerciseId ?: return null
+    val trackingMode = when (event.targetType) {
+        com.avonix.profitness.domain.challenges.ChallengeTargetType.TotalDurationMinutes -> "duration"
+        else -> "duration_distance"
+    }
+    return Exercise(
+        id = "challenge-${event.id}",
+        name = event.title,
+        target = ev.sportType.label,
+        sets = 1,
+        reps = if (event.targetValue > 0) event.targetValue.toString() else "1",
+        image = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800",
+        category = "Kardiyo",
+        restSeconds = 60,
+        exerciseTableId = canonicalExerciseId,
+        sportType = ev.sportType.raw,
+        trackingMode = trackingMode,
+        targetDurationSeconds = if (trackingMode == "duration") (event.targetValue * 60).toInt() else null,
+        targetDistanceMeters = if (trackingMode != "duration") event.targetValue.toFloat() else null,
+        challengeId = event.id
+    )
+}
+
+private fun Float.trimmedUi(): String =
+    if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
 
 @Composable
 private fun SkippedProgramNotice() {

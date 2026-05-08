@@ -25,7 +25,8 @@ data class ExerciseProgressSummary(
     @ColumnInfo(name = "total_reps")    val totalReps     : Int,
     @ColumnInfo(name = "total_volume")  val totalVolume   : Float,
     @ColumnInfo(name = "total_duration_seconds") val totalDurationSeconds: Int,
-    @ColumnInfo(name = "total_distance_meters")  val totalDistanceMeters : Float
+    @ColumnInfo(name = "total_distance_meters")  val totalDistanceMeters : Float,
+    @ColumnInfo(name = "total_elevation_meters") val totalElevationMeters: Float
 )
 
 @Dao
@@ -121,27 +122,42 @@ interface SetCompletionDao {
     @Query("""
         UPDATE set_completions
         SET duration_seconds = :durationSeconds,
-            distance_meters = :distanceMeters
+            distance_meters = :distanceMeters,
+            elevation_meters = :elevationMeters,
+            incline_percent = :inclinePercent
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
     """)
     suspend fun updateActivityMetrics(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?
+        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?,
+        elevationMeters: Float?, inclinePercent: Float?
     ): Int
 
     /** Upsert süre/mesafe — kayıt varsa metrikleri günceller, yoksa draft oluşturur. */
     @Transaction
     suspend fun upsertActivityMetrics(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?
+        setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?,
+        elevationMeters: Float? = null, inclinePercent: Float? = null
     ): SetCompletionEntity {
-        val rows = updateActivityMetrics(userId, exerciseId, programDayId, setIndex, date, durationSeconds, distanceMeters)
+        val rows = updateActivityMetrics(
+            userId, exerciseId, programDayId, setIndex, date,
+            durationSeconds, distanceMeters, elevationMeters, inclinePercent
+        )
         if (rows == 0) {
-            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, null, durationSeconds, distanceMeters))
+            insert(
+                SetCompletionEntity(
+                    userId, exerciseId, programDayId, setIndex, date,
+                    null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent
+                )
+            )
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
-            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, null, durationSeconds, distanceMeters)
+            ?: SetCompletionEntity(
+                userId, exerciseId, programDayId, setIndex, date,
+                null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent
+            )
     }
 
     @Query("""
@@ -212,6 +228,7 @@ interface SetCompletionDao {
                COALESCE(SUM(sc.weight_kg * sc.reps_actual), 0)          AS total_volume,
                COALESCE(SUM(sc.duration_seconds), 0)                    AS total_duration_seconds,
                COALESCE(SUM(sc.distance_meters), 0)                     AS total_distance_meters,
+               COALESCE(SUM(sc.elevation_meters), 0)                    AS total_elevation_meters,
                (SELECT MAX(date) FROM set_completions
                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
                     AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)) AS last_date,

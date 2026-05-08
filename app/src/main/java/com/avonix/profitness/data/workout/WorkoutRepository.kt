@@ -119,7 +119,8 @@ interface WorkoutRepository {
     /** Süre/mesafe odaklı hareketler için aktivite metriklerini draft olarak günceller. */
     suspend fun upsertSetActivityMetrics(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?
+        setIndex: Int, durationSeconds: Int?, distanceMeters: Float?,
+        elevationMeters: Float? = null, inclinePercent: Float? = null
     ): Result<Unit>
 
     // ── Progressive Overload ─────────────────────────────────────────────────

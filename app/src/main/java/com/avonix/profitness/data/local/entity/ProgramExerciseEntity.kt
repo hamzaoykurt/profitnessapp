@@ -32,5 +32,9 @@ data class ProgramExerciseEntity(
     val reps: Int,
     @ColumnInfo(name = "weight_kg") val weightKg: Float = 0f,
     @ColumnInfo(name = "rest_seconds") val restSeconds: Int = 90,
-    @ColumnInfo(name = "order_index") val orderIndex: Int = 0
+    @ColumnInfo(name = "order_index") val orderIndex: Int = 0,
+    @ColumnInfo(name = "target_duration_seconds") val targetDurationSeconds: Int? = null,
+    @ColumnInfo(name = "target_distance_meters") val targetDistanceMeters: Float? = null,
+    @ColumnInfo(name = "target_elevation_meters") val targetElevationMeters: Float? = null,
+    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float? = null
 )

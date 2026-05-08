@@ -5,6 +5,7 @@ import com.avonix.profitness.data.challenges.dto.ChallengeLeaderboardEntryDto
 import com.avonix.profitness.data.challenges.dto.ChallengeMovementDto
 import com.avonix.profitness.data.challenges.dto.MyChallengeRowDto
 import com.avonix.profitness.data.challenges.dto.PublicChallengeRowDto
+import com.avonix.profitness.presentation.workout.SportType
 
 /** Challenge üst tip ayrımı — klasik sayaç vs etkinlik. */
 enum class ChallengeKind(val raw: String) {
@@ -45,8 +46,7 @@ enum class ChallengeTargetType(val raw: String, val label: String, val unit: Str
 
         /** Classic metric challenge oluşturma ekranında gösterilecek hedef tipler. */
         val selectableForMetric: List<ChallengeTargetType> = listOf(
-            TotalWorkouts, TotalXp, CurrentStreak,
-            TotalDurationMinutes, TotalDistanceM, TotalDistanceKm
+            TotalWorkouts, TotalXp, CurrentStreak
         )
     }
 }
@@ -64,6 +64,8 @@ enum class ChallengeVisibility(val raw: String) {
 /** Event challenge için zaman/konum/mod bilgisi (kind==Event olduğunda dolu). */
 data class ChallengeEventInfo(
     val mode             : EventMode,
+    val sportType        : SportType,
+    val exerciseId       : String?,
     val dateIso          : String,
     val timeIso          : String?,
     val timezone         : String,
@@ -149,6 +151,8 @@ data class CreateEventChallengeRequest(
     val title        : String,
     val description  : String?,
     val mode         : EventMode,
+    val sportType    : SportType = SportType.Running,
+    val exerciseId   : String? = null,
     val dateIso      : String,
     val timeIso      : String?,
     val timezone     : String,
@@ -199,6 +203,8 @@ data class UpdateMetricChallengeRequest(
 private fun buildEventInfo(
     kind             : String,
     eventMode        : String?,
+    sportTypeRaw     : String?,
+    eventExerciseId  : String?,
     eventDate        : String?,
     eventTime        : String?,
     eventTimezone    : String,
@@ -217,6 +223,8 @@ private fun buildEventInfo(
     val date = eventDate ?: return null
     return ChallengeEventInfo(
         mode             = mode,
+        sportType        = SportType.fromRaw(sportTypeRaw),
+        exerciseId       = eventExerciseId,
         dateIso          = date,
         timeIso          = eventTime,
         timezone         = eventTimezone,
@@ -251,7 +259,7 @@ internal fun PublicChallengeRowDto.toDomain() = ChallengeSummary(
     isCompleted       = is_completed,
     kind              = ChallengeKind.fromRaw(kind),
     event             = buildEventInfo(
-        kind, event_mode, event_date, event_time, event_timezone,
+        kind, event_mode, sport_type, event_exercise_id, event_date, event_time, event_timezone,
         event_location, event_geo_lat, event_geo_lng,
         event_end_location, event_end_geo_lat, event_end_geo_lng,
         event_online_url,
@@ -278,7 +286,7 @@ internal fun MyChallengeRowDto.toDomain() = ChallengeSummary(
     isCompleted       = is_completed,
     kind              = ChallengeKind.fromRaw(kind),
     event             = buildEventInfo(
-        kind, event_mode, event_date, event_time, event_timezone,
+        kind, event_mode, sport_type, event_exercise_id, event_date, event_time, event_timezone,
         event_location, event_geo_lat, event_geo_lng,
         event_end_location, event_end_geo_lat, event_end_geo_lng,
         event_online_url,
@@ -325,7 +333,7 @@ internal fun ChallengeDetailDto.toDomain(): ChallengeDetail {
         isCompleted       = is_completed,
         kind              = ChallengeKind.fromRaw(kind),
         event             = buildEventInfo(
-            kind, event_mode, event_date, event_time, event_timezone,
+            kind, event_mode, sport_type, event_exercise_id, event_date, event_time, event_timezone,
             event_location, event_geo_lat, event_geo_lng,
             event_end_location, event_end_geo_lat, event_end_geo_lng,
             event_online_url,

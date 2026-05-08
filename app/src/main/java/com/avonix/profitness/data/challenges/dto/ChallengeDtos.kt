@@ -23,6 +23,8 @@ data class PublicChallengeRowDto(
     // FAZ 7J event fields (backward compat via defaults).
     val kind               : String = "metric",
     val event_mode         : String? = null,
+    val sport_type         : String? = null,
+    val event_exercise_id  : String? = null,
     val event_date         : String? = null,
     val event_time         : String? = null,
     val event_timezone     : String = "UTC",
@@ -58,6 +60,8 @@ data class MyChallengeRowDto(
     // FAZ 7J event fields.
     val kind               : String = "metric",
     val event_mode         : String? = null,
+    val sport_type         : String? = null,
+    val event_exercise_id  : String? = null,
     val event_date         : String? = null,
     val event_time         : String? = null,
     val event_timezone     : String = "UTC",
@@ -119,6 +123,8 @@ data class ChallengeDetailDto(
     // FAZ 7J event fields.
     val kind               : String = "metric",
     val event_mode         : String? = null,
+    val sport_type         : String? = null,
+    val event_exercise_id  : String? = null,
     val event_date         : String? = null,
     val event_time         : String? = null,
     val event_timezone     : String = "UTC",

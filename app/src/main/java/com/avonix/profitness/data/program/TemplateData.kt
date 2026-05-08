@@ -6,7 +6,11 @@ data class TemplateExercise(
     val sets: Int,
     val reps: Int,           // INT — zaman bazlı egzersizler için saniye cinsinden (ör. Plank = 60)
     val restSeconds: Int = 60,           // set arası dinlenme
-    val exerciseRestSeconds: Int = 180   // son set / egzersiz sonu dinlenmesi
+    val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu dinlenmesi
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null
 )
 
 data class TemplateDay(
@@ -471,6 +475,109 @@ val PROGRAM_TEMPLATES: List<ProgramTemplate> = listOf(
             TemplateExercise("Kettlebell Swing",            4, 20,  30),
             TemplateExercise("Box Jump",                    3, 10,  45),
             TemplateExercise("Plank",                       3, 60,  45)
+        ))
+    )),
+
+    ProgramTemplate("Bisiklet 4 Hafta", listOf(
+        TemplateDay("Kolay Sürüş", exercises = listOf(
+            TemplateExercise("Cycling", 1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 10000f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Tempo Sürüş", exercises = listOf(
+            TemplateExercise("Cycling", 1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 12000f, targetInclinePercent = 2f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Uzun Sürüş", exercises = listOf(
+            TemplateExercise("Cycling", 1, 50, 60, targetDurationSeconds = 50 * 60, targetDistanceMeters = 18000f, targetElevationMeters = 120f)
+        ))
+    )),
+
+    ProgramTemplate("5K Koşu Temeli", listOf(
+        TemplateDay("Kolay Koşu", exercises = listOf(
+            TemplateExercise("Treadmill Run", 1, 25, 60, targetDurationSeconds = 25 * 60, targetDistanceMeters = 2500f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Interval", exercises = listOf(
+            TemplateExercise("Treadmill Run", 1, 22, 60, targetDurationSeconds = 22 * 60, targetDistanceMeters = 3000f, targetInclinePercent = 1f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Uzun Koşu", exercises = listOf(
+            TemplateExercise("Treadmill Run", 1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 4500f)
+        ))
+    )),
+
+    ProgramTemplate("Yüzme Temel", listOf(
+        TemplateDay("Teknik", exercises = listOf(
+            TemplateExercise("Swimming", 1, 25, 60, targetDurationSeconds = 25 * 60, targetDistanceMeters = 600f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Mesafe", exercises = listOf(
+            TemplateExercise("Swimming", 1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 900f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Karışık Tempo", exercises = listOf(
+            TemplateExercise("Swimming", 1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 1200f)
+        ))
+    )),
+
+    ProgramTemplate("Kürek Erg Temel", listOf(
+        TemplateDay("Teknik Tempo", exercises = listOf(
+            TemplateExercise("Rowing Machine", 1, 20, 60, targetDurationSeconds = 20 * 60, targetDistanceMeters = 3000f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Interval", exercises = listOf(
+            TemplateExercise("Rowing Machine", 1, 18, 60, targetDurationSeconds = 18 * 60, targetDistanceMeters = 3500f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Uzun Erg", exercises = listOf(
+            TemplateExercise("Rowing Machine", 1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 6000f)
+        ))
+    )),
+
+    ProgramTemplate("Yürüyüş & Hiking", listOf(
+        TemplateDay("Kolay Yürüyüş", exercises = listOf(
+            TemplateExercise("Outdoor Walk", 1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 2500f)
+        )),
+        TemplateDay("Tempo Yürüyüş", exercises = listOf(
+            TemplateExercise("Outdoor Walk", 1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 3500f)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Eğimli Yürüyüş", exercises = listOf(
+            TemplateExercise("Outdoor Walk", 1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 3000f, targetElevationMeters = 80f)
+        )),
+        TemplateDay("Uzun Yürüyüş", exercises = listOf(
+            TemplateExercise("Outdoor Walk", 1, 50, 60, targetDurationSeconds = 50 * 60, targetDistanceMeters = 5000f)
+        ))
+    )),
+
+    ProgramTemplate("Boks Kondisyon", listOf(
+        TemplateDay("Teknik Round", exercises = listOf(
+            TemplateExercise("Shadow Boxing", 1, 24, 45, targetDurationSeconds = 24 * 60),
+            TemplateExercise("Jump Rope", 1, 10, 45, targetDurationSeconds = 10 * 60)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Kondisyon", exercises = listOf(
+            TemplateExercise("Shadow Boxing", 1, 30, 45, targetDurationSeconds = 30 * 60),
+            TemplateExercise("Burpee", 3, 10, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Karma Interval", exercises = listOf(
+            TemplateExercise("Jump Rope", 1, 15, 45, targetDurationSeconds = 15 * 60),
+            TemplateExercise("Shadow Boxing", 1, 18, 45, targetDurationSeconds = 18 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Yoga Mobilite", listOf(
+        TemplateDay("Akış", exercises = listOf(
+            TemplateExercise("Yoga Flow", 1, 30, 30, targetDurationSeconds = 30 * 60)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Mobilite", exercises = listOf(
+            TemplateExercise("Yoga Flow", 1, 25, 30, targetDurationSeconds = 25 * 60)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Derin Esneme", exercises = listOf(
+            TemplateExercise("Yoga Flow", 1, 35, 30, targetDurationSeconds = 35 * 60)
         ))
     )),
 

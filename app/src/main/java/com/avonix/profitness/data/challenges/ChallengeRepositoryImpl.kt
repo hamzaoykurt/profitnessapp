@@ -121,6 +121,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                         val desc = req.description?.trim().orEmpty()
                         if (desc.isNotEmpty()) put("p_description", desc) else put("p_description", JsonNull)
                         put("p_event_mode",    req.mode.raw)
+                        put("p_sport_type",    req.sportType.raw)
+                        if (req.exerciseId != null) put("p_event_exercise_id", req.exerciseId) else put("p_event_exercise_id", JsonNull)
                         put("p_event_date",    req.dateIso)
                         if (req.timeIso != null) put("p_event_time", req.timeIso) else put("p_event_time", JsonNull)
                         put("p_event_timezone", req.timezone)

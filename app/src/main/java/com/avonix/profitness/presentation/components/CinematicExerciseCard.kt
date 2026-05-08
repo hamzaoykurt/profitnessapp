@@ -36,7 +36,7 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
 import com.avonix.profitness.presentation.workout.ExerciseMetric
-import com.avonix.profitness.presentation.workout.classifyExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -57,9 +57,13 @@ fun CinematicExerciseCard(
     profileWeightKg: Float = 0f,
     activityDuration: String = "",
     activityDistance: String = "",
+    activityElevation: String = "",
+    activityIncline: String = "",
     onSetWeightChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
     onActivityDurationChanged: (String) -> Unit = {},
     onActivityDistanceChanged: (String) -> Unit = {},
+    onActivityElevationChanged: (String) -> Unit = {},
+    onActivityInclineChanged: (String) -> Unit = {},
     // Timer — ViewModel'den gelir, lokal state yok
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
@@ -73,9 +77,20 @@ fun CinematicExerciseCard(
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
     var showActivityTimerSetup by remember { mutableStateOf(false) }
-    val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
-        classifyExerciseMetric(exercise.category, exercise.name, exercise.target, exercise.reps)
+    val trackingSpec = remember(
+        exercise.category, exercise.name, exercise.target, exercise.reps,
+        exercise.sportType, exercise.trackingMode
+    ) {
+        activityTrackingSpec(
+            category = exercise.category,
+            name = exercise.name,
+            target = exercise.target,
+            reps = exercise.reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        )
     }
+    val activityMetric = trackingSpec.metric
     val activityBased = activityMetric != ExerciseMetric.Strength
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
@@ -260,9 +275,16 @@ fun CinematicExerciseCard(
                             ActivityMetricsPanel(
                                 durationValue = activityDuration,
                                 distanceValue = activityDistance,
-                                supportsDistance = activityMetric == ExerciseMetric.DurationDistance,
+                                elevationValue = activityElevation,
+                                inclineValue = activityIncline,
+                                specLabel = trackingSpec.sportType.label,
+                                supportsDistance = trackingSpec.supportsDistance,
+                                supportsElevation = trackingSpec.supportsElevation,
+                                supportsIncline = trackingSpec.supportsIncline,
                                 isDone = isCompleted,
-                                onDistanceChanged = onActivityDistanceChanged
+                                onDistanceChanged = onActivityDistanceChanged,
+                                onElevationChanged = onActivityElevationChanged,
+                                onInclineChanged = onActivityInclineChanged
                             )
                         } else {
                             repeat(exercise.sets) { i ->
@@ -350,9 +372,16 @@ fun CinematicExerciseCard(
 private fun ActivityMetricsPanel(
     durationValue: String,
     distanceValue: String,
+    elevationValue: String,
+    inclineValue: String,
+    specLabel: String,
     supportsDistance: Boolean,
+    supportsElevation: Boolean,
+    supportsIncline: Boolean,
     isDone: Boolean,
-    onDistanceChanged: (String) -> Unit
+    onDistanceChanged: (String) -> Unit,
+    onElevationChanged: (String) -> Unit,
+    onInclineChanged: (String) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Column(
@@ -375,14 +404,14 @@ private fun ActivityMetricsPanel(
             .padding(14.dp)
     ) {
         Text(
-            text = if (supportsDistance) "Süre ve mesafe" else "Süre",
+            text = if (supportsDistance) "$specLabel · süre ve mesafe" else "$specLabel · süre",
             color = if (isDone) accent else TextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.2.sp
         )
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             MetricDisplayTile(
                 label = "Süre",
                 value = durationValue.toDurationLabel(),
@@ -402,6 +431,37 @@ private fun ActivityMetricsPanel(
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+        if (supportsElevation || supportsIncline) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                if (supportsElevation) {
+                    WeightInputField(
+                        value = elevationValue,
+                        onValueChange = onElevationChanged,
+                        placeholder = "0",
+                        label = "Yükselti",
+                        isDone = isDone,
+                        accent = accent,
+                        suffix = "m",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (supportsIncline) {
+                    WeightInputField(
+                        value = inclineValue,
+                        onValueChange = onInclineChanged,
+                        placeholder = "0",
+                        label = "Eğim",
+                        isDone = isDone,
+                        accent = accent,
+                        suffix = "%",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

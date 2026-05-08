@@ -23,7 +23,13 @@ data class ProgramExerciseWithName(
     @ColumnInfo(name = "exercise_name") val exerciseName: String,
     @ColumnInfo(name = "target_muscle") val targetMuscle: String,
     val category: String,
-    @ColumnInfo(name = "image_url") val imageUrl: String
+    @ColumnInfo(name = "image_url") val imageUrl: String,
+    @ColumnInfo(name = "sport_type") val sportType: String,
+    @ColumnInfo(name = "tracking_mode") val trackingMode: String,
+    @ColumnInfo(name = "target_duration_seconds") val targetDurationSeconds: Int?,
+    @ColumnInfo(name = "target_distance_meters") val targetDistanceMeters: Float?,
+    @ColumnInfo(name = "target_elevation_meters") val targetElevationMeters: Float?,
+    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float?
 )
 
 /** ProgramDay + child ProgramExercise'lar (basit @Relation — exercise join olmadan). */

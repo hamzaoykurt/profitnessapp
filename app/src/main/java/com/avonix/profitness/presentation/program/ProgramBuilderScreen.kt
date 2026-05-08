@@ -231,6 +231,83 @@ private val READY_PROGRAMS = listOf(
         listOf("76%", "78%", "65%"),
         listOf(0.76f, 0.78f, 0.65f)
     ),
+    ReadyProgram(
+        "Bisiklet 4 Hafta",
+        "Temel Sürüş & Kondisyon",
+        ProgramCategory.ENDURANCE, 3, 4, "Başlangıç",
+        "Bisiklet",
+        "Haftada 3 gün süre, mesafe ve hafif eğim hedefleriyle bisiklet kondisyonu kurar.",
+        "📌 Paz: Kolay sürüş\n📌 Çar: Tempo sürüş\n📌 Cum: Uzun sürüş",
+        listOf("BİSİKLET", "KARDİYO", "ALT VÜCUT"),
+        listOf("86%", "82%", "58%"),
+        listOf(0.86f, 0.82f, 0.58f)
+    ),
+    ReadyProgram(
+        "5K Koşu Temeli",
+        "Koşuya Başlangıç",
+        ProgramCategory.ENDURANCE, 3, 6, "Başlangıç",
+        "Koşu",
+        "Koşu/yürüyüş geçişleriyle 5K mesafesine güvenli hazırlık sağlar.",
+        "📌 Paz: Kolay koşu\n📌 Çar: Interval\n📌 Cum: Uzun koşu",
+        listOf("KOŞU", "KARDİYO", "CORE"),
+        listOf("88%", "72%", "46%"),
+        listOf(0.88f, 0.72f, 0.46f)
+    ),
+    ReadyProgram(
+        "Yüzme Temel",
+        "Havuz Dayanıklılığı",
+        ProgramCategory.ENDURANCE, 3, 4, "Başlangıç",
+        "Yüzme",
+        "Süre ve mesafe odaklı yüzme seanslarıyla teknik ve kapasite geliştirir.",
+        "📌 Paz: Teknik\n📌 Çar: Mesafe\n📌 Cum: Karışık tempo",
+        listOf("YÜZME", "KARDİYO", "CORE"),
+        listOf("80%", "74%", "55%"),
+        listOf(0.80f, 0.74f, 0.55f)
+    ),
+    ReadyProgram(
+        "Kürek Erg Temel",
+        "Rowing Kondisyonu",
+        ProgramCategory.ENDURANCE, 3, 4, "Orta",
+        "Kürek",
+        "Kürek makinesinde tempo, mesafe ve interval bloklarıyla kondisyon kurar.",
+        "📌 Paz: Teknik tempo\n📌 Çar: Interval\n📌 Cum: Uzun erg",
+        listOf("KÜREK", "KARDİYO", "SIRT"),
+        listOf("82%", "76%", "50%"),
+        listOf(0.82f, 0.76f, 0.50f)
+    ),
+    ReadyProgram(
+        "Yürüyüş & Hiking",
+        "Düşük Etki Dayanıklılık",
+        ProgramCategory.ENDURANCE, 4, 4, "Başlangıç",
+        "Yürüyüş",
+        "Mesafe, süre ve yükselti takibiyle yürüyüş/hiking alışkanlığı kazandırır.",
+        "📌 Pzt: Kolay yürüyüş\n📌 Çar: Tempo\n📌 Cum: Eğim\n📌 Paz: Uzun yürüyüş",
+        listOf("YÜRÜYÜŞ", "KARDİYO", "MOBİLİTE"),
+        listOf("74%", "66%", "42%"),
+        listOf(0.74f, 0.66f, 0.42f)
+    ),
+    ReadyProgram(
+        "Boks Kondisyon",
+        "Round Bazlı Antrenman",
+        ProgramCategory.FAT_LOSS, 3, 4, "Orta",
+        "Boks",
+        "Shadow boxing ve ip atlama bloklarıyla round/süre odaklı kondisyon sağlar.",
+        "📌 Paz: Teknik round\n📌 Çar: Kondisyon\n📌 Cum: Karma interval",
+        listOf("BOKS", "HIIT", "OMUZ"),
+        listOf("78%", "84%", "56%"),
+        listOf(0.78f, 0.84f, 0.56f)
+    ),
+    ReadyProgram(
+        "Yoga Mobilite",
+        "Esneklik & Toparlanma",
+        ProgramCategory.BEGINNER, 3, 4, "Başlangıç",
+        "Mobilite",
+        "Süre bazlı yoga ve mobilite seanslarıyla toparlanma kalitesini artırır.",
+        "📌 Paz: Akış\n📌 Çar: Mobilite\n📌 Cum: Derin esneme",
+        listOf("YOGA", "MOBİLİTE", "CORE"),
+        listOf("42%", "52%", "64%"),
+        listOf(0.42f, 0.52f, 0.64f)
+    ),
     // ── BAŞLANGIÇ ────────────────────────────────────────────────────────────
     ReadyProgram(
         "Full Body Başlangıç",

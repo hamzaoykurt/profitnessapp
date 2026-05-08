@@ -55,6 +55,41 @@ jobs:
           echo "KEY_ALIAS=androiddebugkey"                              >> local.properties
           echo "KEY_PASSWORD=android"                                   >> local.properties
 
+      - name: Verify Android signing certificate
+        id: signing
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::DEBUG_KEYSTORE_BASE64 secret is missing. Without a fixed keystore, GitHub APKs can be signed with a different certificate and Google Places API restrictions will block them."
+            exit 1
+          fi
+
+          mkdir -p build
+          printf '%s' "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > build/ci_signing.keystore
+
+          SHA1=$(keytool -list -v \
+            -keystore build/ci_signing.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android 2>/dev/null | awk -F': ' '/SHA1:/{print $2; exit}')
+
+          SHA256=$(keytool -list -v \
+            -keystore build/ci_signing.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android 2>/dev/null | awk -F': ' '/SHA256:/{print $2; exit}')
+
+          if [ -z "$SHA1" ]; then
+            echo "::error::Could not read SHA-1 from DEBUG_KEYSTORE_BASE64. Check keystore password, key alias, and key password."
+            exit 1
+          fi
+
+          echo "sha1=$SHA1" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "Android signing SHA-1: $SHA1"
+          echo "Android signing SHA-256: $SHA256"
+          echo "::notice title=Android signing SHA-1::$SHA1"
+
       - name: Grant Gradlew Permission
         run: chmod +x gradlew
 
@@ -76,6 +111,9 @@ jobs:
             - **Commit:** ${{ github.sha }}
             - **Branch:** ${{ github.ref_name }}
             - **Timestamp:** ${{ github.event.head_commit.timestamp }}
+            - **Android signing SHA-1:** `${{ steps.signing.outputs.sha1 }}`
+
+            If Google Places shows API 9011 on this APK, add the SHA-1 above to the Google Cloud API key restriction for package `com.avonix.profitness`.
 
             ${{ github.event.head_commit.message }}
           files: "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"

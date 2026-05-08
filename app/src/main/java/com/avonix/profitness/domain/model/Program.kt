@@ -44,7 +44,13 @@ data class ProgramExercise(
     val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu dinlenmesi
     val orderIndex: Int,
     val category: String = "",
-    val imageUrl: String = ""
+    val imageUrl: String = "",
+    val sportType: String = "",
+    val trackingMode: String = "",
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null
 )
 
 @Serializable
@@ -56,5 +62,7 @@ data class ExerciseItem(
     val category: String,
     val setsDefault: Int,
     val repsDefault: Int,
-    val description: String = ""
+    val description: String = "",
+    val sportType: String = "",
+    val trackingMode: String = ""
 )

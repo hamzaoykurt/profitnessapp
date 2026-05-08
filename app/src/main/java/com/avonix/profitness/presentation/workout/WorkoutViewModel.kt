@@ -68,6 +68,8 @@ data class WorkoutScreenState(
     val lastSessionData: Map<String, Map<Int, Pair<Float?, Int?>>> = emptyMap(),
     val activityDurations: Map<String, String> = emptyMap(),
     val activityDistances: Map<String, String> = emptyMap(),
+    val activityElevations: Map<String, String> = emptyMap(),
+    val activityInclines: Map<String, String> = emptyMap(),
     val profileWeightKg: Float = 0f,
     // ExerciseDetailSheet — progresyon
     val exerciseHistory: Map<String, List<SetCompletionEntity>> = emptyMap(),
@@ -567,6 +569,20 @@ class WorkoutViewModel @Inject constructor(
         scheduleActivityDraftPersist(exerciseId)
     }
 
+    fun updateActivityElevation(exerciseId: String, value: String) {
+        updateState { state ->
+            state.copy(activityElevations = state.activityElevations + (exerciseId to value))
+        }
+        scheduleActivityDraftPersist(exerciseId)
+    }
+
+    fun updateActivityIncline(exerciseId: String, value: String) {
+        updateState { state ->
+            state.copy(activityInclines = state.activityInclines + (exerciseId to value))
+        }
+        scheduleActivityDraftPersist(exerciseId)
+    }
+
     fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
         updateState { state ->
             val exerciseMap = state.setReps[exerciseId].orEmpty().toMutableMap()
@@ -849,6 +865,8 @@ class WorkoutViewModel @Inject constructor(
             if (isCompleting) {
                 val durationSeconds = currentState.activityDurations[exerciseId]?.toDurationSecondsOrNull()
                 val distanceMeters = currentState.activityDistances[exerciseId]?.toFloatInputOrNull()
+                val elevationMeters = currentState.activityElevations[exerciseId]?.toFloatInputOrNull()
+                val inclinePercent = currentState.activityInclines[exerciseId]?.toFloatInputOrNull()
 
                 markExerciseCompletedOptimistically(dayIdx, exerciseId)
                 if (activityBased) {
@@ -859,7 +877,9 @@ class WorkoutViewModel @Inject constructor(
                         programDayId = programDayId,
                         setIndex = ACTIVITY_SET_INDEX,
                         durationSeconds = durationSeconds,
-                        distanceMeters = distanceMeters
+                        distanceMeters = distanceMeters,
+                        elevationMeters = elevationMeters,
+                        inclinePercent = inclinePercent
                     )
                     workoutRepository.upsertSetRepsActual(
                         userId = userId,
@@ -1004,6 +1024,8 @@ class WorkoutViewModel @Inject constructor(
 
         val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
         val distanceMeters = currentState.activityDistances[exerciseId]?.toFloatInputOrNull()
+        val elevationMeters = currentState.activityElevations[exerciseId]?.toFloatInputOrNull()
+        val inclinePercent = currentState.activityInclines[exerciseId]?.toFloatInputOrNull()
         val wasCompleted = exerciseId in dayState.completedIds
         val key = "$exerciseId:activity"
         draftPersistJobs[key]?.cancel()
@@ -1018,7 +1040,9 @@ class WorkoutViewModel @Inject constructor(
                 programDayId = programDayId,
                 setIndex = ACTIVITY_SET_INDEX,
                 durationSeconds = durationSeconds,
-                distanceMeters = distanceMeters
+                distanceMeters = distanceMeters,
+                elevationMeters = elevationMeters,
+                inclinePercent = inclinePercent
             )
             workoutRepository.upsertSetRepsActual(
                 userId = userId,
@@ -1191,7 +1215,13 @@ class WorkoutViewModel @Inject constructor(
                             restSeconds = pe.restSeconds,
                             exerciseRestSeconds = pe.exerciseRestSeconds,
                             exerciseTableId = pe.exerciseId,
-                            weightKg = pe.weightKg
+                            weightKg = pe.weightKg,
+                            sportType = pe.sportType,
+                            trackingMode = pe.trackingMode,
+                            targetDurationSeconds = pe.targetDurationSeconds,
+                            targetDistanceMeters = pe.targetDistanceMeters,
+                            targetElevationMeters = pe.targetElevationMeters,
+                            targetInclinePercent = pe.targetInclinePercent
                         )
                     }
                 )
@@ -1281,7 +1311,8 @@ class WorkoutViewModel @Inject constructor(
 
     private fun prefillActivityInputs(exerciseId: String, sets: List<SetCompletionEntity>) {
         val activity = sets.firstOrNull {
-            it.durationSeconds != null || it.distanceMeters != null
+            it.durationSeconds != null || it.distanceMeters != null ||
+                it.elevationMeters != null || it.inclinePercent != null
         } ?: return
         updateState { state ->
             val duration = activity.durationSeconds
@@ -1290,14 +1321,88 @@ class WorkoutViewModel @Inject constructor(
             val distance = activity.distanceMeters
                 ?.takeIf { it > 0f }
                 ?.trimmedString()
+            val elevation = activity.elevationMeters
+                ?.takeIf { it > 0f }
+                ?.trimmedString()
+            val incline = activity.inclinePercent
+                ?.takeIf { it > 0f }
+                ?.trimmedString()
             state.copy(
                 activityDurations = duration
                     ?.let { state.activityDurations + (exerciseId to it) }
                     ?: state.activityDurations,
                 activityDistances = distance
                     ?.let { state.activityDistances + (exerciseId to it) }
-                    ?: state.activityDistances
+                    ?: state.activityDistances,
+                activityElevations = elevation
+                    ?.let { state.activityElevations + (exerciseId to it) }
+                    ?: state.activityElevations,
+                activityInclines = incline
+                    ?.let { state.activityInclines + (exerciseId to it) }
+                    ?: state.activityInclines
             )
+        }
+    }
+
+    fun toggleChallengeActivity(dayIdx: Int, exercise: Exercise) {
+        viewModelScope.launch {
+            val currentState = uiState.value
+            val dayState = currentState.dayStates.getOrNull(dayIdx) ?: return@launch
+            val programDayId = dayState.day.programDayId
+            if (programDayId.isBlank()) return@launch
+            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
+            val isCompleting = exercise.id !in dayState.completedIds
+            val dbExerciseId = exercise.exerciseTableId.ifBlank { return@launch }
+
+            if (isCompleting) {
+                val durationSeconds = currentState.activityDurations[exercise.id]?.toDurationSecondsOrNull()
+                val distanceMeters = currentState.activityDistances[exercise.id]?.toFloatInputOrNull()
+                val elevationMeters = currentState.activityElevations[exercise.id]?.toFloatInputOrNull()
+                val inclinePercent = currentState.activityInclines[exercise.id]?.toFloatInputOrNull()
+
+                markExerciseCompletedOptimistically(dayIdx, exercise.id)
+                markSetCompletionOptimistically(dbExerciseId, ACTIVITY_SET_INDEX, true)
+                workoutRepository.upsertSetActivityMetrics(
+                    userId = userId,
+                    exerciseId = dbExerciseId,
+                    programDayId = programDayId,
+                    setIndex = ACTIVITY_SET_INDEX,
+                    durationSeconds = durationSeconds,
+                    distanceMeters = distanceMeters,
+                    elevationMeters = elevationMeters,
+                    inclinePercent = inclinePercent
+                )
+                workoutRepository.upsertSetRepsActual(
+                    userId = userId,
+                    exerciseId = dbExerciseId,
+                    programDayId = programDayId,
+                    setIndex = ACTIVITY_SET_INDEX,
+                    repsActual = 1
+                )
+                workoutRepository.completeExercise(
+                    userId = userId,
+                    programDayId = programDayId,
+                    exerciseId = dbExerciseId,
+                    setsCompleted = 1,
+                    repsCompleted = 0,
+                    durationSeconds = durationSeconds ?: 0
+                )
+                viewModelScope.launch {
+                    workoutRepository.updateStreak(userId)
+                    profileRepository.invalidateStatsCache()
+                    runCatching { challengeRepository.refreshMyProgress() }
+                }
+            } else {
+                markExerciseIncompleteOptimistically(dayIdx, exercise.id)
+                markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
+                workoutRepository.uncompleteExercise(userId, programDayId, dbExerciseId)
+                workoutRepository.clearExerciseSetCompletions(userId, dbExerciseId, programDayId)
+                viewModelScope.launch {
+                    workoutRepository.rollbackStreak(userId)
+                    profileRepository.invalidateStatsCache()
+                    runCatching { challengeRepository.refreshMyProgress() }
+                }
+            }
         }
     }
 
@@ -1315,7 +1420,9 @@ class WorkoutViewModel @Inject constructor(
             category = exercise.category,
             name = exercise.name,
             target = exercise.target,
-            reps = exercise.reps
+            reps = exercise.reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
         ) != ExerciseMetric.Strength
     }
 
@@ -1354,7 +1461,9 @@ class WorkoutViewModel @Inject constructor(
                 setIndex = ACTIVITY_SET_INDEX,
                 durationSeconds = durationSeconds
                     ?: latest.activityDurations[exerciseId]?.toDurationSecondsOrNull(),
-                distanceMeters = latest.activityDistances[exerciseId]?.toFloatInputOrNull()
+                distanceMeters = latest.activityDistances[exerciseId]?.toFloatInputOrNull(),
+                elevationMeters = latest.activityElevations[exerciseId]?.toFloatInputOrNull(),
+                inclinePercent = latest.activityInclines[exerciseId]?.toFloatInputOrNull()
             )
         }
     }
@@ -1379,7 +1488,9 @@ class WorkoutViewModel @Inject constructor(
                 programDayId = programDayId,
                 setIndex = ACTIVITY_SET_INDEX,
                 durationSeconds = latest.activityDurations[exerciseId]?.toDurationSecondsOrNull(),
-                distanceMeters = latest.activityDistances[exerciseId]?.toFloatInputOrNull()
+                distanceMeters = latest.activityDistances[exerciseId]?.toFloatInputOrNull(),
+                elevationMeters = latest.activityElevations[exerciseId]?.toFloatInputOrNull(),
+                inclinePercent = latest.activityInclines[exerciseId]?.toFloatInputOrNull()
             )
         }
     }

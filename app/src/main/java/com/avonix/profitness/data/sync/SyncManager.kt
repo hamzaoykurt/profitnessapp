@@ -66,7 +66,9 @@ private data class SetCompletionUpsert(
     val weight_kg: Float? = null,
     val reps_actual: Int? = null,
     val duration_seconds: Int? = null,
-    val distance_meters: Float? = null
+    val distance_meters: Float? = null,
+    val elevation_meters: Float? = null,
+    val incline_percent: Float? = null
 )
 
 /**
@@ -159,7 +161,7 @@ class SyncManager @Inject constructor(
 
             if (dayIds.isNotEmpty()) {
                 val exerciseDtos = supabase.postgrest["program_exercises"]
-                        .select(columns = Columns.raw("*, exercises(name, target_muscle, category, image_url)")) {
+                        .select(columns = Columns.raw("*, exercises(name, target_muscle, category, image_url, sport_type, tracking_mode)")) {
                             filter { isIn("program_day_id", dayIds) }
                             order("order_index", Order.ASCENDING)
                         }
@@ -379,7 +381,11 @@ class SyncManager @Inject constructor(
         reps = reps,
         weightKg = weight_kg ?: 0f,
         restSeconds = rest_seconds,
-        orderIndex = order_index
+        orderIndex = order_index,
+        targetDurationSeconds = target_duration_seconds,
+        targetDistanceMeters = target_distance_meters,
+        targetElevationMeters = target_elevation_meters,
+        targetInclinePercent = target_incline_percent
     )
 
     private fun ExerciseDto.toEntity() = ExerciseEntity(
@@ -390,7 +396,9 @@ class SyncManager @Inject constructor(
         category = category,
         setsDefault = sets_default,
         repsDefault = reps_default,
-        description = description
+        description = description,
+        sportType = sport_type,
+        trackingMode = tracking_mode
     )
 
     private fun WorkoutLogDto.toEntity(synced: Boolean) = WorkoutLogEntity(
@@ -423,7 +431,9 @@ class SyncManager @Inject constructor(
         weight_kg = weightKg,
         reps_actual = repsActual,
         duration_seconds = durationSeconds,
-        distance_meters = distanceMeters
+        distance_meters = distanceMeters,
+        elevation_meters = elevationMeters,
+        incline_percent = inclinePercent
     )
 
     private fun SetCompletionUpsert.toEntity() = SetCompletionEntity(
@@ -435,6 +445,8 @@ class SyncManager @Inject constructor(
         weightKg = weight_kg,
         repsActual = reps_actual,
         durationSeconds = duration_seconds,
-        distanceMeters = distance_meters
+        distanceMeters = distance_meters,
+        elevationMeters = elevation_meters,
+        inclinePercent = incline_percent
     )
 }
