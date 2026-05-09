@@ -90,6 +90,13 @@ class ProgramViewModel @Inject constructor(
     private val syncStaleMs  = 3 * 60 * 1000L // 3 dakika
     private var templateApplyInFlight = false
 
+    private fun mergeCreatedProgram(current: List<Program>, created: Program): List<Program> =
+        listOf(created) + current
+            .asSequence()
+            .filterNot { it.id == created.id }
+            .map { it.copy(isActive = false) }
+            .toList()
+
     init {
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
@@ -418,10 +425,7 @@ FORMAT:
                         updateState { it.copy(exercises = updated) }
                     }
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(aiLoading = false, userPrograms = updated)
                     }
                     val skippedMessage = skippedExercises.takeIf { it.isNotEmpty() }
@@ -636,10 +640,7 @@ FORMAT:
                 .onSuccess { program ->
                     templateApplyInFlight = false
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(isLoading = false, applyingTemplateKey = null, userPrograms = updated)
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
@@ -674,10 +675,7 @@ FORMAT:
             programRepository.createManual(uid, name, inputs)
                 .onSuccess { program ->
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(isLoading = false, userPrograms = updated)
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" oluşturuldu."))

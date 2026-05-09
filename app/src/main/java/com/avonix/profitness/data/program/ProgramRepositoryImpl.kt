@@ -70,7 +70,8 @@ class ProgramRepositoryImpl @Inject constructor(
                 val local = programDao.getUserPrograms(userId)
                 if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }
                 // Room boşsa Supabase'den çek
-                syncManager.pullPrograms(userId)
+                syncManager.pullExercises().getOrThrow()
+                syncManager.pullPrograms(userId).getOrThrow()
                 programDao.getUserPrograms(userId).map { it.toDomain() }
             }
         }
@@ -172,8 +173,8 @@ class ProgramRepositoryImpl @Inject constructor(
                 }
 
                 // Room'a sync et (Supabase'den tam veri çek)
-                syncManager.pullPrograms(userId)
-                syncManager.pullExercises()
+                syncManager.pullExercises().getOrThrow()
+                syncManager.pullPrograms(userId).getOrThrow()
 
                 // Oluşturulan programı Room'dan döndür
                 programDao.getActiveProgram(userId)?.toDomain()

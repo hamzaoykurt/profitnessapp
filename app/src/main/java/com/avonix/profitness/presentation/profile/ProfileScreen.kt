@@ -99,7 +99,9 @@ fun ProfileScreen(
                     accent           = accent,
                     theme            = theme,
                     onSettingsClick  = { showAppearance = true },
-                    onNavigateToStore = onNavigateToStore
+                    onNavigateToStore = onNavigateToStore,
+                    onOpenXpRanking   = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
+                    onOpenRankRanking = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -123,14 +125,6 @@ fun ProfileScreen(
                     weightKg  = state.weightKg,
                     onWeightClick = onNavigateToWeightTracking,
                     onExerciseClick = onNavigateToExerciseProgression
-                )
-            }
-            item {
-                LeaderboardPreviewCard(
-                    accent              = accent,
-                    theme               = theme,
-                    onOpenXp            = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
-                    onOpenAchievements  = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -344,7 +338,9 @@ private fun ProfileHeroBanner(
     accent          : Color,
     theme           : AppThemeState,
     onSettingsClick : () -> Unit,
-    onNavigateToStore: () -> Unit = {}
+    onNavigateToStore: () -> Unit = {},
+    onOpenXpRanking : () -> Unit = {},
+    onOpenRankRanking: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -630,8 +626,24 @@ private fun ProfileHeroBanner(
                             .heightIn(min = 54.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        HeroMiniStat("TOPLAM XP", "$xp", Icons.Rounded.Bolt, accent, theme, Modifier.weight(1f))
-                        HeroMiniStat("RÜTBE", rank.uppercase(), Icons.Rounded.EmojiEvents, rankColor, theme, Modifier.weight(1f))
+                        HeroMiniStat(
+                            label = "TOPLAM XP",
+                            value = "$xp",
+                            icon = Icons.Rounded.Bolt,
+                            color = accent,
+                            theme = theme,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenXpRanking
+                        )
+                        HeroMiniStat(
+                            label = "RÜTBE",
+                            value = rank.uppercase(),
+                            icon = Icons.Rounded.EmojiEvents,
+                            color = rankColor,
+                            theme = theme,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenRankRanking
+                        )
                     }
                 }
             }
@@ -646,13 +658,15 @@ private fun HeroMiniStat(
     icon: ImageVector,
     color: Color,
     theme: AppThemeState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(color.copy(0.11f))
             .border(1.dp, color.copy(0.28f), RoundedCornerShape(16.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 11.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
