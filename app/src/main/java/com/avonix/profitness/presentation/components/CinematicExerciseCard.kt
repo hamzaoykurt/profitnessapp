@@ -37,6 +37,7 @@ import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
 import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.isDurationSetExercise
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -71,6 +72,7 @@ fun CinematicExerciseCard(
     timerRunning: Boolean = false,
     timerDone: Boolean = false,
     onStartTimer: (seconds: Int) -> Unit = {},
+    onStartSetTimer: (setIndex: Int, seconds: Int) -> Unit = { _, _ -> },
     onStartStopwatchTimer: () -> Unit = {},
     onStopTimer: () -> Unit = {}
 ) {
@@ -93,8 +95,33 @@ fun CinematicExerciseCard(
         )
     }
     val activityMetric = trackingSpec.metric
-    val durationSetBased = activityMetric == ExerciseMetric.Duration && exercise.sets > 1 && isDurationSetExercise(exercise)
+    val durationSetBased = isDurationSetExercise(
+        category = exercise.category,
+        name = exercise.name,
+        target = exercise.target,
+        reps = exercise.reps,
+        sets = exercise.sets,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
     val activityBased = activityMetric != ExerciseMetric.Strength && !durationSetBased
+    val nextTimedSetIndex = remember(durationSetBased, doneSetIndices, exercise.sets) {
+        if (durationSetBased) {
+            (0 until exercise.sets).firstOrNull { it !in doneSetIndices } ?: 0
+        } else {
+            0
+        }
+    }
+    val nextTimedSetDurationSeconds = remember(durationSetBased, nextTimedSetIndex, setDurations, exercise.reps, exercise.targetDurationSeconds) {
+        if (durationSetBased) {
+            setDurations[nextTimedSetIndex]?.toIntOrNull()?.takeIf { it > 0 }
+                ?: exercise.targetDurationSeconds?.takeIf { it > 0 }
+                ?: exercise.reps.toDurationSetSecondsLabel().toIntOrNull()
+                ?: 60
+        } else {
+            0
+        }
+    }
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
     LaunchedEffect(timerRunning) {
@@ -256,7 +283,11 @@ fun CinematicExerciseCard(
                             val doneCount = doneSetIndices.size
                             StatBadge(
                                 sets = exercise.sets,
-                                reps = exercise.reps,
+                                reps = if (durationSetBased) {
+                                    exercise.targetDurationSeconds?.toString() ?: exercise.reps
+                                } else {
+                                    exercise.reps
+                                },
                                 done = doneCount,
                                 isActivity = activityBased,
                                 isDurationSet = durationSetBased
@@ -295,7 +326,9 @@ fun CinematicExerciseCard(
                             repeat(exercise.sets) { i ->
                                 TimedSetRow(
                                     setNumber = i + 1,
-                                    durationValue = setDurations[i] ?: exercise.reps.toDurationSetSecondsLabel(),
+                                    durationValue = setDurations[i]
+                                        ?: exercise.targetDurationSeconds?.toString()
+                                        ?: exercise.reps.toDurationSetSecondsLabel(),
                                     isDone = i in doneSetIndices,
                                     onDurationChanged = { onSetDurationChanged(i, it) },
                                     onToggle = { onToggleSet(i) }
@@ -359,6 +392,20 @@ fun CinematicExerciseCard(
                                     onStart        = {
                                         if (timerRunning) onStopTimer()
                                         else showActivityTimerSetup = !showActivityTimerSetup
+                                    },
+                                    onStop         = onStopTimer
+                                )
+                            } else if (durationSetBased) {
+                                RestTimerChip(
+                                    seconds        = timerSeconds,
+                                    isRunning      = timerRunning,
+                                    isDone         = timerDone,
+                                    defaultSeconds = nextTimedSetDurationSeconds,
+                                    idleLabel      = "SET SAYACI",
+                                    doneLabel      = "SET BİTTİ",
+                                    onStart        = {
+                                        if (timerRunning) onStopTimer()
+                                        else onStartSetTimer(nextTimedSetIndex, nextTimedSetDurationSeconds)
                                     },
                                     onStop         = onStopTimer
                                 )
@@ -1115,15 +1162,6 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
             }
         }
     }
-}
-
-private fun isDurationSetExercise(exercise: Exercise): Boolean {
-    val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
-        .joinToString(" ")
-        .lowercase()
-        .normalizeTurkishForWorkout()
-    return listOf("plank", "wall sit", "hollow hold", "dead hang", "jump rope", "mountain climber")
-        .any { it in haystack }
 }
 
 private fun String.toDurationSetDisplayLabel(): String {

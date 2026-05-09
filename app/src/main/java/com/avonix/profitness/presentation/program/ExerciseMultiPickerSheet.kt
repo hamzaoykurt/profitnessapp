@@ -30,6 +30,7 @@ import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.classifyExerciseMetric
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 
 private val multiCategoryColors = mapOf(
     "Göğüs"   to CardCoral,
@@ -547,14 +548,21 @@ private fun isActivityBasedExercise(exercise: ExerciseItem): Boolean {
         category = exercise.category,
         name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
         target = exercise.targetMuscle,
-        reps = exercise.repsDefault.toString()
+        reps = exercise.repsDefault.toString(),
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
     ) != ExerciseMetric.Strength
 }
 
-private fun defaultActivityDurationSeconds(exercise: ExerciseItem): Int {
-    val minutes = exercise.repsDefault.takeIf { it in 5..180 } ?: 20
-    return minutes * 60
-}
+private fun defaultActivityDurationSeconds(exercise: ExerciseItem): Int =
+    defaultDurationSecondsForExercise(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
 
 private fun formatDurationShort(seconds: Int): String =
     if (seconds <= 0) "—" else "${(seconds / 60).coerceAtLeast(1)} dk"

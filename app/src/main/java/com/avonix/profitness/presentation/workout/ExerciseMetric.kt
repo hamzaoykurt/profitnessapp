@@ -66,17 +66,27 @@ fun activityTrackingSpec(
     sportTypeRaw: String? = null,
     trackingModeRaw: String? = null
 ): ActivityTrackingSpec {
-    val explicitSport = SportType.fromRaw(sportTypeRaw).takeUnless { sportTypeRaw.isNullOrBlank() }
+    val haystack = listOf(category, name, target, reps)
+        .joinToString(" ")
+        .lowercase()
+        .normalizeTurkishAscii()
+    val repBasedStrengthMovement = repBasedStrengthKeywords.any { it in haystack }
+    val explicitSport = SportType.fromRaw(sportTypeRaw).takeUnless {
+        sportTypeRaw.isNullOrBlank() || repBasedStrengthMovement
+    }
     val sportType = explicitSport ?: classifySportType(category, name, target, reps)
     val normalizedReps = reps.lowercase().normalizeTurkishAscii()
-    val repsLooksTimed = listOf("sn", "sec", "second", "saniye", " dk", "min", "minute", "dakika")
-        .any { it in normalizedReps }
-    val isTimedHold = timedHoldKeywords.any {
-        it in listOf(category, name, target).joinToString(" ").lowercase().normalizeTurkishAscii()
-    }
+    val repsLooksTimed = repsLooksTimed(normalizedReps)
+    val isTimedHold = timedHoldKeywords.any { it in haystack }
     val explicitMetric = when (trackingModeRaw) {
-        "duration" -> ExerciseMetric.Duration
-        "duration_distance", "duration_distance_elevation" -> ExerciseMetric.DurationDistance
+        "duration", "duration_distance", "duration_distance_elevation" -> if (repBasedStrengthMovement && !repsLooksTimed && !isTimedHold) {
+            ExerciseMetric.Strength
+        } else {
+            when (trackingModeRaw) {
+                "duration" -> ExerciseMetric.Duration
+                else -> ExerciseMetric.DurationDistance
+            }
+        }
         "strength" -> if (repsLooksTimed || isTimedHold) ExerciseMetric.Duration else ExerciseMetric.Strength
         else -> null
     }
@@ -102,6 +112,46 @@ fun activityTrackingSpec(
     )
 }
 
+fun isDurationSetExercise(
+    category: String,
+    name: String,
+    target: String,
+    reps: String,
+    sets: Int,
+    sportTypeRaw: String? = null,
+    trackingModeRaw: String? = null
+): Boolean {
+    if (sets <= 1) return false
+    val metric = classifyExerciseMetric(category, name, target, reps, sportTypeRaw, trackingModeRaw)
+    if (metric != ExerciseMetric.Duration) return false
+    val haystack = listOf(category, name, target, reps)
+        .joinToString(" ")
+        .lowercase()
+        .normalizeTurkishAscii()
+    return repsLooksTimed(reps.lowercase().normalizeTurkishAscii()) ||
+        timedSetKeywords.any { it in haystack }
+}
+
+fun defaultDurationSecondsForExercise(
+    category: String,
+    name: String,
+    target: String,
+    reps: Int,
+    sportTypeRaw: String? = null,
+    trackingModeRaw: String? = null
+): Int {
+    val haystack = listOf(category, name, target)
+        .joinToString(" ")
+        .lowercase()
+        .normalizeTurkishAscii()
+    return when {
+        timedSetKeywords.any { it in haystack } -> reps.takeIf { it in 5..600 } ?: 60
+        distanceSetLikeKeywords.any { it in haystack } -> 60
+        reps in 5..180 -> reps * 60
+        else -> 20 * 60
+    }
+}
+
 fun classifySportType(
     category: String,
     name: String,
@@ -118,7 +168,7 @@ fun classifySportType(
     if (listOf("kurek", "rowing", "rower", "ergometer", "erg").any { it in haystack }) return SportType.Rowing
     if (listOf("kos", "run", "jog", "treadmill", "tempo").any { it in haystack }) return SportType.Running
     if (listOf("yuruyus", "yurume", "walk", "hike", "hiking", "trekking").any { it in haystack }) return SportType.WalkingHiking
-    if (listOf("jump rope", "ip atlama", "hiit", "interval", "burpee", "mountain climber").any { it in haystack }) return SportType.JumpRopeHiit
+    if (listOf("jump rope", "ip atlama").any { it in haystack }) return SportType.JumpRopeHiit
     if (listOf("yoga", "pilates", "mobility", "stretch", "esneme").any { it in haystack }) return SportType.YogaPilates
     if (listOf("boxing", "boks", "mma", "shadow boxing", "kickbox").any { it in haystack }) return SportType.Boxing
     if (listOf("football", "soccer", "futbol", "hali saha").any { it in haystack }) return SportType.Football
@@ -140,9 +190,28 @@ fun classifySportType(
 }
 
 private val timedHoldKeywords = listOf(
-    "plank", "wall sit", "hollow hold", "dead hang", "mobility", "yoga", "pilates",
-    "stretch", "esneme", "walking lunge"
+    "plank", "side plank", "wall sit", "hollow hold", "hollow body hold", "dead hang",
+    "mobility", "yoga", "pilates", "stretch", "esneme", "pose"
 )
+
+private val timedSetKeywords = listOf(
+    "plank", "side plank", "wall sit", "hollow hold", "hollow body hold", "dead hang",
+    "stretch", "esneme", "pose", "jump rope", "ip atlama"
+)
+
+private val distanceSetLikeKeywords = listOf(
+    "farmer walk", "farmer carry", "suitcase carry", "carry", "sled push", "sled pull", "shuttle run"
+)
+
+private val repBasedStrengthKeywords = listOf(
+    "lunge", "split squat", "crunch", "leg raise", "russian twist", "ab wheel",
+    "burpee", "mountain climber", "box jump", "jump squat", "push-up", "push up",
+    "calf raise", "cat-cow", "bird dog", "glute bridge", "medicine ball slam"
+)
+
+private fun repsLooksTimed(reps: String): Boolean =
+    listOf("sn", "sec", "second", "saniye", " dk", "min", "minute", "dakika")
+        .any { it in reps }
 
 private fun String.normalizeTurkishAscii(): String =
     replace('\u0131', 'i')

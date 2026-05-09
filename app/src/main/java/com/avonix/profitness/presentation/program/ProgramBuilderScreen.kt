@@ -53,6 +53,9 @@ import com.avonix.profitness.domain.model.ProgramType
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.components.glassCard
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 import kotlinx.coroutines.delay
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -1895,8 +1898,14 @@ private fun EditProgramScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest ->
-                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(
+                        sets = newSets,
+                        reps = newReps,
+                        restSeconds = newRest,
+                        targetDurationSeconds = targetDuration,
+                        targetDistanceMeters = targetDistance
+                    )
                     editingExercise = null
                 }
             )
@@ -2418,8 +2427,14 @@ private fun ManualBuilderScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest ->
-                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(
+                        sets = newSets,
+                        reps = newReps,
+                        restSeconds = newRest,
+                        targetDurationSeconds = targetDuration,
+                        targetDistanceMeters = targetDistance
+                    )
                     editingExercise = null
                 }
             )
@@ -2772,14 +2787,48 @@ private fun ManualDayCard(
 // ── Exercise Edit Dialog ──────────────────────────────────────────────────────
 
 private fun manualDraftBadges(exercise: DraftExercise, theme: AppThemeState): List<String> {
-    val duration = exercise.targetDurationSeconds
-    val distance = exercise.targetDistanceMeters
-    return when {
-        duration != null && distance != null -> listOf(formatDraftDuration(duration, theme), formatDraftDistance(distance))
-        duration != null -> listOf(formatDraftDuration(duration, theme))
-        else -> listOf("${exercise.sets} SET", "${exercise.reps} ${theme.t("TEK", "REP")}")
+    val spec = draftTrackingSpec(exercise)
+    return when (spec.metric) {
+        ExerciseMetric.Strength -> listOf("${exercise.sets} SET", "${exercise.reps} ${theme.t("TEK", "REP")}")
+        ExerciseMetric.Duration -> listOf(formatDraftDuration(defaultDraftDurationSeconds(exercise), theme))
+        ExerciseMetric.DurationDistance -> listOf(
+            formatDraftDuration(defaultDraftDurationSeconds(exercise), theme),
+            formatDraftDistance(defaultDraftDistanceMeters(exercise).toFloat())
+        )
     }
 }
+
+private fun draftTrackingSpec(exercise: DraftExercise) =
+    activityTrackingSpec(
+        category = exercise.targetMuscle,
+        name = exercise.name,
+        target = exercise.targetMuscle,
+        reps = if (exercise.targetDurationSeconds != null) "${exercise.targetDurationSeconds / 60} dk" else exercise.reps.toString(),
+        trackingModeRaw = when {
+            exercise.targetDistanceMeters != null -> "duration_distance"
+            exercise.targetDurationSeconds != null -> "duration"
+            else -> null
+        }
+    )
+
+private fun defaultDraftDurationSeconds(exercise: DraftExercise): Int =
+    exercise.targetDurationSeconds
+        ?: defaultDurationSecondsForExercise(
+            category = exercise.targetMuscle,
+            name = exercise.name,
+            target = exercise.targetMuscle,
+            reps = exercise.reps
+        )
+
+private fun defaultDraftDistanceMeters(exercise: DraftExercise): Int =
+    exercise.targetDistanceMeters?.toInt()
+        ?: when {
+            listOf("farmer", "carry", "sled", "shuttle").any { it in exercise.name.lowercase() } -> 30
+            draftTrackingSpec(exercise).sportType.raw == "swimming" -> 500
+            draftTrackingSpec(exercise).sportType.raw == "walking_hiking" -> 3000
+            draftTrackingSpec(exercise).sportType.raw == "cycling" -> 10000
+            else -> 1000
+        }
 
 private fun formatDraftDuration(seconds: Int, theme: AppThemeState): String =
     "${(seconds / 60).coerceAtLeast(1)} ${theme.t("DK", "MIN")}"
@@ -2796,10 +2845,13 @@ private fun formatDraftDistance(meters: Float): String =
 private fun ExerciseEditDialog(
     exercise : DraftExercise,
     onDismiss: () -> Unit,
-    onConfirm: (sets: Int, reps: Int, restSeconds: Int) -> Unit
+    onConfirm: (sets: Int, reps: Int, restSeconds: Int, targetDurationSeconds: Int?, targetDistanceMeters: Float?) -> Unit
 ) {
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
+    var targetDurationSec by remember(exercise) { mutableIntStateOf(defaultDraftDurationSeconds(exercise)) }
+    var targetDistanceM by remember(exercise) { mutableIntStateOf(defaultDraftDistanceMeters(exercise)) }
+    val spec = remember(exercise) { draftTrackingSpec(exercise) }
     val theme  = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val onAccent = theme.effectiveOnAccentColor
@@ -2852,21 +2904,43 @@ private fun ExerciseEditDialog(
                     .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp)
             ) {
-                EditCounterField(
-                    label       = "SET",
-                    value       = sets,
-                    onDecrement = { if (sets > 1) sets-- },
-                    onIncrement = { if (sets < 10) sets++ },
-                    accent      = accent
-                )
-                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                EditCounterField(
-                    label       = theme.t("TEKRAR", "REPS"),
-                    value       = reps,
-                    onDecrement = { if (reps > 1) reps-- },
-                    onIncrement = { if (reps < 100) reps++ },
-                    accent      = accent
-                )
+                if (spec.metric == ExerciseMetric.Strength) {
+                    EditCounterField(
+                        label       = "SET",
+                        value       = sets,
+                        onDecrement = { if (sets > 1) sets-- },
+                        onIncrement = { if (sets < 10) sets++ },
+                        accent      = accent
+                    )
+                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                    EditCounterField(
+                        label       = theme.t("TEKRAR", "REPS"),
+                        value       = reps,
+                        onDecrement = { if (reps > 1) reps-- },
+                        onIncrement = { if (reps < 100) reps++ },
+                        accent      = accent
+                    )
+                } else {
+                    EditCounterField(
+                        label       = theme.t("SÜRE", "DURATION"),
+                        value       = targetDurationSec,
+                        onDecrement = { targetDurationSec = (targetDurationSec - 300).coerceAtLeast(300) },
+                        onIncrement = { targetDurationSec = (targetDurationSec + 300).coerceAtMost(10800) },
+                        accent      = accent,
+                        displayOverride = formatDraftDuration(targetDurationSec, theme)
+                    )
+                    if (spec.metric == ExerciseMetric.DurationDistance) {
+                        HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                        EditCounterField(
+                            label       = theme.t("MESAFE", "DISTANCE"),
+                            value       = targetDistanceM,
+                            onDecrement = { targetDistanceM = (targetDistanceM - 500).coerceAtLeast(500) },
+                            onIncrement = { targetDistanceM = (targetDistanceM + 500).coerceAtMost(50000) },
+                            accent      = accent,
+                            displayOverride = formatDraftDistance(targetDistanceM.toFloat())
+                        )
+                    }
+                }
             }
 
             // Action buttons
@@ -2883,7 +2957,15 @@ private fun ExerciseEditDialog(
                     Text(theme.t("İptal", "Cancel"), color = theme.text1, fontWeight = FontWeight.Medium)
                 }
                 Button(
-                    onClick  = { onConfirm(sets, reps, exercise.restSeconds) },
+                    onClick  = {
+                        onConfirm(
+                            sets,
+                            reps,
+                            exercise.restSeconds,
+                            targetDurationSec.takeIf { spec.metric != ExerciseMetric.Strength },
+                            targetDistanceM.toFloat().takeIf { spec.metric == ExerciseMetric.DurationDistance }
+                        )
+                    },
                     modifier = Modifier.weight(1f).height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
                     shape    = RoundedCornerShape(14.dp)

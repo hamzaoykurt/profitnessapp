@@ -37,7 +37,7 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
-enum class TimerPurpose { Rest, Activity }
+enum class TimerPurpose { Rest, Activity, TimedSet }
 
 enum class TimerMode { Countdown, Stopwatch }
 
@@ -49,6 +49,7 @@ data class RestTimerState(
     val totalSeconds: Int = 0,
     val exerciseName: String = "",
     val exerciseId: String = "",
+    val setIndex: Int = -1,
     val purpose: TimerPurpose = TimerPurpose.Rest,
     val mode: TimerMode = TimerMode.Countdown,
     val elapsedSeconds: Int = 0
@@ -251,6 +252,56 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    fun startTimedSetCountdownTimer(exerciseId: String, exerciseName: String, setIndex: Int, seconds: Int) {
+        val total = seconds.coerceAtLeast(1)
+        val notificationName = "$exerciseName Set ${setIndex + 1}"
+        timerJob?.cancel()
+        notificationManager.stopWorkoutSession()
+        _restTimer.value = RestTimerState(
+            isRunning = true,
+            isPaused = false,
+            isDone = false,
+            secondsLeft = total,
+            totalSeconds = total,
+            exerciseName = exerciseName,
+            exerciseId = exerciseId,
+            setIndex = setIndex,
+            purpose = TimerPurpose.TimedSet,
+            mode = TimerMode.Countdown,
+            elapsedSeconds = 0
+        )
+        notificationManager.updateActivityTimer(
+            exerciseName = notificationName,
+            elapsedSeconds = 0,
+            totalSeconds = total,
+            isStopwatch = false
+        )
+        timerJob = viewModelScope.launch {
+            var remaining = total
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+                _restTimer.update {
+                    it.copy(
+                        secondsLeft = remaining,
+                        elapsedSeconds = total - remaining
+                    )
+                }
+                notificationManager.updateActivityTimer(
+                    exerciseName = notificationName,
+                    elapsedSeconds = total - remaining,
+                    totalSeconds = total,
+                    isStopwatch = false
+                )
+            }
+            saveTimedSetDuration(exerciseId, setIndex, total)
+            notificationManager.notifyActivityTimerSaved(notificationName, total)
+            _restTimer.update {
+                it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
+            }
+        }
+    }
+
     fun stopVisibleTimer() {
         val timer = _restTimer.value
         if (timer.purpose == TimerPurpose.Activity) {
@@ -264,6 +315,15 @@ class WorkoutViewModel @Inject constructor(
             _restTimer.update {
                 it.copy(isRunning = false, isPaused = false, isDone = secondsToSave > 0, elapsedSeconds = secondsToSave)
             }
+        } else if (timer.purpose == TimerPurpose.TimedSet) {
+            val secondsToSave = (timer.totalSeconds - timer.secondsLeft).coerceAtLeast(0)
+            val notificationName = "${timer.exerciseName} Set ${timer.setIndex + 1}"
+            timerJob?.cancel()
+            if (secondsToSave > 0) saveTimedSetDuration(timer.exerciseId, timer.setIndex, secondsToSave)
+            if (secondsToSave > 0) notificationManager.notifyActivityTimerSaved(notificationName, secondsToSave)
+            _restTimer.update {
+                it.copy(isRunning = false, isPaused = false, isDone = secondsToSave > 0, secondsLeft = 0, elapsedSeconds = secondsToSave)
+            }
         } else {
             stopRestTimer()
         }
@@ -273,9 +333,9 @@ class WorkoutViewModel @Inject constructor(
         val timer = _restTimer.value
         if (!timer.isRunning) return
         timerJob?.cancel()
-        if (timer.purpose == TimerPurpose.Activity) {
+        if (timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) {
             notificationManager.updateActivityTimer(
-                exerciseName = timer.exerciseName,
+                exerciseName = if (timer.purpose == TimerPurpose.TimedSet) "${timer.exerciseName} Set ${timer.setIndex + 1}" else timer.exerciseName,
                 elapsedSeconds = timer.elapsedSeconds,
                 totalSeconds = timer.totalSeconds,
                 isStopwatch = timer.mode == TimerMode.Stopwatch,
@@ -299,12 +359,13 @@ class WorkoutViewModel @Inject constructor(
                 TimerMode.Countdown -> resumeActivityCountdown(timer)
                 TimerMode.Stopwatch -> resumeActivityStopwatch(timer)
             }
+            TimerPurpose.TimedSet -> resumeTimedSetCountdown(timer)
         }
     }
 
     fun dismissVisibleTimer() {
         val timer = _restTimer.value
-        if (timer.purpose == TimerPurpose.Activity) {
+        if (timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) {
             timerJob?.cancel()
             _restTimer.value = RestTimerState()
             notificationManager.stopWorkoutSession()
@@ -387,6 +448,41 @@ class WorkoutViewModel @Inject constructor(
                     totalSeconds = 0,
                     isStopwatch = true
                 )
+            }
+        }
+    }
+
+    private fun resumeTimedSetCountdown(timer: RestTimerState) {
+        val total = timer.totalSeconds.coerceAtLeast(1)
+        var remaining = timer.secondsLeft.coerceIn(0, total)
+        val notificationName = "${timer.exerciseName} Set ${timer.setIndex + 1}"
+        notificationManager.updateActivityTimer(
+            exerciseName = notificationName,
+            elapsedSeconds = total - remaining,
+            totalSeconds = total,
+            isStopwatch = false
+        )
+        timerJob = viewModelScope.launch {
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+                _restTimer.update {
+                    it.copy(
+                        secondsLeft = remaining,
+                        elapsedSeconds = total - remaining
+                    )
+                }
+                notificationManager.updateActivityTimer(
+                    exerciseName = notificationName,
+                    elapsedSeconds = total - remaining,
+                    totalSeconds = total,
+                    isStopwatch = false
+                )
+            }
+            saveTimedSetDuration(timer.exerciseId, timer.setIndex, total)
+            notificationManager.notifyActivityTimerSaved(notificationName, total)
+            _restTimer.update {
+                it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
             }
         }
     }
@@ -1536,6 +1632,62 @@ class WorkoutViewModel @Inject constructor(
         autoCompleteActivityExercise(exerciseId, seconds)
     }
 
+    private fun saveTimedSetDuration(exerciseId: String, setIndex: Int, seconds: Int) {
+        if (exerciseId.isBlank() || setIndex < 0 || seconds <= 0) return
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val currentState = uiState.value
+        val dayIdx = currentState.selectedDayIdx
+        val dayState = currentState.dayStates.getOrNull(dayIdx) ?: return
+        val programDayId = dayState.day.programDayId
+        if (programDayId.isBlank()) return
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
+        val completedAfter = (currentState.setCompletions[dbExerciseId] ?: emptySet()) + setIndex
+
+        updateState { state ->
+            val exerciseMap = state.setDurations[exerciseId].orEmpty().toMutableMap()
+            exerciseMap[setIndex] = seconds.toString()
+            state.copy(setDurations = state.setDurations + (exerciseId to exerciseMap))
+        }
+        markSetCompletionOptimistically(dbExerciseId, setIndex, true)
+
+        viewModelScope.launch {
+            workoutRepository.upsertSetActivityMetrics(
+                userId = userId,
+                exerciseId = dbExerciseId,
+                programDayId = programDayId,
+                setIndex = setIndex,
+                durationSeconds = seconds,
+                distanceMeters = null
+            )
+            workoutRepository.upsertSetRepsActual(
+                userId = userId,
+                exerciseId = dbExerciseId,
+                programDayId = programDayId,
+                setIndex = setIndex,
+                repsActual = 1
+            )
+
+            val shouldAutoComplete =
+                !isActivityBased(exercise) &&
+                exercise.sets > 0 &&
+                completedAfter.size >= exercise.sets &&
+                exerciseId !in dayState.completedIds
+
+            if (shouldAutoComplete) {
+                autoCompleteStrengthExercise(
+                    userId = userId,
+                    dayIdx = dayIdx,
+                    exercise = exercise,
+                    programDayId = programDayId,
+                    exerciseId = exerciseId,
+                    dbExerciseId = dbExerciseId,
+                    currentState = currentState
+                )
+            }
+        }
+    }
+
     private fun isActivityBased(exercise: Exercise): Boolean {
         return classifyExerciseMetric(
             category = exercise.category,
@@ -1548,21 +1700,15 @@ class WorkoutViewModel @Inject constructor(
     }
 
     private fun isDurationSetBased(exercise: Exercise): Boolean {
-        val metric = classifyExerciseMetric(
+        return isDurationSetExercise(
             category = exercise.category,
             name = exercise.name,
             target = exercise.target,
             reps = exercise.reps,
+            sets = exercise.sets,
             sportTypeRaw = exercise.sportType,
             trackingModeRaw = exercise.trackingMode
         )
-        if (metric != ExerciseMetric.Duration || exercise.sets <= 1) return false
-        val haystack = listOf(exercise.category, exercise.name, exercise.target, exercise.reps)
-            .joinToString(" ")
-            .lowercase()
-            .normalizeWorkoutVmText()
-        return listOf("plank", "wall sit", "hollow hold", "dead hang", "jump rope", "mountain climber")
-            .any { it in haystack }
     }
 
     private fun Exercise.plannedDurationSeconds(): Int? {

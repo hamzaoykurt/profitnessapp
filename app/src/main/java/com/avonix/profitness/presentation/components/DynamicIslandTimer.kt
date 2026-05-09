@@ -467,10 +467,10 @@ private fun ExpandedIsland(
 
                 // ── Hint ──────────────────────────────────────────────────────
                 Text(
-                    text = if (timer.purpose == TimerPurpose.Activity && timer.isDone) theme.t("Süre kaydedildi", "Duration saved")
+                    text = if ((timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) && timer.isDone) theme.t("Süre kaydedildi", "Duration saved")
                            else if (timer.isDone) theme.t("Sonraki seti başlatmak için hazırsın", "Ready for the next set")
                            else if (timer.isPaused) theme.t("Devam ettirebilir veya durdurup kaydedebilirsin", "Resume or stop to save")
-                           else if (timer.purpose == TimerPurpose.Activity) theme.t("Durdurunca süre kaydedilir", "Duration saves when stopped")
+                           else if (timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) theme.t("Durdurunca süre kaydedilir", "Duration saves when stopped")
                            else theme.t("Durdur veya duraklat", "Stop or pause"),
                     color      = TextMuted,
                     fontSize   = 10.sp,
@@ -579,8 +579,10 @@ private fun MiniArcIndicator(
 
 private fun RestTimerState.headerLabel(theme: AppThemeState): String = when {
     purpose == TimerPurpose.Activity && isDone -> theme.t("SÜRE KAYDEDİLDİ", "DURATION SAVED")
+    purpose == TimerPurpose.TimedSet && isDone -> theme.t("SET SÜRESİ KAYDEDİLDİ", "SET DURATION SAVED")
     isPaused -> theme.t("DURAKLATILDI", "PAUSED")
     purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> theme.t("KRONOMETRE", "STOPWATCH")
+    purpose == TimerPurpose.TimedSet -> theme.t("SET SAYACI", "SET TIMER")
     purpose == TimerPurpose.Activity -> theme.t("GERİ SAYIM", "COUNTDOWN")
     isDone -> theme.t("DİNLENDİN", "RESTED")
     else -> theme.t("SET ARASI", "BETWEEN SETS")

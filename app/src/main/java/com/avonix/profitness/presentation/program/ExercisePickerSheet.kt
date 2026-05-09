@@ -31,6 +31,7 @@ import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 
 private val categoryColors = mapOf(
     "Göğüs"     to CardCoral,
@@ -470,15 +471,24 @@ private fun manualTrackingSpec(exercise: ExerciseItem) =
     )
 
 private fun defaultManualDurationSeconds(exercise: ExerciseItem): Int {
-    val minutes = exercise.repsDefault.takeIf { it in 5..180 } ?: 20
-    return minutes * 60
+    return defaultDurationSecondsForExercise(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
 }
 
 private fun defaultManualDistanceMeters(exercise: ExerciseItem): Int =
-    when (manualTrackingSpec(exercise).sportType.raw) {
-        "swimming" -> 500
-        "walking_hiking" -> 3000
-        "cycling" -> 10000
+    when {
+        listOf(exercise.name, exercise.nameEn).joinToString(" ").lowercase().let {
+            listOf("farmer", "carry", "sled", "shuttle").any { token -> token in it }
+        } -> 30
+        manualTrackingSpec(exercise).sportType.raw == "swimming" -> 500
+        manualTrackingSpec(exercise).sportType.raw == "walking_hiking" -> 3000
+        manualTrackingSpec(exercise).sportType.raw == "cycling" -> 10000
         else -> 1000
     }
 
