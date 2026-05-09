@@ -41,7 +41,9 @@ data class OnboardingState(
     val weeklyDays  : String  = "4",
     val isSaving    : Boolean = false,
     val isGeneratingProgram: Boolean = false,
+    val isUploadingAvatar: Boolean = false,
     val nameError   : String? = null,
+    val avatarError : String? = null,
     val programError: String? = null
 )
 
@@ -72,7 +74,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun setName(v: String)        { updateState { it.copy(name = v, nameError = null) } }
-    fun setAvatar(v: String)      { updateState { it.copy(avatar = v) } }
+    fun setAvatar(v: String)      { updateState { it.copy(avatar = v, avatarError = null) } }
     fun setGender(v: String)      { updateState { it.copy(gender = v) } }
     fun setBirthDigits(v: String) { val d = v.filter { it.isDigit() }; if (d.length <= 8) updateState { it.copy(birthDigits = d) } }
     fun setHeight(v: String)      { val d = v.filter { it.isDigit() }; if (d.length <= 3) updateState { it.copy(heightText = d) } }
@@ -81,6 +83,28 @@ class OnboardingViewModel @Inject constructor(
     fun setSportBranch(v: String) { updateState { it.copy(sportBranch = v) } }
     fun setExperienceLevel(v: String) { updateState { it.copy(experienceLevel = v) } }
     fun setWeeklyDays(v: String)  { updateState { it.copy(weeklyDays = v) } }
+
+    fun uploadPhoto(imageBytes: ByteArray) {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+            updateState { it.copy(avatarError = "FotoÄŸraf yÃ¼klemek iÃ§in giriÅŸ yapmalÄ±sÄ±n.") }
+            return
+        }
+        updateState { it.copy(isUploadingAvatar = true, avatarError = null) }
+        viewModelScope.launch {
+            profileRepository.uploadProfilePhoto(userId, imageBytes)
+                .onSuccess { url ->
+                    updateState { it.copy(avatar = url, isUploadingAvatar = false) }
+                }
+                .onFailure {
+                    updateState {
+                        it.copy(
+                            isUploadingAvatar = false,
+                            avatarError = "FotoÄŸraf yÃ¼klenemedi. Tekrar dene."
+                        )
+                    }
+                }
+        }
+    }
 
     val bmi: Double
         get() = calculateBmi(uiState.value.heightText.toDoubleOrNull() ?: 0.0, uiState.value.weightText.toDoubleOrNull() ?: 0.0)

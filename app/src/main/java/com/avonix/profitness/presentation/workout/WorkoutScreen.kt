@@ -430,7 +430,7 @@ private fun NoProgramView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "HENÜZ PROGRAMIN YOK",
+            theme.t("HENÜZ PROGRAMIN YOK", "NO PROGRAM YET"),
             color = accent,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -438,7 +438,10 @@ private fun NoProgramView(
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Antrenman programını şimdi oluştur.\nAI sana özel bir plan hazırlasın ya da kendin düzenle.",
+            theme.t(
+                "Antrenman programını şimdi oluştur.\nAI sana özel bir plan hazırlasın ya da kendin düzenle.",
+                "Create your training program now.\nLet AI prepare a personal plan or build it yourself."
+            ),
             color = theme.text2,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
@@ -456,7 +459,7 @@ private fun NoProgramView(
         ) {
             Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
-            Text("AI İLE OLUŞTUR", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
+            Text(theme.t("AI İLE OLUŞTUR", "CREATE WITH AI"), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -470,7 +473,7 @@ private fun NoProgramView(
         ) {
             Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(20.dp), tint = theme.text1)
             Spacer(Modifier.width(10.dp))
-            Text("MANUEL OLUŞTUR", fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
+            Text(theme.t("MANUEL OLUŞTUR", "CREATE MANUALLY"), fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
         }
     }
 }

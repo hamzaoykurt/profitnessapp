@@ -749,13 +749,13 @@ private fun PerformanceMetricsSection(
     val metrics = buildList {
         add(PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple))
         add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral))
-        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, "EN UZUN SERİ",            Icons.Rounded.EmojiEvents,   CardGreen))
-        add(PerformanceMetric(totalExercises.toString(), "kez",              "TOPLAM EGZERSİZ",         Icons.Rounded.FitnessCenter, CardCyan))
+        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents,   CardGreen))
+        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.FitnessCenter, CardCyan))
         if (totalDurationSeconds > 0) {
-            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), "dk", "TOPLAM SÜRE", Icons.Rounded.Timer, CardGreen))
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, CardGreen))
         }
         if (totalDistanceMeters > 0f) {
-            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), "TOPLAM MESAFE", Icons.Rounded.Straighten, Color(0xFF64D2FF)))
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, Color(0xFF64D2FF)))
         }
     }
 

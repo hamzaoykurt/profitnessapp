@@ -230,6 +230,8 @@ class ProgramRepositoryImpl @Inject constructor(
                                 put("reps", exInput.reps)
                                 put("rest_seconds", exInput.restSeconds)
                                 put("order_index", exInput.orderIndex)
+                                exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                                exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
                             })
                     }
                 }
@@ -344,6 +346,8 @@ class ProgramRepositoryImpl @Inject constructor(
                             put("reps", exInput.reps)
                             put("rest_seconds", exInput.restSeconds)
                             put("order_index", exInput.orderIndex)
+                            exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                            exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
                         })
                 }
             }
