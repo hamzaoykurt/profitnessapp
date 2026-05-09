@@ -30,6 +30,9 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -40,6 +43,7 @@ import androidx.compose.ui.zIndex
 import androidx.activity.compose.BackHandler
 import kotlin.math.abs
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.discover.DiscoverScreen
@@ -73,6 +77,10 @@ private val ALL_TABS = listOf(
     DashboardTab.Workout, DashboardTab.Program, DashboardTab.AICoach,
     DashboardTab.Discover, DashboardTab.Profile
 )
+
+private data class NavItemLayout(val x: Float, val width: Float) {
+    val center: Float get() = x + width / 2f
+}
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
@@ -426,13 +434,43 @@ fun AppNavBar(
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(40.dp)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val selectedState by rememberUpdatedState(selected)
+    val onSelectState by rememberUpdatedState(onSelect)
+    val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
+    var navWidthPx by remember { mutableStateOf(0f) }
+    var dragX by remember { mutableStateOf<Float?>(null) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    fun nearestTabAt(x: Float): DashboardTab? =
+        itemLayouts.entries.minByOrNull { (_, layout) -> abs(layout.center - x) }?.key
+
+    val visualTab = dragX?.let { nearestTabAt(it) } ?: selected
+    val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selected]
+    val targetWidth = visualLayout?.width ?: 0f
+    val targetCenter = when {
+        isDragging && dragX != null && targetWidth > 0f ->
+            dragX!!.coerceIn(targetWidth / 2f, (navWidthPx - targetWidth / 2f).coerceAtLeast(targetWidth / 2f))
+        visualLayout != null -> visualLayout.center
+        else -> 0f
+    }
+    val indicatorCenter by animateFloatAsState(
+        targetValue = targetCenter,
+        animationSpec = if (isDragging) snap() else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "nav_drag_center"
+    )
+    val indicatorWidth by animateFloatAsState(
+        targetValue = targetWidth,
+        animationSpec = if (isDragging) tween(80, easing = FastOutSlowInEasing) else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "nav_drag_width"
+    )
 
 
     Box(
         modifier        = modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .wrapContentWidth()
                 .shadow(
@@ -461,7 +499,8 @@ fun AppNavBar(
                     shape = shape
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp)
-                .pointerInput(tabs, selected, onSelect) {
+                .onSizeChanged { navWidthPx = it.width.toFloat() }
+                .pointerInput(tabs) {
                     awaitEachGesture {
                         // Initial pass: child clickable'lardan ÖNCE down eventı yakala
                         val downEvent = awaitPointerEvent(PointerEventPass.Initial)
@@ -470,7 +509,8 @@ fun AppNavBar(
                         val pointerId = downChange.id
 
                         var dragAccum = 0f
-                        var isDragging = false
+                        var gestureDragging = false
+                        var lastSentTab = selectedState
 
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -480,38 +520,69 @@ fun AppNavBar(
                             dragAccum += change.positionChange().x
 
                             // Parmak yeterince kaydıysa drag moduna gir ve child click'i iptal et
-                            if (!isDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
+                            if (!gestureDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
+                                gestureDragging = true
                                 isDragging = true
                             }
-                            if (isDragging) {
+                            if (gestureDragging) {
+                                val x = change.position.x.coerceIn(0f, navWidthPx)
+                                dragX = x
+                                nearestTabAt(x)?.let { target ->
+                                    if (target != lastSentTab) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSelectState(target)
+                                        lastSentTab = target
+                                    }
+                                }
                                 change.consume()
                             }
                         }
 
-                        val curIdx = tabs.indexOf(selected)
-                        if (abs(dragAccum) > 60f) {
-                            val goNext = dragAccum < 0f
-                            if (goNext && curIdx < tabs.lastIndex) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(tabs[curIdx + 1])
-                            } else if (!goNext && curIdx > 0) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(tabs[curIdx - 1])
-                            }
-                        }
+                        isDragging = false
+                        dragX = null
                     }
                 },
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment     = Alignment.CenterVertically
         ) {
-            tabs.forEach { tab ->
-                NavCapsuleItem(
-                    tab        = tab,
-                    isSelected = tab == selected,
-                    accent     = accent,
-                    theme      = theme,
-                    onClick    = { onSelect(tab) }
+            if (indicatorWidth > 0f) {
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset((indicatorCenter - indicatorWidth / 2f).roundToInt(), 0) }
+                        .width(with(density) { indicatorWidth.toDp() })
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.linearGradient(
+                                listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                            ),
+                            shape = RoundedCornerShape(32.dp)
+                        )
                 )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                tabs.forEach { tab ->
+                    NavCapsuleItem(
+                        tab        = tab,
+                        isSelected = tab == selected,
+                        showSelectedChrome = false,
+                        accent     = accent,
+                        theme      = theme,
+                        onClick    = { onSelect(tab) },
+                        modifier   = Modifier.onGloballyPositioned { coordinates ->
+                            val position = coordinates.positionInParent()
+                            itemLayouts[tab] = NavItemLayout(position.x, coordinates.size.width.toFloat())
+                        }
+                    )
+                }
             }
         }
     }
@@ -521,9 +592,11 @@ fun AppNavBar(
 private fun NavCapsuleItem(
     tab       : DashboardTab,
     isSelected: Boolean,
+    showSelectedChrome: Boolean,
     accent    : Color,
     theme     : AppThemeState,
-    onClick   : () -> Unit
+    onClick   : () -> Unit,
+    modifier  : Modifier = Modifier
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -536,7 +609,7 @@ private fun NavCapsuleItem(
         label         = "item_scale"
     )
     val selectedGlow by animateFloatAsState(
-        targetValue   = if (isSelected) 1f else 0f,
+        targetValue   = if (isSelected && showSelectedChrome) 1f else 0f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label         = "item_glow"
     )
@@ -548,7 +621,7 @@ private fun NavCapsuleItem(
     val itemShape = RoundedCornerShape(32.dp)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .scale(scale)
             .drawBehind {
                 if (selectedGlow > 0f) {
@@ -560,7 +633,7 @@ private fun NavCapsuleItem(
             }
             .clip(itemShape)
             .then(
-                if (isSelected)
+                if (isSelected && showSelectedChrome)
                     Modifier.background(
                         Brush.linearGradient(
                             listOf(accent.copy(0.28f), accent.copy(0.12f), Color.White.copy(0.06f))
@@ -569,7 +642,7 @@ private fun NavCapsuleItem(
                 else Modifier
             )
             .then(
-                if (isSelected)
+                if (isSelected && showSelectedChrome)
                     Modifier.border(
                         width = 1.dp,
                         brush = Brush.linearGradient(

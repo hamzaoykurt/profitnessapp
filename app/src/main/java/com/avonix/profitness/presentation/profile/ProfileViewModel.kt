@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.Period
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -192,14 +193,14 @@ class ProfileViewModel @Inject constructor(
             val h = profile?.height_cm ?: 0.0
             val w = profile?.weight_kg ?: 0.0
             val bmi = if (h > 0 && w > 0) w / ((h / 100.0) * (h / 100.0)) else 0.0
+            val birthDate = profile?.birth_date ?: ""
+            val age = ageFromBirthDate(birthDate) ?: 25
 
             val isMale = (profile?.gender ?: "").lowercase() == "male"
             val bodyFat = if (bmi > 0) {
-                val raw = 1.2 * bmi + (if (isMale) -10.8 else 0.0) - 5.4
+                val raw = 1.2 * bmi + 0.23 * age + (if (isMale) -10.8 else 0.0) - 5.4
                 raw.coerceIn(3.0, 60.0)
             } else 0.0
-
-            val birthDate = profile?.birth_date ?: ""
 
             // Rank hesapla ve gerekirse güncelle
             val computedRank  = computeRank(currentXp)
@@ -261,8 +262,9 @@ class ProfileViewModel @Inject constructor(
             if (result.isSuccess) {
                 val newBmi = if (heightCm > 0 && weightKg > 0) weightKg / ((heightCm / 100.0) * (heightCm / 100.0)) else 0.0
                 val isMale2 = gender.lowercase() == "male"
+                val age = ageFromBirthDate(birthDate) ?: 25
                 val newBodyFat = if (newBmi > 0) {
-                    (1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
+                    (1.2 * newBmi + 0.23 * age + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0
                 updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
@@ -291,6 +293,12 @@ class ProfileViewModel @Inject constructor(
     }
 
     // ── Yardımcı: 13 haftalık grafik ──────────────────────────────────────────
+
+    private fun ageFromBirthDate(birthDate: String): Int? =
+        runCatching {
+            val date = LocalDate.parse(birthDate, DateTimeFormatter.ISO_LOCAL_DATE)
+            Period.between(date, LocalDate.now()).years.takeIf { it in 8..100 }
+        }.getOrNull()
 
     private fun buildWeeklyChart(workoutDates: List<String>): List<Int> {
         val today  = LocalDate.now()
