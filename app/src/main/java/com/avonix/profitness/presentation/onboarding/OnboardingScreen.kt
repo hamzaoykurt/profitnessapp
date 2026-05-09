@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
 
 private val AVATAR_ROWS = listOf(
@@ -89,6 +90,7 @@ fun OnboardingScreen(
 
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
 
     BackHandler(enabled = state.step > 0 && !state.isSaving) {
         viewModel.prevStep()
@@ -111,7 +113,13 @@ fun OnboardingScreen(
                 )
         )
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
+        ) {
             // Üst ilerleme çubuğu
             Spacer(Modifier.height(52.dp))
             OnboardingProgressBar(currentStep = state.step, totalSteps = 7, accent = accent, theme = theme)

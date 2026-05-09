@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.auth.AuthFeedback
 import com.avonix.profitness.presentation.auth.AuthLiquidField
 import com.avonix.profitness.presentation.auth.ObsidianButton
@@ -78,13 +79,17 @@ private fun ExchangingContent() {
 private fun InvalidLinkContent(onDone: () -> Unit) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     Box(
         modifier         = Modifier.fillMaxSize().background(theme.bg0),
         contentAlignment = Alignment.Center
     ) {
         PageAccentBloom()
         Column(
-            modifier            = Modifier.padding(horizontal = 32.dp),
+            modifier            = Modifier
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxWidth()
+                .padding(horizontal = responsive.horizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -126,6 +131,7 @@ private fun NewPasswordContent(
 ) {
     val theme    = LocalAppTheme.current
     val accent   = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     val keyboard = LocalSoftwareKeyboardController.current
 
     var password        by remember { mutableStateOf("") }
@@ -159,9 +165,12 @@ private fun NewPasswordContent(
         PageAccentBloom()
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.Center)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value)
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = responsive.horizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

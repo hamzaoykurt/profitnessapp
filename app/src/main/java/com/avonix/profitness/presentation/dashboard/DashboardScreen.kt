@@ -45,6 +45,7 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.discover.DiscoverScreen
 import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
@@ -120,9 +121,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     }
 
     // Nav yüksekliği 78 → 92 dp (item padding 10/12 → 14/16, icon 20 → 24)
+    val responsive = rememberResponsiveLayoutInfo()
+    val useNavRail = responsive.useNavigationRail
     val navBarHeight = 92.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val contentPad   = navBarHeight + navBarBottom + 8.dp
+    val contentPad   = if (useNavRail) 24.dp + navBarBottom else navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
@@ -166,6 +169,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = if (useNavRail) responsive.navRailWidth else 0.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
         AnimatedContent(
             targetState  = selectedTab,
             transitionSpec = {
@@ -193,7 +202,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     }
                 }
             },
-            modifier = swipeModifier,
+            modifier = Modifier
+                .widthIn(max = responsive.contentMaxWidth)
+                .fillMaxSize()
+                .then(swipeModifier),
             label = "tab_slide"
         ) { tab ->
             LaunchedEffect(tab) {
@@ -251,13 +263,23 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 )
             }
         }
+        }
 
-        AppNavBar(
-            tabs     = ALL_TABS,
-            selected = selectedTab,
-            onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
-        )
+        if (useNavRail) {
+            AppNavRail(
+                tabs     = ALL_TABS,
+                selected = selectedTab,
+                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
+            )
+        } else {
+            AppNavBar(
+                tabs     = ALL_TABS,
+                selected = selectedTab,
+                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
+            )
+        }
 
         // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
         if (selectedTab != DashboardTab.Workout) {
@@ -424,12 +446,122 @@ fun AppBackground(modifier: Modifier = Modifier) {
 //  APP NAV BAR — floating capsule, icon only, accent fill on selected
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
+private fun AppNavRail(
+    tabs    : List<DashboardTab>,
+    selected: DashboardTab,
+    onSelect: (DashboardTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val responsive = rememberResponsiveLayoutInfo()
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
+    val shape  = RoundedCornerShape(32.dp)
+
+    Box(
+        modifier = modifier
+            .width(responsive.navRailWidth)
+            .fillMaxHeight()
+            .systemBarsPadding()
+            .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(68.dp)
+                .shadow(
+                    elevation    = 18.dp,
+                    shape        = shape,
+                    spotColor    = accent.copy(0.20f),
+                    ambientColor = Color.Black.copy(0.45f)
+                )
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            theme.bg2.copy(if (theme.isDark) 0.96f else 0.98f),
+                            theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(if (theme.isDark) 0.12f else 0.60f),
+                            theme.stroke.copy(0.40f)
+                        )
+                    ),
+                    shape = shape
+                )
+                .padding(vertical = 14.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = tab == selected
+                val itemShape = RoundedCornerShape(24.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(itemShape)
+                        .then(
+                            if (isSelected)
+                                Modifier.background(
+                                    Brush.linearGradient(
+                                        listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
+                                    )
+                                )
+                            else Modifier
+                        )
+                        .then(
+                            if (isSelected)
+                                Modifier.border(
+                                    width = 1.dp,
+                                    brush = Brush.linearGradient(
+                                        listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                                    ),
+                                    shape = itemShape
+                                )
+                            else Modifier
+                        )
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSelect(tab)
+                        }
+                        .padding(vertical = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector        = tab.icon,
+                        contentDescription = tab.label,
+                        tint               = if (isSelected) accent else theme.text2.copy(0.45f),
+                        modifier           = Modifier.size(23.dp)
+                    )
+                    Text(
+                        text          = tab.label.take(4),
+                        color         = if (isSelected) accent else theme.text2.copy(0.55f),
+                        fontSize      = 8.sp,
+                        fontWeight    = FontWeight.Bold,
+                        letterSpacing = 0.4.sp,
+                        maxLines      = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun AppNavBar(
     tabs    : List<DashboardTab>,
     selected: DashboardTab,
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
@@ -566,7 +698,7 @@ fun AppNavBar(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 2.dp else 4.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 tabs.forEach { tab ->
@@ -576,6 +708,7 @@ fun AppNavBar(
                         showSelectedChrome = false,
                         accent     = accent,
                         theme      = theme,
+                        showLabel  = !responsive.isSmallPhone,
                         onClick    = { onSelect(tab) },
                         modifier   = Modifier.onGloballyPositioned { coordinates ->
                             val position = coordinates.positionInParent()
@@ -595,6 +728,7 @@ private fun NavCapsuleItem(
     showSelectedChrome: Boolean,
     accent    : Color,
     theme     : AppThemeState,
+    showLabel : Boolean,
     onClick   : () -> Unit,
     modifier  : Modifier = Modifier
 ) {
@@ -656,7 +790,14 @@ private fun NavCapsuleItem(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = if (isSelected) 20.dp else 16.dp, vertical = 14.dp),
+            .padding(
+                horizontal = when {
+                    showLabel && isSelected -> 20.dp
+                    showLabel -> 16.dp
+                    else -> 13.dp
+                },
+                vertical = 14.dp
+            ),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -667,7 +808,7 @@ private fun NavCapsuleItem(
             modifier           = Modifier.size(24.dp).scale(iconScale)
         )
         AnimatedVisibility(
-            visible = isSelected,
+            visible = isSelected && showLabel,
             enter   = expandHorizontally(
                 spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
             ) + fadeIn(tween(150, 60)),
