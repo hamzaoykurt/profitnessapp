@@ -69,6 +69,21 @@ private val GENDER_OPTIONS = listOf(
     "Belirtme" to "other"
 )
 
+private fun AppThemeState.genderLabel(dbValue: String, fallback: String): String = when (dbValue) {
+    "male" -> t("Erkek", "Male")
+    "female" -> t("Kadın", "Female")
+    "other" -> t("Belirtme", "Prefer not to say")
+    else -> fallback
+}
+
+private fun AppThemeState.avatarCategoryLabel(label: String): String = when (label) {
+    "Erkek Sporcular" -> t("Erkek Sporcular", "Male athletes")
+    "Kadın Sporcular" -> t("Kadın Sporcular", "Female athletes")
+    "Hayvanlar" -> t("Hayvanlar", "Animals")
+    "Semboller" -> t("Semboller", "Symbols")
+    else -> label
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -141,7 +156,7 @@ fun EditProfileScreen(
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Text("PROFİLİ DÜZENLE", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text(theme.t("PROFİLİ DÜZENLE", "EDIT PROFILE"), color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                     Spacer(Modifier.size(48.dp))
                 }
             }
@@ -191,10 +206,10 @@ fun EditProfileScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Emoji Seç", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        Text(theme.t("Emoji Seç", "Choose Emoji"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { showAvatarPicker = true })
                         Text("•", color = theme.text2, fontSize = 13.sp)
-                        Text("Fotoğraf Yükle", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { photoPickerLauncher.launch("image/*") })
                     }
                 }
@@ -210,14 +225,14 @@ fun EditProfileScreen(
                 ) {
                     // Name
                     ProfileTextField(
-                        value = name, onValue = { name = it }, label = "AD SOYAD",
-                        placeholder = "Adınızı girin", icon = Icons.Rounded.Person,
+                        value = name, onValue = { name = it }, label = theme.t("AD SOYAD", "FULL NAME"),
+                        placeholder = theme.t("Adınızı girin", "Enter your name"), icon = Icons.Rounded.Person,
                         accent = accent, theme = theme, imeAction = ImeAction.Next
                     )
 
                     // Gender
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("CİNSİYET", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text(theme.t("CİNSİYET", "GENDER"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -239,7 +254,7 @@ fun EditProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        label,
+                                        theme.genderLabel(dbValue, label),
                                         color      = if (selected) Color.Black else theme.text2,
                                         fontSize   = 12.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
@@ -252,7 +267,7 @@ fun EditProfileScreen(
                     // Height & Weight — side by side
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("BOY (cm)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                            Text(theme.t("BOY (cm)", "HEIGHT (cm)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                             OutlinedTextField(
                                 value = heightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) heightText = d },
                                 placeholder = { Text("175", color = theme.text2, fontSize = 14.sp) },
@@ -269,7 +284,7 @@ fun EditProfileScreen(
                             )
                         }
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("KİLO (kg)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                            Text(theme.t("KİLO (kg)", "WEIGHT (kg)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                             OutlinedTextField(
                                 value = weightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) weightText = d },
                                 placeholder = { Text("75", color = theme.text2, fontSize = 14.sp) },
@@ -289,7 +304,7 @@ fun EditProfileScreen(
 
                     // Doğum Tarihi — DD/MM/YYYY otomatik formatlı (VisualTransformation)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("DOĞUM TARİHİ", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text(theme.t("DOĞUM TARİHİ", "BIRTH DATE"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                         OutlinedTextField(
                             value = birthDigits,
                             onValueChange = { raw ->
@@ -317,10 +332,10 @@ fun EditProfileScreen(
                     if (h > 0 && w > 0) {
                         val bmi = w / ((h / 100) * (h / 100))
                         val bmiLabel = when {
-                            bmi < 18.5 -> "Zayıf"
-                            bmi < 25.0 -> "Normal"
-                            bmi < 30.0 -> "Fazla Kilolu"
-                            else       -> "Obez"
+                            bmi < 18.5 -> theme.t("Zayıf", "Underweight")
+                            bmi < 25.0 -> theme.t("Normal", "Normal")
+                            bmi < 30.0 -> theme.t("Fazla Kilolu", "Overweight")
+                            else       -> theme.t("Obez", "Obese")
                         }
                         val bmiColor = when {
                             bmi < 18.5 -> Color(0xFF64B5F6)
@@ -352,8 +367,8 @@ fun EditProfileScreen(
 
                     // Fitness Goal
                     ProfileTextField(
-                        value = goal, onValue = { goal = it }, label = "FİTNESS HEDEFİ",
-                        placeholder = "Hedefiniz nedir? (ör. 10 kg vermek)",
+                        value = goal, onValue = { goal = it }, label = theme.t("FİTNESS HEDEFİ", "FITNESS GOAL"),
+                        placeholder = theme.t("Hedefiniz nedir? (ör. 10 kg vermek)", "What's your goal? (e.g. lose 10 kg)"),
                         icon = Icons.Rounded.Flag, accent = accent, theme = theme,
                         imeAction = ImeAction.Done
                     )
@@ -371,7 +386,7 @@ fun EditProfileScreen(
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("KAYDET", fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 14.sp)
+                    Text(theme.t("KAYDET", "SAVE"), fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 14.sp)
                 }
             }
 
@@ -398,12 +413,12 @@ fun EditProfileScreen(
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(Modifier.height(20.dp))
-                Text("AVATAR SEÇ", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+                Text(theme.t("AVATAR SEÇ", "CHOOSE AVATAR"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
                 Spacer(Modifier.height(20.dp))
 
                 AVATAR_CATEGORIES.forEach { category ->
                     Text(
-                        category.label,
+                        theme.avatarCategoryLabel(category.label),
                         color = theme.text2, fontSize = 10.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
                         modifier = Modifier.padding(bottom = 10.dp)

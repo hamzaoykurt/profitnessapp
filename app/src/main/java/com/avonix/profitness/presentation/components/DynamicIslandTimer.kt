@@ -209,7 +209,7 @@ private fun CompactPill(
         ) {
             if (timer.isDone) {
                 Text(
-                    "💪  Hazırsın!",
+                    theme.t("💪  Hazırsın!", "💪  Ready!"),
                     color      = Amber,
                     fontSize   = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -217,7 +217,7 @@ private fun CompactPill(
                 )
             } else if (timer.isPaused) {
                 Text(
-                    "Duraklatıldı",
+                    theme.t("Duraklatıldı", "Paused"),
                     color      = Amber,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -331,7 +331,7 @@ private fun ExpandedIsland(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = timer.headerLabel(),
+                            text = timer.headerLabel(theme),
                             color      = pillColor,
                             fontSize   = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -339,7 +339,7 @@ private fun ExpandedIsland(
                         )
                     }
                     Text(
-                        text = if (timer.isPaused) "DURAKLATILDI" else "AKTİF",
+                        text = if (timer.isPaused) theme.t("DURAKLATILDI", "PAUSED") else theme.t("AKTİF", "ACTIVE"),
                         color = if (timer.isPaused) Amber else TextMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -411,7 +411,7 @@ private fun ExpandedIsland(
                         if (timer.isDone) {
                             Text("✅", fontSize = 32.sp)
                             Text(
-                                "HAZIRSIN",
+                                theme.t("HAZIRSIN", "READY"),
                                 color      = Amber,
                                 fontSize   = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
@@ -426,7 +426,7 @@ private fun ExpandedIsland(
                                 fontWeight = FontWeight.Black
                             )
                             Text(
-                                "duraklatıldı",
+                                theme.t("duraklatıldı", "paused"),
                                 color      = Amber,
                                 fontSize   = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -442,7 +442,7 @@ private fun ExpandedIsland(
                             )
                             if (min == 0) {
                                 Text(
-                                    "saniye",
+                                    theme.t("saniye", "seconds"),
                                     color      = TextMuted,
                                     fontSize   = 10.sp,
                                     fontWeight = FontWeight.Medium,
@@ -467,11 +467,11 @@ private fun ExpandedIsland(
 
                 // ── Hint ──────────────────────────────────────────────────────
                 Text(
-                    text = if (timer.purpose == TimerPurpose.Activity && timer.isDone) "Süre kaydedildi"
-                           else if (timer.isDone) "Sonraki seti başlatmak için hazırsın"
-                           else if (timer.isPaused) "Devam ettirebilir veya durdurup kaydedebilirsin"
-                           else if (timer.purpose == TimerPurpose.Activity) "Durdurunca süre kaydedilir"
-                           else "Durdur veya duraklat",
+                    text = if (timer.purpose == TimerPurpose.Activity && timer.isDone) theme.t("Süre kaydedildi", "Duration saved")
+                           else if (timer.isDone) theme.t("Sonraki seti başlatmak için hazırsın", "Ready for the next set")
+                           else if (timer.isPaused) theme.t("Devam ettirebilir veya durdurup kaydedebilirsin", "Resume or stop to save")
+                           else if (timer.purpose == TimerPurpose.Activity) theme.t("Durdurunca süre kaydedilir", "Duration saves when stopped")
+                           else theme.t("Durdur veya duraklat", "Stop or pause"),
                     color      = TextMuted,
                     fontSize   = 10.sp,
                     letterSpacing = 0.5.sp
@@ -484,7 +484,7 @@ private fun ExpandedIsland(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TimerActionButton(
-                            text = if (timer.isPaused) "DEVAM" else "DURAKLAT",
+                            text = if (timer.isPaused) theme.t("DEVAM", "RESUME") else theme.t("DURAKLAT", "PAUSE"),
                             icon = if (timer.isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
                             color = if (timer.isPaused) accent else Amber,
                             theme = theme,
@@ -492,7 +492,7 @@ private fun ExpandedIsland(
                             modifier = Modifier.weight(1f)
                         )
                         TimerActionButton(
-                            text = "DURDUR",
+                            text = theme.t("DURDUR", "STOP"),
                             icon = Icons.Rounded.StopCircle,
                             color = accent,
                             theme = theme,
@@ -577,11 +577,11 @@ private fun MiniArcIndicator(
     }
 }
 
-private fun RestTimerState.headerLabel(): String = when {
-    purpose == TimerPurpose.Activity && isDone -> "SÜRE KAYDEDİLDİ"
-    isPaused -> "DURAKLATILDI"
-    purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> "KRONOMETRE"
-    purpose == TimerPurpose.Activity -> "GERİ SAYIM"
-    isDone -> "DİNLENDİN"
-    else -> "SET ARASI"
+private fun RestTimerState.headerLabel(theme: AppThemeState): String = when {
+    purpose == TimerPurpose.Activity && isDone -> theme.t("SÜRE KAYDEDİLDİ", "DURATION SAVED")
+    isPaused -> theme.t("DURAKLATILDI", "PAUSED")
+    purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> theme.t("KRONOMETRE", "STOPWATCH")
+    purpose == TimerPurpose.Activity -> theme.t("GERİ SAYIM", "COUNTDOWN")
+    isDone -> theme.t("DİNLENDİN", "RESTED")
+    else -> theme.t("SET ARASI", "BETWEEN SETS")
 }

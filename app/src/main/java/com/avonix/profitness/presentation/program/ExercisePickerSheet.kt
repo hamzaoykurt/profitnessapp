@@ -101,14 +101,14 @@ fun ExercisePickerSheet(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "HAREKET SEÇ",
+                        theme.t("HAREKET SEÇ", "SELECT EXERCISE"),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        "${exercises.size} hareket mevcut",
+                        theme.t("${exercises.size} hareket mevcut", "${exercises.size} exercises available"),
                         color = theme.text2,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Light
@@ -151,7 +151,7 @@ fun ExercisePickerSheet(
                         decorationBox = { inner ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    "Hareket ara...",
+                                    theme.t("Hareket ara...", "Search exercise..."),
                                     color = theme.text2,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Light
@@ -182,7 +182,7 @@ fun ExercisePickerSheet(
             ) {
                 item {
                     PickerCategoryChip(
-                        label = "TÜMÜ",
+                        label = theme.t("TÜMÜ", "ALL"),
                         color = Snow,
                         selected = selectedCategory == null,
                         onClick = { selectedCategory = null }
@@ -276,7 +276,7 @@ fun ExercisePickerSheet(
                             }
                             val spec = manualTrackingSpec(exercise)
                             Text(
-                                defaultManualSummary(exercise, spec),
+                                defaultManualSummary(exercise, spec, theme),
                                 color = theme.text2,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
@@ -323,7 +323,7 @@ fun ExercisePickerSheet(
                                         )
                                         HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                                         CounterField(
-                                            label = "TEKRAR",
+                                            label = theme.t("TEKRAR", "REPS"),
                                             value = reps,
                                             onDecrement = { if (reps > 1) reps-- },
                                             onIncrement = { if (reps < 100) reps++ },
@@ -331,18 +331,18 @@ fun ExercisePickerSheet(
                                         )
                                     } else {
                                         CounterField(
-                                            label = "SÜRE",
+                                            label = theme.t("SÜRE", "DURATION"),
                                             value = targetDurationSec,
                                             step = 300,
                                             onDecrement = { targetDurationSec = (targetDurationSec - 300).coerceAtLeast(300) },
                                             onIncrement = { targetDurationSec = (targetDurationSec + 300).coerceAtMost(10800) },
-                                            displayOverride = formatManualDuration(targetDurationSec),
+                                            displayOverride = formatManualDuration(targetDurationSec, theme),
                                             accent = accent
                                         )
                                         if (selectedSpec.metric == ExerciseMetric.DurationDistance) {
                                             HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                                             CounterField(
-                                                label = "MESAFE",
+                                                label = theme.t("MESAFE", "DISTANCE"),
                                                 value = targetDistanceM,
                                                 step = 500,
                                                 onDecrement = { targetDistanceM = (targetDistanceM - 500).coerceAtLeast(500) },
@@ -383,7 +383,7 @@ fun ExercisePickerSheet(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        "PROGRAMA EKLE",
+                                        theme.t("PROGRAMA EKLE", "ADD TO PROGRAM"),
                                         fontWeight = FontWeight.Black,
                                         fontSize = 12.sp,
                                         letterSpacing = 0.5.sp
@@ -417,13 +417,13 @@ fun ExercisePickerSheet(
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        "Aradığın hareketi bulamadın mı?",
+                                        theme.t("Aradığın hareketi bulamadın mı?", "Can't find the exercise?"),
                                         color = theme.text0,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 13.sp
                                     )
                                     Text(
-                                        "Eklenmesi için talep gönder",
+                                        theme.t("Eklenmesi için talep gönder", "Request it to be added"),
                                         color = theme.text2,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Light
@@ -482,15 +482,19 @@ private fun defaultManualDistanceMeters(exercise: ExerciseItem): Int =
         else -> 1000
     }
 
-private fun defaultManualSummary(exercise: ExerciseItem, spec: com.avonix.profitness.presentation.workout.ActivityTrackingSpec): String =
+private fun defaultManualSummary(
+    exercise: ExerciseItem,
+    spec: com.avonix.profitness.presentation.workout.ActivityTrackingSpec,
+    theme: AppThemeState
+): String =
     when (spec.metric) {
         ExerciseMetric.Strength -> "${exercise.setsDefault}×${exercise.repsDefault}"
-        ExerciseMetric.Duration -> formatManualDuration(defaultManualDurationSeconds(exercise))
+        ExerciseMetric.Duration -> formatManualDuration(defaultManualDurationSeconds(exercise), theme)
         ExerciseMetric.DurationDistance -> formatManualDistance(defaultManualDistanceMeters(exercise))
     }
 
-private fun formatManualDuration(seconds: Int): String =
-    "${(seconds / 60).coerceAtLeast(1)} dk"
+private fun formatManualDuration(seconds: Int, theme: AppThemeState): String =
+    "${(seconds / 60).coerceAtLeast(1)} ${theme.t("dk", "min")}"
 
 private fun formatManualDistance(meters: Int): String =
     if (meters >= 1000) {
@@ -521,7 +525,7 @@ private fun ExerciseRequestDialog(
                 .padding(20.dp)
         ) {
             Text(
-                "YENİ HAREKET TALEBİ",
+                theme.t("YENİ HAREKET TALEBİ", "NEW EXERCISE REQUEST"),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -529,7 +533,7 @@ private fun ExerciseRequestDialog(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "İstediğin hareket eklensin",
+                theme.t("İstediğin hareket eklensin", "Request the exercise you need"),
                 color = theme.text2,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light
@@ -537,7 +541,7 @@ private fun ExerciseRequestDialog(
             Spacer(Modifier.height(16.dp))
 
             RequestInputField(
-                label = "Hareket adı *",
+                label = theme.t("Hareket adı *", "Exercise name *"),
                 value = name,
                 onValueChange = { name = it },
                 placeholder = "ör. Cable Fly, Hack Squat",
@@ -546,7 +550,10 @@ private fun ExerciseRequestDialog(
             if (isCompositeName) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Tek talepte yalnızca bir hareket adı kullan. Alternatifleri ayrı ayrı gönder.",
+                    theme.t(
+                        "Tek talepte yalnızca bir hareket adı kullan. Alternatifleri ayrı ayrı gönder.",
+                        "Use only one exercise name per request. Send alternatives separately."
+                    ),
                     color = CardCoral,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
@@ -554,18 +561,18 @@ private fun ExerciseRequestDialog(
             }
             Spacer(Modifier.height(10.dp))
             RequestInputField(
-                label = "Kas grubu",
+                label = theme.t("Kas grubu", "Muscle group"),
                 value = muscle,
                 onValueChange = { muscle = it },
-                placeholder = "ör. Göğüs, Bacak",
+                placeholder = theme.t("ör. Göğüs, Bacak", "e.g. Chest, Legs"),
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
             RequestInputField(
-                label = "Notlar",
+                label = theme.t("Notlar", "Notes"),
                 value = notes,
                 onValueChange = { notes = it },
-                placeholder = "Eklemek istediğin bilgiler...",
+                placeholder = theme.t("Eklemek istediğin bilgiler...", "Any details you want to add..."),
                 theme = theme
             )
             Spacer(Modifier.height(20.dp))
@@ -579,7 +586,7 @@ private fun ExerciseRequestDialog(
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Button(
                     onClick = {
@@ -598,7 +605,7 @@ private fun ExerciseRequestDialog(
                             color = Snow
                         )
                     } else {
-                        Text("Gönder", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                        Text(theme.t("Gönder", "Send"), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
                     }
                 }
             }

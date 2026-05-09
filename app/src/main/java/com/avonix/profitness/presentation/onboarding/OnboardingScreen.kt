@@ -79,6 +79,43 @@ private val EXPERIENCE_OPTIONS = listOf(
 
 private val WEEKLY_DAY_OPTIONS = listOf("3", "4", "5", "6")
 
+private fun AppThemeState.genderLabel(dbValue: String, fallback: String): String = when (dbValue) {
+    "male" -> t("Erkek", "Male")
+    "female" -> t("Kadın", "Female")
+    "other" -> t("Belirtme", "Prefer not to say")
+    else -> fallback
+}
+
+private fun AppThemeState.goalLabel(value: String): String = when (value) {
+    "Kilo vermek" -> t("Kilo vermek", "Lose weight")
+    "Kas kazanmak" -> t("Kas kazanmak", "Build muscle")
+    "Formda kalmak" -> t("Formda kalmak", "Stay fit")
+    "Yağ yakarken kas yapmak" -> t("Yağ yakarken kas yapmak", "Recompose")
+    "Kondisyon geliştirmek" -> t("Kondisyon geliştirmek", "Improve conditioning")
+    "Sağlıklı yaşam" -> t("Sağlıklı yaşam", "Healthy lifestyle")
+    else -> value
+}
+
+private fun AppThemeState.sportBranchLabel(value: String): String = when (value) {
+    "Koşu" -> t("Koşu", "Running")
+    "Bisiklet" -> t("Bisiklet", "Cycling")
+    "Yüzme" -> t("Yüzme", "Swimming")
+    "Futbol" -> t("Futbol", "Football")
+    "Basketbol" -> t("Basketbol", "Basketball")
+    "Tenis" -> t("Tenis", "Tennis")
+    "Boks" -> t("Boks", "Boxing")
+    "Yürüyüş" -> t("Yürüyüş", "Walking")
+    else -> value
+}
+
+private fun AppThemeState.experienceLabel(value: String): String = when (value) {
+    "Yeni başlıyorum" -> t("Yeni başlıyorum", "Brand new")
+    "Başlangıç" -> t("Başlangıç", "Beginner")
+    "Orta" -> t("Orta", "Intermediate")
+    "İleri" -> t("İleri", "Advanced")
+    else -> value
+}
+
 @Composable
 fun OnboardingScreen(
     onNavigateToDashboard: () -> Unit,
@@ -234,8 +271,8 @@ private fun StepTheme(
 
         StepHeader(
             step     = "2 / 7",
-            title    = "Temanı seç",
-            subtitle = "Uygulamanın sana nasıl görüneceğini ayarla",
+            title    = current.t("Temanı seç", "Choose your theme"),
+            subtitle = current.t("Uygulamanın sana nasıl görüneceğini ayarla", "Adjust how the app looks for you"),
             accent   = previewAccent,
             theme    = preview
         )
@@ -244,7 +281,7 @@ private fun StepTheme(
         ThemePreviewCard(preview)
         Spacer(Modifier.height(22.dp))
 
-        Text("VURGU RENGİ", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(current.t("VURGU RENGİ", "ACCENT COLOR"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(10.dp))
         FlowRow(
             modifier              = Modifier.fillMaxWidth(),
@@ -262,13 +299,13 @@ private fun StepTheme(
 
         Spacer(Modifier.height(22.dp))
 
-        Text("ARKA PLAN TONU", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(current.t("ARKA PLAN TONU", "SURFACE STYLE"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(8.dp))
         ThemeSegmentedSelector(
             options = listOf(
-                SurfaceStyle.CLASSIC to "KLASİK",
+                SurfaceStyle.CLASSIC to current.t("KLASİK", "CLASSIC"),
                 SurfaceStyle.OLED to "OLED",
-                SurfaceStyle.GRAPHITE to "GRAFİT"
+                SurfaceStyle.GRAPHITE to current.t("GRAFİT", "GRAPHITE")
             ),
             selected = surfaceStyle,
             accent = previewAccent,
@@ -279,7 +316,7 @@ private fun StepTheme(
 
         Spacer(Modifier.height(18.dp))
 
-        Text("YOĞUNLUK", color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(current.t("YOĞUNLUK", "INTENSITY"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(8.dp))
         ThemeSegmentedSelector(
             options = listOf(
@@ -301,7 +338,7 @@ private fun StepTheme(
                 onThemeChange(preview)
                 vm.nextStep()
             },
-            nextLabel = "Temayı Uygula",
+            nextLabel = current.t("Temayı Uygula", "Apply Theme"),
             accent    = previewAccent,
             theme     = preview
         )
@@ -338,17 +375,17 @@ private fun StepName(
     ) {
         Spacer(Modifier.height(32.dp))
 
-        Text("Merhaba!", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+        Text(theme.t("Merhaba!", "Hello!"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Seni tanıyalım",
+            theme.t("Seni tanıyalım", "Let's get to know you"),
             color      = theme.text0,
             fontSize   = 28.sp,
             fontWeight = FontWeight.Black
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Adını ve avatarını seç",
+            theme.t("Adını ve avatarını seç", "Choose your name and avatar"),
             color    = theme.text2,
             fontSize = 14.sp
         )
@@ -394,7 +431,7 @@ private fun StepName(
         ) {
             Icon(Icons.Rounded.PhotoCamera, null, tint = accent, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Profil fotoÄŸrafÄ± yÃ¼kle", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(theme.t("Profil fotoğrafı yükle", "Upload profile photo"), color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
 
         state.avatarError?.let {
@@ -437,11 +474,11 @@ private fun StepName(
 
         // İsim alanı
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("ADIN SOYADIN", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+            Text(theme.t("ADIN SOYADIN", "FULL NAME"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
             OutlinedTextField(
                 value          = state.name,
                 onValueChange  = { vm.setName(it) },
-                placeholder    = { Text("Adını gir", color = theme.text2, fontSize = 14.sp) },
+                placeholder    = { Text(theme.t("Adını gir", "Enter your name"), color = theme.text2, fontSize = 14.sp) },
                 leadingIcon    = { Icon(Icons.Rounded.Person, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
                 isError        = state.nameError != null,
                 supportingText = state.nameError?.let { { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) } },
@@ -464,7 +501,7 @@ private fun StepName(
             shape    = RoundedCornerShape(16.dp),
             colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
-            Text("Devam Et", fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
+            Text(theme.t("Devam Et", "Continue"), fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.ArrowForwardIos, null, modifier = Modifier.size(14.dp))
         }
@@ -491,15 +528,15 @@ private fun StepSportExperience(
 
         StepHeader(
             step     = "3 / 7",
-            title    = "Spor profilin",
-            subtitle = "Programın spor dalına ve seviyene göre şekillensin",
+            title    = theme.t("Spor profilin", "Your sport profile"),
+            subtitle = theme.t("Programın spor dalına ve seviyene göre şekillensin", "Shape the plan around your sport and level"),
             accent   = accent,
             theme    = theme
         )
 
         Spacer(Modifier.height(18.dp))
 
-        Text("SPOR DALI", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("SPOR DALI", "SPORT"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = SPORT_BRANCH_OPTIONS,
@@ -509,12 +546,13 @@ private fun StepSportExperience(
             itemHeight = 38.dp,
             rowSpacing = 7.dp,
             fontSize = 12.sp,
+            labelFor = { theme.sportBranchLabel(it) },
             onSelect = { vm.setSportBranch(it) }
         )
 
         Spacer(Modifier.height(12.dp))
 
-        Text("SEVİYE", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("SEVİYE", "LEVEL"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = EXPERIENCE_OPTIONS,
@@ -524,19 +562,20 @@ private fun StepSportExperience(
             itemHeight = 38.dp,
             rowSpacing = 7.dp,
             fontSize = 12.sp,
+            labelFor = { theme.experienceLabel(it) },
             onSelect = { vm.setExperienceLevel(it) }
         )
 
         Spacer(Modifier.height(12.dp))
 
-        Text("HAFTALIK ANTRENMAN", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("HAFTALIK ANTRENMAN", "WEEKLY TRAINING"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = WEEKLY_DAY_OPTIONS,
             selected = state.weeklyDays,
             accent = accent,
             theme = theme,
-            labelFor = { "$it gün" },
+            labelFor = { theme.t("$it gün", "$it days") },
             onSelect = { vm.setWeeklyDays(it) }
         )
 
@@ -546,7 +585,7 @@ private fun StepSportExperience(
         StepNavButtons(
             onBack    = { vm.prevStep() },
             onNext    = { vm.nextStep() },
-            nextLabel = "Devam Et",
+            nextLabel = theme.t("Devam Et", "Continue"),
             accent    = accent,
             theme     = theme,
             canSkip   = true,
@@ -626,8 +665,8 @@ private fun StepGenderBirth(
 
         StepHeader(
             step    = "4 / 7",
-            title   = "Biraz daha bilgi",
-            subtitle = "Cinsiyet ve doğum tarihin",
+            title   = theme.t("Biraz daha bilgi", "A little more info"),
+            subtitle = theme.t("Cinsiyet ve doğum tarihin", "Gender and birth date"),
             accent  = accent,
             theme   = theme
         )
@@ -635,7 +674,7 @@ private fun StepGenderBirth(
         Spacer(Modifier.height(36.dp))
 
         // Cinsiyet
-        Text("CİNSİYET", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("CİNSİYET", "GENDER"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier
@@ -658,7 +697,7 @@ private fun StepGenderBirth(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        label,
+                        theme.genderLabel(dbValue, label),
                         color      = if (selected) Color.Black else theme.text2,
                         fontSize   = 13.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
@@ -670,7 +709,7 @@ private fun StepGenderBirth(
         Spacer(Modifier.height(24.dp))
 
         // Doğum tarihi
-        Text("DOĞUM TARİHİ", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("DOĞUM TARİHİ", "BIRTH DATE"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value         = state.birthDigits,
@@ -691,7 +730,7 @@ private fun StepGenderBirth(
         StepNavButtons(
             onBack   = { vm.prevStep() },
             onNext   = { vm.nextStep() },
-            nextLabel = "Devam Et",
+            nextLabel = theme.t("Devam Et", "Continue"),
             accent   = accent,
             theme    = theme,
             canSkip  = true,
@@ -721,8 +760,8 @@ private fun StepBodyMetrics(
 
         StepHeader(
             step     = "5 / 7",
-            title    = "Vücut ölçülerin",
-            subtitle = "Boy ve kilonu gir",
+            title    = theme.t("Vücut ölçülerin", "Body metrics"),
+            subtitle = theme.t("Boy ve kilonu gir", "Enter your height and weight"),
             accent   = accent,
             theme    = theme
         )
@@ -731,7 +770,7 @@ private fun StepBodyMetrics(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("BOY (cm)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(theme.t("BOY (cm)", "HEIGHT (cm)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value         = state.heightText,
                     onValueChange = { vm.setHeight(it) },
@@ -745,7 +784,7 @@ private fun StepBodyMetrics(
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("KİLO (kg)", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(theme.t("KİLO (kg)", "WEIGHT (kg)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value         = state.weightText,
                     onValueChange = { vm.setWeight(it) },
@@ -768,10 +807,10 @@ private fun StepBodyMetrics(
             val bmi      = vm.bmi
             val bodyFat  = vm.bodyFatPct
             val bmiLabel = when {
-                bmi < 18.5 -> "Zayıf"
-                bmi < 25.0 -> "Normal"
-                bmi < 30.0 -> "Fazla Kilolu"
-                else       -> "Obez"
+                bmi < 18.5 -> theme.t("Zayıf", "Underweight")
+                bmi < 25.0 -> theme.t("Normal", "Normal")
+                bmi < 30.0 -> theme.t("Fazla Kilolu", "Overweight")
+                else       -> theme.t("Obez", "Obese")
             }
             val bmiColor = when {
                 bmi < 18.5 -> Color(0xFF64B5F6)
@@ -792,12 +831,12 @@ private fun StepBodyMetrics(
                     horizontalArrangement  = Arrangement.SpaceBetween,
                     modifier               = Modifier.fillMaxWidth()
                 ) {
-                    Text("BMI / VKİ", color = bmiColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("BMI / VKİ", "BMI"), color = bmiColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Column(horizontalAlignment = Alignment.End) {
                         Text("%.1f — %s".format(bmi, bmiLabel), color = bmiColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         if (bodyFat > 0) {
                             Text(
-                                "Tahmini yağ: %.1f%%".format(bodyFat),
+                                theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%").format(bodyFat),
                                 color = bmiColor.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -814,7 +853,7 @@ private fun StepBodyMetrics(
         StepNavButtons(
             onBack    = { vm.prevStep() },
             onNext    = { vm.nextStep() },
-            nextLabel = "Devam Et",
+            nextLabel = theme.t("Devam Et", "Continue"),
             accent    = accent,
             theme     = theme,
             canSkip   = true,
@@ -844,8 +883,8 @@ private fun StepGoal(
 
         StepHeader(
             step     = "6 / 7",
-            title    = "Hedefin ne?",
-            subtitle = "Seni motive edecek hedefi seç",
+            title    = theme.t("Hedefin ne?", "What's your goal?"),
+            subtitle = theme.t("Seni motive edecek hedefi seç", "Choose the goal that motivates you"),
             accent   = accent,
             theme    = theme
         )
@@ -876,7 +915,7 @@ private fun StepGoal(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            suggestion,
+                            theme.goalLabel(suggestion),
                             color      = if (selected) accent else theme.text1,
                             fontSize   = 13.sp,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
@@ -892,12 +931,12 @@ private fun StepGoal(
         Spacer(Modifier.height(16.dp))
 
         // Serbest metin
-        Text("VEYA KENDİN YAZ", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Text(theme.t("VEYA KENDİN YAZ", "OR WRITE YOUR OWN"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value         = state.fitnessGoal,
             onValueChange = { vm.setFitnessGoal(it) },
-            placeholder   = { Text("Hedefinizi yazın…", color = theme.text2, fontSize = 14.sp) },
+            placeholder   = { Text(theme.t("Hedefinizi yazın…", "Write your goal..."), color = theme.text2, fontSize = 14.sp) },
             leadingIcon   = { Icon(Icons.Rounded.Flag, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
             modifier      = Modifier.fillMaxWidth(),
             singleLine    = true,
@@ -924,7 +963,7 @@ private fun StepGoal(
             } else {
                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Program Önerisine Geç", fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 0.5.sp)
+                Text(theme.t("Program Önerisine Geç", "Go to Program Suggestion"), fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 0.5.sp)
             }
         }
 
@@ -962,8 +1001,8 @@ private fun StepPersonalProgram(
     val loading = state.isSaving || state.isGeneratingProgram
     val bmi = vm.bmi
     val bodyFat = vm.bodyFatPct
-    val bmiText = if (bmi > 0) "%.1f".format(bmi) else "Eksik"
-    val fatText = if (bodyFat > 0) "%.1f%%".format(bodyFat) else "Eksik"
+    val bmiText = if (bmi > 0) "%.1f".format(bmi) else theme.t("Eksik", "Missing")
+    val fatText = if (bodyFat > 0) "%.1f%%".format(bodyFat) else theme.t("Eksik", "Missing")
 
     Column(
         modifier = Modifier
@@ -975,8 +1014,8 @@ private fun StepPersonalProgram(
 
         StepHeader(
             step     = "7 / 7",
-            title    = "Programın hazır olsun mu?",
-            subtitle = "Bilgilerine göre AI ile kişiye özel plan çıkaralım",
+            title    = theme.t("Programın hazır olsun mu?", "Ready for your program?"),
+            subtitle = theme.t("Bilgilerine göre AI ile kişiye özel plan çıkaralım", "Let AI build a personal plan from your info"),
             accent   = accent,
             theme    = theme
         )
@@ -1004,15 +1043,15 @@ private fun StepPersonalProgram(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(state.sportBranch, color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text("${state.experienceLevel} • Haftada ${state.weeklyDays} gün", color = theme.text2, fontSize = 13.sp)
+                        Text(theme.sportBranchLabel(state.sportBranch), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("${theme.experienceLabel(state.experienceLevel)} • ${theme.t("Haftada ${state.weeklyDays} gün", "${state.weeklyDays} days/week")}", color = theme.text2, fontSize = 13.sp)
                     }
                 }
 
-                ProfileSummaryRow("Hedef", state.fitnessGoal.ifBlank { "Fit olmak" }, theme)
-                ProfileSummaryRow("Boy / Kilo", "${state.heightText.ifBlank { "-" }} cm • ${state.weightText.ifBlank { "-" }} kg", theme)
-                ProfileSummaryRow("BMI / VKİ", bmiText, theme)
-                ProfileSummaryRow("Yağ oranı", fatText, theme)
+                ProfileSummaryRow(theme.t("Hedef", "Goal"), state.fitnessGoal.ifBlank { theme.t("Fit olmak", "Get fit") }, theme)
+                ProfileSummaryRow(theme.t("Boy / Kilo", "Height / Weight"), "${state.heightText.ifBlank { "-" }} cm • ${state.weightText.ifBlank { "-" }} kg", theme)
+                ProfileSummaryRow(theme.t("BMI / VKİ", "BMI"), bmiText, theme)
+                ProfileSummaryRow(theme.t("Yağ oranı", "Body fat"), fatText, theme)
             }
         }
 
@@ -1039,11 +1078,11 @@ private fun StepPersonalProgram(
             if (loading) {
                 CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("Program hazırlanıyor...", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(theme.t("Program hazırlanıyor...", "Preparing program..."), fontWeight = FontWeight.Black, fontSize = 14.sp)
             } else {
                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Size Özel Program Oluştur", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(theme.t("Size Özel Program Oluştur", "Create Your Program"), fontWeight = FontWeight.Black, fontSize = 14.sp)
             }
         }
 
@@ -1052,7 +1091,7 @@ private fun StepPersonalProgram(
             enabled = !loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Şimdilik Atla", color = theme.text2, fontWeight = FontWeight.Bold)
+            Text(theme.t("Şimdilik Atla", "Skip for now"), color = theme.text2, fontWeight = FontWeight.Bold)
         }
 
         Row(
@@ -1063,7 +1102,7 @@ private fun StepPersonalProgram(
             AppBackButton(onClick = { vm.prevStep() }, accent = accent, size = 32.dp)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Geri",
+                theme.t("Geri", "Back"),
                 color = theme.text2,
                 fontSize = 13.sp,
                 modifier = Modifier.clickable(enabled = !loading) { vm.prevStep() }
@@ -1076,7 +1115,7 @@ private fun StepPersonalProgram(
 
 @Composable
 private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState) {
-    val useStackedLayout = label == "Hedef" || value.length > 26
+    val useStackedLayout = label == theme.t("Hedef", "Goal") || value.length > 26
 
     if (useStackedLayout) {
         Column(
@@ -1171,7 +1210,7 @@ private fun StepNavButtons(
                 AppBackButton(onClick = onBack, accent = accent, size = 32.dp)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Geri",
+                    theme.t("Geri", "Back"),
                     color = theme.text2,
                     fontSize = 13.sp,
                     modifier = Modifier.clickable(onClick = onBack)
@@ -1179,7 +1218,7 @@ private fun StepNavButtons(
             }
             if (canSkip) {
                 TextButton(onClick = onSkip) {
-                    Text("Atla", color = theme.text2, fontSize = 13.sp)
+                    Text(theme.t("Atla", "Skip"), color = theme.text2, fontSize = 13.sp)
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Rounded.ArrowForwardIos, null, tint = theme.text2, modifier = Modifier.size(13.dp))
                 }

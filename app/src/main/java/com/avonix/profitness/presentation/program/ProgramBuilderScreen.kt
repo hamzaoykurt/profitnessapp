@@ -2450,7 +2450,7 @@ private fun ManualBuilderScreen(
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + timerExtraPad)) {
-        DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack, accent = manAccent)
+        DetailHeader(title = manTheme.t("Manuel", "Manual"), sub = manStrings.manualBuilderSub, onBack = onBack, accent = manAccent)
 
         // ── Program name input ────────────────────────────────────────────────
         Box(
@@ -2474,7 +2474,7 @@ private fun ManualBuilderScreen(
                 decorationBox = { inner ->
                     if (programName.isEmpty()) {
                         Text(
-                            "Program adı...",
+                            manTheme.t("Program adı...", "Program name..."),
                             color = manTheme.text2,
                             fontWeight = FontWeight.Light,
                             fontSize = 16.sp
@@ -2511,7 +2511,7 @@ private fun ManualBuilderScreen(
                         Icon(Icons.Rounded.Add, null, tint = manAccent, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "+ YENİ GÜN  (${days.size}/7)",
+                            manTheme.t("+ YENİ GÜN", "+ NEW DAY") + "  (${days.size}/7)",
                             color = manAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -2624,8 +2624,8 @@ private fun ManualDayCard(
                 decorationBox = { inner ->
                     if (day.title.isEmpty()) {
                         Text(
-                            if (day.isRestDay) "DİNLENME GÜNÜ"
-                            else "GÜN $dayNumber",
+                            if (day.isRestDay) theme.t("DİNLENME GÜNÜ", "REST DAY")
+                            else theme.t("GÜN $dayNumber", "DAY $dayNumber"),
                             color = theme.text2,
                             fontWeight = FontWeight.Light,
                             fontSize = 14.sp
@@ -2644,7 +2644,7 @@ private fun ManualDayCard(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    "Dinlenme",
+                    theme.t("Dinlenme", "Rest"),
                     color = if (day.isRestDay) accent else theme.text2,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
@@ -2704,7 +2704,7 @@ private fun ManualDayCard(
                                 Text(ex.name, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Spacer(Modifier.height(4.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    manualDraftBadges(ex).forEachIndexed { badgeIndex, badge ->
+                                    manualDraftBadges(ex, theme).forEachIndexed { badgeIndex, badge ->
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(6.dp))
@@ -2757,7 +2757,7 @@ private fun ManualDayCard(
                 Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Hareket Ekle",
+                    theme.t("Hareket Ekle", "Add Exercise"),
                     color = accent,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
@@ -2771,18 +2771,18 @@ private fun ManualDayCard(
 
 // ── Exercise Edit Dialog ──────────────────────────────────────────────────────
 
-private fun manualDraftBadges(exercise: DraftExercise): List<String> {
+private fun manualDraftBadges(exercise: DraftExercise, theme: AppThemeState): List<String> {
     val duration = exercise.targetDurationSeconds
     val distance = exercise.targetDistanceMeters
     return when {
-        duration != null && distance != null -> listOf(formatDraftDuration(duration), formatDraftDistance(distance))
-        duration != null -> listOf(formatDraftDuration(duration))
-        else -> listOf("${exercise.sets} SET", "${exercise.reps} TEK")
+        duration != null && distance != null -> listOf(formatDraftDuration(duration, theme), formatDraftDistance(distance))
+        duration != null -> listOf(formatDraftDuration(duration, theme))
+        else -> listOf("${exercise.sets} SET", "${exercise.reps} ${theme.t("TEK", "REP")}")
     }
 }
 
-private fun formatDraftDuration(seconds: Int): String =
-    "${(seconds / 60).coerceAtLeast(1)} DK"
+private fun formatDraftDuration(seconds: Int, theme: AppThemeState): String =
+    "${(seconds / 60).coerceAtLeast(1)} ${theme.t("DK", "MIN")}"
 
 private fun formatDraftDistance(meters: Float): String =
     if (meters >= 1000f) {
@@ -2828,7 +2828,7 @@ private fun ExerciseEditDialog(
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        "HAREKETI DÜZENLE",
+                        theme.t("HAREKETİ DÜZENLE", "EDIT EXERCISE"),
                         color         = accent,
                         fontSize      = 9.sp,
                         fontWeight    = FontWeight.ExtraBold,
@@ -2861,7 +2861,7 @@ private fun ExerciseEditDialog(
                 )
                 HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                 EditCounterField(
-                    label       = "TEKRAR",
+                    label       = theme.t("TEKRAR", "REPS"),
                     value       = reps,
                     onDecrement = { if (reps > 1) reps-- },
                     onIncrement = { if (reps < 100) reps++ },
@@ -2880,7 +2880,7 @@ private fun ExerciseEditDialog(
                     shape    = RoundedCornerShape(14.dp),
                     border   = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text1, fontWeight = FontWeight.Medium)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text1, fontWeight = FontWeight.Medium)
                 }
                 Button(
                     onClick  = { onConfirm(sets, reps, exercise.restSeconds) },
@@ -2890,7 +2890,7 @@ private fun ExerciseEditDialog(
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Kaydet", color = onAccent, fontWeight = FontWeight.Bold)
+                    Text(theme.t("Kaydet", "Save"), color = onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         }
