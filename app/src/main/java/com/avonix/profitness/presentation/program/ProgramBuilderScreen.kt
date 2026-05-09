@@ -1834,7 +1834,9 @@ private data class DraftExercise(
     val targetMuscle: String,
     val sets        : Int,
     val reps        : Int,
-    val restSeconds : Int
+    val restSeconds : Int,
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null
 )
 
 // ── Edit Program Screen ───────────────────────────────────────────────────────
@@ -1875,7 +1877,9 @@ private fun EditProgramScreen(
                             targetMuscle = ex.targetMuscle,
                             sets         = ex.sets,
                             reps         = ex.reps,
-                            restSeconds  = ex.restSeconds
+                            restSeconds  = ex.restSeconds,
+                            targetDurationSeconds = ex.targetDurationSeconds,
+                            targetDistanceMeters = ex.targetDistanceMeters
                         )
                     )
                 }
@@ -1903,9 +1907,9 @@ private fun EditProgramScreen(
         ExercisePickerSheet(
             exercises = exercises,
             onDismiss = { showPickerForDay = null },
-            onConfirm = { exerciseId, name, muscle, sets, reps, rest ->
+            onConfirm = { exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance ->
                 val day = days[dayIndex]
-                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest))
+                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance))
                 if (day.title.isBlank()) {
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
@@ -2118,7 +2122,9 @@ private fun EditProgramScreen(
                                                 sets        = ex.sets,
                                                 reps        = ex.reps,
                                                 restSeconds = ex.restSeconds,
-                                                orderIndex  = ei
+                                                orderIndex  = ei,
+                                                targetDurationSeconds = ex.targetDurationSeconds,
+                                                targetDistanceMeters = ex.targetDistanceMeters
                                             )
                                         }
                                     )
@@ -2347,7 +2353,9 @@ private fun EditProgramScreen(
                                         sets        = ex.sets,
                                         reps        = ex.reps,
                                         restSeconds = ex.restSeconds,
-                                        orderIndex  = ei
+                                        orderIndex  = ei,
+                                        targetDurationSeconds = ex.targetDurationSeconds,
+                                        targetDistanceMeters = ex.targetDistanceMeters
                                     )
                                 }
                             )
@@ -2423,9 +2431,9 @@ private fun ManualBuilderScreen(
         ExercisePickerSheet(
             exercises = exercises,
             onDismiss = { showPickerForDay = null },
-            onConfirm = { exerciseId, name, muscle, sets, reps, rest ->
+            onConfirm = { exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance ->
                 val day = days[dayIndex]
-                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest))
+                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance))
                 if (day.title.isBlank()) {
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
@@ -2527,7 +2535,9 @@ private fun ManualBuilderScreen(
                                 sets        = ex.sets,
                                 reps        = ex.reps,
                                 restSeconds = ex.restSeconds,
-                                orderIndex  = ei
+                                orderIndex  = ei,
+                                targetDurationSeconds = ex.targetDurationSeconds,
+                                targetDistanceMeters = ex.targetDistanceMeters
                             )
                         }
                     )
@@ -2694,23 +2704,20 @@ private fun ManualDayCard(
                                 Text(ex.name, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Spacer(Modifier.height(4.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    // Set badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(accent.copy(0.15f))
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.sets} SET", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    // Rep badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(accent.copy(0.10f))
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.reps} TEK", color = accent.copy(0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    manualDraftBadges(ex).forEachIndexed { badgeIndex, badge ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(accent.copy(if (badgeIndex == 0) 0.15f else 0.10f))
+                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                badge,
+                                                color = accent.copy(if (badgeIndex == 0) 1f else 0.8f),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -2763,6 +2770,27 @@ private fun ManualDayCard(
 }
 
 // ── Exercise Edit Dialog ──────────────────────────────────────────────────────
+
+private fun manualDraftBadges(exercise: DraftExercise): List<String> {
+    val duration = exercise.targetDurationSeconds
+    val distance = exercise.targetDistanceMeters
+    return when {
+        duration != null && distance != null -> listOf(formatDraftDuration(duration), formatDraftDistance(distance))
+        duration != null -> listOf(formatDraftDuration(duration))
+        else -> listOf("${exercise.sets} SET", "${exercise.reps} TEK")
+    }
+}
+
+private fun formatDraftDuration(seconds: Int): String =
+    "${(seconds / 60).coerceAtLeast(1)} DK"
+
+private fun formatDraftDistance(meters: Float): String =
+    if (meters >= 1000f) {
+        val km = meters / 1000f
+        if (meters % 1000f == 0f) "${km.toInt()} KM" else "%.1f KM".format(km)
+    } else {
+        "${meters.toInt()} M"
+    }
 
 @Composable
 private fun ExerciseEditDialog(

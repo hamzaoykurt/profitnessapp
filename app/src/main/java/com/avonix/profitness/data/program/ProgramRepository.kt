@@ -83,5 +83,7 @@ data class ManualExerciseInput(
     val sets: Int,
     val reps: Int,
     val restSeconds: Int = 90,
-    val orderIndex: Int
+    val orderIndex: Int,
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null
 )

@@ -1,6 +1,8 @@
 package com.avonix.profitness.presentation.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -17,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -25,15 +29,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
 
-private val AVATAR_ROWS = listOf(
-    listOf("🏋️‍♂️","🤸‍♂️","🏃‍♂️","🚴‍♂️","⛹️‍♂️","🏊‍♂️"),
-    listOf("🏋️‍♀️","🤸‍♀️","🏃‍♀️","🚴‍♀️","🧘‍♀️","🏄‍♀️"),
-    listOf("🦁","🐺","🦅","🐯","🦊","🐲"),
-    listOf("💪","🔥","⚡","🏆","💎","🎯")
+private val SPORT_AVATAR_ROWS = listOf(
+    listOf("🏋️", "🏃", "🚴", "🏊", "⚽", "🏀"),
+    listOf("🎾", "🥊", "🧘", "🚶", "🤸", "⛹️"),
+    listOf("🏋️‍♀️", "🏃‍♀️", "🚴‍♀️", "🏊‍♀️", "🏐", "🏓"),
+    listOf("💪", "🔥", "⚡", "🏆", "🎯", "🥇")
 )
 
 private val GENDER_OPTIONS = listOf(
@@ -313,6 +319,16 @@ private fun StepName(
     accent   : Color,
     theme    : AppThemeState
 ) {
+    val context = LocalContext.current
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: return@rememberLauncherForActivityResult
+        vm.uploadPhoto(bytes)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -348,13 +364,48 @@ private fun StepName(
                 .border(2.dp, accent.copy(0.5f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(state.avatar, fontSize = 44.sp)
+            when {
+                state.isUploadingAvatar -> {
+                    CircularProgressIndicator(color = accent, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
+                }
+                state.avatar.startsWith("http") -> {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
+                        contentDescription = "Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                }
+                else -> {
+                    Text(state.avatar, fontSize = 44.sp)
+                }
+            }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { photoPickerLauncher.launch("image/*") },
+            enabled = !state.isUploadingAvatar,
+            shape = RoundedCornerShape(14.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(0.45f)),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = accent.copy(0.08f)),
+            modifier = Modifier.height(42.dp)
+        ) {
+            Icon(Icons.Rounded.PhotoCamera, null, tint = accent, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Profil fotoÄŸrafÄ± yÃ¼kle", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+
+        state.avatarError?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+        }
+
+        Spacer(Modifier.height(14.dp))
 
         // Avatar grid
-        AVATAR_ROWS.forEach { row ->
+        SPORT_AVATAR_ROWS.forEach { row ->
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
