@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
 import kotlin.math.PI
 import kotlin.math.cos
@@ -638,6 +639,12 @@ private fun AuthScaffold(
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
+    val heroStyle = if (responsive.isSmallPhone) {
+        MaterialTheme.typography.displayMedium
+    } else {
+        MaterialTheme.typography.displayLarge
+    }
 
     val alphaAnim = remember { Animatable(0f) }
     val yAnim     = remember { Animatable(40f) }
@@ -652,9 +659,12 @@ private fun AuthScaffold(
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
             horizontalAlignment = Alignment.Start
         ) {
@@ -674,9 +684,9 @@ private fun AuthScaffold(
             // Hero title
             Text(
                 text       = heroTitle,
-                style      = MaterialTheme.typography.displayLarge,
+                style      = heroStyle,
                 color      = theme.text0,
-                lineHeight = 48.sp,
+                lineHeight = if (responsive.isSmallPhone) 42.sp else 48.sp,
                 fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(8.dp))
@@ -708,6 +718,7 @@ private fun AuthCenteredScaffold(
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
 
     val alphaAnim = remember { Animatable(0f) }
     val yAnim     = remember { Animatable(30f) }
@@ -720,9 +731,12 @@ private fun AuthCenteredScaffold(
         AmbientGlowBackground(accent)
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.Center)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center

@@ -93,7 +93,6 @@ fun ProfileScreen(
                     level            = state.level,
                     xp               = state.xp,
                     xpPerLevel       = state.xpPerLevel,
-                    fitnessGoal      = state.fitnessGoal,
                     userPlan         = state.userPlan,
                     aiCredits        = state.aiCredits,
                     accent           = accent,
@@ -332,7 +331,6 @@ private fun ProfileHeroBanner(
     level          : Int,
     xp             : Int,
     xpPerLevel     : Int,
-    fitnessGoal    : String = "",
     userPlan        : UserPlan = UserPlan.FREE,
     aiCredits       : Int = 0,
     accent          : Color,
@@ -539,17 +537,6 @@ private fun ProfileHeroBanner(
                         letterSpacing = 2.sp,
                         maxLines = 1
                     )
-
-                    if (fitnessGoal.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            fitnessGoal,
-                            color = theme.text1,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
 
                     Spacer(Modifier.height(12.dp))
 

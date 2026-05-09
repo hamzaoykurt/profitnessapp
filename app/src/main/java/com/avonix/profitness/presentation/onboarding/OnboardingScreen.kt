@@ -20,11 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
 
 private val AVATAR_ROWS = listOf(
@@ -89,6 +91,7 @@ fun OnboardingScreen(
 
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
 
     BackHandler(enabled = state.step > 0 && !state.isSaving) {
         viewModel.prevStep()
@@ -111,7 +114,13 @@ fun OnboardingScreen(
                 )
         )
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
+        ) {
             // Üst ilerleme çubuğu
             Spacer(Modifier.height(52.dp))
             OnboardingProgressBar(currentStep = state.step, totalSteps = 7, accent = accent, theme = theme)
@@ -1005,13 +1014,51 @@ private fun StepPersonalProgram(
 
 @Composable
 private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-        Text(value, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+    val useStackedLayout = label == "Hedef" || value.length > 26
+
+    if (useStackedLayout) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                label,
+                color = theme.text2,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
+            Text(
+                value,
+                color = theme.text0,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                label,
+                color = theme.text2,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                value,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
