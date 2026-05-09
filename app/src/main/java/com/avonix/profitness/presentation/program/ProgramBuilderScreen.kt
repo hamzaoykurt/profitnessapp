@@ -66,6 +66,45 @@ enum class ProgramCategory(val trLabel: String, val color: Color, val icon: Imag
     BEGINNER("BAŞLANGIÇ", CardGreen, Icons.Rounded.StarOutline)
 }
 
+enum class ProgramSportFilter(val label: String, val color: Color, val icon: ImageVector) {
+    ALL("TÜM SPORLAR", Snow, Icons.Rounded.GridView),
+    FITNESS("FİTNESS", CardPurple, Icons.Rounded.FitnessCenter),
+    RUNNING("KOŞU", CardCyan, Icons.Rounded.DirectionsRun),
+    CYCLING("BİSİKLET", CardGreen, Icons.Rounded.DirectionsBike),
+    SWIMMING("YÜZME", CardCyan, Icons.Rounded.Pool),
+    ROWING("KÜREK", Amber, Icons.Rounded.Rowing),
+    WALKING("YÜRÜYÜŞ", CardGreen, Icons.Rounded.DirectionsWalk),
+    BOXING("BOKS", CardCoral, Icons.Rounded.SportsMma),
+    YOGA("YOGA", CardPurple, Icons.Rounded.SelfImprovement),
+    FOOTBALL("FUTBOL", CardGreen, Icons.Rounded.SportsSoccer),
+    BASKETBALL("BASKETBOL", Amber, Icons.Rounded.SportsBasketball),
+    TENNIS("TENİS", CardCyan, Icons.Rounded.SportsTennis)
+}
+
+private fun ProgramSportFilter.matches(program: ReadyProgram): Boolean {
+    val token = "${program.title} ${program.goal} ${program.muscleLabels.joinToString(" ")}".uppercase()
+    return when (this) {
+        ProgramSportFilter.ALL -> true
+        ProgramSportFilter.FITNESS -> listOf(
+            "KAS KÜTLESİ",
+            "YAĞ YAKIMI",
+            "GÜÇ",
+            "GENEL FITNESS",
+            "DAYANIKLILIK"
+        ).any { program.goal.uppercase() == it }
+        ProgramSportFilter.RUNNING -> token.contains("KOŞU")
+        ProgramSportFilter.CYCLING -> token.contains("BİSİKLET")
+        ProgramSportFilter.SWIMMING -> token.contains("YÜZME")
+        ProgramSportFilter.ROWING -> token.contains("KÜREK")
+        ProgramSportFilter.WALKING -> token.contains("YÜRÜYÜŞ")
+        ProgramSportFilter.BOXING -> token.contains("BOKS")
+        ProgramSportFilter.YOGA -> token.contains("YOGA") || token.contains("MOBİLİTE")
+        ProgramSportFilter.FOOTBALL -> token.contains("FUTBOL")
+        ProgramSportFilter.BASKETBALL -> token.contains("BASKETBOL")
+        ProgramSportFilter.TENNIS -> token.contains("TENİS")
+    }
+}
+
 /** Returns the localised display label for this category. */
 @Composable
 fun ProgramCategory.localizedLabel(): String {
@@ -559,6 +598,7 @@ private fun BuilderChooseScreen(
     timerExtraPad  : androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
+    var activeSport by remember { mutableStateOf(ProgramSportFilter.ALL) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
     var closeDialogAfterApply by remember { mutableStateOf(false) }
     val isApplyingTemplate = applyingTemplateKey != null
@@ -584,9 +624,11 @@ private fun BuilderChooseScreen(
         )
     }
 
-    val filtered = remember(activeCategory) {
-        if (activeCategory == ProgramCategory.ALL) READY_PROGRAMS
-        else READY_PROGRAMS.filter { it.category == activeCategory }
+    val filtered = remember(activeSport, activeCategory) {
+        READY_PROGRAMS.filter { program ->
+            activeSport.matches(program) &&
+                (activeCategory == ProgramCategory.ALL || program.category == activeCategory)
+        }
     }
 
     val sectionStrings = LocalAppTheme.current.strings
@@ -690,6 +732,23 @@ private fun BuilderChooseScreen(
             SectionLabel(sectionStrings.readyPrograms, TextMuted)
         }
 
+        item {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(ProgramSportFilter.values()) { sport ->
+                    SportFilterChip(
+                        sport = sport,
+                        selected = sport == activeSport,
+                        onClick = { activeSport = sport }
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
         // ── Category Tabs ─────────────────────────────────────────────────────
         item {
             LazyRow(
@@ -771,6 +830,43 @@ private fun QuickCreateButton(
 }
 
 // ── Category Chip ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun SportFilterChip(
+    sport: ProgramSportFilter,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) sport.color else sport.color.copy(alpha = 0.06f)
+    val textColor = if (selected) Surface0 else sport.color
+    val border = if (selected) sport.color else sport.color.copy(alpha = 0.2f)
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(50))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 9.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                sport.icon,
+                null,
+                tint = if (selected) Surface0 else sport.color,
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                sport.label,
+                color = textColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
 
 @Composable
 private fun CategoryChip(

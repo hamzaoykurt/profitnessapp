@@ -358,7 +358,7 @@ private fun ProfileHeroBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 8.dp, bottom = 32.dp),
+                .padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
@@ -772,7 +772,7 @@ private fun PerformanceMetricsSection(
         }
     }
 
-    Column(modifier = Modifier.padding(top = 32.dp)) {
+    Column(modifier = Modifier.padding(top = 18.dp)) {
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
