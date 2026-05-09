@@ -434,10 +434,9 @@ private fun StepSportExperience(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
     ) {
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(18.dp))
 
         StepHeader(
             step     = "3 / 7",
@@ -447,34 +446,40 @@ private fun StepSportExperience(
             theme    = theme
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(18.dp))
 
         Text("SPOR DALI", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = SPORT_BRANCH_OPTIONS,
             selected = state.sportBranch,
             accent = accent,
             theme = theme,
+            itemHeight = 38.dp,
+            rowSpacing = 7.dp,
+            fontSize = 12.sp,
             onSelect = { vm.setSportBranch(it) }
         )
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text("SEVİYE", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = EXPERIENCE_OPTIONS,
             selected = state.experienceLevel,
             accent = accent,
             theme = theme,
+            itemHeight = 38.dp,
+            rowSpacing = 7.dp,
+            fontSize = 12.sp,
             onSelect = { vm.setExperienceLevel(it) }
         )
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text("HAFTALIK ANTRENMAN", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         OnboardingChoiceGrid(
             options = WEEKLY_DAY_OPTIONS,
             selected = state.weeklyDays,
@@ -485,7 +490,7 @@ private fun StepSportExperience(
         )
 
         Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(14.dp))
 
         StepNavButtons(
             onBack    = { vm.prevStep() },
@@ -497,7 +502,7 @@ private fun StepSportExperience(
             onSkip    = { vm.nextStep() }
         )
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(18.dp))
     }
 }
 
@@ -507,10 +512,14 @@ private fun OnboardingChoiceGrid(
     selected: String,
     accent  : Color,
     theme   : AppThemeState,
+    itemHeight: androidx.compose.ui.unit.Dp = 38.dp,
+    rowSpacing: androidx.compose.ui.unit.Dp = 7.dp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
     labelFor: (String) -> String = { it },
     onSelect: (String) -> Unit
 ) {
-    options.chunked(2).forEach { row ->
+    val rows = options.chunked(2)
+    rows.forEachIndexed { index, row ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -520,7 +529,7 @@ private fun OnboardingChoiceGrid(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp)
+                        .height(itemHeight)
                         .clip(RoundedCornerShape(14.dp))
                         .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
                         .border(
@@ -534,14 +543,16 @@ private fun OnboardingChoiceGrid(
                     Text(
                         text = labelFor(option),
                         color = if (isSelected) accent else theme.text1,
-                        fontSize = 13.sp,
+                        fontSize = fontSize,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                     )
                 }
             }
             if (row.size == 1) Spacer(Modifier.weight(1f))
         }
-        Spacer(Modifier.height(10.dp))
+        if (index != rows.lastIndex) {
+            Spacer(Modifier.height(rowSpacing))
+        }
     }
 }
 
