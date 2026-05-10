@@ -79,17 +79,21 @@ class AICoachViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : BaseViewModel<AICoachState, AICoachEvent>(AICoachState()) {
 
-    private val prefsManager   = AICoachPrefsManager(context)
-    private val sessionManager = ChatSessionManager(context)
-    private var currentPrefs   = prefsManager.getPrefs()
+    private val prefsManager   by lazy { AICoachPrefsManager(context) }
+    private val sessionManager by lazy { ChatSessionManager(context) }
+    private var currentPrefs   = AICoachPrefs()
 
     private val conversationHistory = mutableListOf<Pair<String, String>>()
 
     private val jsonParser = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     init {
-        if (!currentPrefs.onboardingCompleted) {
-            updateState { it.copy(showOnboarding = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val loadedPrefs = prefsManager.getPrefs()
+            withContext(Dispatchers.Main) {
+                currentPrefs = loadedPrefs
+                updateState { it.copy(showOnboarding = !loadedPrefs.onboardingCompleted) }
+            }
         }
         // Plan ve kredi değişikliklerini reaktif dinle
         viewModelScope.launch {

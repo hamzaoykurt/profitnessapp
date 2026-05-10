@@ -8,7 +8,6 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,10 +45,6 @@ class DashboardViewModel @Inject constructor(
     private var lastLoadMs: Long = 0L
 
     init {
-        viewModelScope.launch {
-            delay(STARTUP_EVENTS_DELAY_MS)
-            reloadIfStale()
-        }
         observeSkipProgramFlag()
     }
 
@@ -60,7 +55,7 @@ class DashboardViewModel @Inject constructor(
         refresh(force = false)
     }
 
-    fun refresh(force: Boolean = true) {
+    fun refresh(force: Boolean = false) {
         if (refreshJob?.isActive == true) return
         val hasData = state.value.today.isNotEmpty() || state.value.upcoming.isNotEmpty()
         val hasLoaded = lastLoadMs > 0L
@@ -105,6 +100,5 @@ class DashboardViewModel @Inject constructor(
 
     private companion object {
         const val EVENTS_TTL_MS = 2 * 60_000L
-        const val STARTUP_EVENTS_DELAY_MS = 2_500L
     }
 }

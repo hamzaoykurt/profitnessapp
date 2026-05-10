@@ -104,7 +104,6 @@ class WorkoutViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var timerJob: Job? = null
-    private var startupRefreshJob: Job? = null
     private val _restTimer = MutableStateFlow(RestTimerState())
     val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
@@ -574,7 +573,6 @@ class WorkoutViewModel @Inject constructor(
             return
         }
 
-        scheduleStartupRefresh(userId)
         loadProfileWeight(userId)
 
         observeJob?.cancel()
@@ -645,15 +643,10 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    private fun scheduleStartupRefresh(userId: String) {
-        if (startupRefreshJob?.isActive == true) return
-        startupRefreshJob = viewModelScope.launch {
-            delay(STARTUP_SYNC_DELAY_MS)
-            syncCoordinator.refreshWorkout(
-                userId = userId,
-                ttlMillis = STARTUP_SYNC_TTL_MS,
-                debounceMillis = 0L
-            )
+    fun triggerInitialSync() {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        viewModelScope.launch {
+            syncCoordinator.refreshWorkout(userId)
         }
     }
 
@@ -1942,8 +1935,6 @@ class WorkoutViewModel @Inject constructor(
     companion object {
         private const val ACTIVITY_SET_INDEX = 0
         private val DAY_LABELS = listOf("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
-        private const val STARTUP_SYNC_DELAY_MS = 2_500L
-        private const val STARTUP_SYNC_TTL_MS = 15 * 60_000L
         private const val RESUME_SYNC_DEBOUNCE_MS = 1_500L
         private const val RESUME_SYNC_TTL_MS = 10 * 60_000L
 

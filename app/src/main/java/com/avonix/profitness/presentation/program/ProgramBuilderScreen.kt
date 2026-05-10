@@ -57,6 +57,7 @@ import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.activityTrackingSpec
 import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 import kotlinx.coroutines.delay
+import java.util.UUID
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -421,22 +422,28 @@ fun ProgramBuilderScreen(
     initialMode      : BuilderMode = BuilderMode.Choose,
     timerExtraPad    : androidx.compose.ui.unit.Dp = 0.dp,
     onNavigateToStore: () -> Unit = {},
-    viewModel        : ProgramViewModel = hiltViewModel(),
-    shareViewModel   : ProgramShareViewModel = hiltViewModel()
+    viewModel        : ProgramViewModel = hiltViewModel()
 ) {
     var showPaywall by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<Program?>(null) }
-    val shareState by shareViewModel.state.collectAsStateWithLifecycle()
+    var shareFeatureInitialized by remember { mutableStateOf(false) }
+    val shareViewModel: ProgramShareViewModel? =
+        if (shareFeatureInitialized) hiltViewModel() else null
+    val shareState = shareViewModel
+        ?.state
+        ?.collectAsStateWithLifecycle()
+        ?.value
+        ?: ProgramShareUiState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    LaunchedEffect(shareState.result) {
+    LaunchedEffect(shareState.result, shareViewModel) {
         shareState.result?.let { r ->
             val msg = when (r) {
                 ProgramShareResult.Success -> "Program topluluk akışına eklendi ✓"
                 is ProgramShareResult.Error -> "Paylaşım başarısız: ${r.message}"
             }
             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-            shareViewModel.consumeResult()
+            shareViewModel?.consumeResult()
         }
     }
 
@@ -458,7 +465,10 @@ fun ProgramBuilderScreen(
     }
 
     // Tab geçişinde stale ise yenile (3 dk cache)
-    LaunchedEffect(Unit) { viewModel.reloadIfStale() }
+    LaunchedEffect(Unit) {
+        delay(350)
+        viewModel.reloadIfStale()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -496,7 +506,10 @@ fun ProgramBuilderScreen(
                         )
                     },
                     onEditProgram    = { prog -> mode = BuilderMode.Edit(prog) },
-                    onShareProgram   = { prog -> shareTarget = prog },
+                    onShareProgram   = { prog ->
+                        shareFeatureInitialized = true
+                        shareTarget = prog
+                    },
                     timerExtraPad    = timerExtraPad
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
@@ -549,12 +562,13 @@ fun ProgramBuilderScreen(
 
         // Program paylaşım sheet'i (kart üzerindeki "PAYLAŞ" ile açılır)
         shareTarget?.let { target ->
+            val shareVm = shareViewModel ?: return@let
             com.avonix.profitness.presentation.discover.ShareProgramSheet(
                 programs             = uiState.userPrograms,
                 preselectedProgramId = target.id,
                 onDismiss            = { shareTarget = null },
                 onConfirm            = { programId, title, desc, tags, difficulty, weeks, days ->
-                    shareViewModel.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
+                    shareVm.shareProgram(programId, title, desc, tags, difficulty, weeks, days)
                     shareTarget = null
                 }
             )
@@ -771,7 +785,7 @@ private fun BuilderChooseScreen(
         }
 
         // ── Program Cards ─────────────────────────────────────────────────────
-        items(filtered) { prog ->
+        items(filtered, key = { it.title }) { prog ->
             ProgramCard(
                 program = prog,
                 onClick = { selectedProgram = prog }
@@ -1825,7 +1839,9 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
 
 // ── Manual Builder — helper state classes ─────────────────────────────────────
 
-private class MutableManualDay {
+private class MutableManualDay(
+    val id: String = UUID.randomUUID().toString()
+) {
     var title    by mutableStateOf("")
     var isRestDay by mutableStateOf(false)
     val exercises = mutableStateListOf<DraftExercise>()
@@ -2262,7 +2278,7 @@ private fun EditProgramScreen(
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(days) { index, day ->
+                itemsIndexed(days, key = { _, day -> day.id }) { index, day ->
                     ManualDayCard(
                         day              = day,
                         dayNumber        = index + 1,
@@ -2506,7 +2522,7 @@ private fun ManualBuilderScreen(
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            itemsIndexed(days) { index, day ->
+            itemsIndexed(days, key = { _, day -> day.id }) { index, day ->
                 ManualDayCard(
                     day              = day,
                     dayNumber        = index + 1,

@@ -147,6 +147,15 @@ fun CinematicExerciseCard(
         animationSpec = tween(600),
         label         = "glow"
     )
+    val imageOverlayBrush = remember(isExpanded) {
+        Brush.verticalGradient(
+            listOf(
+                Color.Transparent,
+                Color.Black.copy(0.4f),
+                Color.Black.copy(if (isExpanded) 0.92f else 0.82f)
+            )
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -158,7 +167,8 @@ fun CinematicExerciseCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp)),
-            glowColor = if (isCompleted) accent else Color.Transparent
+            glowColor = if (isCompleted) accent else Color.Transparent,
+            elevation = if (isCompleted) 10.dp else 6.dp
         ) {
             // animateContentSize gives the same bouncy height expansion as before,
             // but is measured via placement — no explicit height state, no layout-per-frame jank
@@ -200,15 +210,7 @@ fun CinematicExerciseCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(0.4f),
-                                        Color.Black.copy(if (isExpanded) 0.92f else 0.82f)
-                                    )
-                                )
-                            )
+                            .background(imageOverlayBrush)
                     )
 
                     // Info button — top-right corner
@@ -465,18 +467,19 @@ private fun ActivityMetricsPanel(
     onInclineChanged: (String) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val backgroundBrush = remember(isDone, accent) {
+        Brush.verticalGradient(
+            listOf(
+                if (isDone) accent.copy(0.18f) else Surface3.copy(0.70f),
+                Surface2.copy(0.48f)
+            )
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (isDone) accent.copy(0.18f) else Surface3.copy(0.70f),
-                        Surface2.copy(0.48f)
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .border(
                 1.dp,
                 if (isDone) accent.copy(0.42f) else Snow.copy(0.08f),
@@ -560,15 +563,14 @@ private fun MetricDisplayTile(
     isDone: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val backgroundBrush = remember {
+        Brush.verticalGradient(listOf(Surface3.copy(0.86f), Surface2.copy(0.64f)))
+    }
     Row(
         modifier = modifier
             .heightIn(min = 58.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Surface3.copy(0.86f), Surface2.copy(0.64f))
-                )
-            )
+            .background(backgroundBrush)
             .border(
                 1.dp,
                 if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
@@ -739,10 +741,12 @@ private fun CompleteActionButton(
     onAccent: Color,
     onClick: () -> Unit
 ) {
-    val bg = if (isCompleted) {
-        Brush.horizontalGradient(listOf(Surface3.copy(0.88f), Surface2.copy(0.72f)))
-    } else {
-        Brush.horizontalGradient(listOf(accent, accent.copy(0.86f)))
+    val bg = remember(isCompleted, accent) {
+        if (isCompleted) {
+            Brush.horizontalGradient(listOf(Surface3.copy(0.88f), Surface2.copy(0.72f)))
+        } else {
+            Brush.horizontalGradient(listOf(accent, accent.copy(0.86f)))
+        }
     }
     Row(
         modifier = Modifier
@@ -803,19 +807,20 @@ private fun TimedSetRow(
         tween(250),
         label = "timed_set_bg"
     )
+    val backgroundBrush = remember(isDone, accent, bgAlpha) {
+        Brush.horizontalGradient(
+            listOf(
+                if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
+                Surface2.copy(0.48f)
+            )
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
-                        Surface2.copy(0.48f)
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .border(1.dp, if (isDone) accent.copy(0.50f) else Snow.copy(0.08f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
@@ -880,19 +885,20 @@ private fun SetRow(
         tween(250),
         label = "set_bg"
     )
+    val backgroundBrush = remember(isDone, accent, bgAlpha) {
+        Brush.horizontalGradient(
+            listOf(
+                if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
+                Surface2.copy(0.48f)
+            )
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
-                        Surface2.copy(0.48f)
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .border(
                 1.dp,
                 if (isDone) accent.copy(0.50f) else Snow.copy(0.08f),
@@ -991,15 +997,14 @@ private fun WeightInputField(
     keyboardType: KeyboardType,
     modifier: Modifier = Modifier
 ) {
+    val backgroundBrush = remember {
+        Brush.verticalGradient(listOf(Surface3.copy(0.86f), Surface2.copy(0.64f)))
+    }
     Column(
         modifier = modifier
             .heightIn(min = 58.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Surface3.copy(0.86f), Surface2.copy(0.64f))
-                )
-            )
+            .background(backgroundBrush)
             .border(
                 1.dp,
                 if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
@@ -1092,16 +1097,18 @@ private fun RestTimerChip(
         isRunning -> accent
         else      -> accent
     }
-    val chipBackground = when {
-        isDone -> Brush.horizontalGradient(
-            listOf(Amber.copy(0.28f), Amber.copy(0.12f))
-        )
-        isRunning -> Brush.horizontalGradient(
-            listOf(accent.copy(0.34f), accent.copy(0.18f))
-        )
-        else -> Brush.horizontalGradient(
-            listOf(accent.copy(0.20f), Surface3.copy(0.62f))
-        )
+    val chipBackground = remember(isDone, isRunning, accent) {
+        when {
+            isDone -> Brush.horizontalGradient(
+                listOf(Amber.copy(0.28f), Amber.copy(0.12f))
+            )
+            isRunning -> Brush.horizontalGradient(
+                listOf(accent.copy(0.34f), accent.copy(0.18f))
+            )
+            else -> Brush.horizontalGradient(
+                listOf(accent.copy(0.20f), Surface3.copy(0.62f))
+            )
+        }
     }
 
     Row(

@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.presentation.components.glassCard
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +78,10 @@ fun ProfileScreen(
     }
 
     // Tab geçişinde stale ise yenile (5 dk cache)
-    LaunchedEffect(Unit) { viewModel.reloadIfStale() }
+    LaunchedEffect(Unit) {
+        delay(350)
+        viewModel.reloadIfStale()
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()

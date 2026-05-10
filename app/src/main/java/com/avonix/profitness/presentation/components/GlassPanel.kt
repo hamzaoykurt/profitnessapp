@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
@@ -106,54 +107,60 @@ fun Modifier.glassCard(
     accent: Color,
     theme : AppThemeState,
     shape : Shape = RoundedCornerShape(20.dp)
-): Modifier = this
-    .clip(shape)
-    .drawWithCache {
-        val base = theme.bg1.copy(alpha = if (theme.isDark) 0.75f else 0.90f)
-        // In light mode use a warm tint shimmer instead of harsh white
-        val shimmerAlphaTop = if (theme.isDark) 0.09f else 0.50f
-        val shimmerAlphaMid = if (theme.isDark) 0.02f else 0.15f
-        val shimmer = Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.00f to Color.White.copy(alpha = shimmerAlphaTop),
-                0.32f to Color.White.copy(alpha = shimmerAlphaMid),
-                0.55f to Color.Transparent
-            )
-        )
-        val accentBleed = Brush.linearGradient(
-            colorStops = arrayOf(
-                0.00f to accent.copy(alpha = if (theme.isDark) 0.14f else 0.08f),
-                0.45f to accent.copy(alpha = if (theme.isDark) 0.05f else 0.03f),
-                1.00f to Color.Transparent
-            ),
-            start = Offset(0f, size.height * 0.5f),
-            end   = Offset(size.width, size.height * 0.5f)
-        )
-        // Light mode: use a warm brown shadow instead of black
-        val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.30f)
-                         else Color(0xFF6B4E2A).copy(alpha = 0.10f)
-        val depth = Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.48f to Color.Transparent,
-                1.00f to depthColor
-            )
-        )
-        onDrawBehind {
-            drawRect(base)
-            drawRect(accentBleed)
-            drawRect(depth)
-            drawRect(shimmer)
-        }
-    }
-    .border(
-        width = 1.dp,
-        brush = Brush.linearGradient(
+): Modifier = composed {
+    val borderBrush = remember(accent, theme.isDark, theme.stroke) {
+        Brush.linearGradient(
             listOf(
                 accent.copy(alpha = if (theme.isDark) 0.28f else 0.35f),
                 theme.stroke.copy(alpha = if (theme.isDark) 0.45f else 0.70f),
                 accent.copy(alpha = if (theme.isDark) 0.16f else 0.20f)
             )
-        ),
-        shape = shape
-    )
+        )
+    }
+
+    Modifier
+        .clip(shape)
+        .drawWithCache {
+            val base = theme.bg1.copy(alpha = if (theme.isDark) 0.75f else 0.90f)
+            // In light mode use a warm tint shimmer instead of harsh white
+            val shimmerAlphaTop = if (theme.isDark) 0.09f else 0.50f
+            val shimmerAlphaMid = if (theme.isDark) 0.02f else 0.15f
+            val shimmer = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.00f to Color.White.copy(alpha = shimmerAlphaTop),
+                    0.32f to Color.White.copy(alpha = shimmerAlphaMid),
+                    0.55f to Color.Transparent
+                )
+            )
+            val accentBleed = Brush.linearGradient(
+                colorStops = arrayOf(
+                    0.00f to accent.copy(alpha = if (theme.isDark) 0.14f else 0.08f),
+                    0.45f to accent.copy(alpha = if (theme.isDark) 0.05f else 0.03f),
+                    1.00f to Color.Transparent
+                ),
+                start = Offset(0f, size.height * 0.5f),
+                end   = Offset(size.width, size.height * 0.5f)
+            )
+            // Light mode: use a warm brown shadow instead of black
+            val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.30f)
+                             else Color(0xFF6B4E2A).copy(alpha = 0.10f)
+            val depth = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.48f to Color.Transparent,
+                    1.00f to depthColor
+                )
+            )
+            onDrawBehind {
+                drawRect(base)
+                drawRect(accentBleed)
+                drawRect(depth)
+                drawRect(shimmer)
+            }
+        }
+        .border(
+            width = 1.dp,
+            brush = borderBrush,
+            shape = shape
+        )
+}
 

@@ -1110,7 +1110,7 @@ private fun CreditsTab(
             }
         }
 
-        items(packages.size) { idx ->
+        items(packages.size, key = { index -> index }) { idx ->
             val pkg = packages[idx]
             CreditCard(
                 pkg       = pkg,

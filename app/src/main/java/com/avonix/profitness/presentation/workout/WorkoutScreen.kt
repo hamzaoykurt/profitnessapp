@@ -60,6 +60,7 @@ import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
 
+@Stable
 data class Exercise(
     val id: String,
     val name: String,
@@ -176,28 +177,47 @@ fun WorkoutScreen(
 
     // ── Bildirim izni (Android 13+) ───────────────────────────────────────────
     var notifPermissionDenied by remember { mutableStateOf(false) }
-    var pendingTimerStart by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingTimerAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        notifPermissionDenied = !granted
-        pendingTimerStart?.invoke()
-        pendingTimerStart = null
-    }
-    val startTimerWithPermission: (() -> Unit) -> Unit = { start ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                pendingTimerStart = start
-                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                start()
-            }
+        val action = pendingTimerAction
+        pendingTimerAction = null
+        if (granted) {
+            action?.invoke()
         } else {
-            start()
+            notifPermissionDenied = true
         }
+    }
+    val runWithNotificationPermission: (() -> Unit) -> Unit = remember(context) {
+        { action ->
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                action()
+            } else {
+                val granted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    action()
+                } else {
+                    pendingTimerAction = action
+                    notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { pendingTimerAction = null }
+    }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifPermissionDenied = false
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(300)
+        viewModel.triggerInitialSync()
     }
 
     var showPaywall by remember { mutableStateOf(false) }
@@ -254,7 +274,7 @@ fun WorkoutScreen(
                     bottomPadding = bottomPadding,
                     timerActive = timerActive,
                     timerBannerH = timerBannerH,
-                    onStartTimer = startTimerWithPermission
+                    runWithNotificationPermission = runWithNotificationPermission
                 )
             }
         }
@@ -496,7 +516,7 @@ private fun WorkoutContent(
     bottomPadding: Dp,
     timerActive: Boolean = false,
     timerBannerH: Dp = 0.dp,
-    onStartTimer: (() -> Unit) -> Unit
+    runWithNotificationPermission: (() -> Unit) -> Unit = { action -> action() }
 ) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
@@ -509,6 +529,10 @@ private fun WorkoutContent(
     val dashboardVm: DashboardViewModel = hiltViewModel()
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        delay(500)
+        dashboardVm.refresh()
+    }
     WorkoutRefreshOnResumeEffect { dashboardVm.reloadIfStale() }
     LaunchedEffect(state.challengeSyncVersion) {
         if (state.challengeSyncVersion > 0) dashboardVm.refresh(force = true)
@@ -567,12 +591,6 @@ private fun WorkoutContent(
         animationSpec = tween(300, easing = FastOutSlowInEasing),
         label         = "timer_top_pad"
     )
-
-    // Gün değiştiğinde ya da egzersiz listesi ilk yüklendiğinde önceki oturumun
-    // ağırlık/reps değerlerini tüm egzersizler için pre-fill et (kart açılmasını beklemeden).
-    LaunchedEffect(selectedDayIdx, currentDay.exercises.map { it.id }) {
-        viewModel.loadLastSessionForSelectedDay()
-    }
 
     LazyColumn(
         state = listState,
@@ -723,22 +741,22 @@ private fun WorkoutContent(
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
                     onStartTimer      = { secs ->
-                        onStartTimer {
+                        runWithNotificationPermission {
                             viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
                         }
                     },
                     onStartSetTimer   = { setIndex, secs ->
-                        onStartTimer {
+                        runWithNotificationPermission {
                             viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
                         }
                     },
                     onStartSetStopwatchTimer = { setIndex ->
-                        onStartTimer {
+                        runWithNotificationPermission {
                             viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
                         }
                     },
                     onStartStopwatchTimer = {
-                        onStartTimer {
+                        runWithNotificationPermission {
                             viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
                         }
                     },
@@ -771,7 +789,7 @@ private fun WorkoutContent(
             onBack = { detailChallengeId = null },
             onChanged = {
                 // Event üzerinde bir şey değişmiş olabilir (movement completion, skip toggle)
-                dashboardVm.refresh()
+                dashboardVm.refresh(force = true)
             }
         )
     }

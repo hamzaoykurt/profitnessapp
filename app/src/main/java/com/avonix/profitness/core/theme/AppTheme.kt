@@ -1,5 +1,6 @@
 package com.avonix.profitness.core.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,7 @@ enum class AccentIntensity { NEON, PASTEL }
 
 enum class AppLanguage { TURKISH, ENGLISH }
 
+@Immutable
 data class AppThemeState(
     val isDark              : Boolean         = true,
     val accent              : AccentPreset    = AccentPreset.LIME,

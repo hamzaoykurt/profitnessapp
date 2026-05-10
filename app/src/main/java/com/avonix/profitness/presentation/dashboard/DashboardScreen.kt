@@ -47,14 +47,19 @@ import kotlin.math.roundToInt
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
+import com.avonix.profitness.presentation.aicoach.AICoachViewModel
 import com.avonix.profitness.presentation.discover.DiscoverScreen
+import com.avonix.profitness.presentation.discover.DiscoverViewModel
 import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
 import com.avonix.profitness.presentation.profile.EditProfileScreen
 import com.avonix.profitness.presentation.profile.ExerciseProgressionScreen
 import com.avonix.profitness.presentation.profile.PerformanceDetailScreen
 import com.avonix.profitness.presentation.profile.ProfileScreen
+import com.avonix.profitness.presentation.profile.ProfileViewModel
 import com.avonix.profitness.presentation.weight.WeightTrackingScreen
 import com.avonix.profitness.presentation.program.ProgramBuilderScreen
+import com.avonix.profitness.presentation.program.ProgramShareViewModel
+import com.avonix.profitness.presentation.program.ProgramViewModel
 import com.avonix.profitness.presentation.store.StoreScreen
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -65,6 +70,7 @@ import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
+import kotlinx.coroutines.delay
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
@@ -83,10 +89,14 @@ private data class NavItemLayout(val x: Float, val width: Float) {
     val center: Float get() = x + width / 2f
 }
 
+private const val FIRST_TAB_CONTENT_DELAY_MS = 140L
+
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
     val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
+    val readyTabs               = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
+    var warmupStage             by remember { mutableIntStateOf(0) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
     var showPerformanceDetail       by remember { mutableStateOf(false) }
@@ -129,6 +139,19 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val haptic = LocalHapticFeedback.current
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        delay(650)
+        warmupStage = 1
+        delay(650)
+        warmupStage = 2
+        delay(900)
+        warmupStage = 3
+        delay(1_000)
+        warmupStage = 4
+    }
+    DashboardViewModelWarmup(stage = warmupStage)
+
     // Timer aktifken diğer ekranlardaki içerik aşağı kayar
     val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val timerActive   = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
@@ -210,9 +233,15 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         ) { tab ->
             LaunchedEffect(tab) {
                 if (tab !in composedTabs) composedTabs.add(tab)
+                if (tab !in readyTabs) {
+                    delay(FIRST_TAB_CONTENT_DELAY_MS)
+                    if (tab !in readyTabs) readyTabs.add(tab)
+                }
             }
 
-            when (tab) {
+            if (tab !in readyTabs) {
+                TabWarmupSurface()
+            } else when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
                     viewModel = workoutViewModel,
@@ -396,6 +425,28 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             StoreScreen(onBack = { showStore = false })
         }
     }
+}
+
+@Composable
+private fun DashboardViewModelWarmup(stage: Int) {
+    if (stage >= 1) {
+        hiltViewModel<ProgramViewModel>()
+        hiltViewModel<ProgramShareViewModel>()
+    }
+    if (stage >= 2) {
+        hiltViewModel<AICoachViewModel>()
+    }
+    if (stage >= 3) {
+        hiltViewModel<DiscoverViewModel>()
+    }
+    if (stage >= 4) {
+        hiltViewModel<ProfileViewModel>()
+    }
+}
+
+@Composable
+private fun TabWarmupSurface() {
+    Box(modifier = Modifier.fillMaxSize())
 }
 
 // ── Global Rest Timer Banner ───────────────────────────────────────────────────

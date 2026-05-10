@@ -2,6 +2,10 @@ package com.avonix.profitness.data.cache
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -22,11 +26,15 @@ class DiskCache @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     @PublishedApi internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    @PublishedApi internal val dir by lazy { File(context.filesDir, "data_cache").also { it.mkdirs() } }
 
-    private val prefs by lazy {
-        context.getSharedPreferences("disk_cache_meta", Context.MODE_PRIVATE)
-    }
+    @Volatile
+    @PublishedApi
+    internal var dir: File? = null
+
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var initializerStarted = false
 
     companion object {
         private const val CACHE_VERSION = 2
@@ -34,19 +42,39 @@ class DiskCache @Inject constructor(
     }
 
     init {
-        migrateIfNeeded()
+        // Cache metadata and filesystem setup are initialized lazily on Dispatchers.IO.
     }
 
     /** Versiyon uyuşmuyorsa tüm cache dosyalarını sil (tek seferlik migrasyon). */
-    private fun migrateIfNeeded() {
+    private fun migrateIfNeeded(dir: File) {
+        val prefs = context.getSharedPreferences("disk_cache_meta", Context.MODE_PRIVATE)
         if (prefs.getInt(KEY_VERSION, 0) != CACHE_VERSION) {
             dir.listFiles()?.forEach { it.delete() }
             prefs.edit().putInt(KEY_VERSION, CACHE_VERSION).apply()
         }
     }
 
+    @PublishedApi
+    internal fun readyDir(): File? {
+        startInitializer()
+        return dir
+    }
+
+    private fun startInitializer() {
+        if (initializerStarted) return
+        synchronized(this) {
+            if (initializerStarted) return
+            initializerStarted = true
+            ioScope.launch {
+                val cacheDir = File(context.filesDir, "data_cache").also { it.mkdirs() }
+                migrateIfNeeded(cacheDir)
+                dir = cacheDir
+            }
+        }
+    }
+
     inline fun <reified T> get(key: String): T? {
-        val file = File(dir, "$key.json")
+        val file = File(readyDir() ?: return null, "$key.json")
         if (!file.exists()) return null
         return try {
             json.decodeFromString<T>(file.readText())
@@ -57,15 +85,15 @@ class DiskCache @Inject constructor(
 
     inline fun <reified T> put(key: String, value: T) {
         try {
-            File(dir, "$key.json").writeText(json.encodeToString(value))
+            File(readyDir() ?: return, "$key.json").writeText(json.encodeToString(value))
         } catch (_: Exception) { /* sessizce yoksay — cache opsiyonel */ }
     }
 
     fun remove(key: String) {
-        File(dir, "$key.json").delete()
+        File(readyDir() ?: return, "$key.json").delete()
     }
 
     fun removeByPrefix(prefix: String) {
-        dir.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }
+        readyDir()?.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }
     }
 }
