@@ -79,7 +79,7 @@ fun ProfileScreen(
 
     // Tab geçiş animasyonu bittikten sonra ilk profil yükünü başlat.
     LaunchedEffect(Unit) {
-        delay(300)
+        delay(50)
         viewModel.initLoad()
     }
 
