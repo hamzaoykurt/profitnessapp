@@ -176,18 +176,27 @@ fun WorkoutScreen(
 
     // ── Bildirim izni (Android 13+) ───────────────────────────────────────────
     var notifPermissionDenied by remember { mutableStateOf(false) }
+    var pendingTimerStart by remember { mutableStateOf<(() -> Unit)?>(null) }
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> notifPermissionDenied = !granted }
-
-    LaunchedEffect(Unit) {
+    ) { granted ->
+        notifPermissionDenied = !granted
+        pendingTimerStart?.invoke()
+        pendingTimerStart = null
+    }
+    val startTimerWithPermission: (() -> Unit) -> Unit = { start ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
+                pendingTimerStart = start
                 notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                start()
             }
+        } else {
+            start()
         }
     }
 
@@ -244,7 +253,8 @@ fun WorkoutScreen(
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
                     timerActive = timerActive,
-                    timerBannerH = timerBannerH
+                    timerBannerH = timerBannerH,
+                    onStartTimer = startTimerWithPermission
                 )
             }
         }
@@ -485,7 +495,8 @@ private fun WorkoutContent(
     viewModel: WorkoutViewModel,
     bottomPadding: Dp,
     timerActive: Boolean = false,
-    timerBannerH: Dp = 0.dp
+    timerBannerH: Dp = 0.dp,
+    onStartTimer: (() -> Unit) -> Unit
 ) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
@@ -712,16 +723,24 @@ private fun WorkoutContent(
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
                     onStartTimer      = { secs ->
-                        viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
+                        onStartTimer {
+                            viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
+                        }
                     },
                     onStartSetTimer   = { setIndex, secs ->
-                        viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
+                        onStartTimer {
+                            viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
+                        }
                     },
                     onStartSetStopwatchTimer = { setIndex ->
-                        viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
+                        onStartTimer {
+                            viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
+                        }
                     },
                     onStartStopwatchTimer = {
-                        viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
+                        onStartTimer {
+                            viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
+                        }
                     },
                     onStopTimer       = { viewModel.stopVisibleTimer() }
                 )

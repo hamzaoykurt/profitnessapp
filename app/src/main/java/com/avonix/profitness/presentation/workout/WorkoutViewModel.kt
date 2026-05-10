@@ -104,6 +104,7 @@ class WorkoutViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var timerJob: Job? = null
+    private var startupRefreshJob: Job? = null
     private val _restTimer = MutableStateFlow(RestTimerState())
     val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
@@ -573,10 +574,7 @@ class WorkoutViewModel @Inject constructor(
             return
         }
 
-        // İlk seferde arka planda sync başlat
-        viewModelScope.launch {
-            syncCoordinator.refreshWorkout(userId)
-        }
+        scheduleStartupRefresh(userId)
         loadProfileWeight(userId)
 
         observeJob?.cancel()
@@ -639,7 +637,23 @@ class WorkoutViewModel @Inject constructor(
         if (observeJob?.isActive != true) startObserving()
         loadProfileWeight(userId)
         viewModelScope.launch {
-            syncCoordinator.refreshWorkout(userId)
+            syncCoordinator.refreshWorkout(
+                userId = userId,
+                ttlMillis = RESUME_SYNC_TTL_MS,
+                debounceMillis = RESUME_SYNC_DEBOUNCE_MS
+            )
+        }
+    }
+
+    private fun scheduleStartupRefresh(userId: String) {
+        if (startupRefreshJob?.isActive == true) return
+        startupRefreshJob = viewModelScope.launch {
+            delay(STARTUP_SYNC_DELAY_MS)
+            syncCoordinator.refreshWorkout(
+                userId = userId,
+                ttlMillis = STARTUP_SYNC_TTL_MS,
+                debounceMillis = 0L
+            )
         }
     }
 
@@ -877,7 +891,62 @@ class WorkoutViewModel @Inject constructor(
         val state = uiState.value
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         if (dayState.day.isRestDay) return
-        dayState.day.exercises.forEach { ex -> loadLastSession(ex.id) }
+        val exercisesToLoad = dayState.day.exercises
+            .filterNot { state.lastSessionData.containsKey(it.id) }
+        if (exercisesToLoad.isEmpty()) return
+
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val dbIds = exercisesToLoad.map { it.exerciseTableId.ifBlank { it.id } }.distinct()
+        viewModelScope.launch {
+            workoutRepository.getSessionSetsForExercises(userId, dbIds).onSuccess { sessionSets ->
+                updateState { latest ->
+                    var lastSessionData = latest.lastSessionData
+                    var setWeights = latest.setWeights
+                    var setReps = latest.setReps
+
+                    exercisesToLoad.forEach { exercise ->
+                        val dbExerciseId = exercise.exerciseTableId.ifBlank { exercise.id }
+                        val todaySets = sessionSets.today[dbExerciseId].orEmpty()
+                        val sourceSets = todaySets.ifEmpty { sessionSets.previous[dbExerciseId].orEmpty() }
+                        val plannedReps = exercise.reps
+                        val totalSets = exercise.sets
+
+                        if (sourceSets.isNotEmpty()) {
+                            val dataMap = sourceSets.associate { it.setIndex to (it.weightKg to it.repsActual) }
+                            lastSessionData = lastSessionData + (exercise.id to dataMap)
+
+                            if (setWeights[exercise.id].isNullOrEmpty()) {
+                                val prefill = sourceSets
+                                    .filter { it.weightKg != null }
+                                    .associate { it.setIndex to it.weightKg!!.toString() }
+                                if (prefill.isNotEmpty()) {
+                                    setWeights = setWeights + (exercise.id to prefill)
+                                }
+                            }
+
+                            if (setReps[exercise.id].isNullOrEmpty() && totalSets > 0 && plannedReps.isNotEmpty()) {
+                                val savedReps = sourceSets
+                                    .filter { it.repsActual != null }
+                                    .associate { it.setIndex to it.repsActual!!.toString() }
+                                val repsPrefill = (0 until totalSets).associate { i ->
+                                    i to (savedReps[i] ?: plannedReps)
+                                }
+                                setReps = setReps + (exercise.id to repsPrefill)
+                            }
+                        } else if (setReps[exercise.id].isNullOrEmpty() && totalSets > 0 && plannedReps.isNotEmpty()) {
+                            val repsPrefill = (0 until totalSets).associate { i -> i to plannedReps }
+                            setReps = setReps + (exercise.id to repsPrefill)
+                        }
+                    }
+
+                    latest.copy(
+                        lastSessionData = lastSessionData,
+                        setWeights = setWeights,
+                        setReps = setReps
+                    )
+                }
+            }
+        }
     }
 
     fun loadLastSession(exerciseId: String) {
@@ -1873,6 +1942,10 @@ class WorkoutViewModel @Inject constructor(
     companion object {
         private const val ACTIVITY_SET_INDEX = 0
         private val DAY_LABELS = listOf("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
+        private const val STARTUP_SYNC_DELAY_MS = 2_500L
+        private const val STARTUP_SYNC_TTL_MS = 15 * 60_000L
+        private const val RESUME_SYNC_DEBOUNCE_MS = 1_500L
+        private const val RESUME_SYNC_TTL_MS = 10 * 60_000L
 
         private fun categoryImageFallback(category: String): String = when {
             category.contains("Göğüs", ignoreCase = true) ->

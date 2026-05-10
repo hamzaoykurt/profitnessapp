@@ -4,6 +4,11 @@ import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
+data class ExerciseSessionSets(
+    val today: Map<String, List<SetCompletionEntity>>,
+    val previous: Map<String, List<SetCompletionEntity>>
+)
+
 interface WorkoutRepository {
 
     // ── Reactive observe (Room Flow) ─────────────────────────────────────────
@@ -130,6 +135,9 @@ interface WorkoutRepository {
 
     /** Önceki antrenmanın set verilerini getirir (ön-doldurma için). */
     suspend fun getLastSessionSets(userId: String, exerciseId: String): Result<List<SetCompletionEntity>>
+
+    /** Bugünkü ve önceki set verilerini egzersiz listesi için batch getirir. */
+    suspend fun getSessionSetsForExercises(userId: String, exerciseIds: List<String>): Result<ExerciseSessionSets>
 
     /** Egzersiz bazlı performans geçmişi (progresyon ekranı için). */
     suspend fun getExerciseWeightHistory(userId: String, exerciseId: String, weeks: Int = 8): Result<List<SetCompletionEntity>>
