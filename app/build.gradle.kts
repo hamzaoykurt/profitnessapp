@@ -76,6 +76,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("profile") {
+            initWith(buildTypes.getByName("release"))
+            isDebuggable = false
+            isProfileable = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
