@@ -168,18 +168,29 @@ fun WorkoutScreen(
 
     // ── Bildirim izni (Android 13+) ───────────────────────────────────────────
     var notifPermissionDenied by remember { mutableStateOf(false) }
+    var pendingTimerRequest by remember { mutableStateOf<Pair<Int, String>?>(null) }
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> notifPermissionDenied = !granted }
-
-    LaunchedEffect(Unit) {
+    ) { granted ->
+        notifPermissionDenied = !granted
+        pendingTimerRequest?.let { (seconds, exerciseName) ->
+            viewModel.startRestTimer(seconds, exerciseName)
+        }
+        pendingTimerRequest = null
+    }
+    val startTimerWithPermission: (Int, String) -> Unit = { seconds, exerciseName ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
+                pendingTimerRequest = seconds to exerciseName
                 notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                viewModel.startRestTimer(seconds, exerciseName)
             }
+        } else {
+            viewModel.startRestTimer(seconds, exerciseName)
         }
     }
 
@@ -230,7 +241,8 @@ fun WorkoutScreen(
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
                     timerActive = timerActive,
-                    timerBannerH = timerBannerH
+                    timerBannerH = timerBannerH,
+                    onStartTimer = startTimerWithPermission
                 )
             }
         }
@@ -464,7 +476,8 @@ private fun WorkoutContent(
     viewModel: WorkoutViewModel,
     bottomPadding: Dp,
     timerActive: Boolean = false,
-    timerBannerH: Dp = 0.dp
+    timerBannerH: Dp = 0.dp,
+    onStartTimer: (Int, String) -> Unit
 ) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
@@ -652,7 +665,7 @@ private fun WorkoutContent(
                     timerSeconds      = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
-                    onStartTimer      = { secs -> viewModel.startRestTimer(secs.takeIf { it > 0 } ?: 60, exercise.name) },
+                    onStartTimer      = { secs -> onStartTimer(secs.takeIf { it > 0 } ?: 60, exercise.name) },
                     onStopTimer       = { viewModel.stopRestTimer() }
                 )
                 if (showDetail) {

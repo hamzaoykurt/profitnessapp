@@ -120,6 +120,15 @@ interface ProgramDao {
     @Query("DELETE FROM programs WHERE user_id = :userId")
     suspend fun deleteAllForUser(userId: String)
 
+    @Query("DELETE FROM programs WHERE user_id = :userId AND id NOT IN (:programIds)")
+    suspend fun deleteProgramsExcept(userId: String, programIds: List<String>)
+
+    @Query("DELETE FROM program_days WHERE program_id IN (:programIds) AND id NOT IN (:dayIds)")
+    suspend fun deleteDaysExcept(programIds: List<String>, dayIds: List<String>)
+
+    @Query("DELETE FROM program_exercises WHERE program_day_id IN (:dayIds) AND id NOT IN (:exerciseIds)")
+    suspend fun deleteExercisesExcept(dayIds: List<String>, exerciseIds: List<String>)
+
     // ── Bulk sync helper ─────────────────────────────────────────────────────
 
     @Transaction
@@ -129,9 +138,31 @@ interface ProgramDao {
         days: List<ProgramDayEntity>,
         exercises: List<ProgramExerciseEntity>
     ) {
-        deleteAllForUser(userId)
+        if (programs.isEmpty()) {
+            deleteAllForUser(userId)
+            return
+        }
+
         if (programs.isNotEmpty()) upsertPrograms(programs)
         if (days.isNotEmpty()) upsertDays(days)
         if (exercises.isNotEmpty()) upsertExercises(exercises)
+
+        val programIds = programs.map { it.id }
+        val dayIds = days.map { it.id }
+        val exerciseIds = exercises.map { it.id }
+
+        if (dayIds.isNotEmpty()) {
+            if (exerciseIds.isNotEmpty()) {
+                deleteExercisesExcept(dayIds, exerciseIds)
+            } else {
+                deleteExercisesForDays(dayIds)
+            }
+        }
+        if (dayIds.isNotEmpty()) {
+            deleteDaysExcept(programIds, dayIds)
+        } else {
+            programIds.forEach { deleteDaysForProgram(it) }
+        }
+        deleteProgramsExcept(userId, programIds)
     }
 }

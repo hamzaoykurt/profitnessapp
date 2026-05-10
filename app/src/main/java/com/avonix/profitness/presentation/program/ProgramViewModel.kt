@@ -13,6 +13,7 @@ import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.Json
@@ -179,9 +180,10 @@ class ProgramViewModel @Inject constructor(
             }
         }
 
-        // İlk yüklemede Supabase'den sync et
+        // İlk yüklemede önce Room içeriğini göster, remote sync'i ilk frame'lerden sonra başlat.
         lastSyncTime = System.currentTimeMillis()
         viewModelScope.launch {
+            delay(INITIAL_SYNC_DELAY_MS)
             programRepository.syncFromRemote(uid)
         }
     }
@@ -205,6 +207,10 @@ class ProgramViewModel @Inject constructor(
             programRepository.getAllExercises()
                 .onSuccess { list -> updateState { it.copy(exercises = list) } }
         }
+    }
+
+    private companion object {
+        const val INITIAL_SYNC_DELAY_MS = 1_500L
     }
 
     // ── Hareket Talebi ────────────────────────────────────────────────────────

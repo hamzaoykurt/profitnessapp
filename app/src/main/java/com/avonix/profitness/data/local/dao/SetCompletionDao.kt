@@ -117,6 +117,14 @@ interface SetCompletionDao {
     """)
     suspend fun getForDate(userId: String, exerciseId: String, date: String): List<SetCompletionEntity>
 
+    /** Belirli bir güne ait set kayıtlarını egzersiz listesi için tek sorguda çeker. */
+    @Query("""
+        SELECT * FROM set_completions
+        WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date = :date
+        ORDER BY exercise_id ASC, set_index ASC
+    """)
+    suspend fun getForDate(userId: String, exerciseIds: List<String>, date: String): List<SetCompletionEntity>
+
     /** Önceki antrenmanın set verilerini çeker (ağırlık ön-doldurma için) */
     @Query("""
         SELECT * FROM set_completions
@@ -128,6 +136,22 @@ interface SetCompletionDao {
         ORDER BY set_index ASC
     """)
     suspend fun getLastSessionSets(userId: String, exerciseId: String, today: String): List<SetCompletionEntity>
+
+    /** Önceki antrenman setlerini egzersiz listesi için tek sorguda çeker. */
+    @Query("""
+        SELECT sc.* FROM set_completions sc
+        INNER JOIN (
+            SELECT exercise_id, MAX(date) AS last_date
+            FROM set_completions
+            WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date < :today
+            GROUP BY exercise_id
+        ) latest
+          ON latest.exercise_id = sc.exercise_id
+         AND latest.last_date = sc.date
+        WHERE sc.user_id = :userId AND sc.exercise_id IN (:exerciseIds)
+        ORDER BY sc.exercise_id ASC, sc.set_index ASC
+    """)
+    suspend fun getLastSessionSets(userId: String, exerciseIds: List<String>, today: String): List<SetCompletionEntity>
 
     /** Egzersiz bazlı ağırlık geçmişi (progresyon grafiği için) */
     @Query("""

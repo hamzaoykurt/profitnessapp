@@ -360,6 +360,24 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getSessionSetsForExercises(
+        userId: String,
+        exerciseIds: List<String>
+    ): Result<ExerciseSessionSets> = withContext(Dispatchers.IO) {
+        runCatching {
+            val ids = exerciseIds.distinct()
+            if (ids.isEmpty()) {
+                return@runCatching ExerciseSessionSets(emptyMap(), emptyMap())
+            }
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val todaySets = setCompletionDao.getForDate(userId, ids, today)
+                .groupBy { it.exerciseId }
+            val previousSets = setCompletionDao.getLastSessionSets(userId, ids, today)
+                .groupBy { it.exerciseId }
+            ExerciseSessionSets(today = todaySets, previous = previousSets)
+        }
+    }
+
     override suspend fun getExerciseWeightHistory(
         userId: String, exerciseId: String, weeks: Int
     ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {

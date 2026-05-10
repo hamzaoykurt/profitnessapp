@@ -1,5 +1,7 @@
 package com.avonix.profitness.data.sync
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -7,6 +9,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,11 +22,15 @@ import javax.inject.Singleton
  */
 @Singleton
 class SyncCoordinator @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val syncManager: SyncManager
 ) {
     private val mutex = Mutex()
     private val lastSuccessAt = mutableMapOf<String, Long>()
     private val inFlight = mutableMapOf<String, kotlinx.coroutines.Deferred<Result<Unit>>>()
+    private val prefs by lazy {
+        context.getSharedPreferences("profitness_sync_coordinator", Context.MODE_PRIVATE)
+    }
 
     suspend fun refreshWorkout(
         userId: String,
@@ -64,7 +71,10 @@ class SyncCoordinator @Inject constructor(
     ): Result<Unit> = coroutineScope {
         val deferred = mutex.withLock {
             val now = System.currentTimeMillis()
-            val isFresh = !force && lastSuccessAt[key]?.let { now - it < ttlMillis } == true
+            val lastSuccess = lastSuccessAt[key] ?: readPersistedSuccess(key).also {
+                if (it > 0L) lastSuccessAt[key] = it
+            }
+            val isFresh = !force && lastSuccess > 0L && now - lastSuccess < ttlMillis
             if (isFresh) {
                 return@coroutineScope Result.success(Unit)
             }
@@ -75,7 +85,9 @@ class SyncCoordinator @Inject constructor(
                 if (debounceMillis > 0) delay(debounceMillis)
                 runCatching { block() }
                     .onSuccess {
-                        mutex.withLock { lastSuccessAt[key] = System.currentTimeMillis() }
+                        val successAt = System.currentTimeMillis()
+                        persistSuccess(key, successAt)
+                        mutex.withLock { lastSuccessAt[key] = successAt }
                     }
                     .also {
                         mutex.withLock { inFlight.remove(key) }
@@ -86,9 +98,17 @@ class SyncCoordinator @Inject constructor(
         deferred.await()
     }
 
+    private suspend fun readPersistedSuccess(key: String): Long = withContext(Dispatchers.IO) {
+        prefs.getLong(key, 0L)
+    }
+
+    private fun persistSuccess(key: String, value: Long) {
+        prefs.edit().putLong(key, value).apply()
+    }
+
     private companion object {
         const val UI_DEBOUNCE_MS = 350L
-        const val WORKOUT_TTL_MS = 3 * 60 * 1000L
-        const val PROGRAM_TTL_MS = 2 * 60 * 1000L
+        const val WORKOUT_TTL_MS = 10 * 60 * 1000L
+        const val PROGRAM_TTL_MS = 5 * 60 * 1000L
     }
 }
