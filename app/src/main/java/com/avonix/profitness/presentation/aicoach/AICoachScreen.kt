@@ -128,9 +128,13 @@ fun AICoachScreen(
         viewModel.initWelcome(strings.oracleWelcome)
     }
 
-    LaunchedEffect(state.messages.size) {
+    LaunchedEffect(state.messages.size, state.isLoading, state.userPlan) {
         if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.lastIndex)
+            val creditInfoOffset = if (state.userPlan == UserPlan.FREE) 1 else 0
+            val typingOffset = if (state.isLoading) 1 else 0
+            listState.animateScrollToItem(
+                creditInfoOffset + state.messages.lastIndex + typingOffset
+            )
         }
     }
 

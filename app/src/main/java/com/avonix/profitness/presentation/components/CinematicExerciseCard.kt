@@ -73,6 +73,7 @@ fun CinematicExerciseCard(
     timerDone: Boolean = false,
     onStartTimer: (seconds: Int) -> Unit = {},
     onStartSetTimer: (setIndex: Int, seconds: Int) -> Unit = { _, _ -> },
+    onStartSetStopwatchTimer: (setIndex: Int) -> Unit = {},
     onStartStopwatchTimer: () -> Unit = {},
     onStopTimer: () -> Unit = {}
 ) {
@@ -81,6 +82,7 @@ fun CinematicExerciseCard(
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
     var showActivityTimerSetup by remember { mutableStateOf(false) }
+    var showTimedSetTimerSetup by remember { mutableStateOf(false) }
     val trackingSpec = remember(
         exercise.category, exercise.name, exercise.target, exercise.reps,
         exercise.sportType, exercise.trackingMode
@@ -373,6 +375,21 @@ fun CinematicExerciseCard(
                             )
                             Spacer(Modifier.height(14.dp))
                         }
+                        if (durationSetBased && showTimedSetTimerSetup) {
+                            ActivityTimerSetupPanel(
+                                initialMinutes = "",
+                                initialSeconds = nextTimedSetDurationSeconds,
+                                onStartCountdown = { seconds ->
+                                    showTimedSetTimerSetup = false
+                                    onStartSetTimer(nextTimedSetIndex, seconds)
+                                },
+                                onStartStopwatch = {
+                                    showTimedSetTimerSetup = false
+                                    onStartSetStopwatchTimer(nextTimedSetIndex)
+                                }
+                            )
+                            Spacer(Modifier.height(14.dp))
+                        }
                         HorizontalDivider(color = Snow.copy(0.08f))
                         Spacer(Modifier.height(12.dp))
 
@@ -405,7 +422,7 @@ fun CinematicExerciseCard(
                                     doneLabel      = "SET BİTTİ",
                                     onStart        = {
                                         if (timerRunning) onStopTimer()
-                                        else onStartSetTimer(nextTimedSetIndex, nextTimedSetDurationSeconds)
+                                        else showTimedSetTimerSetup = !showTimedSetTimerSetup
                                     },
                                     onStop         = onStopTimer
                                 )
@@ -599,15 +616,18 @@ private fun MetricDisplayTile(
 @Composable
 private fun ActivityTimerSetupPanel(
     initialMinutes: String,
+    initialSeconds: Int? = null,
     onStartCountdown: (Int) -> Unit,
     onStartStopwatch: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     var mode by remember { mutableStateOf("stopwatch") }
-    val initialSeconds = remember(initialMinutes) { initialMinutes.toDurationSeconds() }
-    var hours by remember(initialSeconds) { mutableStateOf(if (initialSeconds >= 3600) (initialSeconds / 3600).toString() else "") }
-    var minutes by remember(initialSeconds) { mutableStateOf(((initialSeconds % 3600) / 60).takeIf { it > 0 }?.toString() ?: "") }
-    var seconds by remember(initialSeconds) { mutableStateOf((initialSeconds % 60).takeIf { it > 0 }?.toString() ?: "") }
+    val initialTotalSeconds = remember(initialMinutes, initialSeconds) {
+        initialSeconds ?: initialMinutes.toDurationSeconds()
+    }
+    var hours by remember(initialTotalSeconds) { mutableStateOf(if (initialTotalSeconds >= 3600) (initialTotalSeconds / 3600).toString() else "") }
+    var minutes by remember(initialTotalSeconds) { mutableStateOf(((initialTotalSeconds % 3600) / 60).takeIf { it > 0 }?.toString() ?: "") }
+    var seconds by remember(initialTotalSeconds) { mutableStateOf((initialTotalSeconds % 60).takeIf { it > 0 }?.toString() ?: "") }
 
     Column(
         modifier = Modifier

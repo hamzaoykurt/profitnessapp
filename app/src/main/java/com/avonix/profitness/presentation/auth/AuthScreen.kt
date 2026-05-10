@@ -50,10 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
-
 // ── Entry composable — routes between auth screens ────────────────────────────
 
 private enum class AuthMode {
@@ -702,7 +698,6 @@ private fun AuthScaffold(
     content     : @Composable ColumnScope.() -> Unit
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val responsive = rememberResponsiveLayoutInfo()
     val heroStyle = if (responsive.isSmallPhone) {
         MaterialTheme.typography.headlineLarge
@@ -719,7 +714,7 @@ private fun AuthScaffold(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        AmbientGlowBackground(accent)
+        PageAccentBloom()
 
         Column(
             modifier = Modifier
@@ -858,7 +853,6 @@ private fun AuthCenteredScaffold(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val responsive = rememberResponsiveLayoutInfo()
 
     val alphaAnim = remember { Animatable(0f) }
@@ -869,7 +863,7 @@ private fun AuthCenteredScaffold(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        AmbientGlowBackground(accent)
+        PageAccentBloom()
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -934,53 +928,6 @@ private fun GlassCard(
             .padding(horizontal = 22.dp, vertical = 22.dp),
         horizontalAlignment = horizontalAlignment,
         content = content
-    )
-}
-
-/**
- * Sakin auth arka planı — tek renkli boşluğu kırar ama formu gölgede bırakmaz.
- */
-@Composable
-private fun AmbientGlowBackground(accent: Color) {
-    val theme = LocalAppTheme.current
-
-    Spacer(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawWithCache {
-                val wash = Brush.verticalGradient(
-                    listOf(
-                        theme.bg0,
-                        theme.bg1.copy(0.92f),
-                        theme.bg0
-                    )
-                )
-                val topSheen = Brush.linearGradient(
-                    listOf(
-                        Color.Transparent,
-                        accent.copy(if (theme.isDark) 0.09f else 0.05f),
-                        Color.Transparent
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, size.height * 0.45f)
-                )
-                onDrawBehind {
-                    drawRect(wash)
-                    drawRect(topSheen)
-                    val lineColor = accent.copy(if (theme.isDark) 0.08f else 0.04f)
-                    val gap = 34.dp.toPx()
-                    var x = -size.height
-                    while (x < size.width) {
-                        drawLine(
-                            color = lineColor,
-                            start = Offset(x, 0f),
-                            end = Offset(x + size.height, size.height),
-                            strokeWidth = 1.dp.toPx()
-                        )
-                        x += gap
-                    }
-                }
-            }
     )
 }
 

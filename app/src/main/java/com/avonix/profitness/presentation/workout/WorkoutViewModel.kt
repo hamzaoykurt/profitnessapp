@@ -302,6 +302,45 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    fun startTimedSetStopwatchTimer(exerciseId: String, exerciseName: String, setIndex: Int) {
+        val notificationName = "$exerciseName Set ${setIndex + 1}"
+        timerJob?.cancel()
+        notificationManager.stopWorkoutSession()
+        _restTimer.value = RestTimerState(
+            isRunning = true,
+            isPaused = false,
+            isDone = false,
+            secondsLeft = 0,
+            totalSeconds = 0,
+            exerciseName = exerciseName,
+            exerciseId = exerciseId,
+            setIndex = setIndex,
+            purpose = TimerPurpose.TimedSet,
+            mode = TimerMode.Stopwatch,
+            elapsedSeconds = 0
+        )
+        notificationManager.updateActivityTimer(
+            exerciseName = notificationName,
+            elapsedSeconds = 0,
+            totalSeconds = 0,
+            isStopwatch = true
+        )
+        timerJob = viewModelScope.launch {
+            var elapsed = 0
+            while (true) {
+                delay(1000L)
+                elapsed++
+                _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
+                notificationManager.updateActivityTimer(
+                    exerciseName = notificationName,
+                    elapsedSeconds = elapsed,
+                    totalSeconds = 0,
+                    isStopwatch = true
+                )
+            }
+        }
+    }
+
     fun stopVisibleTimer() {
         val timer = _restTimer.value
         if (timer.purpose == TimerPurpose.Activity) {
@@ -316,7 +355,10 @@ class WorkoutViewModel @Inject constructor(
                 it.copy(isRunning = false, isPaused = false, isDone = secondsToSave > 0, elapsedSeconds = secondsToSave)
             }
         } else if (timer.purpose == TimerPurpose.TimedSet) {
-            val secondsToSave = (timer.totalSeconds - timer.secondsLeft).coerceAtLeast(0)
+            val secondsToSave = when (timer.mode) {
+                TimerMode.Stopwatch -> timer.elapsedSeconds
+                TimerMode.Countdown -> (timer.totalSeconds - timer.secondsLeft).coerceAtLeast(0)
+            }
             val notificationName = "${timer.exerciseName} Set ${timer.setIndex + 1}"
             timerJob?.cancel()
             if (secondsToSave > 0) saveTimedSetDuration(timer.exerciseId, timer.setIndex, secondsToSave)
@@ -359,7 +401,10 @@ class WorkoutViewModel @Inject constructor(
                 TimerMode.Countdown -> resumeActivityCountdown(timer)
                 TimerMode.Stopwatch -> resumeActivityStopwatch(timer)
             }
-            TimerPurpose.TimedSet -> resumeTimedSetCountdown(timer)
+            TimerPurpose.TimedSet -> when (timer.mode) {
+                TimerMode.Countdown -> resumeTimedSetCountdown(timer)
+                TimerMode.Stopwatch -> resumeTimedSetStopwatch(timer)
+            }
         }
     }
 
@@ -483,6 +528,30 @@ class WorkoutViewModel @Inject constructor(
             notificationManager.notifyActivityTimerSaved(notificationName, total)
             _restTimer.update {
                 it.copy(isRunning = false, isPaused = false, isDone = true, secondsLeft = 0, elapsedSeconds = total)
+            }
+        }
+    }
+
+    private fun resumeTimedSetStopwatch(timer: RestTimerState) {
+        var elapsed = timer.elapsedSeconds.coerceAtLeast(0)
+        val notificationName = "${timer.exerciseName} Set ${timer.setIndex + 1}"
+        notificationManager.updateActivityTimer(
+            exerciseName = notificationName,
+            elapsedSeconds = elapsed,
+            totalSeconds = 0,
+            isStopwatch = true
+        )
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000L)
+                elapsed++
+                _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
+                notificationManager.updateActivityTimer(
+                    exerciseName = notificationName,
+                    elapsedSeconds = elapsed,
+                    totalSeconds = 0,
+                    isStopwatch = true
+                )
             }
         }
     }

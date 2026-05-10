@@ -6,6 +6,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.StopCircle
@@ -208,8 +209,14 @@ private fun CompactPill(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (timer.isDone) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = Amber,
+                    modifier = Modifier.size(17.dp)
+                )
                 Text(
-                    theme.t("💪  Hazırsın!", "💪  Ready!"),
+                    theme.t("Hazırsın!", "Ready!"),
                     color      = Amber,
                     fontSize   = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -409,7 +416,13 @@ private fun ExpandedIsland(
                     // Center content
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         if (timer.isDone) {
-                            Text("✅", fontSize = 32.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = Amber,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 theme.t("HAZIRSIN", "READY"),
                                 color      = Amber,
@@ -582,6 +595,7 @@ private fun RestTimerState.headerLabel(theme: AppThemeState): String = when {
     purpose == TimerPurpose.TimedSet && isDone -> theme.t("SET SÜRESİ KAYDEDİLDİ", "SET DURATION SAVED")
     isPaused -> theme.t("DURAKLATILDI", "PAUSED")
     purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> theme.t("KRONOMETRE", "STOPWATCH")
+    purpose == TimerPurpose.TimedSet && mode == TimerMode.Stopwatch -> theme.t("SET KRONOMETRESİ", "SET STOPWATCH")
     purpose == TimerPurpose.TimedSet -> theme.t("SET SAYACI", "SET TIMER")
     purpose == TimerPurpose.Activity -> theme.t("GERİ SAYIM", "COUNTDOWN")
     isDone -> theme.t("DİNLENDİN", "RESTED")

@@ -717,6 +717,9 @@ private fun WorkoutContent(
                     onStartSetTimer   = { setIndex, secs ->
                         viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
                     },
+                    onStartSetStopwatchTimer = { setIndex ->
+                        viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
+                    },
                     onStartStopwatchTimer = {
                         viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
                     },

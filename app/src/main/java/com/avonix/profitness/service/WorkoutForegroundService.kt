@@ -123,7 +123,7 @@ class WorkoutForegroundService : Service() {
                     val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
                     // Durum bildirimini güncelle
                     val statusNotif = buildStatusNotification(
-                        title   = "✅ Hazırsın! Sonraki seti başlat",
+                        title   = "Hazırsın! Sonraki seti başlat",
                         content = exerciseName,
                         progress = 0, maxProgress = 0
                     )
@@ -224,7 +224,7 @@ class WorkoutForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ALERTS)
-            .setContentTitle("💪 Hazırsın! Set zamanı!")
+            .setContentTitle("Hazırsın! Set zamanı!")
             .setContentText("$exerciseName — Sonraki seti başlat")
             .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentIntent(tapIntent)
