@@ -27,9 +27,11 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -583,6 +585,7 @@ class WorkoutViewModel @Inject constructor(
     //  REACTIVE OBSERVATION — Room Flow'ları combine eder
     // ═════════════════════════════════════════════════════════════════════════
 
+    @OptIn(FlowPreview::class)
     private fun startObserving() {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id
         if (userId == null) {
@@ -612,6 +615,7 @@ class WorkoutViewModel @Inject constructor(
             ) { program, completions, streak, setCompletions ->
                 Triple(Triple(program, completions, streak), setCompletions, Unit)
             }
+            .debounce(100)
             .distinctUntilChanged()
             .collect { (innerTriple, setCompletions, _) ->
                 val (program, completions, streak) = innerTriple
@@ -669,7 +673,7 @@ class WorkoutViewModel @Inject constructor(
     fun triggerInitialSync() {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         viewModelScope.launch {
-            syncCoordinator.refreshWorkout(userId)
+            syncCoordinator.refreshWorkout(userId, debounceMillis = 600)
         }
     }
 

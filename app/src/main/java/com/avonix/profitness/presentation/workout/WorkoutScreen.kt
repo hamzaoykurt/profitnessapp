@@ -221,7 +221,7 @@ fun WorkoutScreen(
         }
     }
     LaunchedEffect(Unit) {
-        delay(300)
+        delay(800)
         viewModel.triggerInitialSync()
     }
 
