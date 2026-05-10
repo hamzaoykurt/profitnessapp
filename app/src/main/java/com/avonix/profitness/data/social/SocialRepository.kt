@@ -5,6 +5,8 @@ import com.avonix.profitness.domain.social.FriendAchievementRow
 import com.avonix.profitness.domain.social.FriendXpRow
 import com.avonix.profitness.domain.social.PublicProfile
 import com.avonix.profitness.domain.social.UserSummary
+import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.discover.SharedProgram
 
 interface SocialRepository {
 
@@ -28,4 +30,10 @@ interface SocialRepository {
 
     /** Arkadaş başarım leaderboard. */
     suspend fun getFriendLeaderboardAchievements(limit: Int = 100): Result<List<FriendAchievementRow>>
+
+    /** Public profilde gösterilecek, kullanıcının oluşturduğu görünür challenge'lar. */
+    suspend fun listUserCreatedChallenges(userId: String, limit: Int = 12): Result<List<ChallengeSummary>>
+
+    /** Public profilde gösterilecek, kullanıcının paylaştığı programlar. */
+    suspend fun listUserSharedPrograms(userId: String, limit: Int = 12): Result<List<SharedProgram>>
 }

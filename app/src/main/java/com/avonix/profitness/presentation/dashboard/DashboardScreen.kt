@@ -30,6 +30,9 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -37,9 +40,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
+import androidx.activity.compose.BackHandler
 import kotlin.math.abs
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.aicoach.AICoachScreen
 import com.avonix.profitness.presentation.discover.DiscoverScreen
 import com.avonix.profitness.presentation.profile.AchievementsDetailScreen
@@ -73,9 +79,14 @@ private val ALL_TABS = listOf(
     DashboardTab.Discover, DashboardTab.Profile
 )
 
+private data class NavItemLayout(val x: Float, val width: Float) {
+    val center: Float get() = x + width / 2f
+}
+
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
     var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
     var showPerformanceDetail       by remember { mutableStateOf(false) }
@@ -89,16 +100,38 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         mutableStateOf(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp)
     }
 
+    BackHandler(
+        enabled = showStore ||
+            showExerciseProgression ||
+            showWeightTracking ||
+            showEditProfile ||
+            showLeaderboard ||
+            showAchievementsDetail ||
+            showPerformanceDetail
+    ) {
+        when {
+            showStore               -> showStore = false
+            showExerciseProgression -> showExerciseProgression = false
+            showWeightTracking      -> showWeightTracking = false
+            showEditProfile         -> showEditProfile = false
+            showLeaderboard         -> showLeaderboard = false
+            showAchievementsDetail  -> showAchievementsDetail = false
+            showPerformanceDetail   -> showPerformanceDetail = false
+        }
+    }
+
     // Nav yüksekliği 78 → 92 dp (item padding 10/12 → 14/16, icon 20 → 24)
+    val responsive = rememberResponsiveLayoutInfo()
+    val useNavRail = responsive.useNavigationRail
     val navBarHeight = 92.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val contentPad   = navBarHeight + navBarBottom + 8.dp
+    val contentPad   = if (useNavRail) 24.dp + navBarBottom else navBarHeight + navBarBottom + 8.dp
     val haptic = LocalHapticFeedback.current
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
     // Timer aktifken diğer ekranlardaki içerik aşağı kayar
     val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive   = restTimer.isRunning || restTimer.isDone
+    val timerActive   = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
     val timerExtraPad by animateDpAsState(
         targetValue   = if (timerActive && selectedTab != DashboardTab.Workout)
                             (statusBarPad + 60.dp) else 0.dp,
@@ -136,31 +169,49 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         AppBackground(modifier = Modifier.fillMaxSize())
 
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = if (useNavRail) responsive.navRailWidth else 0.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
         AnimatedContent(
             targetState  = selectedTab,
             transitionSpec = {
-                val fromIdx = ALL_TABS.indexOf(initialState)
-                val toIdx   = ALL_TABS.indexOf(targetState)
-                // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
-                // on the full composable tree which is the #1 cause of jank during transitions.
-                // Short durations (240/160ms) keep double-render window minimal.
-                val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-                val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                val enterSlide = tween<IntOffset>(240, easing = easeOut)
-                val enterFade  = tween<Float>(200, easing = easeOut)
-                val exitSlide  = tween<IntOffset>(160, easing = easeIn)
-                val exitFade   = tween<Float>(120)
-                if (toIdx > fromIdx) {
-                    (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                val isFirstCompositionForTarget = targetState !in composedTabs
+                if (isFirstCompositionForTarget) {
+                    fadeIn(tween(90)) togetherWith fadeOut(tween(60))
                 } else {
-                    (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
-                    (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                    val fromIdx = ALL_TABS.indexOf(initialState)
+                    val toIdx   = ALL_TABS.indexOf(targetState)
+                    // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
+                    // on the full composable tree which is the #1 cause of jank during transitions.
+                    // Short durations (240/160ms) keep double-render window minimal.
+                    val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                    val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+                    val enterSlide = tween<IntOffset>(240, easing = easeOut)
+                    val enterFade  = tween<Float>(200, easing = easeOut)
+                    val exitSlide  = tween<IntOffset>(160, easing = easeIn)
+                    val exitFade   = tween<Float>(120)
+                    if (toIdx > fromIdx) {
+                        (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                    } else {
+                        (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                    }
                 }
             },
-            modifier = swipeModifier,
+            modifier = Modifier
+                .widthIn(max = responsive.contentMaxWidth)
+                .fillMaxSize()
+                .then(swipeModifier),
             label = "tab_slide"
         ) { tab ->
+            LaunchedEffect(tab) {
+                if (tab !in composedTabs) composedTabs.add(tab)
+            }
+
             when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
@@ -212,21 +263,35 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 )
             }
         }
+        }
 
-        AppNavBar(
-            tabs     = ALL_TABS,
-            selected = selectedTab,
-            onSelect = { selectedTab = it },
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
-        )
+        if (useNavRail) {
+            AppNavRail(
+                tabs     = ALL_TABS,
+                selected = selectedTab,
+                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
+            )
+        } else {
+            AppNavBar(
+                tabs     = ALL_TABS,
+                selected = selectedTab,
+                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
+            )
+        }
 
         // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
         if (selectedTab != DashboardTab.Workout) {
             DynamicIslandTimer(
                 timer     = restTimer,
                 topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                onStop    = { workoutViewModel.stopRestTimer() },
-                onDismiss = { workoutViewModel.dismissRestTimer() }
+                onStop    = { workoutViewModel.stopVisibleTimer() },
+                onTogglePause = {
+                    if (restTimer.isPaused) workoutViewModel.resumeVisibleTimer()
+                    else workoutViewModel.pauseVisibleTimer()
+                },
+                onDismiss = { workoutViewModel.dismissVisibleTimer() }
             )
         }
 
@@ -247,7 +312,17 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
             modifier = Modifier.zIndex(200f)
         ) {
-            PerformanceDetailScreen(onBack = { showPerformanceDetail = false })
+            PerformanceDetailScreen(
+                onBack = { showPerformanceDetail = false },
+                onNavigateToWeightTracking = {
+                    showPerformanceDetail = false
+                    showWeightTracking = true
+                },
+                onNavigateToExerciseProgression = {
+                    showPerformanceDetail = false
+                    showExerciseProgression = true
+                }
+            )
         }
 
         // ── Achievements Detail Overlay ─────────────────────────────────
@@ -314,7 +389,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             visible  = showStore,
             enter    = slideInVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(200)),
             exit     = slideOutVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) { it } + fadeOut(tween(150)),
-            modifier = Modifier.zIndex(300f)
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(300f)
         ) {
             StoreScreen(onBack = { showStore = false })
         }
@@ -369,23 +446,163 @@ fun AppBackground(modifier: Modifier = Modifier) {
 //  APP NAV BAR — floating capsule, icon only, accent fill on selected
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
+private fun AppNavRail(
+    tabs    : List<DashboardTab>,
+    selected: DashboardTab,
+    onSelect: (DashboardTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val responsive = rememberResponsiveLayoutInfo()
+    val theme  = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
+    val shape  = RoundedCornerShape(32.dp)
+
+    Box(
+        modifier = modifier
+            .width(responsive.navRailWidth)
+            .fillMaxHeight()
+            .systemBarsPadding()
+            .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(68.dp)
+                .shadow(
+                    elevation    = 18.dp,
+                    shape        = shape,
+                    spotColor    = accent.copy(0.20f),
+                    ambientColor = Color.Black.copy(0.45f)
+                )
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            theme.bg2.copy(if (theme.isDark) 0.96f else 0.98f),
+                            theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(if (theme.isDark) 0.12f else 0.60f),
+                            theme.stroke.copy(0.40f)
+                        )
+                    ),
+                    shape = shape
+                )
+                .padding(vertical = 14.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = tab == selected
+                val itemShape = RoundedCornerShape(24.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(itemShape)
+                        .then(
+                            if (isSelected)
+                                Modifier.background(
+                                    Brush.linearGradient(
+                                        listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
+                                    )
+                                )
+                            else Modifier
+                        )
+                        .then(
+                            if (isSelected)
+                                Modifier.border(
+                                    width = 1.dp,
+                                    brush = Brush.linearGradient(
+                                        listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                                    ),
+                                    shape = itemShape
+                                )
+                            else Modifier
+                        )
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSelect(tab)
+                        }
+                        .padding(vertical = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector        = tab.icon,
+                        contentDescription = tab.label,
+                        tint               = if (isSelected) accent else theme.text2.copy(0.45f),
+                        modifier           = Modifier.size(23.dp)
+                    )
+                    Text(
+                        text          = tab.label.take(4),
+                        color         = if (isSelected) accent else theme.text2.copy(0.55f),
+                        fontSize      = 8.sp,
+                        fontWeight    = FontWeight.Bold,
+                        letterSpacing = 0.4.sp,
+                        maxLines      = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun AppNavBar(
     tabs    : List<DashboardTab>,
     selected: DashboardTab,
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(40.dp)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val selectedState by rememberUpdatedState(selected)
+    val onSelectState by rememberUpdatedState(onSelect)
+    val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
+    var navWidthPx by remember { mutableStateOf(0f) }
+    var dragX by remember { mutableStateOf<Float?>(null) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    fun nearestTabAt(x: Float): DashboardTab? =
+        itemLayouts.entries.minByOrNull { (_, layout) -> abs(layout.center - x) }?.key
+
+    val visualTab = dragX?.let { nearestTabAt(it) } ?: selected
+    val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selected]
+    val targetWidth = visualLayout?.width ?: 0f
+    val targetCenter = when {
+        isDragging && dragX != null && targetWidth > 0f ->
+            dragX!!.coerceIn(targetWidth / 2f, (navWidthPx - targetWidth / 2f).coerceAtLeast(targetWidth / 2f))
+        visualLayout != null -> visualLayout.center
+        else -> 0f
+    }
+    val indicatorCenter by animateFloatAsState(
+        targetValue = targetCenter,
+        animationSpec = if (isDragging) snap() else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "nav_drag_center"
+    )
+    val indicatorWidth by animateFloatAsState(
+        targetValue = targetWidth,
+        animationSpec = if (isDragging) tween(80, easing = FastOutSlowInEasing) else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "nav_drag_width"
+    )
 
 
     Box(
         modifier        = modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .wrapContentWidth()
                 .shadow(
@@ -414,7 +631,8 @@ fun AppNavBar(
                     shape = shape
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp)
-                .pointerInput(tabs, selected, onSelect) {
+                .onSizeChanged { navWidthPx = it.width.toFloat() }
+                .pointerInput(tabs) {
                     awaitEachGesture {
                         // Initial pass: child clickable'lardan ÖNCE down eventı yakala
                         val downEvent = awaitPointerEvent(PointerEventPass.Initial)
@@ -423,7 +641,8 @@ fun AppNavBar(
                         val pointerId = downChange.id
 
                         var dragAccum = 0f
-                        var isDragging = false
+                        var gestureDragging = false
+                        var lastSentTab = selectedState
 
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -433,38 +652,70 @@ fun AppNavBar(
                             dragAccum += change.positionChange().x
 
                             // Parmak yeterince kaydıysa drag moduna gir ve child click'i iptal et
-                            if (!isDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
+                            if (!gestureDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
+                                gestureDragging = true
                                 isDragging = true
                             }
-                            if (isDragging) {
+                            if (gestureDragging) {
+                                val x = change.position.x.coerceIn(0f, navWidthPx)
+                                dragX = x
+                                nearestTabAt(x)?.let { target ->
+                                    if (target != lastSentTab) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSelectState(target)
+                                        lastSentTab = target
+                                    }
+                                }
                                 change.consume()
                             }
                         }
 
-                        val curIdx = tabs.indexOf(selected)
-                        if (abs(dragAccum) > 60f) {
-                            val goNext = dragAccum < 0f
-                            if (goNext && curIdx < tabs.lastIndex) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(tabs[curIdx + 1])
-                            } else if (!goNext && curIdx > 0) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(tabs[curIdx - 1])
-                            }
-                        }
+                        isDragging = false
+                        dragX = null
                     }
                 },
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment     = Alignment.CenterVertically
         ) {
-            tabs.forEach { tab ->
-                NavCapsuleItem(
-                    tab        = tab,
-                    isSelected = tab == selected,
-                    accent     = accent,
-                    theme      = theme,
-                    onClick    = { onSelect(tab) }
+            if (indicatorWidth > 0f) {
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset((indicatorCenter - indicatorWidth / 2f).roundToInt(), 0) }
+                        .width(with(density) { indicatorWidth.toDp() })
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.linearGradient(
+                                listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
+                            ),
+                            shape = RoundedCornerShape(32.dp)
+                        )
                 )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 2.dp else 4.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                tabs.forEach { tab ->
+                    NavCapsuleItem(
+                        tab        = tab,
+                        isSelected = tab == selected,
+                        showSelectedChrome = false,
+                        accent     = accent,
+                        theme      = theme,
+                        showLabel  = !responsive.isSmallPhone,
+                        onClick    = { onSelect(tab) },
+                        modifier   = Modifier.onGloballyPositioned { coordinates ->
+                            val position = coordinates.positionInParent()
+                            itemLayouts[tab] = NavItemLayout(position.x, coordinates.size.width.toFloat())
+                        }
+                    )
+                }
             }
         }
     }
@@ -474,9 +725,12 @@ fun AppNavBar(
 private fun NavCapsuleItem(
     tab       : DashboardTab,
     isSelected: Boolean,
+    showSelectedChrome: Boolean,
     accent    : Color,
     theme     : AppThemeState,
-    onClick   : () -> Unit
+    showLabel : Boolean,
+    onClick   : () -> Unit,
+    modifier  : Modifier = Modifier
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -489,7 +743,7 @@ private fun NavCapsuleItem(
         label         = "item_scale"
     )
     val selectedGlow by animateFloatAsState(
-        targetValue   = if (isSelected) 1f else 0f,
+        targetValue   = if (isSelected && showSelectedChrome) 1f else 0f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label         = "item_glow"
     )
@@ -501,7 +755,7 @@ private fun NavCapsuleItem(
     val itemShape = RoundedCornerShape(32.dp)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .scale(scale)
             .drawBehind {
                 if (selectedGlow > 0f) {
@@ -513,7 +767,7 @@ private fun NavCapsuleItem(
             }
             .clip(itemShape)
             .then(
-                if (isSelected)
+                if (isSelected && showSelectedChrome)
                     Modifier.background(
                         Brush.linearGradient(
                             listOf(accent.copy(0.28f), accent.copy(0.12f), Color.White.copy(0.06f))
@@ -522,7 +776,7 @@ private fun NavCapsuleItem(
                 else Modifier
             )
             .then(
-                if (isSelected)
+                if (isSelected && showSelectedChrome)
                     Modifier.border(
                         width = 1.dp,
                         brush = Brush.linearGradient(
@@ -536,7 +790,14 @@ private fun NavCapsuleItem(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = if (isSelected) 20.dp else 16.dp, vertical = 14.dp),
+            .padding(
+                horizontal = when {
+                    showLabel && isSelected -> 20.dp
+                    showLabel -> 16.dp
+                    else -> 13.dp
+                },
+                vertical = 14.dp
+            ),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -547,7 +808,7 @@ private fun NavCapsuleItem(
             modifier           = Modifier.size(24.dp).scale(iconScale)
         )
         AnimatedVisibility(
-            visible = isSelected,
+            visible = isSelected && showLabel,
             enter   = expandHorizontally(
                 spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
             ) + fadeIn(tween(150, 60)),

@@ -6,7 +6,11 @@ data class TemplateExercise(
     val sets: Int,
     val reps: Int,           // INT — zaman bazlı egzersizler için saniye cinsinden (ör. Plank = 60)
     val restSeconds: Int = 60,           // set arası dinlenme
-    val exerciseRestSeconds: Int = 180   // son set / egzersiz sonu dinlenmesi
+    val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu dinlenmesi
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null
 )
 
 data class TemplateDay(
@@ -471,6 +475,270 @@ val PROGRAM_TEMPLATES: List<ProgramTemplate> = listOf(
             TemplateExercise("Kettlebell Swing",            4, 20,  30),
             TemplateExercise("Box Jump",                    3, 10,  45),
             TemplateExercise("Plank",                       3, 60,  45)
+        ))
+    )),
+
+    ProgramTemplate("Bisiklet 4 Hafta", listOf(
+        TemplateDay("Zone 2 Ride + Core", exercises = listOf(
+            TemplateExercise("Cycling",                     1, 45, 60, targetDurationSeconds = 45 * 60, targetDistanceMeters = 14000f),
+            TemplateExercise("Plank",                       3, 45, 45),
+            TemplateExercise("Side Plank",                  3, 30, 30),
+            TemplateExercise("Leg Raise",                   3, 12, 45)
+        )),
+        TemplateDay("Cyclist Strength", exercises = listOf(
+            TemplateExercise("Squat",                       4,  6, 150),
+            TemplateExercise("Romanian Deadlift",           3,  8, 120),
+            TemplateExercise("Bulgarian Split Squat",       3, 10,  90),
+            TemplateExercise("Standing Calf Raise",         4, 15,  60),
+            TemplateExercise("Hyperextension",              3, 12,  60)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Tempo & Climb Ride", exercises = listOf(
+            TemplateExercise("Cycling",                     1, 40, 60, targetDurationSeconds = 40 * 60, targetDistanceMeters = 16000f, targetElevationMeters = 160f, targetInclinePercent = 3f),
+            TemplateExercise("Goblet Squat",                3, 12,  60),
+            TemplateExercise("Lunge",                       3, 10,  60),
+            TemplateExercise("Plank",                       3, 60,  45)
+        )),
+        TemplateDay("Bike Conditioning", exercises = listOf(
+            TemplateExercise("Cycling",                     1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 12000f, targetInclinePercent = 2f),
+            TemplateExercise("Jump Squat",                  3, 10,  45),
+            TemplateExercise("Mountain Climber",            3, 20,  30),
+            TemplateExercise("Kettlebell Swing",            3, 20,  45)
+        )),
+        TemplateDay("Long Ride", exercises = listOf(
+            TemplateExercise("Cycling",                     1, 75, 60, targetDurationSeconds = 75 * 60, targetDistanceMeters = 25000f, targetElevationMeters = 250f)
+        ))
+    )),
+
+    ProgramTemplate("5K Koşu Temeli", listOf(
+        TemplateDay("Easy Run + Stability", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 3500f, targetInclinePercent = 1f),
+            TemplateExercise("Plank",                       3, 45, 45),
+            TemplateExercise("Single Leg Glute Bridge",     3, 12, 45),
+            TemplateExercise("Standing Calf Raise",         3, 15, 45)
+        )),
+        TemplateDay("Runner Strength", exercises = listOf(
+            TemplateExercise("Goblet Squat",                3, 10,  90),
+            TemplateExercise("Romanian Deadlift",           3, 10,  90),
+            TemplateExercise("Lunge",                       3, 12,  60),
+            TemplateExercise("Bulgarian Split Squat",       3,  8,  75),
+            TemplateExercise("Side Plank",                  3, 30,  45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Interval Run", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 28, 60, targetDurationSeconds = 28 * 60, targetDistanceMeters = 4200f, targetInclinePercent = 1f),
+            TemplateExercise("Box Jump",                    3,  8, 60),
+            TemplateExercise("Mountain Climber",            3, 20, 30)
+        )),
+        TemplateDay("Long Run + Mobility", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 45, 60, targetDurationSeconds = 45 * 60, targetDistanceMeters = 6000f),
+            TemplateExercise("Yoga Flow",                   1, 15, 30, targetDurationSeconds = 15 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Yüzme Temel", listOf(
+        TemplateDay("Technique Swim + Scapula", exercises = listOf(
+            TemplateExercise("Swimming",                    1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 800f),
+            TemplateExercise("Lat Pulldown",                3, 12, 75),
+            TemplateExercise("Rear Delt Fly",               3, 15, 45),
+            TemplateExercise("Plank",                       3, 45, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Swimmer Strength", exercises = listOf(
+            TemplateExercise("Seated Cable Row",            4, 10, 75),
+            TemplateExercise("Dumbbell Shoulder Press",     3, 10, 75),
+            TemplateExercise("Push-Up",                     3, 12, 60),
+            TemplateExercise("Leg Raise",                   3, 15, 45),
+            TemplateExercise("Hyperextension",              3, 12, 60)
+        )),
+        TemplateDay("Threshold Swim", exercises = listOf(
+            TemplateExercise("Swimming",                    1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 1200f),
+            TemplateExercise("Russian Twist",               3, 20, 30),
+            TemplateExercise("Side Plank",                  3, 30, 30)
+        )),
+        TemplateDay("Distance Swim", exercises = listOf(
+            TemplateExercise("Swimming",                    1, 45, 60, targetDurationSeconds = 45 * 60, targetDistanceMeters = 1600f),
+            TemplateExercise("Yoga Flow",                   1, 12, 30, targetDurationSeconds = 12 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Kürek Erg Temel", listOf(
+        TemplateDay("Technique Erg + Core", exercises = listOf(
+            TemplateExercise("Rowing Machine",              1, 25, 60, targetDurationSeconds = 25 * 60, targetDistanceMeters = 4500f),
+            TemplateExercise("Plank",                       3, 45, 45),
+            TemplateExercise("Russian Twist",               3, 20, 30),
+            TemplateExercise("Hyperextension",              3, 12, 60)
+        )),
+        TemplateDay("Rowing Strength", exercises = listOf(
+            TemplateExercise("Deadlift",                    4,  5, 180),
+            TemplateExercise("Squat",                       3,  6, 150),
+            TemplateExercise("Bent Over Barbell Row",       4,  8, 90),
+            TemplateExercise("Lat Pulldown",                3, 10, 75),
+            TemplateExercise("Leg Press",                   3, 12, 90)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Erg Intervals", exercises = listOf(
+            TemplateExercise("Rowing Machine",              1, 24, 60, targetDurationSeconds = 24 * 60, targetDistanceMeters = 5000f),
+            TemplateExercise("Kettlebell Swing",            3, 20, 45),
+            TemplateExercise("Mountain Climber",            3, 20, 30)
+        )),
+        TemplateDay("Long Erg", exercises = listOf(
+            TemplateExercise("Rowing Machine",              1, 40, 60, targetDurationSeconds = 40 * 60, targetDistanceMeters = 8000f),
+            TemplateExercise("Yoga Flow",                   1, 12, 30, targetDurationSeconds = 12 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Yürüyüş & Hiking", listOf(
+        TemplateDay("Easy Walk + Mobility", exercises = listOf(
+            TemplateExercise("Outdoor Walk",                1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 3000f),
+            TemplateExercise("Yoga Flow",                   1, 12, 30, targetDurationSeconds = 12 * 60),
+            TemplateExercise("Plank",                       3, 30, 45)
+        )),
+        TemplateDay("Hiking Strength", exercises = listOf(
+            TemplateExercise("Goblet Squat",                3, 12, 75),
+            TemplateExercise("Lunge",                       3, 12, 60),
+            TemplateExercise("Romanian Deadlift",           3, 10, 90),
+            TemplateExercise("Standing Calf Raise",         4, 15, 45),
+            TemplateExercise("Hyperextension",              3, 12, 60)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Incline Walk", exercises = listOf(
+            TemplateExercise("Outdoor Walk",                1, 45, 60, targetDurationSeconds = 45 * 60, targetDistanceMeters = 4000f, targetElevationMeters = 140f),
+            TemplateExercise("Bulgarian Split Squat",       3, 10, 60),
+            TemplateExercise("Side Plank",                  3, 30, 30)
+        )),
+        TemplateDay("Long Walk", exercises = listOf(
+            TemplateExercise("Outdoor Walk",                1, 70, 60, targetDurationSeconds = 70 * 60, targetDistanceMeters = 6500f, targetElevationMeters = 180f)
+        ))
+    )),
+
+    ProgramTemplate("Boks Kondisyon", listOf(
+        TemplateDay("Skill Rounds + Rope", exercises = listOf(
+            TemplateExercise("Shadow Boxing",               1, 24, 45, targetDurationSeconds = 24 * 60),
+            TemplateExercise("Jump Rope",                   1, 12, 45, targetDurationSeconds = 12 * 60),
+            TemplateExercise("Plank",                       3, 45, 45)
+        )),
+        TemplateDay("Boxing Strength", exercises = listOf(
+            TemplateExercise("Dumbbell Shoulder Press",     3, 10, 75),
+            TemplateExercise("Push-Up",                     4, 12, 45),
+            TemplateExercise("Bent Over Barbell Row",       3, 10, 75),
+            TemplateExercise("Russian Twist",               3, 20, 30),
+            TemplateExercise("Leg Raise",                   3, 15, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Fight Conditioning", exercises = listOf(
+            TemplateExercise("Shadow Boxing",               1, 30, 45, targetDurationSeconds = 30 * 60),
+            TemplateExercise("Burpee",                      4, 10, 45),
+            TemplateExercise("Mountain Climber",            4, 20, 30),
+            TemplateExercise("Kettlebell Swing",            3, 20, 45)
+        )),
+        TemplateDay("Mixed Intervals", exercises = listOf(
+            TemplateExercise("Jump Rope",                   1, 15, 45, targetDurationSeconds = 15 * 60),
+            TemplateExercise("Shadow Boxing",               1, 18, 45, targetDurationSeconds = 18 * 60),
+            TemplateExercise("Box Jump",                    3,  8, 60)
+        ))
+    )),
+
+    ProgramTemplate("Yoga Mobilite", listOf(
+        TemplateDay("Flow + Core", exercises = listOf(
+            TemplateExercise("Yoga Flow",                   1, 35, 30, targetDurationSeconds = 35 * 60),
+            TemplateExercise("Plank",                       3, 45, 45),
+            TemplateExercise("Side Plank",                  3, 30, 30)
+        )),
+        TemplateDay("Posterior Chain Support", exercises = listOf(
+            TemplateExercise("Romanian Deadlift",           3, 10, 90),
+            TemplateExercise("Goblet Squat",                3, 12, 75),
+            TemplateExercise("Hyperextension",              3, 12, 60),
+            TemplateExercise("Leg Raise",                   3, 12, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Mobility + Breath", exercises = listOf(
+            TemplateExercise("Yoga Flow",                   1, 30, 30, targetDurationSeconds = 30 * 60),
+            TemplateExercise("Lunge",                       3, 10, 60),
+            TemplateExercise("Side Plank",                  3, 30, 30)
+        )),
+        TemplateDay("Deep Stretch", exercises = listOf(
+            TemplateExercise("Yoga Flow",                   1, 40, 30, targetDurationSeconds = 40 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Futbol Atletik", listOf(
+        TemplateDay("Aerobic Base + Core", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 35, 60, targetDurationSeconds = 35 * 60, targetDistanceMeters = 4500f, targetInclinePercent = 1f),
+            TemplateExercise("Plank",                       3, 45, 45),
+            TemplateExercise("Russian Twist",               3, 20, 30)
+        )),
+        TemplateDay("Lower Strength", exercises = listOf(
+            TemplateExercise("Squat",                       4,  6, 150),
+            TemplateExercise("Romanian Deadlift",           3,  8, 120),
+            TemplateExercise("Lunge",                       3, 12,  60),
+            TemplateExercise("Standing Calf Raise",         4, 15,  45)
+        )),
+        TemplateDay("Speed Conditioning", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 24, 60, targetDurationSeconds = 24 * 60, targetDistanceMeters = 3600f, targetInclinePercent = 1f),
+            TemplateExercise("Box Jump",                    3,  8, 60),
+            TemplateExercise("Mountain Climber",            4, 20, 30),
+            TemplateExercise("Burpee",                      3, 10, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Power + Mobility", exercises = listOf(
+            TemplateExercise("Jump Squat",                  4, 10, 45),
+            TemplateExercise("Bulgarian Split Squat",       3,  8, 75),
+            TemplateExercise("Kettlebell Swing",            3, 20, 45),
+            TemplateExercise("Yoga Flow",                   1, 12, 30, targetDurationSeconds = 12 * 60)
+        ))
+    )),
+
+    ProgramTemplate("Basketbol Atletik", listOf(
+        TemplateDay("Jump Mechanics", exercises = listOf(
+            TemplateExercise("Box Jump",                    4,  8, 60),
+            TemplateExercise("Jump Squat",                  4, 10, 45),
+            TemplateExercise("Standing Calf Raise",         4, 15, 45),
+            TemplateExercise("Plank",                       3, 45, 45)
+        )),
+        TemplateDay("Strength Base", exercises = listOf(
+            TemplateExercise("Squat",                       4,  6, 150),
+            TemplateExercise("Romanian Deadlift",           3,  8, 120),
+            TemplateExercise("Dumbbell Shoulder Press",     3, 10, 75),
+            TemplateExercise("Bent Over Barbell Row",       3, 10, 75)
+        )),
+        TemplateDay("Court Conditioning", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 25, 60, targetDurationSeconds = 25 * 60, targetDistanceMeters = 3500f),
+            TemplateExercise("Jump Rope",                   1, 10, 45, targetDurationSeconds = 10 * 60),
+            TemplateExercise("Mountain Climber",            4, 20, 30)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Unilateral + Core", exercises = listOf(
+            TemplateExercise("Bulgarian Split Squat",       3, 10, 75),
+            TemplateExercise("Lunge",                       3, 12, 60),
+            TemplateExercise("Russian Twist",               3, 20, 30),
+            TemplateExercise("Side Plank",                  3, 30, 30)
+        ))
+    )),
+
+    ProgramTemplate("Tenis Atletik", listOf(
+        TemplateDay("Footwork Conditioning", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 25, 60, targetDurationSeconds = 25 * 60, targetDistanceMeters = 3200f),
+            TemplateExercise("Jump Rope",                   1, 12, 45, targetDurationSeconds = 12 * 60),
+            TemplateExercise("Mountain Climber",            3, 20, 30)
+        )),
+        TemplateDay("Rotational Strength", exercises = listOf(
+            TemplateExercise("Single Arm Dumbbell Row",     3, 10, 75),
+            TemplateExercise("Dumbbell Shoulder Press",     3, 10, 75),
+            TemplateExercise("Russian Twist",               4, 20, 30),
+            TemplateExercise("Plank",                       3, 45, 45)
+        )),
+        TemplateDay("Lower Body Support", exercises = listOf(
+            TemplateExercise("Goblet Squat",                3, 12, 75),
+            TemplateExercise("Lunge",                       3, 12, 60),
+            TemplateExercise("Romanian Deadlift",           3, 10, 90),
+            TemplateExercise("Standing Calf Raise",         3, 15, 45)
+        )),
+        TemplateDay("REST", isRestDay = true),
+        TemplateDay("Match Conditioning", exercises = listOf(
+            TemplateExercise("Treadmill Run",               1, 30, 60, targetDurationSeconds = 30 * 60, targetDistanceMeters = 4200f, targetInclinePercent = 1f),
+            TemplateExercise("Box Jump",                    3,  8, 60),
+            TemplateExercise("Yoga Flow",                   1, 10, 30, targetDurationSeconds = 10 * 60)
         ))
     )),
 

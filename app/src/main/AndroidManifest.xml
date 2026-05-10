@@ -46,7 +46,11 @@
             android:name=".service.WorkoutForegroundService"
             android:foregroundServiceType="specialUse"
             android:stopWithTask="true"
-            android:exported="false" />
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="workout_timer_notifications" />
+        </service>
     </application>
 
 </manifest>

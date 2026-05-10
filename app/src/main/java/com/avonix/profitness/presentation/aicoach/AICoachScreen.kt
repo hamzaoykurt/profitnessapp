@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.aicoach
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -91,9 +92,15 @@ fun AICoachScreen(
 
     // İlk açılış veya ayarlar → onboarding/prefs ekranı
     if (state.showOnboarding) {
+        val currentPrefs = viewModel.loadCurrentPrefs()
         AICoachOnboardingScreen(
-            initialPrefs  = viewModel.loadCurrentPrefs(),
+            initialPrefs  = currentPrefs,
             bottomPadding = bottomPadding,
+            onCancel      = if (currentPrefs.onboardingCompleted) {
+                viewModel::closePreferencesIfCompleted
+            } else {
+                null
+            },
             onComplete    = viewModel::completeOnboarding
         )
         return
@@ -121,9 +128,13 @@ fun AICoachScreen(
         viewModel.initWelcome(strings.oracleWelcome)
     }
 
-    LaunchedEffect(state.messages.size) {
+    LaunchedEffect(state.messages.size, state.isLoading, state.userPlan) {
         if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.lastIndex)
+            val creditInfoOffset = if (state.userPlan == UserPlan.FREE) 1 else 0
+            val typingOffset = if (state.isLoading) 1 else 0
+            listState.animateScrollToItem(
+                creditInfoOffset + state.messages.lastIndex + typingOffset
+            )
         }
     }
 
@@ -136,6 +147,23 @@ fun AICoachScreen(
         if (text.isBlank() || state.isLoading) return
         inputText = ""
         viewModel.sendMessage(text)
+    }
+
+    BackHandler(
+        enabled = showPaywall ||
+            state.showHistory ||
+            programDialogMsg != null ||
+            state.programStatus is ProgramStatus.Success
+    ) {
+        when {
+            showPaywall -> showPaywall = false
+            programDialogMsg != null && state.programStatus !is ProgramStatus.Loading -> {
+                programDialogMsg = null
+                viewModel.resetProgramStatus()
+            }
+            state.programStatus is ProgramStatus.Success -> viewModel.resetProgramStatus()
+            state.showHistory -> viewModel.closeHistory()
+        }
     }
 
     Box(
@@ -235,49 +263,21 @@ fun AICoachScreen(
                 .padding(horizontal = 8.dp)
                 .padding(top = 8.dp)
         ) {
-            // Sol: Geçmiş
-            IconButton(
-                onClick  = { viewModel.openHistory() },
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Rounded.History,
-                    contentDescription = "Geçmiş",
-                    tint     = theme.text2.copy(0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            val hasPlan = state.userPlan != UserPlan.FREE
 
-            // Orta: Başlık
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .align(Alignment.Center)
-            ) {
-                Text(
-                    "ORACLE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 6.sp,
-                    fontWeight = FontWeight.ExtraLight
-                )
-                Text(
-                    "SANCTUARY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = theme.text2,
-                    letterSpacing = 2.sp,
-                    fontSize = 8.sp
-                )
-            }
-
-            // Sağ: Kredi rozeti + Yeni Sohbet + Ayarlar
+            // Sol: Geçmiş + kredi / plan rozeti
             Row(
-                modifier          = Modifier.align(Alignment.CenterEnd),
+                modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Kredi / plan badge
-                val hasPlan = state.userPlan != UserPlan.FREE
+                IconButton(onClick = { viewModel.openHistory() }) {
+                    Icon(
+                        Icons.Rounded.History,
+                        contentDescription = "Geçmiş",
+                        tint     = theme.text2.copy(0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -312,6 +312,36 @@ fun AICoachScreen(
                         )
                     }
                 }
+            }
+
+            // Orta: Başlık
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .align(Alignment.Center)
+            ) {
+                Text(
+                    "ORACLE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 6.sp,
+                    fontWeight = FontWeight.ExtraLight
+                )
+                Text(
+                    "SANCTUARY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = theme.text2,
+                    letterSpacing = 2.sp,
+                    fontSize = 8.sp
+                )
+            }
+
+            // Sağ: Yeni Sohbet + Ayarlar
+            Row(
+                modifier          = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = {
                     viewModel.startNewSession()
                     viewModel.initWelcome(strings.oracleWelcome)

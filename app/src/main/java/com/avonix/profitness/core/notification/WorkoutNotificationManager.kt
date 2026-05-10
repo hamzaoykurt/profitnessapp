@@ -2,6 +2,7 @@ package com.avonix.profitness.core.notification
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
@@ -27,6 +28,8 @@ class WorkoutNotificationManager @Inject constructor(
     private var sessionActive = false
     private var lastTimerUpdateAt = 0L
     private var lastTimerSecondsLeft = Int.MIN_VALUE
+    private var lastActivityUpdateAt = 0L
+    private var lastActivitySeconds = Int.MIN_VALUE
 
     // ── Oturum Kontrolü ──────────────────────────────────────────────────────
 
@@ -34,6 +37,8 @@ class WorkoutNotificationManager @Inject constructor(
         sessionActive = true
         lastTimerUpdateAt = 0L
         lastTimerSecondsLeft = Int.MIN_VALUE
+        lastActivityUpdateAt = 0L
+        lastActivitySeconds = Int.MIN_VALUE
         val intent = Intent(context, WorkoutForegroundService::class.java).apply {
             action = WorkoutForegroundService.ACTION_START
             putExtra(WorkoutForegroundService.EXTRA_DAY_TITLE, dayTitle)
@@ -45,10 +50,11 @@ class WorkoutNotificationManager @Inject constructor(
         sessionActive = false
         lastTimerUpdateAt = 0L
         lastTimerSecondsLeft = Int.MIN_VALUE
-        val intent = Intent(context, WorkoutForegroundService::class.java).apply {
-            action = WorkoutForegroundService.ACTION_STOP
-        }
-        context.startService(intent)
+        lastActivityUpdateAt = 0L
+        lastActivitySeconds = Int.MIN_VALUE
+        val intent = Intent(context, WorkoutForegroundService::class.java)
+        runCatching { context.stopService(intent) }
+            .onFailure { Log.w(TAG, "Workout timer notification service could not stop", it) }
         releaseTone()
     }
 
@@ -76,6 +82,49 @@ class WorkoutNotificationManager @Inject constructor(
             putExtra(WorkoutForegroundService.EXTRA_EXERCISE_NAME, exerciseName)
             putExtra(WorkoutForegroundService.EXTRA_SECONDS_LEFT,  secondsLeft)
             putExtra(WorkoutForegroundService.EXTRA_TOTAL_SECONDS, totalSeconds)
+        }
+        startService(intent)
+    }
+
+    fun updateActivityTimer(
+        exerciseName: String,
+        elapsedSeconds: Int,
+        totalSeconds: Int,
+        isStopwatch: Boolean,
+        isPaused: Boolean = false
+    ) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val displaySeconds = if (isStopwatch) elapsedSeconds else (totalSeconds - elapsedSeconds).coerceAtLeast(0)
+        val shouldUpdate = isPaused ||
+            elapsedSeconds == 0 ||
+            displaySeconds <= 5 ||
+            displaySeconds % 5 == 0 ||
+            now - lastActivityUpdateAt >= TIMER_NOTIFICATION_THROTTLE_MS
+
+        if (!shouldUpdate && displaySeconds == lastActivitySeconds) return
+        if (!shouldUpdate) return
+
+        sessionActive = true
+        lastActivityUpdateAt = now
+        lastActivitySeconds = displaySeconds
+        val intent = Intent(context, WorkoutForegroundService::class.java).apply {
+            action = WorkoutForegroundService.ACTION_ACTIVITY_TIMER_UPDATE
+            putExtra(WorkoutForegroundService.EXTRA_EXERCISE_NAME, exerciseName)
+            putExtra(WorkoutForegroundService.EXTRA_ELAPSED_SECONDS, elapsedSeconds)
+            putExtra(WorkoutForegroundService.EXTRA_TOTAL_SECONDS, totalSeconds)
+            putExtra(WorkoutForegroundService.EXTRA_IS_STOPWATCH, isStopwatch)
+            putExtra(WorkoutForegroundService.EXTRA_IS_PAUSED, isPaused)
+        }
+        startService(intent)
+    }
+
+    fun notifyActivityTimerSaved(exerciseName: String, elapsedSeconds: Int) {
+        lastActivityUpdateAt = 0L
+        lastActivitySeconds = Int.MIN_VALUE
+        val intent = Intent(context, WorkoutForegroundService::class.java).apply {
+            action = WorkoutForegroundService.ACTION_ACTIVITY_TIMER_SAVED
+            putExtra(WorkoutForegroundService.EXTRA_EXERCISE_NAME, exerciseName)
+            putExtra(WorkoutForegroundService.EXTRA_ELAPSED_SECONDS, elapsedSeconds)
         }
         startService(intent)
     }
@@ -127,14 +176,19 @@ class WorkoutNotificationManager @Inject constructor(
     // ── Yardımcı ─────────────────────────────────────────────────────────────
 
     private fun startService(intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }.onFailure { error ->
+            Log.w(TAG, "Workout timer notification service could not start", error)
         }
     }
 
     private companion object {
+        const val TAG = "WorkoutNotifManager"
         const val TIMER_NOTIFICATION_THROTTLE_MS = 5_000L
     }
 }

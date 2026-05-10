@@ -2,6 +2,8 @@ package com.avonix.profitness.presentation.program
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.program.ManualDayInput
 import com.avonix.profitness.data.program.ManualExerciseInput
@@ -9,6 +11,7 @@ import com.avonix.profitness.data.program.ProgramRepository
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.store.UserPlanRepository
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -44,6 +47,7 @@ data class ProgramUiState(
     val isLoading    : Boolean          = false,
     val error        : String?          = null,
     val userPrograms : List<Program>    = emptyList(),
+    val applyingTemplateKey: String?    = null,
     val deletingProgramIds: Set<String> = emptySet(),
     val exercises    : List<ExerciseItem> = emptyList(),
     // AI builder
@@ -85,6 +89,14 @@ class ProgramViewModel @Inject constructor(
 
     private var lastSyncTime = 0L
     private val syncStaleMs  = 3 * 60 * 1000L // 3 dakika
+    private var templateApplyInFlight = false
+
+    private fun mergeCreatedProgram(current: List<Program>, created: Program): List<Program> =
+        listOf(created) + current
+            .asSequence()
+            .filterNot { it.id == created.id }
+            .map { it.copy(isActive = false) }
+            .toList()
 
     init {
         viewModelScope.launch {
@@ -104,9 +116,7 @@ class ProgramViewModel @Inject constructor(
      * @return true → erişim verildi, false → paywall gönderildi
      */
     fun checkAiAccess(): Boolean {
-        val canUse = uiState.value.userPlan != UserPlan.FREE || uiState.value.aiCredits > 0
-        if (!canUse) sendEvent(ProgramEvent.ShowPaywall)
-        return canUse
+        return true
     }
 
     /**
@@ -133,7 +143,17 @@ class ProgramViewModel @Inject constructor(
         enMap: Map<String, ExerciseItem>,
         threshold: Double = 0.82
     ): ExerciseItem? {
-        val key = aiName.trim().lowercase()
+        return ExerciseNameRules.splitAlternatives(aiName)
+            .firstNotNullOfOrNull { findSingleExerciseByName(it, trMap, enMap, threshold) }
+    }
+
+    private fun findSingleExerciseByName(
+        aiName: String,
+        trMap: Map<String, ExerciseItem>,
+        enMap: Map<String, ExerciseItem>,
+        threshold: Double
+    ): ExerciseItem? {
+        val key = ExerciseNameRules.normalizedKey(aiName)
 
         // 1. Tam eşleşme
         trMap[key]?.let { return it }
@@ -165,7 +185,7 @@ class ProgramViewModel @Inject constructor(
             programRepository.observeUserPrograms(uid).collect { programs ->
                 updateState { state ->
                     state.copy(
-                        isLoading = false,
+                        isLoading = state.applyingTemplateKey != null,
                         userPrograms = programs,
                         deletingProgramIds = state.deletingProgramIds.intersect(programs.map { it.id }.toSet())
                     )
@@ -254,13 +274,15 @@ class ProgramViewModel @Inject constructor(
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin veya dosya yükleyin."))
             return
         }
+        if (uiState.value.aiLoading) return
+        updateState { it.copy(aiLoading = true, aiError = null) }
 
         viewModelScope.launch {
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiLoading = true, aiError = null) }
 
             // 1. Egzersiz listesini hazırla (eşleştirme için — prompt'a gönderilmez)
             val baseExercises = uiState.value.exercises.ifEmpty {
@@ -288,7 +310,7 @@ class ProgramViewModel @Inject constructor(
             val mediaAnalysisBlock = when {
                 textFileContent != null -> """
 Aşağıdaki dosya içeriğini analiz et ve içindeki antrenman programını aynen çıkar.
-Her egzersizin set, tekrar ve dinlenme sürelerini dosyada yazdığı gibi koru, değiştirme.
+Her egzersizin set ve tekrar değerlerini dosyada yazdığı gibi koru, değiştirme. Dinlenme süresi açıkça verilmişse iç veride koru.
 
 --- DOSYA İÇERİĞİ BAŞLANGIÇ ---
 $textFileContent
@@ -297,7 +319,7 @@ $userInstruction"""
 
                 effectiveHasMedia -> """
 Yüklenen görseli/PDF'i dikkatle analiz et ve içindeki antrenman programını eksiksiz çıkar.
-KRİTİK: Her egzersizin set sayısı, tekrar sayısı ve dinlenme süresini dosyada/görselde yazdığı gibi aynen aktar. Hiçbir değeri tahmin etme veya değiştirme.
+KRİTİK: Her egzersizin set ve tekrar sayısını dosyada/görselde yazdığı gibi aynen aktar. Dinlenme süresi açıkça verilmişse iç veride koru; hiçbir değeri tahmin etme veya değiştirme.
 $userInstruction"""
 
                 else -> "Kullanıcının istediği antrenman programı: $userPrompt"
@@ -307,6 +329,7 @@ $userInstruction"""
 $mediaAnalysisBlock
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 
@@ -318,16 +341,28 @@ FORMAT:
             val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
 
             val result = if (effectiveHasMedia) {
-                geminiRepository.chatWithMedia(effectiveBase64!!, effectiveMime!!, geminiPrompt, systemPrompt)
+                geminiRepository.chatWithMedia(
+                    effectiveBase64!!,
+                    effectiveMime!!,
+                    geminiPrompt,
+                    systemPrompt,
+                    AiToolType.PROGRAM_GENERATE_MEDIA
+                )
             } else {
-                geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+                geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_GENERATE_TEXT)
             }
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(aiLoading = false) }
+                    sendEvent(ProgramEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
                 return@launch
             }
+            planRepository.refresh()
 
             // 3. JSON'u çıkar ve parse et (markdown kod bloğu olsa bile yakala)
             val cleaned = rawJson
@@ -354,9 +389,10 @@ FORMAT:
             }
 
             // 4. Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
-            val currentMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val skippedExercises = linkedSetOf<String>()
+            val currentMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
-                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
+                .associateBy { ExerciseNameRules.normalizedKey(it.nameEn) }.toMutableMap()
 
             val days = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -376,20 +412,9 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExerciseByName(exName, currentMap, currentMapEn)
-
+                        val exercise = findExerciseByName(exName, currentMap, currentMapEn)
                         if (exercise == null) {
-                            exercise = programRepository.addExercise(
-                                name         = exName,
-                                nameEn       = "",
-                                targetMuscle = targetMuscle,
-                                category     = category,
-                                setsDefault  = sets,
-                                repsDefault  = reps
-                            ).getOrNull()
-                            exercise?.let { newEx ->
-                                currentMap[newEx.name.trim().lowercase()] = newEx
-                            }
+                            skippedExercises += exName
                         }
 
                         exercise?.let { ManualExerciseInput(it.id, sets, reps, rest, exIdx) }
@@ -406,17 +431,18 @@ FORMAT:
                         updateState { it.copy(exercises = updated) }
                     }
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(aiLoading = false, userPrograms = updated)
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!"))
+                    val skippedMessage = skippedExercises.takeIf { it.isNotEmpty() }
+                        ?.joinToString(limit = 3, truncated = "...")
+                        ?.let { " Listede olmayan hareketler eklenmedi: $it" }
+                        .orEmpty()
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!$skippedMessage"))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(aiLoading = false, aiError = "Kayıt hatası: ${err.message}") }
+                    updateState { it.copy(aiLoading = false, aiError = programSaveErrorMessage(err)) }
                 }
         }
     }
@@ -439,12 +465,15 @@ FORMAT:
             sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
             return
         }
+        if (uiState.value.aiEditLoading) return
+        updateState { it.copy(aiEditLoading = true, aiEditError = null) }
+
         viewModelScope.launch {
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiEditLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiEditLoading = true, aiEditError = null) }
 
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
@@ -477,6 +506,7 @@ $currentProgramJson
 Kullanıcının düzenleme isteği: $userInstruction
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
+Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
@@ -488,12 +518,18 @@ FORMAT:
 
             val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
 
-            val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt)
+            val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_EDIT)
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(aiEditLoading = false) }
+                    sendEvent(ProgramEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(aiEditLoading = false, aiEditError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
                 return@launch
             }
+            planRepository.refresh()
 
             val cleaned = rawJson
                 .replace(Regex("```[a-zA-Z]*\\s*"), "")
@@ -519,9 +555,10 @@ FORMAT:
             }
 
             // Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
-            val editMap   = baseExercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
+            val skippedEditExercises = linkedSetOf<String>()
+            val editMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val editMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
-                .associateBy { it.nameEn.trim().lowercase() }.toMutableMap()
+                .associateBy { ExerciseNameRules.normalizedKey(it.nameEn) }.toMutableMap()
 
             val editedDays = daysArray.map { dayEl ->
                 val dayObj = dayEl.jsonObject
@@ -541,19 +578,9 @@ FORMAT:
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
-                        var exercise = findExerciseByName(exName, editMap, editMapEn)
+                        val exercise = findExerciseByName(exName, editMap, editMapEn)
                         if (exercise == null) {
-                            exercise = programRepository.addExercise(
-                                name         = exName,
-                                nameEn       = "",
-                                targetMuscle = targetMuscle,
-                                category     = category,
-                                setsDefault  = sets,
-                                repsDefault  = reps
-                            ).getOrNull()
-                            exercise?.let { newEx ->
-                                editMap[newEx.name.trim().lowercase()] = newEx
-                            }
+                            skippedEditExercises += exName
                         }
 
                         exercise?.let {
@@ -572,11 +599,30 @@ FORMAT:
             }
 
             updateState { it.copy(aiEditLoading = false, aiEditResult = Pair(newName, editedDays)) }
+            skippedEditExercises.takeIf { it.isNotEmpty() }
+                ?.joinToString(limit = 3, truncated = "...")
+                ?.let { sendEvent(ProgramEvent.ShowSnackbar("Listede olmayan hareketler eklenmedi: $it")) }
         }
     }
 
     fun clearAiEditResult() { updateState { it.copy(aiEditResult = null) } }
     fun clearAiEditError()  { updateState { it.copy(aiEditError  = null) } }
+
+    private fun programSaveErrorMessage(error: Throwable): String {
+        val message = error.message.orEmpty()
+        return when {
+            message.contains("Oturum", ignoreCase = true) -> message
+            message.contains("permission denied", ignoreCase = true) ||
+            message.contains("JWT", ignoreCase = true) ||
+            message.contains("not authenticated", ignoreCase = true) ->
+                "Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın."
+            message.contains("network", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("Unable to resolve", ignoreCase = true) ->
+                "İnternet bağlantısını kontrol edin."
+            else -> "Program kaydedilemedi. Tekrar deneyin."
+        }
+    }
 
     private fun flexInt(obj: kotlinx.serialization.json.JsonObject, key: String, default: Int): Int {
         val el = obj[key]?.jsonPrimitive ?: return default
@@ -588,25 +634,26 @@ FORMAT:
     // ── Create From Template ──────────────────────────────────────────────────
 
     fun selectTemplate(templateKey: String) {
+        if (templateApplyInFlight || uiState.value.applyingTemplateKey != null) return
         val uid = currentUserId() ?: run {
             sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
             return
         }
+        templateApplyInFlight = true
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true, error = null) }
+            updateState { it.copy(isLoading = true, applyingTemplateKey = templateKey, error = null) }
             programRepository.createFromTemplate(uid, templateKey)
                 .onSuccess { program ->
+                    templateApplyInFlight = false
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
-                        state.copy(isLoading = false, userPrograms = updated)
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
+                        state.copy(isLoading = false, applyingTemplateKey = null, userPrograms = updated)
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    templateApplyInFlight = false
+                    updateState { it.copy(isLoading = false, applyingTemplateKey = null, error = programSaveErrorMessage(err)) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program oluşturulamadı."))
                 }
         }
@@ -634,17 +681,14 @@ FORMAT:
             programRepository.createManual(uid, name, inputs)
                 .onSuccess { program ->
                     updateState { state ->
-                        val updated = state.userPrograms
-                            .map { it.copy(isActive = false) }
-                            .toMutableList()
-                            .also { it.add(0, program) }
+                        val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(isLoading = false, userPrograms = updated)
                     }
                     sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" oluşturuldu."))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
+                    updateState { it.copy(isLoading = false, error = programSaveErrorMessage(err)) }
                     sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
                 }
         }
@@ -699,8 +743,9 @@ FORMAT:
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
-                    updateState { it.copy(isLoading = false, error = err.message) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: ${err.message ?: "Program kaydedilemedi."}"))
+                    val message = programSaveErrorMessage(err)
+                    updateState { it.copy(isLoading = false, error = message) }
+                    sendEvent(ProgramEvent.ShowSnackbar("Hata: $message"))
                 }
         }
     }
@@ -727,7 +772,7 @@ FORMAT:
                     }
                     onFailure?.invoke()
                     loadUserPrograms()
-                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${e.message}"))
+                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${programSaveErrorMessage(e)}"))
                 }
         }
     }

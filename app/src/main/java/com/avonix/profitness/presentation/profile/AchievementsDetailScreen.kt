@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AppBackButton
 
 // ── Rank tanımları ──────────────────────────────────────────────────────────────
 
@@ -84,21 +85,7 @@ fun AchievementsDetailScreen(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg1)
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.ArrowBackIos, null,
-                            tint     = theme.text0,
-                            modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                        )
-                    }
+                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column(Modifier.weight(1f)) {
                         Text(
                             "BAŞARIMLAR",

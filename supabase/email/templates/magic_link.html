@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <meta name="supported-color-schemes" content="dark light">
+    <title>Profitness'e dön</title>
+    <style>
+      @media only screen and (max-width: 620px) {
+        .pf-shell { width: 100% !important; }
+        .pf-hero { padding: 26px 20px 22px 20px !important; }
+        .pf-card { padding: 28px 20px 30px 20px !important; }
+        .pf-logo { width: 78px !important; height: 78px !important; }
+        .pf-brand { font-size: 28px !important; line-height: 32px !important; }
+        .pf-code { font-size: 40px !important; letter-spacing: 10px !important; }
+        .pf-title { font-size: 30px !important; line-height: 36px !important; }
+        .pf-pill { display:block !important; margin:8px 0 0 0 !important; text-align:center !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; background:#050508; font-family:Inter, Arial, Helvetica, sans-serif; color:#F8F8F8;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">Profitness'e tek dokunuşla giriş yapmak için bağlantın hazır.</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#050508; background-image:radial-gradient(circle at 14% 0%, rgba(203,255,77,.16), transparent 34%), radial-gradient(circle at 94% 12%, rgba(0,229,211,.16), transparent 30%), linear-gradient(180deg,#111117 0%,#050508 78%);">
+      <tr>
+        <td align="center" style="padding:28px 14px 34px 14px;">
+          <table role="presentation" class="pf-shell" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px; max-width:600px;">
+            <tr>
+              <td style="border-radius:34px; background:#111117; border:1px solid #2A2A35; box-shadow:0 28px 72px rgba(0,0,0,.55); overflow:hidden;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td class="pf-hero" style="padding:34px 34px 28px 34px; background-color:#15151D; background-image:linear-gradient(135deg,rgba(203,255,77,.18),rgba(0,229,211,.10) 42%,rgba(255,107,107,.14) 100%); border-bottom:1px solid #2A2A35;">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td valign="middle" style="width:100px;">
+                            <img class="pf-logo" src="https://dkcriptafzdrynsilxku.supabase.co/functions/v1/email-assets/logo.png" width="92" height="92" alt="Profitness logo" style="display:block; width:92px; height:92px; border-radius:25px; box-shadow:0 16px 38px rgba(0,0,0,.46);">
+                          </td>
+                          <td valign="middle" style="padding-left:18px;">
+                            <div class="pf-brand" style="font-size:32px; line-height:36px; font-weight:900; letter-spacing:0; color:#FFFFFF;">Profitness</div>
+                            <div style="margin-top:3px; font-size:12px; line-height:17px; color:#D9D9E6; font-weight:800; letter-spacing:2px;">BY AVONIX</div>
+                            <div style="margin-top:13px;">
+                              <span class="pf-pill" style="display:inline-block; padding:8px 12px; border-radius:999px; background:#CBFF4D; color:#0A0A0F; font-size:11px; line-height:13px; font-weight:900;">GÜVENLİ DOĞRULAMA</span>
+                              <span class="pf-pill" style="display:inline-block; margin-left:7px; padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.22); color:#F8F8F8; font-size:11px; line-height:13px; font-weight:800;">PROFITNESS APP</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="pf-card" style="padding:38px 36px 34px 36px;">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td width="7" style="width:7px; border-radius:99px; background:#CBFF4D;"></td>
+                          <td style="padding-left:16px;">
+                            <div style="color:#FFBF59; font-size:12px; line-height:16px; font-weight:900; letter-spacing:1.6px; text-transform:uppercase;">Güvenli giriş</div>
+                            <h1 class="pf-title" style="margin:8px 0 10px 0; font-size:36px; line-height:42px; font-weight:900; letter-spacing:0; color:#FFFFFF;">Profitness'e dön</h1>
+                          </td>
+                        </tr>
+                      </table>
+                      <div style="margin-top:20px; font-size:16px; line-height:27px; color:#DADAEA;">Bu bağlantı seni Profitness hesabına güvenli şekilde yönlendirir.</div>
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:30px;">
+  <tr>
+    <td style="border-radius:18px; background:#CBFF4D; box-shadow:0 14px 30px rgba(203,255,77,.18);">
+      <a href="{{ .ConfirmationURL }}" style="display:inline-block; padding:17px 24px; color:#0A0A0F; font-size:15px; line-height:18px; font-weight:900; text-decoration:none; border-radius:18px;">Giriş yap</a>
+    </td>
+  </tr>
+</table>
+                      <p style="margin:18px 0 0 0; color:#9A9AB0; font-size:14px; line-height:22px;">Bağlantı çalışmazsa tarayıcına şu adresi yapıştır:<br><span style="color:#C7C7D6; word-break:break-all;">{{ .ConfirmationURL }}</span></p>
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:30px; border-top:1px solid #2A2A35;">
+                        <tr>
+                          <td style="padding-top:18px; color:#A8A8BA; font-size:13px; line-height:21px;">
+                            Bu işlemi sen başlatmadıysan bu maili yok sayabilirsin. Hesabın güvende kalmaya devam eder.
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:22px 18px 0 18px; color:#67677F; font-size:12px; line-height:20px;">
+                © 2026 Profitness · Avonix<br>
+                Bu otomatik bir mesajdır, lütfen yanıtlamayın.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

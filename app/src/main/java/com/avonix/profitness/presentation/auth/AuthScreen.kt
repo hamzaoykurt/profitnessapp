@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import com.avonix.profitness.BuildConfig
 import com.avonix.profitness.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,11 +48,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
-
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
+import com.avonix.profitness.presentation.components.AppBackButton
 // ── Entry composable — routes between auth screens ────────────────────────────
+
+private enum class AuthMode {
+    Login,
+    Register
+}
 
 @Composable
 fun AuthScreen(
@@ -74,6 +79,16 @@ fun AuthScreen(
     if (state.isSessionLoading) {
         AuthLoadingSplash()
         return
+    }
+
+    BackHandler(enabled = state.screen !is AuthFlowScreen.Login) {
+        when (state.screen) {
+            is AuthFlowScreen.Register       -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.ForgotPassword -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.OtpVerify      -> viewModel.navigateTo(AuthFlowScreen.Register)
+            is AuthFlowScreen.EmailSent      -> viewModel.navigateTo(AuthFlowScreen.Login)
+            is AuthFlowScreen.Login          -> Unit
+        }
     }
 
     AnimatedContent(
@@ -139,6 +154,18 @@ private fun AuthLoadingSplash() {
                 }
                 .clip(RoundedCornerShape(20.dp))
         )
+        Text(
+            text = "v${BuildConfig.VERSION_NAME}",
+            color = theme.text2.copy(0.55f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 28.dp)
+                .graphicsLayer { alpha = iconAlpha }
+        )
     }
 }
 
@@ -146,19 +173,39 @@ private fun AuthLoadingSplash() {
 
 @Composable
 private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
+    val theme = LocalAppTheme.current
     var email    by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPass by remember { mutableStateOf(false) }
     val passFocus = remember { FocusRequester() }
 
     AuthScaffold(
-        heroTitle    = "Tekrar\nhoş geldin.",
-        heroSubtitle = "Hedeflerine kaldığın yerden devam et."
+        mode         = AuthMode.Login,
+        onModeChange = { mode ->
+            if (mode == AuthMode.Register) viewModel.navigateTo(AuthFlowScreen.Register)
+        },
+        heroTitle    = theme.t("Tekrar\nhoş geldin.", "Welcome\nback."),
+        heroSubtitle = theme.t("Programların, sayaçların ve ilerlemen seni bekliyor.", "Your plans, timers and progress are ready.")
     ) {
+        AuthModeTabs(
+            selected = AuthMode.Login,
+            onSelected = { mode ->
+                if (mode == AuthMode.Register) viewModel.navigateTo(AuthFlowScreen.Register)
+            }
+        )
+        Spacer(Modifier.height(18.dp))
+        AuthTrustRow(
+            items = listOf(
+                Icons.Rounded.CalendarMonth to theme.t("Plan", "Plan"),
+                Icons.Rounded.Timer to theme.t("Sayaç", "Timer"),
+                Icons.Rounded.TrendingUp to theme.t("Takip", "Progress")
+            )
+        )
+        Spacer(Modifier.height(18.dp))
         GlassInputField(
             value         = email,
             onValueChange = { email = it },
-            placeholder   = "Email adresi",
+            placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Next,
@@ -168,7 +215,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
         GlassInputField(
             value         = password,
             onValueChange = { password = it },
-            placeholder   = "Şifre",
+            placeholder   = theme.t("Şifre", "Password"),
             icon          = Icons.Rounded.Lock,
             isPassword    = true,
             showPass      = showPass,
@@ -184,7 +231,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
                 viewModel.navigateTo(AuthFlowScreen.ForgotPassword(email.trim()))
             }) {
                 Text(
-                    "Şifremi Unuttum",
+                    theme.t("Şifremi Unuttum", "Forgot Password"),
                     color    = ObsidianMuted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -195,7 +242,8 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
         Spacer(Modifier.height(20.dp))
 
         AccentGradientButton(
-            text     = if (state.isLoading) "Giriş yapılıyor..." else "Giriş Yap",
+            text     = if (state.isLoading) theme.t("Giriş yapılıyor...", "Signing in...") else theme.t("Giriş Yap", "Sign In"),
+            icon     = Icons.Rounded.Login,
             onClick  = { if (!state.isLoading) viewModel.onLoginClick(email, password) },
             isLoading = state.isLoading,
             modifier = Modifier.fillMaxWidth()
@@ -214,8 +262,8 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
 
         Spacer(Modifier.height(28.dp))
         AuthSwitchRow(
-            message    = "Hesabın yok mu?",
-            actionText = "Kayıt Ol",
+            message    = theme.t("Hesabın yok mu?", "Don't have an account?"),
+            actionText = theme.t("Kayıt Ol", "Sign Up"),
             onClick    = { viewModel.navigateTo(AuthFlowScreen.Register) }
         )
     }
@@ -225,6 +273,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
 
 @Composable
 private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
+    val theme = LocalAppTheme.current
     var email           by remember { mutableStateOf("") }
     var password        by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -234,13 +283,32 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
     val confirmFocus    = remember { FocusRequester() }
 
     AuthScaffold(
-        heroTitle    = "Gücü\nserbest bırak.",
-        heroSubtitle = "Hesabını oluştur, antrenmanlarına başla."
+        mode         = AuthMode.Register,
+        onModeChange = { mode ->
+            if (mode == AuthMode.Login) viewModel.navigateTo(AuthFlowScreen.Login)
+        },
+        heroTitle    = theme.t("Gücü\nserbest bırak.", "Unlock\nyour power."),
+        heroSubtitle = theme.t("Birkaç saniyede hesabını oluştur, ilk planına geç.", "Create your account in seconds and start your first plan.")
     ) {
+        AuthModeTabs(
+            selected = AuthMode.Register,
+            onSelected = { mode ->
+                if (mode == AuthMode.Login) viewModel.navigateTo(AuthFlowScreen.Login)
+            }
+        )
+        Spacer(Modifier.height(18.dp))
+        AuthTrustRow(
+            items = listOf(
+                Icons.Rounded.VerifiedUser to theme.t("Güvenli", "Secure"),
+                Icons.Rounded.AutoAwesome to theme.t("AI plan", "AI plan"),
+                Icons.Rounded.FitnessCenter to theme.t("Takip", "Tracking")
+            )
+        )
+        Spacer(Modifier.height(18.dp))
         GlassInputField(
             value         = email,
             onValueChange = { email = it },
-            placeholder   = "Email adresi",
+            placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Next,
@@ -250,7 +318,7 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
         GlassInputField(
             value         = password,
             onValueChange = { password = it },
-            placeholder   = "Şifre",
+            placeholder   = theme.t("Şifre", "Password"),
             icon          = Icons.Rounded.Lock,
             isPassword    = true,
             showPass      = showPass,
@@ -267,7 +335,7 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
         GlassInputField(
             value         = confirmPassword,
             onValueChange = { confirmPassword = it },
-            placeholder   = "Şifre tekrar",
+            placeholder   = theme.t("Şifre tekrar", "Repeat password"),
             icon          = Icons.Rounded.LockOpen,
             isPassword    = true,
             showPass      = showConfirmPass,
@@ -279,10 +347,19 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
         Spacer(Modifier.height(28.dp))
 
         AccentGradientButton(
-            text      = if (state.isLoading) "Hesap oluşturuluyor..." else "Kayıt Ol",
+            text      = if (state.isLoading) theme.t("Hesap oluşturuluyor...", "Creating account...") else theme.t("Kayıt Ol", "Sign Up"),
+            icon      = Icons.Rounded.PersonAdd,
             onClick   = { if (!state.isLoading) viewModel.onRegisterClick(email, password, confirmPassword) },
             isLoading = state.isLoading,
             modifier  = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+        AuthFinePrint(
+            text = theme.t(
+                "Kayıt olarak ilerleme verilerinin hesabına güvenli şekilde bağlanmasını kabul etmiş olursun.",
+                "By signing up, your progress data is securely linked to your account."
+            )
         )
 
         AuthFeedback(
@@ -298,8 +375,8 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
 
         Spacer(Modifier.height(28.dp))
         AuthSwitchRow(
-            message    = "Zaten üye misin?",
-            actionText = "Giriş Yap",
+            message    = theme.t("Zaten üye misin?", "Already a member?"),
+            actionText = theme.t("Giriş Yap", "Sign In"),
             onClick    = { viewModel.navigateTo(AuthFlowScreen.Login) }
         )
     }
@@ -313,11 +390,12 @@ private fun ForgotPasswordScreen(
     state: AuthState,
     viewModel: AuthViewModel
 ) {
+    val theme = LocalAppTheme.current
     var email = remember { mutableStateOf(prefillEmail) }
 
     AuthScaffold(
-        heroTitle    = "Şifreni\nsıfırla.",
-        heroSubtitle = "Kayıtlı email adresini gir, link gönderelim."
+        heroTitle    = theme.t("Şifreni\nsıfırla.", "Reset your\npassword."),
+        heroSubtitle = theme.t("Kayıtlı email adresini gir, link gönderelim.", "Enter your registered email and we'll send a link.")
     ) {
         BackRow(onBack = { viewModel.navigateTo(AuthFlowScreen.Login) })
         Spacer(Modifier.height(20.dp))
@@ -325,7 +403,7 @@ private fun ForgotPasswordScreen(
         GlassInputField(
             value         = email.value,
             onValueChange = { email.value = it },
-            placeholder   = "Email adresi",
+            placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Done,
@@ -334,7 +412,7 @@ private fun ForgotPasswordScreen(
         Spacer(Modifier.height(28.dp))
 
         AccentGradientButton(
-            text      = if (state.isLoading) "Gönderiliyor..." else "Link Gönder",
+            text      = if (state.isLoading) theme.t("Gönderiliyor...", "Sending...") else theme.t("Link Gönder", "Send Link"),
             onClick   = { if (!state.isLoading) viewModel.onForgotPasswordClick(email.value) },
             isLoading = state.isLoading,
             modifier  = Modifier.fillMaxWidth()
@@ -359,9 +437,11 @@ private fun OtpVerifyScreen(
     AuthCenteredScaffold {
         // Back
         Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = { viewModel.navigateTo(AuthFlowScreen.Register) }) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = theme.text1)
-            }
+            AppBackButton(
+                onClick = { viewModel.navigateTo(AuthFlowScreen.Register) },
+                accent = accent,
+                size = 42.dp
+            )
         }
         Spacer(Modifier.height(12.dp))
 
@@ -383,14 +463,17 @@ private fun OtpVerifyScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "Email'ini kontrol et",
+            theme.t("Email'ini kontrol et", "Check your email"),
             color      = theme.text0,
             fontSize   = 24.sp,
             fontWeight = FontWeight.Black
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            text       = "$email\nadresine 6 haneli doğrulama kodu gönderdik.",
+            text       = theme.t(
+                "$email\nadresine 6 haneli doğrulama kodu gönderdik.",
+                "We sent a 6-digit verification code to\n$email."
+            ),
             color      = theme.text1,
             fontSize   = 14.sp,
             textAlign  = TextAlign.Center,
@@ -421,7 +504,7 @@ private fun OtpVerifyScreen(
         Spacer(Modifier.height(28.dp))
 
         AccentGradientButton(
-            text      = if (state.otpLoading) "Doğrulanıyor..." else "Onayla",
+            text      = if (state.otpLoading) theme.t("Doğrulanıyor...", "Verifying...") else theme.t("Onayla", "Confirm"),
             onClick   = { if (!state.otpLoading) viewModel.onVerifyOtp(email, code) },
             isLoading = state.otpLoading,
             modifier  = Modifier.fillMaxWidth()
@@ -434,7 +517,7 @@ private fun OtpVerifyScreen(
             enabled = !state.resendCooldown
         ) {
             Text(
-                text     = if (state.resendCooldown) "Kod gönderildi (30sn bekle)" else "Kodu tekrar gönder",
+                text     = if (state.resendCooldown) theme.t("Kod gönderildi (30sn bekle)", "Code sent (wait 30s)") else theme.t("Kodu tekrar gönder", "Resend code"),
                 color    = if (state.resendCooldown) ObsidianMuted else accent,
                 fontSize = 14.sp
             )
@@ -447,7 +530,7 @@ private fun OtpVerifyScreen(
         ) {
             Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(13.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = ObsidianMuted, fontSize = 12.sp)
         }
     }
 }
@@ -562,14 +645,17 @@ private fun EmailSentScreen(
 
         Spacer(Modifier.height(28.dp))
         Text(
-            "Link gönderildi",
+            theme.t("Link gönderildi", "Link sent"),
             color      = theme.text0,
             fontSize   = 26.sp,
             fontWeight = FontWeight.Black
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            "$email adresine şifre sıfırlama linki gönderdik.\n\nLinke tıklayarak yeni şifreni belirle.",
+            theme.t(
+                "$email adresine şifre sıfırlama linki gönderdik.\n\nLinke tıklayarak yeni şifreni belirle.",
+                "We sent a password reset link to $email.\n\nTap the link to set your new password."
+            ),
             color      = theme.text1,
             fontSize   = 15.sp,
             lineHeight = 24.sp,
@@ -579,7 +665,7 @@ private fun EmailSentScreen(
         Spacer(Modifier.height(40.dp))
 
         AccentGradientButton(
-            text     = "Giriş Sayfasına Dön",
+            text     = theme.t("Giriş Sayfasına Dön", "Back to Sign In"),
             onClick  = { viewModel.navigateTo(AuthFlowScreen.Login) },
             modifier = Modifier.fillMaxWidth()
         )
@@ -591,7 +677,7 @@ private fun EmailSentScreen(
         ) {
             Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Spam/junk klasörünü de kontrol et.", color = ObsidianMuted, fontSize = 12.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = ObsidianMuted, fontSize = 12.sp)
         }
     }
 }
@@ -605,54 +691,56 @@ private fun EmailSentScreen(
  */
 @Composable
 private fun AuthScaffold(
+    mode         : AuthMode? = null,
+    onModeChange : (AuthMode) -> Unit = {},
     heroTitle   : String,
     heroSubtitle: String,
     content     : @Composable ColumnScope.() -> Unit
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
+    val heroStyle = if (responsive.isSmallPhone) {
+        MaterialTheme.typography.headlineLarge
+    } else {
+        MaterialTheme.typography.displayMedium
+    }
+    val topPad = if (responsive.isSmallPhone) 42.dp else 56.dp
 
     val alphaAnim = remember { Animatable(0f) }
-    val yAnim     = remember { Animatable(40f) }
+    val yAnim     = remember { Animatable(28f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(500, easing = EaseOutCubic))
         yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        // Ambient glow orbs
-        AmbientGlowBackground(accent)
+        PageAccentBloom()
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
             horizontalAlignment = Alignment.Start
         ) {
-            Spacer(Modifier.height(72.dp))
+            Spacer(Modifier.height(topPad))
 
-            // Logo
-            Image(
-                painter            = painterResource(R.drawable.ic_app_logo),
-                contentDescription = "Profitness",
-                modifier           = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp))
-            )
+            AuthBrandHeader()
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(if (responsive.isSmallPhone) 28.dp else 34.dp))
 
-            // Hero title
             Text(
                 text       = heroTitle,
-                style      = MaterialTheme.typography.displayLarge,
+                style      = heroStyle,
                 color      = theme.text0,
-                lineHeight = 48.sp,
+                lineHeight = if (responsive.isSmallPhone) 39.sp else 48.sp,
                 fontWeight = FontWeight.Black
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text     = heroSubtitle,
                 color    = theme.text1,
@@ -660,15 +748,100 @@ private fun AuthScaffold(
                 lineHeight = 22.sp
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(18.dp))
+            if (mode != null) {
+                AuthHeroQuickSwitch(mode = mode, onModeChange = onModeChange)
+            }
 
-            // Glass card with form
+            Spacer(Modifier.height(24.dp))
+
             GlassCard {
                 content()
             }
 
             Spacer(Modifier.height(40.dp))
         }
+    }
+}
+
+@Composable
+private fun AuthBrandHeader() {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_app_logo),
+            contentDescription = "Profitness",
+            modifier = Modifier
+                .size(58.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Color.White.copy(0.10f), RoundedCornerShape(16.dp))
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                "PROFITNESS",
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.8.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                theme.t("Antrenman zekanı cebine al", "Training intelligence in your pocket"),
+                color = theme.text2,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(accent.copy(0.12f))
+                .border(1.dp, accent.copy(0.26f), RoundedCornerShape(999.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "v${BuildConfig.VERSION_NAME}",
+                color = accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.8.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthHeroQuickSwitch(mode: AuthMode, onModeChange: (AuthMode) -> Unit) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val target = if (mode == AuthMode.Login) AuthMode.Register else AuthMode.Login
+    val text = if (mode == AuthMode.Login) {
+        theme.t("Yeni misin? Hızlıca hesap oluştur", "New here? Create an account")
+    } else {
+        theme.t("Zaten hesabın var mı? Giriş yap", "Already have an account? Sign in")
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(theme.bg2.copy(0.58f))
+            .border(1.dp, theme.stroke.copy(0.55f), RoundedCornerShape(999.dp))
+            .clickable { onModeChange(target) }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (mode == AuthMode.Login) Icons.Rounded.PersonAdd else Icons.Rounded.Login,
+            null,
+            tint = accent,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -680,7 +853,7 @@ private fun AuthCenteredScaffold(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
 
     val alphaAnim = remember { Animatable(0f) }
     val yAnim     = remember { Animatable(30f) }
@@ -690,12 +863,15 @@ private fun AuthCenteredScaffold(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        AmbientGlowBackground(accent)
+        PageAccentBloom()
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.Center)
+                .widthIn(max = responsive.formMaxWidth)
+                .fillMaxHeight()
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -722,57 +898,160 @@ private fun GlassCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val cardBg = if (theme.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f)
-    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
+    val accent = MaterialTheme.colorScheme.primary
+    val cardBg = if (theme.isDark) Color.White.copy(alpha = 0.045f) else Color.Black.copy(alpha = 0.035f)
+    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.07f)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(cardBg)
-            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
-            .padding(24.dp),
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(accent.copy(0.34f), borderColor, borderColor.copy(0.42f))
+                ),
+                RoundedCornerShape(22.dp)
+            )
+            .drawWithCache {
+                onDrawBehind {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color.Transparent, accent.copy(0.24f), Color.Transparent)
+                        ),
+                        topLeft = Offset(24.dp.toPx(), 0f),
+                        size = Size((size.width - 48.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx())
+                    )
+                }
+            }
+            .padding(horizontal = 22.dp, vertical = 22.dp),
         horizontalAlignment = horizontalAlignment,
         content = content
     )
 }
 
-/**
- * Ambient glow arka plan — accent renginde yumuşak ışıma orb'ları.
- */
 @Composable
-private fun AmbientGlowBackground(accent: Color) {
+private fun AuthModeTabs(selected: AuthMode, onSelected: (AuthMode) -> Unit) {
     val theme = LocalAppTheme.current
-    val orbAlpha = if (theme.isDark) 0.12f else 0.06f
-
-    Spacer(
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .drawWithCache {
-                val orb1 = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.0f to accent.copy(alpha = orbAlpha),
-                        0.5f to accent.copy(alpha = orbAlpha * 0.3f),
-                        1.0f to Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.85f, size.height * 0.08f),
-                    radius = size.width * 1.2f
-                )
-                val orb2 = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.0f to accent.copy(alpha = orbAlpha * 0.5f),
-                        0.6f to accent.copy(alpha = orbAlpha * 0.1f),
-                        1.0f to Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.1f, size.height * 0.7f),
-                    radius = size.width * 0.9f
-                )
-                onDrawBehind {
-                    drawRect(orb1)
-                    drawRect(orb2)
-                }
-            }
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg2.copy(0.78f))
+            .border(1.dp, theme.stroke.copy(0.65f), RoundedCornerShape(14.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        AuthModeTab(
+            text = theme.t("Giriş", "Sign in"),
+            icon = Icons.Rounded.Login,
+            selected = selected == AuthMode.Login,
+            onClick = { onSelected(AuthMode.Login) },
+            modifier = Modifier.weight(1f)
+        )
+        AuthModeTab(
+            text = theme.t("Kayıt", "Sign up"),
+            icon = Icons.Rounded.PersonAdd,
+            selected = selected == AuthMode.Register,
+            onClick = { onSelected(AuthMode.Register) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun AuthModeTab(
+    text: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
+    val bg by animateColorAsState(
+        if (selected) accent.copy(0.18f) else Color.Transparent,
+        tween(180),
+        label = "auth_mode_bg"
     )
+    Row(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(11.dp))
+            .background(bg)
+            .border(
+                1.dp,
+                if (selected) accent.copy(0.42f) else Color.Transparent,
+                RoundedCornerShape(11.dp)
+            )
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = if (selected) accent else theme.text2, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text,
+            color = if (selected) theme.text0 else theme.text2,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.4.sp
+        )
+    }
+}
+
+@Composable
+private fun AuthTrustRow(items: List<Pair<ImageVector, String>>) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items.forEach { (icon, label) ->
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 34.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(theme.bg2.copy(0.42f))
+                    .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(11.dp))
+                    .padding(horizontal = 9.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(icon, null, tint = accent, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    label,
+                    color = theme.text1,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthFinePrint(text: String) {
+    val theme = LocalAppTheme.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(Icons.Rounded.Lock, null, tint = theme.text2, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text,
+            color = theme.text2,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+    }
 }
 
 /**
@@ -798,7 +1077,7 @@ fun GlassInputField(
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     val borderColor by animateColorAsState(
-        if (isFocused) accent.copy(alpha = 0.6f)
+        if (isFocused) accent.copy(alpha = 0.72f)
         else if (theme.isDark) Color.White.copy(alpha = 0.08f)
         else Color.Black.copy(alpha = 0.06f),
         animationSpec = tween(200),
@@ -809,15 +1088,21 @@ fun GlassInputField(
         animationSpec = tween(200),
         label = "field_icon"
     )
-    val fieldBg = if (theme.isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.04f)
+    val fieldBg by animateColorAsState(
+        if (isFocused) accent.copy(0.08f)
+        else if (theme.isDark) Color.White.copy(alpha = 0.052f)
+        else Color.Black.copy(alpha = 0.04f),
+        tween(180),
+        label = "field_bg"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(58.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(fieldBg)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .border(if (isFocused) 1.4.dp else 1.dp, borderColor, RoundedCornerShape(16.dp))
             .then(modifier),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -878,6 +1163,7 @@ fun AccentGradientButton(
     onClick  : () -> Unit,
     modifier : Modifier = Modifier,
     isLoading: Boolean = false,
+    icon     : ImageVector? = null,
     accent   : Color = Color.Unspecified
 ) {
     val resolvedAccent   = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else accent
@@ -900,7 +1186,7 @@ fun AccentGradientButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(56.dp)
+            .height(58.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(gradientBrush)
             .clickable(interactionSource, null, onClick = onClick),
@@ -913,13 +1199,22 @@ fun AccentGradientButton(
                 strokeWidth = 2.5.dp
             )
         } else {
-            Text(
-                text          = text,
-                color         = resolvedOnAccent,
-                fontSize      = 15.sp,
-                fontWeight    = FontWeight.Bold,
-                letterSpacing = 0.5.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (icon != null) {
+                    Icon(icon, null, tint = resolvedOnAccent, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    text          = text,
+                    color         = resolvedOnAccent,
+                    fontSize      = 15.sp,
+                    fontWeight    = FontWeight.Black,
+                    letterSpacing = 0.4.sp
+                )
+            }
         }
     }
 }
@@ -969,12 +1264,9 @@ fun AuthLiquidField(
 private fun BackRow(onBack: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onBack)
-            .padding(vertical = 4.dp, horizontal = 2.dp)
+        modifier = Modifier.padding(vertical = 2.dp, horizontal = 2.dp)
     ) {
-        Icon(Icons.Rounded.ArrowBack, contentDescription = "Geri", tint = ObsidianSub, modifier = Modifier.size(18.dp))
+        AppBackButton(onClick = onBack, accent = MaterialTheme.colorScheme.primary, size = 36.dp)
         Spacer(Modifier.width(8.dp))
         Text("Giriş sayfasına dön", color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
@@ -1035,10 +1327,14 @@ internal fun AuthFeedback(
     }
 }
 
-private fun hintContent(hint: AuthHint): Pair<String, ImageVector> = when (hint) {
-    AuthHint.SwitchToLogin    -> "Bu email zaten kayıtlı — Giriş Yap" to Icons.Rounded.Login
-    AuthHint.SwitchToRegister -> "Hesabın yok — Kayıt Ol" to Icons.Rounded.PersonAdd
-    AuthHint.ForgotPassword   -> "Şifreni mi unuttun? Sıfırla" to Icons.Rounded.LockReset
+@Composable
+private fun hintContent(hint: AuthHint): Pair<String, ImageVector> {
+    val theme = LocalAppTheme.current
+    return when (hint) {
+        AuthHint.SwitchToLogin -> theme.t("Bu email zaten kayıtlı — Giriş Yap", "This email is already registered — Sign In") to Icons.Rounded.Login
+        AuthHint.SwitchToRegister -> theme.t("Hesabın yok — Kayıt Ol", "No account yet — Sign Up") to Icons.Rounded.PersonAdd
+        AuthHint.ForgotPassword -> theme.t("Şifreni mi unuttun? Sıfırla", "Forgot your password? Reset it") to Icons.Rounded.LockReset
+    }
 }
 
 @Composable
@@ -1064,6 +1360,7 @@ private fun AuthSwitchRow(message: String, actionText: String, onClick: () -> Un
 @Composable
 internal fun PasswordStrengthBar(password: String) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     val strength = when {
         password.length < 6  -> 0
         password.length < 8  -> 1
@@ -1072,11 +1369,11 @@ internal fun PasswordStrengthBar(password: String) {
         else -> 3
     }
     val (label, color) = when (strength) {
-        0    -> "Çok kısa" to CriticalRed
-        1    -> "Zayıf"   to CriticalRed.copy(0.8f)
-        2    -> "Orta"    to Amber
-        3    -> "İyi"     to Lime
-        else -> "Güçlü"  to accent
+        0    -> theme.t("Çok kısa", "Too short") to CriticalRed
+        1    -> theme.t("Zayıf", "Weak") to CriticalRed.copy(0.8f)
+        2    -> theme.t("Orta", "Medium") to Amber
+        3    -> theme.t("İyi", "Good") to Lime
+        else -> theme.t("Güçlü", "Strong") to accent
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         repeat(4) { i ->

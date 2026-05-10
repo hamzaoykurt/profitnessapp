@@ -28,6 +28,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 
 private val categoryColors = mapOf(
     "Göğüs"     to CardCoral,
@@ -48,7 +52,7 @@ private fun categoryColor(cat: String): Color =
 fun ExercisePickerSheet(
     exercises: List<ExerciseItem>,
     onDismiss: () -> Unit,
-    onConfirm: (exerciseId: String, exerciseName: String, targetMuscle: String, sets: Int, reps: Int, restSeconds: Int) -> Unit,
+    onConfirm: (exerciseId: String, exerciseName: String, targetMuscle: String, sets: Int, reps: Int, restSeconds: Int, targetDurationSeconds: Int?, targetDistanceMeters: Float?) -> Unit,
     onRequestExercise: ((name: String, targetMuscle: String, notes: String) -> Unit)? = null,
     requestLoading: Boolean = false
 ) {
@@ -60,7 +64,8 @@ fun ExercisePickerSheet(
     var configExercise    by remember { mutableStateOf<ExerciseItem?>(null) }
     var sets              by remember { mutableStateOf(3) }
     var reps              by remember { mutableStateOf(10) }
-    var restSeconds       by remember { mutableStateOf(90) }
+    var targetDurationSec by remember { mutableStateOf(20 * 60) }
+    var targetDistanceM   by remember { mutableStateOf(1000) }
     var showRequestDialog by remember { mutableStateOf(false) }
 
     val categories = remember(exercises) {
@@ -97,14 +102,14 @@ fun ExercisePickerSheet(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "HAREKET SEÇ",
+                        theme.t("HAREKET SEÇ", "SELECT EXERCISE"),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        "${exercises.size} hareket mevcut",
+                        theme.t("${exercises.size} hareket mevcut", "${exercises.size} exercises available"),
                         color = theme.text2,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Light
@@ -147,7 +152,7 @@ fun ExercisePickerSheet(
                         decorationBox = { inner ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    "Hareket ara...",
+                                    theme.t("Hareket ara...", "Search exercise..."),
                                     color = theme.text2,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Light
@@ -178,7 +183,7 @@ fun ExercisePickerSheet(
             ) {
                 item {
                     PickerCategoryChip(
-                        label = "TÜMÜ",
+                        label = theme.t("TÜMÜ", "ALL"),
                         color = Snow,
                         selected = selectedCategory == null,
                         onClick = { selectedCategory = null }
@@ -233,7 +238,8 @@ fun ExercisePickerSheet(
                                         configExercise = exercise
                                         sets = exercise.setsDefault.coerceAtLeast(1)
                                         reps = exercise.repsDefault.coerceAtLeast(1)
-                                        restSeconds = 90
+                                        targetDurationSec = defaultManualDurationSeconds(exercise)
+                                        targetDistanceM = defaultManualDistanceMeters(exercise)
                                     }
                                 }
                                 .padding(14.dp),
@@ -269,8 +275,9 @@ fun ExercisePickerSheet(
                                     letterSpacing = 0.5.sp
                                 )
                             }
+                            val spec = manualTrackingSpec(exercise)
                             Text(
-                                "${exercise.setsDefault}×${exercise.repsDefault}",
+                                defaultManualSummary(exercise, spec, theme),
                                 color = theme.text2,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
@@ -306,31 +313,46 @@ fun ExercisePickerSheet(
                                         .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                                         .padding(horizontal = 14.dp)
                                 ) {
-                                    CounterField(
-                                        label = "SET",
-                                        value = sets,
-                                        onDecrement = { if (sets > 1) sets-- },
-                                        onIncrement = { if (sets < 10) sets++ },
-                                        accent = accent
-                                    )
-                                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                                    CounterField(
-                                        label = "TEKRAR",
-                                        value = reps,
-                                        onDecrement = { if (reps > 1) reps-- },
-                                        onIncrement = { if (reps < 100) reps++ },
-                                        accent = accent
-                                    )
-                                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                                    CounterField(
-                                        label = "DİNLENME",
-                                        value = restSeconds,
-                                        step = 15,
-                                        onDecrement = { if (restSeconds > 15) restSeconds -= 15 },
-                                        onIncrement = { if (restSeconds < 300) restSeconds += 15 },
-                                        displayOverride = "${restSeconds}s",
-                                        accent = accent
-                                    )
+                                    val selectedSpec = manualTrackingSpec(exercise)
+                                    if (selectedSpec.metric == ExerciseMetric.Strength) {
+                                        CounterField(
+                                            label = "SET",
+                                            value = sets,
+                                            onDecrement = { if (sets > 1) sets-- },
+                                            onIncrement = { if (sets < 10) sets++ },
+                                            accent = accent
+                                        )
+                                        HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                                        CounterField(
+                                            label = theme.t("TEKRAR", "REPS"),
+                                            value = reps,
+                                            onDecrement = { if (reps > 1) reps-- },
+                                            onIncrement = { if (reps < 100) reps++ },
+                                            accent = accent
+                                        )
+                                    } else {
+                                        CounterField(
+                                            label = theme.t("SÜRE", "DURATION"),
+                                            value = targetDurationSec,
+                                            step = 300,
+                                            onDecrement = { targetDurationSec = (targetDurationSec - 300).coerceAtLeast(300) },
+                                            onIncrement = { targetDurationSec = (targetDurationSec + 300).coerceAtMost(10800) },
+                                            displayOverride = formatManualDuration(targetDurationSec, theme),
+                                            accent = accent
+                                        )
+                                        if (selectedSpec.metric == ExerciseMetric.DurationDistance) {
+                                            HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                                            CounterField(
+                                                label = theme.t("MESAFE", "DISTANCE"),
+                                                value = targetDistanceM,
+                                                step = 500,
+                                                onDecrement = { targetDistanceM = (targetDistanceM - 500).coerceAtLeast(500) },
+                                                onIncrement = { targetDistanceM = (targetDistanceM + 500).coerceAtMost(50000) },
+                                                displayOverride = formatManualDistance(targetDistanceM),
+                                                accent = accent
+                                            )
+                                        }
+                                    }
                                 }
 
                                 Spacer(Modifier.height(12.dp))
@@ -343,7 +365,9 @@ fun ExercisePickerSheet(
                                             exercise.targetMuscle,
                                             sets,
                                             reps,
-                                            restSeconds
+                                            0,
+                                            targetDurationSec.takeIf { manualTrackingSpec(exercise).metric != ExerciseMetric.Strength },
+                                            targetDistanceM.toFloat().takeIf { manualTrackingSpec(exercise).metric == ExerciseMetric.DurationDistance }
                                         )
                                         configExercise = null
                                     },
@@ -360,7 +384,7 @@ fun ExercisePickerSheet(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        "PROGRAMA EKLE",
+                                        theme.t("PROGRAMA EKLE", "ADD TO PROGRAM"),
                                         fontWeight = FontWeight.Black,
                                         fontSize = 12.sp,
                                         letterSpacing = 0.5.sp
@@ -394,13 +418,13 @@ fun ExercisePickerSheet(
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        "Aradığın hareketi bulamadın mı?",
+                                        theme.t("Aradığın hareketi bulamadın mı?", "Can't find the exercise?"),
                                         color = theme.text0,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 13.sp
                                     )
                                     Text(
-                                        "Eklenmesi için talep gönder",
+                                        theme.t("Eklenmesi için talep gönder", "Request it to be added"),
                                         color = theme.text2,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Light
@@ -436,6 +460,60 @@ fun ExercisePickerSheet(
     }
 }
 
+private fun manualTrackingSpec(exercise: ExerciseItem) =
+    activityTrackingSpec(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault.toString(),
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
+
+private fun defaultManualDurationSeconds(exercise: ExerciseItem): Int {
+    return defaultDurationSecondsForExercise(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
+}
+
+private fun defaultManualDistanceMeters(exercise: ExerciseItem): Int =
+    when {
+        listOf(exercise.name, exercise.nameEn).joinToString(" ").lowercase().let {
+            listOf("farmer", "carry", "sled", "shuttle").any { token -> token in it }
+        } -> 30
+        manualTrackingSpec(exercise).sportType.raw == "swimming" -> 500
+        manualTrackingSpec(exercise).sportType.raw == "walking_hiking" -> 3000
+        manualTrackingSpec(exercise).sportType.raw == "cycling" -> 10000
+        else -> 1000
+    }
+
+private fun defaultManualSummary(
+    exercise: ExerciseItem,
+    spec: com.avonix.profitness.presentation.workout.ActivityTrackingSpec,
+    theme: AppThemeState
+): String =
+    when (spec.metric) {
+        ExerciseMetric.Strength -> "${exercise.setsDefault}×${exercise.repsDefault}"
+        ExerciseMetric.Duration -> formatManualDuration(defaultManualDurationSeconds(exercise), theme)
+        ExerciseMetric.DurationDistance -> formatManualDistance(defaultManualDistanceMeters(exercise))
+    }
+
+private fun formatManualDuration(seconds: Int, theme: AppThemeState): String =
+    "${(seconds / 60).coerceAtLeast(1)} ${theme.t("dk", "min")}"
+
+private fun formatManualDistance(meters: Int): String =
+    if (meters >= 1000) {
+        val km = meters / 1000f
+        if (meters % 1000 == 0) "${km.toInt()} km" else "%.1f km".format(km)
+    } else {
+        "$meters m"
+    }
+
 @Composable
 private fun ExerciseRequestDialog(
     requestLoading: Boolean,
@@ -446,6 +524,7 @@ private fun ExerciseRequestDialog(
     var name   by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf("") }
     var notes  by remember { mutableStateOf("") }
+    val isCompositeName = ExerciseNameRules.isCompositeName(name)
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -456,7 +535,7 @@ private fun ExerciseRequestDialog(
                 .padding(20.dp)
         ) {
             Text(
-                "YENİ HAREKET TALEBİ",
+                theme.t("YENİ HAREKET TALEBİ", "NEW EXERCISE REQUEST"),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -464,7 +543,7 @@ private fun ExerciseRequestDialog(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "İstediğin hareket eklensin",
+                theme.t("İstediğin hareket eklensin", "Request the exercise you need"),
                 color = theme.text2,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light
@@ -472,26 +551,38 @@ private fun ExerciseRequestDialog(
             Spacer(Modifier.height(16.dp))
 
             RequestInputField(
-                label = "Hareket adı *",
+                label = theme.t("Hareket adı *", "Exercise name *"),
                 value = name,
                 onValueChange = { name = it },
                 placeholder = "ör. Cable Fly, Hack Squat",
                 theme = theme
             )
+            if (isCompositeName) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    theme.t(
+                        "Tek talepte yalnızca bir hareket adı kullan. Alternatifleri ayrı ayrı gönder.",
+                        "Use only one exercise name per request. Send alternatives separately."
+                    ),
+                    color = CardCoral,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
             Spacer(Modifier.height(10.dp))
             RequestInputField(
-                label = "Kas grubu",
+                label = theme.t("Kas grubu", "Muscle group"),
                 value = muscle,
                 onValueChange = { muscle = it },
-                placeholder = "ör. Göğüs, Bacak",
+                placeholder = theme.t("ör. Göğüs, Bacak", "e.g. Chest, Legs"),
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
             RequestInputField(
-                label = "Notlar",
+                label = theme.t("Notlar", "Notes"),
                 value = notes,
                 onValueChange = { notes = it },
-                placeholder = "Eklemek istediğin bilgiler...",
+                placeholder = theme.t("Eklemek istediğin bilgiler...", "Any details you want to add..."),
                 theme = theme
             )
             Spacer(Modifier.height(20.dp))
@@ -505,13 +596,13 @@ private fun ExerciseRequestDialog(
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Button(
                     onClick = {
                         if (name.isNotBlank()) onSubmit(name.trim(), muscle.trim(), notes.trim())
                     },
-                    enabled = name.isNotBlank() && !requestLoading,
+                    enabled = name.isNotBlank() && !isCompositeName && !requestLoading,
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
@@ -524,7 +615,7 @@ private fun ExerciseRequestDialog(
                             color = Snow
                         )
                     } else {
-                        Text("Gönder", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                        Text(theme.t("Gönder", "Send"), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
                     }
                 }
             }

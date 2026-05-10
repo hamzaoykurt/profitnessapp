@@ -1,6 +1,7 @@
 package com.avonix.profitness.presentation.program
 
 import android.util.Base64
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -49,7 +51,11 @@ import com.avonix.profitness.data.program.autoTitle
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramType
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
+import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.components.glassCard
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 import kotlinx.coroutines.delay
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -61,6 +67,45 @@ enum class ProgramCategory(val trLabel: String, val color: Color, val icon: Imag
     STRENGTH("GÜÇ",     Amber,      Icons.Rounded.Bolt),
     ENDURANCE("DAYANIKLILIK", CardCyan, Icons.Rounded.DirectionsRun),
     BEGINNER("BAŞLANGIÇ", CardGreen, Icons.Rounded.StarOutline)
+}
+
+enum class ProgramSportFilter(val label: String, val color: Color, val icon: ImageVector) {
+    ALL("TÜM SPORLAR", Snow, Icons.Rounded.GridView),
+    FITNESS("FİTNESS", CardPurple, Icons.Rounded.FitnessCenter),
+    RUNNING("KOŞU", CardCyan, Icons.Rounded.DirectionsRun),
+    CYCLING("BİSİKLET", CardGreen, Icons.Rounded.DirectionsBike),
+    SWIMMING("YÜZME", CardCyan, Icons.Rounded.Pool),
+    ROWING("KÜREK", Amber, Icons.Rounded.Rowing),
+    WALKING("YÜRÜYÜŞ", CardGreen, Icons.Rounded.DirectionsWalk),
+    BOXING("BOKS", CardCoral, Icons.Rounded.SportsMma),
+    YOGA("YOGA", CardPurple, Icons.Rounded.SelfImprovement),
+    FOOTBALL("FUTBOL", CardGreen, Icons.Rounded.SportsSoccer),
+    BASKETBALL("BASKETBOL", Amber, Icons.Rounded.SportsBasketball),
+    TENNIS("TENİS", CardCyan, Icons.Rounded.SportsTennis)
+}
+
+private fun ProgramSportFilter.matches(program: ReadyProgram): Boolean {
+    val token = "${program.title} ${program.goal} ${program.muscleLabels.joinToString(" ")}".uppercase()
+    return when (this) {
+        ProgramSportFilter.ALL -> true
+        ProgramSportFilter.FITNESS -> listOf(
+            "KAS KÜTLESİ",
+            "YAĞ YAKIMI",
+            "GÜÇ",
+            "GENEL FITNESS",
+            "DAYANIKLILIK"
+        ).any { program.goal.uppercase() == it }
+        ProgramSportFilter.RUNNING -> token.contains("KOŞU")
+        ProgramSportFilter.CYCLING -> token.contains("BİSİKLET")
+        ProgramSportFilter.SWIMMING -> token.contains("YÜZME")
+        ProgramSportFilter.ROWING -> token.contains("KÜREK")
+        ProgramSportFilter.WALKING -> token.contains("YÜRÜYÜŞ")
+        ProgramSportFilter.BOXING -> token.contains("BOKS")
+        ProgramSportFilter.YOGA -> token.contains("YOGA") || token.contains("MOBİLİTE")
+        ProgramSportFilter.FOOTBALL -> token.contains("FUTBOL")
+        ProgramSportFilter.BASKETBALL -> token.contains("BASKETBOL")
+        ProgramSportFilter.TENNIS -> token.contains("TENİS")
+    }
 }
 
 /** Returns the localised display label for this category. */
@@ -229,6 +274,116 @@ private val READY_PROGRAMS = listOf(
         listOf("76%", "78%", "65%"),
         listOf(0.76f, 0.78f, 0.65f)
     ),
+    ReadyProgram(
+        "Bisiklet 4 Hafta",
+        "Sürüş + Bacak Kuvveti",
+        ProgramCategory.ENDURANCE, 5, 4, "Başlangıç",
+        "Bisiklet",
+        "Bisikletçi mantığında kurulmuş haftalık yapı: zone 2 sürüş, tırmanış/tempo, uzun sürüş, bacak kuvveti ve core stabilizasyonu. Sadece pedal çevirmek değil, sele üstündeki gücü taşıyacak alt vücut ve posterior chain de çalışır.",
+        "📌 Pzt: Zone 2 Ride + Core\n📌 Sal: Cyclist Strength\n📌 Per: Tempo & Climb Ride\n📌 Cum: Bike Conditioning\n📌 Paz: Long Ride",
+        listOf("BİSİKLET", "ALT VÜCUT", "CORE"),
+        listOf("88%", "78%", "62%"),
+        listOf(0.88f, 0.78f, 0.62f)
+    ),
+    ReadyProgram(
+        "5K Koşu Temeli",
+        "Koşu + Runner Strength",
+        ProgramCategory.ENDURANCE, 4, 6, "Başlangıç",
+        "Koşu",
+        "5K için yalnızca koşu değil; kolay koşu, interval, uzun koşu, tek bacak kuvveti, kalça/hamstring ve calf dayanıklılığı içerir. Koşucuda sakatlık riskini azaltan stabilite işleri de eklenmiştir.",
+        "📌 Pzt: Easy Run + Stability\n📌 Sal: Runner Strength\n📌 Per: Interval Run\n📌 Cmt: Long Run + Mobility",
+        listOf("KOŞU", "ALT VÜCUT", "CORE"),
+        listOf("86%", "64%", "52%"),
+        listOf(0.86f, 0.64f, 0.52f)
+    ),
+    ReadyProgram(
+        "Yüzme Temel",
+        "Yüzme + Omuz/Sırt Dayanıklılığı",
+        ProgramCategory.ENDURANCE, 4, 4, "Başlangıç",
+        "Yüzme",
+        "Havuz mesafesiyle birlikte lat, scapula, omuz stabilitesi ve core çalışır. Teknik yüzme, threshold yüzme, mesafe günü ve kuru kara kuvveti gerçekçi şekilde dengelenir.",
+        "📌 Pzt: Technique Swim + Scapula\n📌 Çar: Swimmer Strength\n📌 Cum: Threshold Swim\n📌 Paz: Distance Swim",
+        listOf("YÜZME", "SIRT/OMUZ", "CORE"),
+        listOf("78%", "64%", "58%"),
+        listOf(0.78f, 0.64f, 0.58f)
+    ),
+    ReadyProgram(
+        "Kürek Erg Temel",
+        "Erg + Total Body Kuvvet",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Kürek",
+        "Kürekçinin ihtiyacı olan bacak itişi, kalça menteşesi, sırt çekişi ve core transferi için erg günlerini deadlift/squat/row kuvvet günüyle birleştirir.",
+        "📌 Pzt: Technique Erg + Core\n📌 Sal: Rowing Strength\n📌 Per: Erg Intervals\n📌 Cmt: Long Erg",
+        listOf("KÜREK", "SIRT", "ALT VÜCUT"),
+        listOf("80%", "70%", "72%"),
+        listOf(0.80f, 0.70f, 0.72f)
+    ),
+    ReadyProgram(
+        "Yürüyüş & Hiking",
+        "Düşük Etki Dayanıklılık",
+        ProgramCategory.ENDURANCE, 4, 4, "Başlangıç",
+        "Yürüyüş",
+        "Uzun yürüyüş ve eğim günlerinin yanına hiking için bacak kuvveti, calf dayanıklılığı, kalça/hamstring ve mobilite ekler. Doğa yürüyüşüne daha gerçekçi hazırlanır.",
+        "📌 Pzt: Easy Walk + Mobility\n📌 Sal: Hiking Strength\n📌 Per: Incline Walk\n📌 Paz: Long Walk",
+        listOf("YÜRÜYÜŞ", "ALT VÜCUT", "MOBİLİTE"),
+        listOf("76%", "58%", "48%"),
+        listOf(0.76f, 0.58f, 0.48f)
+    ),
+    ReadyProgram(
+        "Boks Kondisyon",
+        "Round + Kuvvet + Kondisyon",
+        ProgramCategory.FAT_LOSS, 4, 4, "Orta",
+        "Boks",
+        "Boks için round çalışması, ip atlama, omuz/sırt dayanıklılığı, core rotasyonu ve fight conditioning bloklarını birleştirir. Sadece shadow boxing değil, ring kondisyonuna yakın bir yapı.",
+        "📌 Pzt: Skill Rounds + Rope\n📌 Sal: Boxing Strength\n📌 Per: Fight Conditioning\n📌 Cmt: Mixed Intervals",
+        listOf("BOKS", "HIIT", "CORE"),
+        listOf("78%", "86%", "62%"),
+        listOf(0.78f, 0.86f, 0.62f)
+    ),
+    ReadyProgram(
+        "Yoga Mobilite",
+        "Mobilite + Destek Kuvveti",
+        ProgramCategory.BEGINNER, 4, 4, "Başlangıç",
+        "Mobilite",
+        "Yoga akışlarını core, posterior chain ve kontrollü kuvvet destekleriyle tamamlar. Esneklik/toparlanma hedefini korurken vücudu daha dayanıklı hale getirir.",
+        "📌 Pzt: Flow + Core\n📌 Sal: Posterior Chain Support\n📌 Per: Mobility + Breath\n📌 Paz: Deep Stretch",
+        listOf("YOGA", "MOBİLİTE", "CORE"),
+        listOf("46%", "58%", "68%"),
+        listOf(0.46f, 0.58f, 0.68f)
+    ),
+    ReadyProgram(
+        "Futbol Atletik",
+        "Saha Kondisyonu + Alt Vücut",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Futbol",
+        "Futbol için aerobik taban, alt vücut kuvveti, sprint/interval kondisyonu, core ve patlayıcı güç bloklarını birleştirir. Maç temposuna yakın ama spor salonunda uygulanabilir yapı.",
+        "📌 Pzt: Aerobic Base + Core\n📌 Sal: Lower Strength\n📌 Per: Speed Conditioning\n📌 Cmt: Power + Mobility",
+        listOf("FUTBOL", "ALT VÜCUT", "KONDİSYON"),
+        listOf("82%", "76%", "72%"),
+        listOf(0.82f, 0.76f, 0.72f)
+    ),
+    ReadyProgram(
+        "Basketbol Atletik",
+        "Sıçrama + Court Conditioning",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Basketbol",
+        "Basketbolcu için sıçrama mekaniği, tek bacak kuvveti, calf dayanıklılığı, üst vücut denge çalışması ve kısa aralıklı kondisyon içerir.",
+        "📌 Pzt: Jump Mechanics\n📌 Sal: Strength Base\n📌 Per: Court Conditioning\n📌 Cmt: Unilateral + Core",
+        listOf("BASKETBOL", "PATLAYICI GÜÇ", "CORE"),
+        listOf("74%", "82%", "58%"),
+        listOf(0.74f, 0.82f, 0.58f)
+    ),
+    ReadyProgram(
+        "Tenis Atletik",
+        "Ayak Çalışması + Rotasyon",
+        ProgramCategory.ENDURANCE, 4, 4, "Orta",
+        "Tenis",
+        "Tenis için ayak çalışması kondisyonu, rotasyonel core, omuz/sırt dayanıklılığı ve alt vücut destek kuvvetini birleştirir.",
+        "📌 Pzt: Footwork Conditioning\n📌 Sal: Rotational Strength\n📌 Per: Lower Body Support\n📌 Cmt: Match Conditioning",
+        listOf("TENİS", "ROTASYON", "ALT VÜCUT"),
+        listOf("78%", "64%", "62%"),
+        listOf(0.78f, 0.64f, 0.62f)
+    ),
     // ── BAŞLANGIÇ ────────────────────────────────────────────────────────────
     ReadyProgram(
         "Full Body Başlangıç",
@@ -291,6 +446,17 @@ fun ProgramBuilderScreen(
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
+    BackHandler(
+        enabled = uiState.applyingTemplateKey != null || showPaywall || shareTarget != null || mode !is BuilderMode.Choose
+    ) {
+        when {
+            uiState.applyingTemplateKey != null -> Unit
+            showPaywall       -> showPaywall = false
+            shareTarget != null -> shareTarget = null
+            mode !is BuilderMode.Choose -> mode = BuilderMode.Choose
+        }
+    }
+
     // Tab geçişinde stale ise yenile (3 dk cache)
     LaunchedEffect(Unit) { viewModel.reloadIfStale() }
 
@@ -313,6 +479,7 @@ fun ProgramBuilderScreen(
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
+                    applyingTemplateKey = uiState.applyingTemplateKey,
                     onMode           = { newMode ->
                         // AI Builder → ViewModel'in checkAiAccess'ini çağır;
                         // yetersizse ProgramEvent.ShowPaywall fırlatır.
@@ -424,6 +591,7 @@ private fun ArchitectGrid() {
 private fun BuilderChooseScreen(
     userPrograms   : List<Program>,
     isLoading      : Boolean,
+    applyingTemplateKey: String?,
     onMode         : (BuilderMode) -> Unit,
     onSelectTemplate: (String) -> Unit,
     onSetActive    : (String) -> Unit,
@@ -433,19 +601,37 @@ private fun BuilderChooseScreen(
     timerExtraPad  : androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
+    var activeSport by remember { mutableStateOf(ProgramSportFilter.ALL) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
+    var closeDialogAfterApply by remember { mutableStateOf(false) }
+    val isApplyingTemplate = applyingTemplateKey != null
+
+    LaunchedEffect(applyingTemplateKey) {
+        if (closeDialogAfterApply && applyingTemplateKey == null) {
+            selectedProgram = null
+            closeDialogAfterApply = false
+        }
+    }
 
     selectedProgram?.let { prog ->
         ProgramDetailDialog(
             program   = prog,
-            onDismiss = { selectedProgram = null },
-            onApply   = { onSelectTemplate(prog.title); selectedProgram = null }
+            isApplying = isApplyingTemplate,
+            onDismiss = { if (!isApplyingTemplate) selectedProgram = null },
+            onApply   = {
+                if (!isApplyingTemplate) {
+                    closeDialogAfterApply = true
+                    onSelectTemplate(prog.title)
+                }
+            }
         )
     }
 
-    val filtered = remember(activeCategory) {
-        if (activeCategory == ProgramCategory.ALL) READY_PROGRAMS
-        else READY_PROGRAMS.filter { it.category == activeCategory }
+    val filtered = remember(activeSport, activeCategory) {
+        READY_PROGRAMS.filter { program ->
+            activeSport.matches(program) &&
+                (activeCategory == ProgramCategory.ALL || program.category == activeCategory)
+        }
     }
 
     val sectionStrings = LocalAppTheme.current.strings
@@ -456,31 +642,42 @@ private fun BuilderChooseScreen(
     ) {
         // ── Header ────────────────────────────────────────────────────────────
         item {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, top = 72.dp, end = 24.dp, bottom = 28.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 8.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    "PROGRAM",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 6.sp,
-                    fontWeight = FontWeight.ExtraLight
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "STUDIO",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = LocalAppTheme.current.text0,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(10.dp))
+                Column(modifier = Modifier.widthIn(max = 86.dp)) {
+                    Text(
+                        "PROGRAM",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 2.sp,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraLight,
+                        maxLines = 1
+                    )
+                    Text(
+                        "STUDIO",
+                        color = LocalAppTheme.current.text0,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
+                }
                 Text(
                     LocalAppTheme.current.strings.programStudioSub,
-                    color = LocalAppTheme.current.text1,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Light
+                    color = LocalAppTheme.current.text1.copy(alpha = 0.76f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    modifier = Modifier.widthIn(max = 108.dp)
                 )
             }
         }
@@ -536,6 +733,23 @@ private fun BuilderChooseScreen(
         // ── Ready Programs Header ─────────────────────────────────────────────
         item {
             SectionLabel(sectionStrings.readyPrograms, TextMuted)
+        }
+
+        item {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(ProgramSportFilter.values()) { sport ->
+                    SportFilterChip(
+                        sport = sport,
+                        selected = sport == activeSport,
+                        onClick = { activeSport = sport }
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
         }
 
         // ── Category Tabs ─────────────────────────────────────────────────────
@@ -621,6 +835,43 @@ private fun QuickCreateButton(
 // ── Category Chip ─────────────────────────────────────────────────────────────
 
 @Composable
+private fun SportFilterChip(
+    sport: ProgramSportFilter,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) sport.color else sport.color.copy(alpha = 0.06f)
+    val textColor = if (selected) Surface0 else sport.color
+    val border = if (selected) sport.color else sport.color.copy(alpha = 0.2f)
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(50))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 9.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                sport.icon,
+                null,
+                tint = if (selected) Surface0 else sport.color,
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                sport.label,
+                color = textColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun CategoryChip(
     category: ProgramCategory,
     selected: Boolean,
@@ -676,9 +927,7 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 7.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg1.copy(alpha = 0.9f))
-            .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+            .glassCard(accent, theme, RoundedCornerShape(20.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
         // Left accent bar
@@ -1143,12 +1392,17 @@ private fun SavedProgramTile(
 // ── Program Detail Dialog ─────────────────────────────────────────────────────
 
 @Composable
-private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit, onApply: () -> Unit = onDismiss) {
+private fun ProgramDetailDialog(
+    program: ReadyProgram,
+    isApplying: Boolean,
+    onDismiss: () -> Unit,
+    onApply: () -> Unit = onDismiss
+) {
     val accent  = program.category.color
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { if (!isApplying) onDismiss() }) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1256,18 +1510,71 @@ private fun ProgramDetailDialog(program: ReadyProgram, onDismiss: () -> Unit, on
 
                 Button(
                     onClick = onApply,
+                    enabled = !isApplying,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent,
+                        contentColor = Surface0,
+                        disabledContainerColor = accent.copy(0.72f),
+                        disabledContentColor = Surface0.copy(0.82f)
+                    ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text(
-                        strings.applyProtocol,
-                        color = Surface0,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
-                    )
+                    if (isApplying) {
+                        CircularProgressIndicator(
+                            color = Surface0,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "UYGULANIYOR",
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    } else {
+                        Text(
+                            strings.applyProtocol,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
+
+            if (isApplying) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(theme.bg0.copy(alpha = 0.58f))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = {}
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = accent, modifier = Modifier.size(42.dp), strokeWidth = 3.dp)
+                        Spacer(Modifier.height(14.dp))
+                        Text(
+                            "PROTOKOL UYGULANIYOR",
+                            color = theme.text0,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp,
+                            letterSpacing = 1.5.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Tamamlanana kadar bekleyin",
+                            color = theme.text1,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -1335,7 +1642,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             AiCreditInfoRow(
                 isFree  = uiState.userPlan == UserPlan.FREE,
                 credits = uiState.aiCredits,
-                costLabel = "1 kredi / program",
+                costLabel = "8 kredi / metin · 12 kredi / dosya",
                 theme   = aiTheme,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -1483,7 +1790,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(3.dp))
-                        Text("1 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text("8-12 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(6.dp))
                         Text("Kalan: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
                     }
@@ -1530,7 +1837,9 @@ private data class DraftExercise(
     val targetMuscle: String,
     val sets        : Int,
     val reps        : Int,
-    val restSeconds : Int
+    val restSeconds : Int,
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null
 )
 
 // ── Edit Program Screen ───────────────────────────────────────────────────────
@@ -1546,6 +1855,8 @@ private fun EditProgramScreen(
     val exercises  = uiState.exercises
     val editTheme  = LocalAppTheme.current
     val editStrings = editTheme.strings
+    val editAccent = editTheme.effectiveAccentColor
+    val editOnAccent = editTheme.effectiveOnAccentColor
 
     var programName      by remember { mutableStateOf(program.name) }
     var showPickerForDay by remember { mutableStateOf<Int?>(null) }
@@ -1569,7 +1880,9 @@ private fun EditProgramScreen(
                             targetMuscle = ex.targetMuscle,
                             sets         = ex.sets,
                             reps         = ex.reps,
-                            restSeconds  = ex.restSeconds
+                            restSeconds  = ex.restSeconds,
+                            targetDurationSeconds = ex.targetDurationSeconds,
+                            targetDistanceMeters = ex.targetDistanceMeters
                         )
                     )
                 }
@@ -1585,8 +1898,14 @@ private fun EditProgramScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest ->
-                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(
+                        sets = newSets,
+                        reps = newReps,
+                        restSeconds = newRest,
+                        targetDurationSeconds = targetDuration,
+                        targetDistanceMeters = targetDistance
+                    )
                     editingExercise = null
                 }
             )
@@ -1597,9 +1916,9 @@ private fun EditProgramScreen(
         ExercisePickerSheet(
             exercises = exercises,
             onDismiss = { showPickerForDay = null },
-            onConfirm = { exerciseId, name, muscle, sets, reps, rest ->
+            onConfirm = { exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance ->
                 val day = days[dayIndex]
-                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest))
+                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance))
                 if (day.title.isBlank()) {
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
@@ -1641,66 +1960,98 @@ private fun EditProgramScreen(
                 viewModel.clearAiEditError()
             }
         }) {
+            val modalShape = RoundedCornerShape(26.dp)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .widthIn(max = 520.dp)
+                    .clip(modalShape)
                     .background(editTheme.bg1)
-                    .border(1.dp, editTheme.stroke, RoundedCornerShape(24.dp))
+                    .border(
+                        1.dp,
+                        Brush.linearGradient(
+                            listOf(editAccent.copy(0.65f), editTheme.stroke, editAccent.copy(0.22f))
+                        ),
+                        modalShape
+                    )
             ) {
-                // Gradient header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(listOf(CardPurple.copy(0.35f), CardCyan.copy(0.2f)))
-                        )
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                        .background(editTheme.bg2)
+                        .drawWithCache {
+                            val glow = Brush.radialGradient(
+                                listOf(editAccent.copy(0.20f), Color.Transparent),
+                                center = Offset(size.width, 0f),
+                                radius = size.width * 0.9f
+                            )
+                            onDrawBehind { drawRect(glow) }
+                        }
+                        .padding(horizontal = 18.dp, vertical = 18.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(CardPurple, CardCyan))),
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(editAccent.copy(0.13f))
+                                .border(1.dp, editAccent.copy(0.36f), RoundedCornerShape(14.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
-                                tint     = Snow,
+                                tint     = editAccent,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(Modifier.width(14.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "AI ile Düzenle",
-                                color      = Snow,
-                                fontWeight = FontWeight.Black,
-                                fontSize   = 18.sp
+                                "AI İLE DÜZENLE",
+                                color         = editAccent,
+                                fontWeight    = FontWeight.ExtraBold,
+                                fontSize      = 11.sp,
+                                letterSpacing = 1.8.sp
                             )
                             Text(
                                 "Programı nasıl değiştireyim?",
-                                color    = Snow.copy(0.65f),
-                                fontSize = 12.sp
+                                color      = Snow,
+                                fontWeight = FontWeight.Black,
+                                fontSize   = 19.sp
                             )
+                        }
+                        if (uiState.userPlan == UserPlan.FREE) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(editAccent.copy(0.10f))
+                                    .border(1.dp, editAccent.copy(0.28f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    "${uiState.aiCredits} kredi",
+                                    color = editAccent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
                         }
                     }
                 }
 
-                // İçerik
                 Column(
                     modifier            = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Prompt alanı
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(editTheme.bg0)
-                            .border(1.dp, editTheme.stroke, RoundedCornerShape(14.dp))
+                            .border(1.dp, editAccent.copy(0.34f), RoundedCornerShape(14.dp))
                             .padding(16.dp)
                     ) {
                         BasicTextField(
@@ -1715,10 +2066,10 @@ private fun EditProgramScreen(
                             decorationBox = { inner ->
                                 if (aiPrompt.isEmpty()) {
                                     Text(
-                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, dinlenme süresini azalt...",
-                                        color      = editTheme.text2,
+                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
+                                        color      = editTheme.text2.copy(0.82f),
                                         fontSize   = 14.sp,
-                                        lineHeight = 20.sp
+                                        lineHeight = 21.sp
                                     )
                                 }
                                 inner()
@@ -1726,16 +2077,31 @@ private fun EditProgramScreen(
                         )
                     }
 
-                    // Hata
                     if (uiState.aiEditError != null) {
-                        Text(
-                            uiState.aiEditError!!,
-                            color    = MaterialTheme.colorScheme.error,
-                            fontSize = 13.sp
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.error.copy(0.10f))
+                                .border(1.dp, MaterialTheme.colorScheme.error.copy(0.22f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.ErrorOutline,
+                                null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                uiState.aiEditError!!,
+                                color    = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
 
-                    // Butonlar
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1748,7 +2114,8 @@ private fun EditProgramScreen(
                             enabled  = !uiState.aiEditLoading,
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
-                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke)
+                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke),
+                            colors   = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent)
                         ) {
                             Text("İptal", color = editTheme.text1, fontWeight = FontWeight.Medium)
                         }
@@ -1764,7 +2131,9 @@ private fun EditProgramScreen(
                                                 sets        = ex.sets,
                                                 reps        = ex.reps,
                                                 restSeconds = ex.restSeconds,
-                                                orderIndex  = ei
+                                                orderIndex  = ei,
+                                                targetDurationSeconds = ex.targetDurationSeconds,
+                                                targetDistanceMeters = ex.targetDistanceMeters
                                             )
                                         }
                                     )
@@ -1779,30 +2148,35 @@ private fun EditProgramScreen(
                             enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
-                            colors   = ButtonDefaults.buttonColors(containerColor = CardPurple)
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = editAccent,
+                                contentColor = editOnAccent,
+                                disabledContainerColor = editTheme.bg3,
+                                disabledContentColor = editTheme.text2
+                            )
                         ) {
                             if (uiState.aiEditLoading) {
                                 CircularProgressIndicator(
-                                    color       = Snow,
+                                    color       = editOnAccent,
                                     modifier    = Modifier.size(18.dp),
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Uygula", color = Snow, fontWeight = FontWeight.Bold)
+                                Text("Uygula", fontWeight = FontWeight.Black)
                                 if (uiState.userPlan == UserPlan.FREE) {
                                     Spacer(Modifier.width(8.dp))
                                     Row(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(20.dp))
-                                            .background(Snow.copy(alpha = 0.20f))
+                                            .background(editOnAccent.copy(alpha = 0.14f))
                                             .padding(horizontal = 6.dp, vertical = 2.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Rounded.Bolt, null, tint = Snow, modifier = Modifier.size(9.dp))
+                                        Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(9.dp))
                                         Spacer(Modifier.width(2.dp))
-                                        Text("1 kredi", color = Snow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        Text("6 kredi", color = editOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1817,9 +2191,25 @@ private fun EditProgramScreen(
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(editTheme.bg0)
+            .drawWithCache {
+                val accentBloom = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to editAccent.copy(alpha = 0.12f),
+                        0.42f to editAccent.copy(alpha = 0.045f),
+                        1.0f to Color.Transparent
+                    ),
+                    center = Offset(size.width, 0f),
+                    radius = size.width * 1.45f
+                )
+                onDrawBehind { drawRect(accentBloom) }
+            }
+    ) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp + timerExtraPad)) {
-            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack)
+            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack, accent = editAccent)
 
             // Program adı
             Box(
@@ -1827,31 +2217,43 @@ private fun EditProgramScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(editTheme.bg1)
-                    .border(1.dp, editTheme.stroke, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                    .background(editTheme.bg1.copy(alpha = 0.92f))
+                    .border(1.dp, editAccent.copy(0.26f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                androidx.compose.foundation.text.BasicTextField(
-                    value       = programName,
-                    onValueChange = { programName = it },
-                    textStyle   = MaterialTheme.typography.titleMedium.copy(
-                        color      = editTheme.text0,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    singleLine  = true,
-                    modifier    = Modifier.fillMaxWidth(),
-                    decorationBox = { inner ->
-                        if (programName.isEmpty()) {
-                            Text(
-                                "Program adı...",
-                                color      = editTheme.text2,
-                                fontWeight = FontWeight.Light,
-                                fontSize   = 16.sp
-                            )
-                        }
-                        inner()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(editAccent.copy(0.10f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.EditNote, null, tint = editAccent, modifier = Modifier.size(18.dp))
                     }
-                )
+                    Spacer(Modifier.width(12.dp))
+                    androidx.compose.foundation.text.BasicTextField(
+                        value       = programName,
+                        onValueChange = { programName = it },
+                        textStyle   = MaterialTheme.typography.titleMedium.copy(
+                            color      = editTheme.text0,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        singleLine  = true,
+                        modifier    = Modifier.weight(1f),
+                        decorationBox = { inner ->
+                            if (programName.isEmpty()) {
+                                Text(
+                                    "Program adı...",
+                                    color      = editTheme.text2,
+                                    fontWeight = FontWeight.Light,
+                                    fontSize   = 16.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
             }
 
             // Günler listesi
@@ -1876,11 +2278,11 @@ private fun EditProgramScreen(
                             onClick  = { days.add(MutableManualDay()) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Rounded.Add, null, tint = CardCyan, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Add, null, tint = editAccent, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 "+ YENİ GÜN  (${days.size}/7)",
-                                color      = CardCyan,
+                                color      = editAccent,
                                 fontWeight = FontWeight.Bold,
                                 fontSize   = 13.sp
                             )
@@ -1918,11 +2320,13 @@ private fun EditProgramScreen(
                     shape           = RoundedCornerShape(16.dp),
                     contentPadding  = PaddingValues(horizontal = 16.dp),
                     colors          = ButtonDefaults.outlinedButtonColors(
-                        containerColor = CardPurple.copy(0.18f)
+                        containerColor = editAccent.copy(0.10f),
+                        contentColor = editAccent,
+                        disabledContentColor = editTheme.text2
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        Brush.linearGradient(listOf(CardPurple, CardCyan))
+                        Brush.linearGradient(listOf(editAccent.copy(0.85f), editAccent.copy(0.28f)))
                     )
                 ) {
                     Column(
@@ -1932,12 +2336,12 @@ private fun EditProgramScreen(
                         Icon(
                             Icons.Rounded.AutoAwesome,
                             contentDescription = null,
-                            tint     = CardPurple,
+                            tint     = editAccent,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             "AI",
-                            color         = Snow,
+                            color         = editAccent,
                             fontWeight    = FontWeight.Black,
                             fontSize      = 11.sp,
                             letterSpacing = 1.sp
@@ -1958,7 +2362,9 @@ private fun EditProgramScreen(
                                         sets        = ex.sets,
                                         reps        = ex.reps,
                                         restSeconds = ex.restSeconds,
-                                        orderIndex  = ei
+                                        orderIndex  = ei,
+                                        targetDurationSeconds = ex.targetDurationSeconds,
+                                        targetDistanceMeters = ex.targetDistanceMeters
                                     )
                                 }
                             )
@@ -1970,16 +2376,21 @@ private fun EditProgramScreen(
                         )
                     },
                     modifier = Modifier.weight(1f).height(64.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = editAccent,
+                        contentColor = editOnAccent,
+                        disabledContainerColor = editTheme.bg3,
+                        disabledContentColor = editTheme.text2
+                    ),
                     shape    = RoundedCornerShape(16.dp),
                     enabled  = !isLoading && !uiState.aiEditLoading
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                        CircularProgressIndicator(color = editOnAccent, modifier = Modifier.size(22.dp))
                     } else {
                         Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("KAYDET", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text("KAYDET", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                 }
             }
@@ -2002,6 +2413,8 @@ private fun ManualBuilderScreen(
     val exercises   = uiState.exercises
     val manTheme    = LocalAppTheme.current
     val manStrings  = manTheme.strings
+    val manAccent   = manTheme.effectiveAccentColor
+    val manOnAccent = manTheme.effectiveOnAccentColor
 
     var programName       by remember { mutableStateOf("") }
     val days              = remember { mutableStateListOf<MutableManualDay>().also { it.add(MutableManualDay()) } }
@@ -2014,8 +2427,14 @@ private fun ManualBuilderScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest ->
-                    days[dayIdx].exercises[exIdx] = ex.copy(sets = newSets, reps = newReps, restSeconds = newRest)
+                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                    days[dayIdx].exercises[exIdx] = ex.copy(
+                        sets = newSets,
+                        reps = newReps,
+                        restSeconds = newRest,
+                        targetDurationSeconds = targetDuration,
+                        targetDistanceMeters = targetDistance
+                    )
                     editingExercise = null
                 }
             )
@@ -2027,9 +2446,9 @@ private fun ManualBuilderScreen(
         ExercisePickerSheet(
             exercises = exercises,
             onDismiss = { showPickerForDay = null },
-            onConfirm = { exerciseId, name, muscle, sets, reps, rest ->
+            onConfirm = { exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance ->
                 val day = days[dayIndex]
-                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest))
+                day.exercises.add(DraftExercise(exerciseId, name, muscle, sets, reps, rest, targetDuration, targetDistance))
                 if (day.title.isBlank()) {
                     day.title = autoTitle(day.exercises.map { it.targetMuscle })
                 }
@@ -2046,7 +2465,7 @@ private fun ManualBuilderScreen(
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + timerExtraPad)) {
-        DetailHeader(title = "Manuel", sub = manStrings.manualBuilderSub, onBack = onBack)
+        DetailHeader(title = manTheme.t("Manuel", "Manual"), sub = manStrings.manualBuilderSub, onBack = onBack, accent = manAccent)
 
         // ── Program name input ────────────────────────────────────────────────
         Box(
@@ -2070,7 +2489,7 @@ private fun ManualBuilderScreen(
                 decorationBox = { inner ->
                     if (programName.isEmpty()) {
                         Text(
-                            "Program adı...",
+                            manTheme.t("Program adı...", "Program name..."),
                             color = manTheme.text2,
                             fontWeight = FontWeight.Light,
                             fontSize = 16.sp
@@ -2104,11 +2523,11 @@ private fun ManualBuilderScreen(
                         onClick = { days.add(MutableManualDay()) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Rounded.Add, null, tint = CardCyan, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Add, null, tint = manAccent, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "+ YENİ GÜN  (${days.size}/7)",
-                            color = CardCyan,
+                            manTheme.t("+ YENİ GÜN", "+ NEW DAY") + "  (${days.size}/7)",
+                            color = manAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -2131,7 +2550,9 @@ private fun ManualBuilderScreen(
                                 sets        = ex.sets,
                                 reps        = ex.reps,
                                 restSeconds = ex.restSeconds,
-                                orderIndex  = ei
+                                orderIndex  = ei,
+                                targetDurationSeconds = ex.targetDurationSeconds,
+                                targetDistanceMeters = ex.targetDistanceMeters
                             )
                         }
                     )
@@ -2145,14 +2566,19 @@ private fun ManualBuilderScreen(
                 .fillMaxWidth()
                 .height(64.dp)
                 .padding(horizontal = 24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = manAccent,
+                contentColor = manOnAccent,
+                disabledContainerColor = manTheme.bg3,
+                disabledContentColor = manTheme.text2
+            ),
             shape = RoundedCornerShape(16.dp),
             enabled = !isLoading
         ) {
             if (isLoading) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                CircularProgressIndicator(color = manOnAccent, modifier = Modifier.size(22.dp))
             } else {
-                Text(manStrings.saveProtocol, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+                Text(manStrings.saveProtocol, color = manOnAccent, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -2170,14 +2596,12 @@ private fun ManualDayCard(
     onEditExercise  : (Int) -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
-    val accent = if (day.isRestDay) Mist else CardCyan
+    val accent = if (day.isRestDay) Mist else theme.effectiveAccentColor
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1.copy(0.9f))
-            .border(1.dp, if (day.isRestDay) theme.stroke else accent.copy(0.3f), RoundedCornerShape(16.dp))
+            .glassCard(accent, theme, RoundedCornerShape(18.dp))
     ) {
         // Day header row
         Row(
@@ -2215,8 +2639,8 @@ private fun ManualDayCard(
                 decorationBox = { inner ->
                     if (day.title.isEmpty()) {
                         Text(
-                            if (day.isRestDay) "DİNLENME GÜNÜ"
-                            else "GÜN $dayNumber",
+                            if (day.isRestDay) theme.t("DİNLENME GÜNÜ", "REST DAY")
+                            else theme.t("GÜN $dayNumber", "DAY $dayNumber"),
                             color = theme.text2,
                             fontWeight = FontWeight.Light,
                             fontSize = 14.sp
@@ -2235,7 +2659,7 @@ private fun ManualDayCard(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    "Dinlenme",
+                    theme.t("Dinlenme", "Rest"),
                     color = if (day.isRestDay) accent else theme.text2,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
@@ -2274,7 +2698,12 @@ private fun ManualDayCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(theme.bg2)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(accent.copy(0.10f), theme.bg2.copy(0.82f))
+                                    )
+                                )
+                                .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
                                 .clickable { onEditExercise(i) }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -2290,32 +2719,20 @@ private fun ManualDayCard(
                                 Text(ex.name, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Spacer(Modifier.height(4.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    // Set badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(accent.copy(0.15f))
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.sets} SET", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    // Rep badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(accent.copy(0.10f))
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.reps} TEK", color = accent.copy(0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    // Rest badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(theme.stroke)
-                                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("${ex.restSeconds}s", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                    manualDraftBadges(ex, theme).forEachIndexed { badgeIndex, badge ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(accent.copy(if (badgeIndex == 0) 0.15f else 0.10f))
+                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                badge,
+                                                color = accent.copy(if (badgeIndex == 0) 1f else 0.8f),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -2355,7 +2772,7 @@ private fun ManualDayCard(
                 Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Hareket Ekle",
+                    theme.t("Hareket Ekle", "Add Exercise"),
                     color = accent,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
@@ -2369,17 +2786,75 @@ private fun ManualDayCard(
 
 // ── Exercise Edit Dialog ──────────────────────────────────────────────────────
 
+private fun manualDraftBadges(exercise: DraftExercise, theme: AppThemeState): List<String> {
+    val spec = draftTrackingSpec(exercise)
+    return when (spec.metric) {
+        ExerciseMetric.Strength -> listOf("${exercise.sets} SET", "${exercise.reps} ${theme.t("TEK", "REP")}")
+        ExerciseMetric.Duration -> listOf(formatDraftDuration(defaultDraftDurationSeconds(exercise), theme))
+        ExerciseMetric.DurationDistance -> listOf(
+            formatDraftDuration(defaultDraftDurationSeconds(exercise), theme),
+            formatDraftDistance(defaultDraftDistanceMeters(exercise).toFloat())
+        )
+    }
+}
+
+private fun draftTrackingSpec(exercise: DraftExercise) =
+    activityTrackingSpec(
+        category = exercise.targetMuscle,
+        name = exercise.name,
+        target = exercise.targetMuscle,
+        reps = if (exercise.targetDurationSeconds != null) "${exercise.targetDurationSeconds / 60} dk" else exercise.reps.toString(),
+        trackingModeRaw = when {
+            exercise.targetDistanceMeters != null -> "duration_distance"
+            exercise.targetDurationSeconds != null -> "duration"
+            else -> null
+        }
+    )
+
+private fun defaultDraftDurationSeconds(exercise: DraftExercise): Int =
+    exercise.targetDurationSeconds
+        ?: defaultDurationSecondsForExercise(
+            category = exercise.targetMuscle,
+            name = exercise.name,
+            target = exercise.targetMuscle,
+            reps = exercise.reps
+        )
+
+private fun defaultDraftDistanceMeters(exercise: DraftExercise): Int =
+    exercise.targetDistanceMeters?.toInt()
+        ?: when {
+            listOf("farmer", "carry", "sled", "shuttle").any { it in exercise.name.lowercase() } -> 30
+            draftTrackingSpec(exercise).sportType.raw == "swimming" -> 500
+            draftTrackingSpec(exercise).sportType.raw == "walking_hiking" -> 3000
+            draftTrackingSpec(exercise).sportType.raw == "cycling" -> 10000
+            else -> 1000
+        }
+
+private fun formatDraftDuration(seconds: Int, theme: AppThemeState): String =
+    "${(seconds / 60).coerceAtLeast(1)} ${theme.t("DK", "MIN")}"
+
+private fun formatDraftDistance(meters: Float): String =
+    if (meters >= 1000f) {
+        val km = meters / 1000f
+        if (meters % 1000f == 0f) "${km.toInt()} KM" else "%.1f KM".format(km)
+    } else {
+        "${meters.toInt()} M"
+    }
+
 @Composable
 private fun ExerciseEditDialog(
     exercise : DraftExercise,
     onDismiss: () -> Unit,
-    onConfirm: (sets: Int, reps: Int, restSeconds: Int) -> Unit
+    onConfirm: (sets: Int, reps: Int, restSeconds: Int, targetDurationSeconds: Int?, targetDistanceMeters: Float?) -> Unit
 ) {
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
-    var rest by remember { mutableIntStateOf(exercise.restSeconds) }
+    var targetDurationSec by remember(exercise) { mutableIntStateOf(defaultDraftDurationSeconds(exercise)) }
+    var targetDistanceM by remember(exercise) { mutableIntStateOf(defaultDraftDistanceMeters(exercise)) }
+    val spec = remember(exercise) { draftTrackingSpec(exercise) }
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
+    val onAccent = theme.effectiveOnAccentColor
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -2405,7 +2880,7 @@ private fun ExerciseEditDialog(
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        "HAREKETI DÜZENLE",
+                        theme.t("HAREKETİ DÜZENLE", "EDIT EXERCISE"),
                         color         = accent,
                         fontSize      = 9.sp,
                         fontWeight    = FontWeight.ExtraBold,
@@ -2429,30 +2904,43 @@ private fun ExerciseEditDialog(
                     .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp)
             ) {
-                EditCounterField(
-                    label       = "SET",
-                    value       = sets,
-                    onDecrement = { if (sets > 1) sets-- },
-                    onIncrement = { if (sets < 10) sets++ },
-                    accent      = accent
-                )
-                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                EditCounterField(
-                    label       = "TEKRAR",
-                    value       = reps,
-                    onDecrement = { if (reps > 1) reps-- },
-                    onIncrement = { if (reps < 100) reps++ },
-                    accent      = accent
-                )
-                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-                EditCounterField(
-                    label           = "DİNLENME",
-                    value           = rest,
-                    onDecrement     = { if (rest > 15) rest -= 15 },
-                    onIncrement     = { if (rest < 300) rest += 15 },
-                    accent          = accent,
-                    displayOverride = "${rest}s"
-                )
+                if (spec.metric == ExerciseMetric.Strength) {
+                    EditCounterField(
+                        label       = "SET",
+                        value       = sets,
+                        onDecrement = { if (sets > 1) sets-- },
+                        onIncrement = { if (sets < 10) sets++ },
+                        accent      = accent
+                    )
+                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                    EditCounterField(
+                        label       = theme.t("TEKRAR", "REPS"),
+                        value       = reps,
+                        onDecrement = { if (reps > 1) reps-- },
+                        onIncrement = { if (reps < 100) reps++ },
+                        accent      = accent
+                    )
+                } else {
+                    EditCounterField(
+                        label       = theme.t("SÜRE", "DURATION"),
+                        value       = targetDurationSec,
+                        onDecrement = { targetDurationSec = (targetDurationSec - 300).coerceAtLeast(300) },
+                        onIncrement = { targetDurationSec = (targetDurationSec + 300).coerceAtMost(10800) },
+                        accent      = accent,
+                        displayOverride = formatDraftDuration(targetDurationSec, theme)
+                    )
+                    if (spec.metric == ExerciseMetric.DurationDistance) {
+                        HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                        EditCounterField(
+                            label       = theme.t("MESAFE", "DISTANCE"),
+                            value       = targetDistanceM,
+                            onDecrement = { targetDistanceM = (targetDistanceM - 500).coerceAtLeast(500) },
+                            onIncrement = { targetDistanceM = (targetDistanceM + 500).coerceAtMost(50000) },
+                            accent      = accent,
+                            displayOverride = formatDraftDistance(targetDistanceM.toFloat())
+                        )
+                    }
+                }
             }
 
             // Action buttons
@@ -2466,17 +2954,25 @@ private fun ExerciseEditDialog(
                     shape    = RoundedCornerShape(14.dp),
                     border   = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text1, fontWeight = FontWeight.Medium)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text1, fontWeight = FontWeight.Medium)
                 }
                 Button(
-                    onClick  = { onConfirm(sets, reps, rest) },
+                    onClick  = {
+                        onConfirm(
+                            sets,
+                            reps,
+                            exercise.restSeconds,
+                            targetDurationSec.takeIf { spec.metric != ExerciseMetric.Strength },
+                            targetDistanceM.toFloat().takeIf { spec.metric == ExerciseMetric.DurationDistance }
+                        )
+                    },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent),
+                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
                     shape    = RoundedCornerShape(14.dp)
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Kaydet", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                    Text(theme.t("Kaydet", "Save"), color = onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2544,20 +3040,43 @@ private fun EditCounterField(
 // ── Detail Header ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun DetailHeader(title: String, sub: String, onBack: () -> Unit) {
+private fun DetailHeader(
+    title : String,
+    sub   : String,
+    onBack: () -> Unit,
+    accent: Color = MaterialTheme.colorScheme.primary
+) {
     val theme = LocalAppTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, top = 48.dp, end = 12.dp),
+            .statusBarsPadding()
+            .padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Rounded.ArrowBack, null, tint = theme.text1)
-        }
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = 2.sp)
-            Text(title, style = MaterialTheme.typography.displayMedium, color = theme.text0, fontWeight = FontWeight.Black)
+        AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = accent,
+                letterSpacing = 2.sp,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                title,
+                color = theme.text0,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }

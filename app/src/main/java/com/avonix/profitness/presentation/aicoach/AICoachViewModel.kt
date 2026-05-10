@@ -3,6 +3,8 @@ package com.avonix.profitness.presentation.aicoach
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.AICoachPrefsManager
 import com.avonix.profitness.data.ai.ChatSession
@@ -20,7 +22,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -116,6 +120,12 @@ class AICoachViewModel @Inject constructor(
 
     fun openPreferences() { updateState { it.copy(showOnboarding = true) } }
 
+    fun closePreferencesIfCompleted() {
+        if (currentPrefs.onboardingCompleted) {
+            updateState { it.copy(showOnboarding = false) }
+        }
+    }
+
     // ── Welcome ───────────────────────────────────────────────────────────────
 
     fun initWelcome(welcomeText: String) {
@@ -129,52 +139,91 @@ class AICoachViewModel @Inject constructor(
 
     fun sendMessage(userText: String) {
         if (userText.isBlank() || uiState.value.isLoading) return
+        val userMessage = ChatMessage(
+            id     = System.currentTimeMillis().toString(),
+            text   = userText,
+            isUser = true
+        )
+
+        updateState {
+            it.copy(
+                messages  = it.messages + userMessage,
+                isLoading = true
+            )
+        }
+        persistCurrentSession()   // Kullanıcı mesajı UI ve geçmişe AI çağrısını beklemeden düşsün
 
         viewModelScope.launch {
-            // Kredi kontrolü — FREE plan + 0 kredi → paywall, devam etme
-            if (!planRepository.consumeCredit()) {
-                sendEvent(AICoachEvent.ShowPaywall)
-                return@launch
-            }
+            var creditReserved = false
+            runCatching {
+                // Kredi kontrolü — FREE plan + 0 kredi → paywall, devam etme
+                if (!planRepository.consumeCredit()) {
+                    updateState {
+                        it.copy(
+                            messages  = it.messages.filterNot { msg -> msg.id == userMessage.id },
+                            isLoading = false
+                        )
+                    }
+                    sendEvent(AICoachEvent.ShowPaywall)
+                    return@launch
+                }
+                creditReserved = true
 
-            val userMessage = ChatMessage(
-                id     = System.currentTimeMillis().toString(),
-                text   = userText,
-                isUser = true
-            )
-            updateState { it.copy(messages = it.messages + userMessage, isLoading = true) }
-            persistCurrentSession()   // Kullanıcı mesajı hemen kaydet — uygulama kapansa bile kaybolmaz
-            val systemPrompt = buildSystemPrompt()
-            val result = geminiRepository.chat(
-                history      = conversationHistory.toList(),
-                userMessage  = userText,
-                systemPrompt = systemPrompt
-            )
-
-            result.fold(
-                onSuccess = { responseText ->
-                    conversationHistory.add("user"  to userText)
-                    conversationHistory.add("model" to responseText)
-
-                    val oracleMessage = ChatMessage(
-                        id     = (System.currentTimeMillis() + 1).toString(),
-                        text   = responseText,
-                        isUser = false
-                    )
-                    updateState { it.copy(messages = it.messages + oracleMessage, isLoading = false) }
-                    persistCurrentSession()   // AI yanıtından sonra tekrar kaydet
+                val systemPrompt = buildSystemPrompt()
+                geminiRepository.chat(
+                    history      = conversationHistory.toList(),
+                    userMessage  = userText,
+                    systemPrompt = systemPrompt
+                )
+            }.fold(
+                onSuccess = { result ->
+                    handleChatResult(result, userText)
                 },
-                onFailure = {
-                    planRepository.refundCredit()
-                    val errorMessage = ChatMessage(
-                        id     = (System.currentTimeMillis() + 1).toString(),
-                        text   = "Bağlantı hatası. Lütfen tekrar dene.",
-                        isUser = false
-                    )
-                    updateState { it.copy(messages = it.messages + errorMessage, isLoading = false) }
+                onFailure = { error ->
+                    if (creditReserved) runCatching { planRepository.refundCredit() }
+                    showChatError(error)
                 }
             )
         }
+    }
+
+    private suspend fun handleChatResult(result: Result<String>, userText: String) {
+        result.fold(
+            onSuccess = { responseText ->
+                viewModelScope.launch { planRepository.refresh() }
+                conversationHistory.add("user"  to userText)
+                conversationHistory.add("model" to responseText)
+
+                val oracleMessage = ChatMessage(
+                    id     = (System.currentTimeMillis() + 1).toString(),
+                    text   = responseText,
+                    isUser = false
+                )
+                updateState { it.copy(messages = it.messages + oracleMessage, isLoading = false) }
+                persistCurrentSession()   // AI yanıtından sonra tekrar kaydet
+            },
+            onFailure = { error ->
+                if (error is AiAccessException) {
+                    updateState { state -> state.copy(isLoading = false) }
+                    sendEvent(AICoachEvent.ShowPaywall)
+                    return
+                }
+                runCatching { planRepository.refundCredit() }
+                showChatError(error)
+            }
+        )
+    }
+
+    private fun showChatError(error: Throwable) {
+        val message = error.message
+            ?.takeIf { it.isNotBlank() && it.length <= 140 }
+            ?: "Bağlantı hatası. Lütfen tekrar dene."
+        val errorMessage = ChatMessage(
+            id     = (System.currentTimeMillis() + 1).toString(),
+            text   = message,
+            isUser = false
+        )
+        updateState { it.copy(messages = it.messages + errorMessage, isLoading = false) }
     }
 
     // ── Sohbet Geçmişi ────────────────────────────────────────────────────────
@@ -278,11 +327,17 @@ $exerciseList
             val result = geminiRepository.chat(
                 history      = emptyList(),
                 userMessage  = structurePrompt,
-                systemPrompt = "Sen bir JSON formatter'sın. Sadece geçerli JSON çıktısı ver, başka hiçbir şey yazma, açıklama ekleme."
+                systemPrompt = "Sen bir JSON formatter'sın. Sadece geçerli JSON çıktısı ver, başka hiçbir şey yazma, açıklama ekleme.",
+                tool         = AiToolType.ORACLE_TO_PROGRAM
             )
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                if (result.exceptionOrNull() is AiAccessException) {
+                    updateState { it.copy(programStatus = ProgramStatus.Idle) }
+                    sendEvent(AICoachEvent.ShowPaywall)
+                    return@launch
+                }
                 updateState { it.copy(programStatus = ProgramStatus.Error("Yapay zeka yanıt vermedi")) }
                 return@launch
             }
@@ -417,7 +472,7 @@ $exerciseList
             createdAt = state.sessionCreatedAt,
             updatedAt = System.currentTimeMillis()
         )
-        sessionManager.save(session)
+        runCatching { sessionManager.save(session) }
     }
 
     // ── Sistem Promptu ────────────────────────────────────────────────────────
@@ -468,44 +523,48 @@ $profileContext
     }
 
     private suspend fun buildProfileContext(): String {
-        val user = supabase.auth.currentUserOrNull() ?: return ""
-        val programPart = buildProgramContext(user.id)
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val user = supabase.auth.currentUserOrNull() ?: return@runCatching ""
+                val programPart = buildProgramContext(user.id)
 
-        // Profil bilgilerini çek
-        val profileDto = runCatching {
-            supabase.postgrest["profiles"]
-                .select { filter { eq("user_id", user.id) } }
-                .decodeSingleOrNull<com.avonix.profitness.data.profile.dto.ProfileDto>()
-        }.getOrNull()
+                // Profil bilgilerini çek
+                val profileDto = runCatching {
+                    supabase.postgrest["profiles"]
+                        .select { filter { eq("user_id", user.id) } }
+                        .decodeSingleOrNull<com.avonix.profitness.data.profile.dto.ProfileDto>()
+                }.getOrNull()
 
-        val sb = StringBuilder()
-        sb.append("\nKULLANICI PROFİLİ:")
+                val sb = StringBuilder()
+                sb.append("\nKULLANICI PROFİLİ:")
 
-        profileDto?.display_name?.takeIf { it.isNotBlank() }?.let { sb.append("\nİsim: $it") }
-        profileDto?.gender?.takeIf { it.isNotBlank() }?.let { sb.append("\nCinsiyet: $it") }
+                profileDto?.display_name?.takeIf { it.isNotBlank() }?.let { sb.append("\nİsim: $it") }
+                profileDto?.gender?.takeIf { it.isNotBlank() }?.let { sb.append("\nCinsiyet: $it") }
 
-        val h = profileDto?.height_cm ?: 0.0
-        val w = profileDto?.weight_kg ?: 0.0
-        if (h > 0) sb.append("\nBoy: ${h.toInt()} cm")
-        if (w > 0) sb.append("\nKilo: ${w.toInt()} kg")
-        if (h > 0 && w > 0) {
-            val bmi = w / ((h / 100) * (h / 100))
-            val bmiLabel = when {
-                bmi < 18.5 -> "Zayıf"
-                bmi < 25.0 -> "Normal kilolu"
-                bmi < 30.0 -> "Fazla kilolu"
-                else       -> "Obez"
-            }
-            sb.append("\nBMI: %.1f (%s)".format(bmi, bmiLabel))
+                val h = profileDto?.height_cm ?: 0.0
+                val w = profileDto?.weight_kg ?: 0.0
+                if (h > 0) sb.append("\nBoy: ${h.toInt()} cm")
+                if (w > 0) sb.append("\nKilo: ${w.toInt()} kg")
+                if (h > 0 && w > 0) {
+                    val bmi = w / ((h / 100) * (h / 100))
+                    val bmiLabel = when {
+                        bmi < 18.5 -> "Zayıf"
+                        bmi < 25.0 -> "Normal kilolu"
+                        bmi < 30.0 -> "Fazla kilolu"
+                        else       -> "Obez"
+                    }
+                    sb.append("\nBMI: %.1f (%s)".format(bmi, bmiLabel))
+                }
+                profileDto?.fitness_goal?.takeIf { it.isNotBlank() }?.let {
+                    sb.append("\nFitness Hedefi: $it")
+                    sb.append("\nNOT: Kullanıcının fitness hedefini göz önünde bulundurarak öneride bulun.")
+                }
+
+                if (programPart.isNotEmpty()) sb.append(programPart)
+
+                sb.toString()
+            }.getOrDefault("")
         }
-        profileDto?.fitness_goal?.takeIf { it.isNotBlank() }?.let {
-            sb.append("\nFitness Hedefi: $it")
-            sb.append("\nNOT: Kullanıcının fitness hedefini göz önünde bulundurarak öneride bulun.")
-        }
-
-        if (programPart.isNotEmpty()) sb.append(programPart)
-
-        return sb.toString()
     }
 
     /** JSON'dan int al — "8-12" gibi string aralığı da ilk sayıya çevirir */

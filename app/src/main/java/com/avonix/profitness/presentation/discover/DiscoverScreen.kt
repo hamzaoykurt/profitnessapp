@@ -70,11 +70,12 @@ import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.presentation.components.AppToast
 import com.avonix.profitness.presentation.components.AppToastData
 import com.avonix.profitness.presentation.components.AppToastType
+import com.avonix.profitness.presentation.components.glassCard
 
 enum class DiscoverTab { Programs, Friends, Challenges }
 
-/** Programlar sekmesi altındaki iç sekme: Topluluk akışı vs. Benim paylaşımlarım. */
-private enum class ProgramsSubTab { Community, Mine }
+/** Programlar sekmesi altındaki iç sekme: Topluluk, kaydedilenler, benim paylaşımlarım. */
+private enum class ProgramsSubTab { Community, Saved, Mine }
 
 @Composable
 fun DiscoverScreen(
@@ -135,7 +136,6 @@ fun DiscoverScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = timerExtraPad)
         ) {
             DiscoverHeader(
                 isTrending = state.sort == DiscoverSort.TRENDING,
@@ -158,6 +158,7 @@ fun DiscoverScreen(
                     DiscoverTab.Programs -> Column(Modifier.fillMaxSize()) {
                         ProgramsSubTabBar(
                             selected = programsSub,
+                            savedCount = state.savedItems.size,
                             mineCount = state.myShared.size,
                             onSelect = { programsSub = it }
                         )
@@ -178,6 +179,17 @@ fun DiscoverScreen(
                                      onApply         = viewModel::applyProgram,
                                      onLoadMore      = viewModel::loadMore,
                                      onRefresh       = viewModel::refresh
+                                )
+                                ProgramsSubTab.Saved -> SavedProgramsList(
+                                    state           = state,
+                                    myProgramIds    = myProgramIds,
+                                    myProgramHashes = myProgramHashes,
+                                    bottomPadding   = bottomPadding,
+                                    onLike          = viewModel::toggleLike,
+                                    onSave          = viewModel::toggleSave,
+                                    onApply         = viewModel::applyProgram,
+                                    onLoadMore      = viewModel::loadMoreSaved,
+                                    onRefresh       = viewModel::refresh
                                 )
                                 ProgramsSubTab.Mine -> MySharedProgramsList(
                                     items           = state.myShared,
@@ -251,14 +263,19 @@ private fun DiscoverHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .widthIn(max = 92.dp)
+        ) {
             Text(
                 text       = "KEŞFET",
                 color      = theme.text0,
-                fontSize   = 26.sp,
+                fontSize   = 22.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
@@ -266,7 +283,8 @@ private fun DiscoverHeader(
             Text(
                 text     = "Topluluk programları & challenge'lar",
                 color    = theme.text2.copy(alpha = 0.7f),
-                fontSize = 12.sp
+                fontSize = 9.sp,
+                maxLines = 1
             )
         }
         // Sort toggle
@@ -352,6 +370,7 @@ private fun DiscoverTabPill(
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier = modifier
+            .height(58.dp)
             .clip(shape)
             .background(
                 if (selected) Brush.linearGradient(listOf(accent.copy(0.22f), accent.copy(0.10f)))
@@ -467,6 +486,82 @@ private fun ProgramsList(
 }
 
 @Composable
+private fun SavedProgramsList(
+    state           : DiscoverProgramsState,
+    myProgramIds    : Set<String>,
+    myProgramHashes : Set<String>,
+    bottomPadding   : Dp,
+    onLike          : (String) -> Unit,
+    onSave          : (String) -> Unit,
+    onApply         : (String) -> Unit,
+    onLoadMore      : () -> Unit,
+    onRefresh       : () -> Unit
+) {
+    val listState = rememberLazyListState()
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val total = layoutInfo.totalItemsCount
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            total > 0 && lastVisible >= total - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMore, state.savedCanLoadMore) {
+        if (shouldLoadMore && state.savedCanLoadMore && !state.savedLoading) onLoadMore()
+    }
+
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when {
+            state.savedItems.isEmpty() && state.savedLoading -> LoadingState()
+            state.savedItems.isEmpty() && state.savedError != null -> ErrorState(state.savedError, onRefresh)
+            state.savedItems.isEmpty() -> EmptySavedState()
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 20.dp, end = 20.dp,
+                        top = 12.dp, bottom = bottomPadding + 80.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(state.savedItems, key = { it.id }) { program ->
+                        val isAppliedByHash =
+                            program.contentHash != null && program.contentHash in myProgramHashes
+                        val appliedLocalProgramId = state.appliedProgramMap[program.id]
+                        val isAppliedFallback = appliedLocalProgramId != null &&
+                            appliedLocalProgramId !in state.localDeletingProgramIds &&
+                            myProgramIds.contains(appliedLocalProgramId)
+                        val isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback
+                        SharedProgramCard(
+                            program    = program,
+                            isApplying = program.id in state.applyingProgramIds,
+                            isApplied  = isApplied,
+                            onLike     = { onLike(program.id) },
+                            onSave     = { onSave(program.id) },
+                            onApply    = { onApply(program.id) }
+                        )
+                    }
+                    if (state.savedLoading && state.savedItems.isNotEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) { CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SharedProgramCard(
     program   : SharedProgram,
     isApplying: Boolean,
@@ -482,9 +577,8 @@ private fun SharedProgramCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.55f), theme.bg1.copy(0.55f))))
-            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .heightIn(min = 184.dp)
+            .glassCard(accent, theme, shape)
             .padding(16.dp)
     ) {
         // Author row
@@ -513,14 +607,14 @@ private fun SharedProgramCard(
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         // Title + description
         Text(
             text       = program.title,
             color      = theme.text0,
-            fontSize   = 18.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize   = 19.sp,
+            fontWeight = FontWeight.Black,
             maxLines   = 2
         )
         if (!program.description.isNullOrBlank()) {
@@ -604,7 +698,16 @@ private fun ActionChip(
 ) {
     val theme = LocalAppTheme.current
     Row(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) activeColor.copy(0.14f) else theme.bg2.copy(0.55f))
+            .border(
+                1.dp,
+                if (active) activeColor.copy(0.26f) else theme.stroke.copy(0.35f),
+                RoundedCornerShape(999.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -641,6 +744,7 @@ private fun ApplyButton(
     val textColor = if (applied) accent else Color.Black
     Row(
         modifier = Modifier
+            .heightIn(min = 44.dp)
             .clip(shape)
             .background(background)
             .border(
@@ -752,6 +856,26 @@ private fun EmptyFeedState() {
 }
 
 @Composable
+private fun EmptySavedState() {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Henüz kaydedilmiş program yok",
+            color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Toplulukta beğendiğin programların yer imine dokununca burada görünür.",
+            color = theme.text2.copy(0.7f),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
 private fun ChallengesPlaceholder(bottomPadding: Dp) {
     val theme = LocalAppTheme.current
     Column(
@@ -807,21 +931,27 @@ private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 private fun ProgramsSubTabBar(
     selected: ProgramsSubTab,
+    savedCount: Int,
     mineCount: Int,
     onSelect: (ProgramsSubTab) -> Unit
 ) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SubTabChip(
             label = "TOPLULUK",
             selected = selected == ProgramsSubTab.Community,
             onClick = { onSelect(ProgramsSubTab.Community) },
+            modifier = Modifier.weight(1f)
+        )
+        SubTabChip(
+            label = if (savedCount > 0) "KAYDEDİLENLER · $savedCount" else "KAYDEDİLENLER",
+            selected = selected == ProgramsSubTab.Saved,
+            onClick = { onSelect(ProgramsSubTab.Saved) },
             modifier = Modifier.weight(1f)
         )
         SubTabChip(
@@ -845,19 +975,22 @@ private fun SubTabChip(
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = modifier
+            .height(40.dp)
             .clip(shape)
             .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.4f))
             .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.3f), shape)
             .clickable { onClick() }
-            .padding(vertical = 9.dp),
+            .padding(horizontal = 4.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
             color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = 11.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.8.sp
+            letterSpacing = 0.2.sp,
+            maxLines = 1,
+            textAlign = TextAlign.Center
         )
     }
 }

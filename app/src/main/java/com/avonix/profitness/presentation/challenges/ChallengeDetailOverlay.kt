@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
@@ -49,6 +48,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,15 +63,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -86,6 +90,7 @@ import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.challenges.ChallengeEventInfo
+import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.challenges.ChallengeLeaderboardEntry
 import com.avonix.profitness.domain.challenges.ChallengeMovement
@@ -95,6 +100,7 @@ import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
+import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
@@ -120,6 +126,8 @@ fun ChallengeDetailOverlay(
     LaunchedEffect(challengeId) { vm.load(challengeId) }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
+            showDeleteConfirm = false
+            vm.consumeDeleted()
             onChanged()
             onBack()
         }
@@ -134,6 +142,7 @@ fun ChallengeDetailOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
     Box(Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
         LazyColumn(
@@ -149,21 +158,7 @@ fun ChallengeDetailOverlay(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg1)
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.ArrowBackIosNew, null,
-                            tint = theme.text0,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Spacer(Modifier.width(12.dp))
                     Text(
                         if (state.detail?.summary?.kind == ChallengeKind.Event) strings.eventLabel else strings.challengeLabel,
@@ -297,7 +292,7 @@ fun ChallengeDetailOverlay(
                                 .clickable(enabled = !state.inFlight) {
                                     when {
                                         c.isJoined -> { vm.leave(); onChanged() }
-                                        c.visibility == ChallengeVisibility.Private -> {
+                                        c.visibility == ChallengeVisibility.Private && !c.isInvited -> {
                                             showJoinPasswordDialog = true
                                         }
                                         else -> { vm.join(null); onChanged() }
@@ -403,10 +398,15 @@ fun ChallengeDetailOverlay(
                         }
                     }
 
-                    // ── Leaderboard header ──────────────────────────
+                    val participantRows = detail.visibleParticipantRows(
+                        currentUserId = state.currentUserId,
+                        isOwner = state.isOwner
+                    )
+
+                    // ── Participants header ─────────────────────────
                     item {
                         Text(
-                            "SIRALAMA",
+                            "KATILIMCILAR",
                             color      = theme.text0,
                             fontSize   = 12.sp,
                             fontWeight = FontWeight.Black,
@@ -415,7 +415,7 @@ fun ChallengeDetailOverlay(
                         )
                     }
 
-                    if (detail.leaderboard.isEmpty()) {
+                    if (participantRows.isEmpty()) {
                         item {
                             Box(
                                 Modifier.fillMaxWidth().padding(20.dp),
@@ -430,7 +430,7 @@ fun ChallengeDetailOverlay(
                         }
                     } else {
                         itemsIndexed(
-                            detail.leaderboard.sortedByDescending { it.progress },
+                            participantRows,
                             key = { _, e -> "lb_${e.userId}" }
                         ) { index, entry ->
                             LeaderboardEntryRow(rank = index + 1, entry = entry, unit = c.targetType.unit)
@@ -479,7 +479,6 @@ fun ChallengeDetailOverlay(
                 onCancel = { showDeleteConfirm = false },
                 onConfirm = {
                     vm.deleteChallenge()
-                    onChanged()
                 }
             )
         }
@@ -514,6 +513,23 @@ fun ChallengeDetailOverlay(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun EdgeToEdgeDialogBars() {
+    val theme = LocalAppTheme.current
+    val view = LocalView.current
+
+    SideEffect {
+        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
+        window.statusBarColor = Color.Transparent.toArgb()
+        window.navigationBarColor = Color.Transparent.toArgb()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, view).run {
+            isAppearanceLightStatusBars = !theme.isDark
+            isAppearanceLightNavigationBars = !theme.isDark
+        }
     }
 }
 
@@ -900,6 +916,7 @@ private fun LocationRow(
             .clip(RoundedCornerShape(12.dp))
             .background(theme.bg2.copy(0.5f))
             .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
+            .then(if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1068,17 +1085,7 @@ private fun MovementRow(
                 fontWeight = FontWeight.Bold,
                 textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
             )
-            val sub = buildString {
-                movement.suggestedSets?.let { append("${it} set") }
-                movement.suggestedReps?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("${it} tekrar")
-                }
-                movement.suggestedDurSec?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("${it}s")
-                }
-            }
+            val sub = movementSpecLabel(movement)
             if (sub.isNotEmpty()) {
                 Text(sub, color = theme.text2, fontSize = 11.sp)
             }
@@ -1089,6 +1096,51 @@ private fun MovementRow(
 // ═══════════════════════════════════════════════════════════════════════════
 //  Leaderboard row / hero / stat chip (unchanged)
 // ═══════════════════════════════════════════════════════════════════════════
+
+private fun ChallengeDetail.visibleParticipantRows(
+    currentUserId: String?,
+    isOwner: Boolean
+): List<ChallengeLeaderboardEntry> {
+    if (leaderboard.isNotEmpty()) {
+        return leaderboard.sortedWith(
+            compareByDescending<ChallengeLeaderboardEntry> { it.progress }
+                .thenBy { it.displayName.lowercase() }
+        )
+    }
+
+    val creatorIsMe = currentUserId != null && currentUserId == summary.creatorId
+    val fallback = buildList {
+        if (summary.creatorId.isNotBlank() && (isOwner || creatorIsMe)) {
+            add(
+                ChallengeLeaderboardEntry(
+                    userId = summary.creatorId,
+                    displayName = summary.creatorName.ifBlank { "Anonim" },
+                    avatarUrl = summary.creatorAvatar,
+                    progress = if (creatorIsMe) summary.myProgress else 0L,
+                    isMe = creatorIsMe,
+                    isCompleted = creatorIsMe && summary.isCompleted
+                )
+            )
+        }
+        if (summary.isJoined && currentUserId != null && currentUserId != summary.creatorId) {
+            add(
+                ChallengeLeaderboardEntry(
+                    userId = currentUserId,
+                    displayName = "Sen",
+                    avatarUrl = null,
+                    progress = summary.myProgress,
+                    isMe = true,
+                    isCompleted = summary.isCompleted
+                )
+            )
+        }
+    }
+
+    return fallback.sortedWith(
+        compareByDescending<ChallengeLeaderboardEntry> { it.progress }
+            .thenBy { it.displayName.lowercase() }
+    )
+}
 
 @Composable
 private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry, unit: String = "") {
@@ -1801,6 +1853,7 @@ private fun EditMetricChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
         Box(Modifier.fillMaxSize().background(theme.bg0)) {
             PageAccentBloom()
             LazyColumn(
@@ -1815,17 +1868,7 @@ private fun EditMetricChallengeOverlay(
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg1)
-                                .border(1.dp, theme.stroke, CircleShape)
-                                .clickable(onClick = onClose),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
-                        }
+                        AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             "CHALLENGE'I DÜZENLE",
@@ -1985,6 +2028,22 @@ private fun metricTargetIcon(type: ChallengeTargetType): ImageVector = when (typ
     ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
 }
 
+private fun movementSpecLabel(movement: ChallengeMovement): String = buildString {
+    val hasStrength = movement.suggestedSets != null || movement.suggestedReps != null
+    if (hasStrength) {
+        movement.suggestedSets?.let { append("${it} set") }
+        movement.suggestedReps?.let {
+            if (isNotEmpty()) append(" · ")
+            append("${it} tekrar")
+        }
+        return@buildString
+    }
+    movement.suggestedDurSec?.let { append(formatMovementDuration(it)) }
+}
+
+private fun formatMovementDuration(seconds: Int): String =
+    if (seconds >= 60) "${(seconds / 60).coerceAtLeast(1)} dk" else "${seconds}s"
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  EDIT EVENT CHALLENGE OVERLAY (owner only — minimal field set)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2020,6 +2079,7 @@ private fun EditEventChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        EdgeToEdgeDialogBars()
         Box(Modifier.fillMaxSize().background(theme.bg0)) {
             PageAccentBloom()
             LazyColumn(
@@ -2034,17 +2094,7 @@ private fun EditEventChallengeOverlay(
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg1)
-                                .border(1.dp, theme.stroke, CircleShape)
-                                .clickable(onClick = onClose),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.ArrowBackIosNew, null, tint = theme.text0, modifier = Modifier.size(14.dp))
-                        }
+                        AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             "ETKİNLİĞİ DÜZENLE",
@@ -2251,10 +2301,18 @@ private fun coordinateQuery(lat: Double?, lng: Double?): String? =
     if (lat != null && lng != null) "$lat,$lng" else null
 
 private fun openInMaps(ctx: android.content.Context, uri: Uri) {
-    val mapsIntent = Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.maps")
+    fun Intent.readyFor(ctx: android.content.Context): Intent = apply {
+        if (ctx !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val mapsIntent = Intent(Intent.ACTION_VIEW, uri)
+        .setPackage("com.google.android.apps.maps")
+        .readyFor(ctx)
+    val fallbackIntent = Intent(Intent.ACTION_VIEW, uri).readyFor(ctx)
+
     runCatching {
         ctx.startActivity(mapsIntent)
     }.recoverCatching {
-        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        ctx.startActivity(fallbackIntent)
     }
 }

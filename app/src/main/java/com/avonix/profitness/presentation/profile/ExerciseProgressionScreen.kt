@@ -39,6 +39,10 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
+import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.data.ai.AiAccessException
+import com.avonix.profitness.data.ai.AiAnalysisPrompts
+import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.local.dao.ExerciseProgressSummary
 import com.avonix.profitness.data.local.entity.SetCompletionEntity
@@ -91,6 +95,7 @@ class ExerciseProgressionViewModel @Inject constructor(
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
+            workoutRepository.syncFromRemote(userId)
             val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
             updateState { it.copy(summaries = summaries, isLoading = false) }
         }
@@ -106,30 +111,52 @@ class ExerciseProgressionViewModel @Inject constructor(
         }
     }
 
-    fun analyzeProgression(exerciseId: String, exerciseName: String) {
+    fun analyzeProgression(exerciseId: String, exerciseName: String, targetMuscle: String) {
         if (uiState.value.aiLoadingSet.contains(exerciseId)) return
+        updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
+
         viewModelScope.launch {
+            val userId = supabase.auth.currentSessionOrNull()?.user?.id
+            val history = uiState.value.historyMap[exerciseId]
+                ?: userId?.let {
+                    workoutRepository.getExerciseWeightHistory(it, exerciseId, weeks = 12)
+                        .getOrElse { emptyList() }
+                }
+                ?: emptyList()
+
+            val prompt = AiAnalysisPrompts.exerciseProgression(
+                exerciseName = exerciseName,
+                targetMuscle = targetMuscle,
+                history = history
+            )
+            if (prompt == null) {
+                updateState {
+                    it.copy(
+                        aiInsightMap = it.aiInsightMap + (exerciseId to "Bu egzersiz için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. En az 1-2 seansı kaydettikten sonra daha net yorum yapabilirim."),
+                        aiLoadingSet = it.aiLoadingSet - exerciseId
+                    )
+                }
+                return@launch
+            }
+
             if (!planRepository.consumeCredit()) {
+                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
                 sendEvent(ExerciseProgressionEvent.ShowPaywall)
                 return@launch
             }
-            updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
-            val history = uiState.value.historyMap[exerciseId] ?: emptyList()
-            val summary = buildString {
-                val grouped = history.groupBy { it.date }
-                    .entries.sortedBy { it.key }.takeLast(8)
-                grouped.forEach { (date, sets) ->
-                    val maxKg = sets.mapNotNull { it.weightKg }.maxOrNull() ?: return@forEach
-                    appendLine("$date: max ${maxKg}kg")
-                }
-            }
-            if (summary.isBlank()) {
+
+            val result = geminiRepository.chat(
+                emptyList(),
+                prompt.userMessage,
+                prompt.systemPrompt,
+                AiToolType.EXERCISE_PROGRESS_ANALYSIS
+            )
+            if (result.exceptionOrNull() is AiAccessException) {
                 updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
+                sendEvent(ExerciseProgressionEvent.ShowPaywall)
                 return@launch
             }
-            val systemPrompt = "Sen bir fitness koçusun. Kısa, motive edici ve net Türkçe tavsiye ver."
-            val userMessage = "$exerciseName egzersizi için ağırlık geçmişim:\n$summary\nGelişimimi değerlendir, öneri ver. 3-4 cümle yeterli."
-            val result = geminiRepository.chat(emptyList(), userMessage, systemPrompt)
+            planRepository.refresh()
             val insight = result.getOrElse { planRepository.refundCredit(); "Analiz yapılamadı." }
             updateState {
                 it.copy(
@@ -184,26 +211,16 @@ fun ExerciseProgressionScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, CircleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.ArrowBack, null, tint = accent, modifier = Modifier.size(18.dp))
-            }
+            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(
-                    "ANTRENMAN GELİŞİMİ",
+                    "PERFORMANS ÖLÇÜTLERİ",
                     color = accent, fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp
                 )
                 Text(
-                    "Egzersiz bazlı ağırlık takibi",
+                    "Ağırlık, süre ve mesafe takibi",
                     color = theme.text2, fontSize = 12.sp
                 )
             }
@@ -223,11 +240,11 @@ fun ExerciseProgressionScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("💪", fontSize = 48.sp)
                         Text(
-                            "Henüz ağırlık kaydı yok",
+                            "Henüz performans kaydı yok",
                             color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Antrenman sırasında set başına\nağırlık girerek gelişimini takip et",
+                            "Antrenman sırasında ağırlık, süre\nveya mesafe girerek gelişimini takip et",
                             color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center
                         )
                     }
@@ -243,7 +260,7 @@ fun ExerciseProgressionScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = "1 kredi / egzersiz analizi",
+                            costLabel = "3 kredi / egzersiz analizi",
                             theme     = theme
                         )
                     }
@@ -258,7 +275,7 @@ fun ExerciseProgressionScreen(
                             isFree       = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             aiCredits    = state.aiCredits,
                             onExpand     = { viewModel.loadHistory(summary.exerciseId) },
-                            onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name) }
+                            onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle) }
                         )
                     }
                 }
@@ -284,6 +301,9 @@ private fun ExerciseProgressionCard(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val chartData  = remember(history) { buildChartData(history) }
+    val hasWeight = summary.maxWeight > 0f || summary.totalVolume > 0f
+    val hasDuration = summary.totalDurationSeconds > 0
+    val hasDistance = summary.totalDistanceMeters > 0f
 
     Column(
         modifier = Modifier
@@ -336,11 +356,19 @@ private fun ExerciseProgressionCard(
                     color = theme.text2, fontSize = 11.sp
                 )
                 Spacer(Modifier.height(4.dp))
-                // MAX / AVG / LAST — her zaman görünür özet
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    StatChip(label = "MAX ${"%.1f".format(summary.maxWeight)}kg", color = accent)
-                    StatChip(label = "AVG ${"%.1f".format(summary.avgWeight)}kg", color = theme.text1)
-                    StatChip(label = "SON ${"%.1f".format(summary.lastWeight)}kg", color = theme.text2)
+                    if (hasWeight) {
+                        StatChip(label = "MAX ${"%.1f".format(summary.maxWeight)}kg", color = accent)
+                    }
+                    if (hasDistance) {
+                        StatChip(label = formatDistance(summary.totalDistanceMeters), color = CardCyan)
+                    }
+                    if (hasDuration) {
+                        StatChip(label = formatDuration(summary.totalDurationSeconds), color = CardGreen)
+                    }
+                    if (!hasWeight && !hasDistance && !hasDuration) {
+                        StatChip(label = "${summary.sessionCount} seans", color = theme.text2)
+                    }
                 }
             }
 
@@ -366,19 +394,19 @@ private fun ExerciseProgressionCard(
                 Spacer(Modifier.height(12.dp))
 
                 // ── İlerleme Grafiği ──────────────────────────────────────────
-                if (chartData.size >= 2) {
+                if (hasWeight && chartData.size >= 2) {
                     ProgressionChartSection(chartData = chartData, accent = accent, theme = theme)
                     Spacer(Modifier.height(12.dp))
-                } else if (history.isEmpty()) {
+                } else if (hasWeight && history.isEmpty()) {
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = accent, strokeWidth = 2.dp)
                     }
-                } else {
+                } else if (hasWeight) {
                     Text(
-                        "Grafik için en az 2 farklı günden veri gerekli",
+                        "Ağırlık grafiği için en az 2 farklı günden veri gerekli",
                         color = theme.text2, fontSize = 11.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -413,20 +441,22 @@ private fun StatsGrid(
     accent  : Color,
     theme   : AppThemeState
 ) {
-    val stats = listOf(
-        Triple("TOPLAM HACİM", "${"%.0f".format(summary.totalVolume)} kg", accent),
-        Triple("TOPLAM TEKRAR", "${summary.totalReps}", theme.text1),
-        Triple("TOPLAM SET", "${summary.totalSets}", theme.text1),
-        Triple("SEANS", "${summary.sessionCount}", theme.text1)
-    )
+    val stats = buildList {
+        if (summary.totalVolume > 0f) add(Triple("TOPLAM HACİM", "${"%.0f".format(summary.totalVolume)} kg", accent))
+        if (summary.totalDistanceMeters > 0f) add(Triple("TOPLAM MESAFE", formatDistance(summary.totalDistanceMeters), CardCyan))
+        if (summary.totalDurationSeconds > 0) add(Triple("TOPLAM SÜRE", formatDuration(summary.totalDurationSeconds), CardGreen))
+        if (summary.totalReps > 0) add(Triple("TOPLAM TEKRAR", "${summary.totalReps}", theme.text1))
+        if (summary.totalSets > 0) add(Triple("KAYIT", "${summary.totalSets}", theme.text1))
+        add(Triple("SEANS", "${summary.sessionCount}", theme.text1))
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatsTile(stats[0], Modifier.weight(1f), theme)
-            StatsTile(stats[1], Modifier.weight(1f), theme)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatsTile(stats[2], Modifier.weight(1f), theme)
-            StatsTile(stats[3], Modifier.weight(1f), theme)
+        stats.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { stat ->
+                    StatsTile(stat, Modifier.weight(1f), theme)
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
         }
         if (!summary.lastDate.isNullOrBlank()) {
             Text(
@@ -476,6 +506,14 @@ private fun LastSessionBreakdown(
     val weightSum = lastSets.mapNotNull { it.weightKg }.sum()
     val weightCnt = lastSets.count { it.weightKg != null }
     val avgWeight = if (weightCnt > 0) weightSum / weightCnt else 0f
+    val durationSeconds = lastSets.sumOf { it.durationSeconds ?: 0 }
+    val distanceMeters = lastSets.mapNotNull { it.distanceMeters }.sum()
+    val sessionSummary = when {
+        weightCnt > 0 -> "ORT ${"%.1f".format(avgWeight)}kg"
+        distanceMeters > 0f -> formatDistance(distanceMeters)
+        durationSeconds > 0 -> formatDuration(durationSeconds)
+        else -> ""
+    }
 
     Column(
         modifier = Modifier
@@ -486,14 +524,21 @@ private fun LastSessionBreakdown(
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(13.dp))
+            Icon(
+                if (weightCnt > 0) Icons.Rounded.FitnessCenter else Icons.Rounded.Timer,
+                null,
+                tint = accent,
+                modifier = Modifier.size(13.dp)
+            )
             Spacer(Modifier.width(6.dp))
             Text("SON ANTRENMAN", color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
             Spacer(Modifier.weight(1f))
-            Text(
-                text = "ORT ${"%.1f".format(avgWeight)}kg",
-                color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold
-            )
+            if (sessionSummary.isNotBlank()) {
+                Text(
+                    text = sessionSummary,
+                    color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
 
@@ -518,12 +563,21 @@ private fun LastSessionBreakdown(
                 }
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = set.weightKg?.let { "${"%.1f".format(it)} kg" } ?: "—",
+                    text = set.weightKg?.let { "${"%.1f".format(it)} kg" }
+                        ?: set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it) }
+                        ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it) }
+                        ?: "—",
                     color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = set.repsActual?.let { "× $it tekrar" } ?: "taslak",
+                    text = when {
+                        set.weightKg != null -> set.repsActual?.let { "× $it tekrar" } ?: "taslak"
+                        set.distanceMeters != null && set.durationSeconds != null -> set.durationSeconds?.let { formatDuration(it) } ?: "süre"
+                        set.durationSeconds != null -> "süre"
+                        set.distanceMeters != null -> "mesafe"
+                        else -> "taslak"
+                    },
                     color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium
                 )
                 if (set.weightKg != null && set.repsActual != null) {
@@ -689,7 +743,7 @@ private fun AiInsightCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("1 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
                     Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
                 }
@@ -701,7 +755,7 @@ private fun AiInsightCard(
                         .size(26.dp)
                         .clip(CircleShape)
                         .background(theme.bg3)
-                        .clickable(onClick = onRefresh),
+                        .clickable(enabled = !isLoading, onClick = onRefresh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(13.dp))
@@ -723,7 +777,7 @@ private fun AiInsightCard(
                 "AI koçtan gelişim analizi al →",
                 color = theme.text2, fontSize = 11.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
-                    .clickable(onClick = onRefresh).padding(8.dp)
+                    .clickable(enabled = !isLoading, onClick = onRefresh).padding(8.dp)
             )
             else -> Text(insight, color = theme.text1, fontSize = 11.sp, lineHeight = 17.sp)
         }
@@ -745,3 +799,19 @@ private fun StatChip(label: String, color: Color) {
         Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
+
+private fun formatDuration(totalSeconds: Int): String {
+    val minutes = (totalSeconds / 60).coerceAtLeast(0)
+    val hours = minutes / 60
+    val mins = minutes % 60
+    return when {
+        totalSeconds <= 0 -> "0 dk"
+        hours > 0 && mins > 0 -> "${hours}sa ${mins}dk"
+        hours > 0 -> "${hours}sa"
+        minutes > 0 -> "${minutes} dk"
+        else -> "${totalSeconds}s"
+    }
+}
+
+private fun formatDistance(meters: Float): String =
+    if (meters >= 1000f) "${"%.1f".format(meters / 1000f)} km" else "${meters.toInt()} m"

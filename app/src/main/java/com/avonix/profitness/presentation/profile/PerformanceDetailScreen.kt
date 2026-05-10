@@ -26,10 +26,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.presentation.components.glassCard
 
 @Composable
 fun PerformanceDetailScreen(
     onBack   : () -> Unit,
+    onNavigateToWeightTracking      : () -> Unit = {},
+    onNavigateToExerciseProgression : () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
@@ -52,22 +56,7 @@ fun PerformanceDetailScreen(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg1)
-                            .border(1.dp, theme.stroke, CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.ArrowBackIos,
-                            null,
-                            tint     = theme.text0,
-                            modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                        )
-                    }
+                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column {
                         Text(
                             "PERFORMANS",
@@ -105,6 +94,35 @@ fun PerformanceDetailScreen(
                 }
             }
 
+            item {
+                Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
+                    Text(
+                        "PERFORMANS KAYITLARI",
+                        style         = MaterialTheme.typography.labelSmall,
+                        color         = accent,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    PerformanceShortcutCard(
+                        title = "Vücut Kilosu",
+                        subtitle = "Kilo trendi ve AI analiz",
+                        icon = Icons.Rounded.ShowChart,
+                        accent = accent,
+                        theme = theme,
+                        onClick = onNavigateToWeightTracking
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    PerformanceShortcutCard(
+                        title = "Hareket Performansı",
+                        subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+                        icon = Icons.Rounded.TrendingUp,
+                        accent = accent,
+                        theme = theme,
+                        onClick = onNavigateToExerciseProgression
+                    )
+                }
+            }
+
             // ── Hedef İlerleme ────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
@@ -124,6 +142,43 @@ fun PerformanceDetailScreen(
     }
 }
 
+@Composable
+private fun PerformanceShortcutCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accent: Color,
+    theme: AppThemeState,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(accent.copy(0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = theme.text2, fontSize = 11.sp)
+        }
+        Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent.copy(0.65f), modifier = Modifier.size(14.dp))
+    }
+}
+
 // ── Haftalık Antrenman Bar Chart (Gerçek Veri) ────────────────────────────────
 
 @Composable
@@ -140,9 +195,7 @@ private fun WorkoutBarChart(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(22.dp))
+            .glassCard(accent, theme, RoundedCornerShape(22.dp))
             .padding(20.dp)
     ) {
         Column {
@@ -152,7 +205,7 @@ private fun WorkoutBarChart(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("HAFTALIK ANTRENMANlar", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("HAFTALIK ANTRENMANLAR", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text("Son 13 hafta", color = theme.text2, fontSize = 10.sp)
                 }
                 Box(
@@ -229,6 +282,12 @@ private fun RealMetricsGrid(
     val metrics = listOfNotNull(
         RealMetric(state.totalWorkouts.toString(),  "antrenman", "TOPLAM ANTRENMAN",  Icons.Rounded.FitnessCenter, accent),
         RealMetric(state.totalExercises.toString(), "kez",       "TOPLAM EGZERSİZ",   Icons.Rounded.Timer,         CardCyan),
+        state.totalDurationSeconds.takeIf { it > 0 }?.let {
+            RealMetric((it / 60).coerceAtLeast(1).toString(), "dk", "TOPLAM SÜRE", Icons.Rounded.Timer, CardGreen)
+        },
+        state.totalDistanceMeters.takeIf { it > 0f }?.let {
+            RealMetric(formatDetailDistanceValue(it), formatDetailDistanceUnit(it), "TOPLAM MESAFE", Icons.Rounded.Straighten, Color(0xFF64D2FF))
+        },
         RealMetric(state.currentStreak.toString(), "gün",        "AKTİF SERİ",         Icons.Rounded.Whatshot,      CardCoral),
         RealMetric(state.longestStreak.toString(), "gün",        "EN UZUN SERİ",       Icons.Rounded.EmojiEvents,   CardGreen),
         RealMetric(state.level.toString(),         "seviye",     "MEVCUT SEVİYE",      Icons.Rounded.Star,          Color(0xFFFFD700)),
@@ -247,12 +306,20 @@ private fun RealMetricsGrid(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .heightIn(min = 128.dp)
                             .clip(RoundedCornerShape(18.dp))
-                            .background(theme.bg1)
-                            .border(1.dp, m.color.copy(0.2f), RoundedCornerShape(18.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(m.color.copy(0.10f), theme.bg1.copy(0.92f))
+                                )
+                            )
+                            .border(1.dp, m.color.copy(0.28f), RoundedCornerShape(18.dp))
                             .padding(16.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Box(
                                 Modifier
                                     .size(34.dp)
@@ -278,6 +345,12 @@ private fun RealMetricsGrid(
         }
     }
 }
+
+private fun formatDetailDistanceValue(meters: Float): String =
+    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
+
+private fun formatDetailDistanceUnit(meters: Float): String =
+    if (meters >= 1000f) "km" else "m"
 
 // ── Gerçek Hedef İlerlemesi ───────────────────────────────────────────────────
 
@@ -335,4 +408,3 @@ private fun RealGoalProgressList(
         }
     }
 }
-

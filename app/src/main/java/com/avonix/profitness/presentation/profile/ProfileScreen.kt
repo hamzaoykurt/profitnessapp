@@ -93,14 +93,14 @@ fun ProfileScreen(
                     level            = state.level,
                     xp               = state.xp,
                     xpPerLevel       = state.xpPerLevel,
-                    fitnessGoal      = state.fitnessGoal,
                     userPlan         = state.userPlan,
                     aiCredits        = state.aiCredits,
                     accent           = accent,
                     theme            = theme,
                     onSettingsClick  = { showAppearance = true },
-                    onEditAvatar     = onEditProfile,
-                    onNavigateToStore = onNavigateToStore
+                    onNavigateToStore = onNavigateToStore,
+                    onOpenXpRanking   = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
+                    onOpenRankRanking = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -112,7 +112,18 @@ fun ProfileScreen(
                     longestStreak      = state.longestStreak,
                     totalWorkouts      = state.totalWorkouts,
                     totalExercises     = state.totalExercises,
+                    totalDurationSeconds = state.totalDurationSeconds,
+                    totalDistanceMeters  = state.totalDistanceMeters,
                     onNavigateToDetail = onNavigateToPerformance
+                )
+            }
+            item {
+                PerformanceShortcutsSection(
+                    accent    = accent,
+                    theme     = theme,
+                    weightKg  = state.weightKg,
+                    onWeightClick = onNavigateToWeightTracking,
+                    onExerciseClick = onNavigateToExerciseProgression
                 )
             }
             item {
@@ -126,34 +137,11 @@ fun ProfileScreen(
                 )
             }
             item {
-                WeightTrackingCard(
-                    accent    = accent,
-                    theme     = theme,
-                    weightKg  = state.weightKg,
-                    onClick   = onNavigateToWeightTracking
-                )
-            }
-            item {
-                ExerciseProgressionCard(
-                    accent  = accent,
-                    theme   = theme,
-                    onClick = onNavigateToExerciseProgression
-                )
-            }
-            item {
                 WeeklyActivitySection(
                     accent         = accent,
                     theme          = theme,
                     strings        = strings,
                     weeklyActivity = state.weeklyActivity
-                )
-            }
-            item {
-                LeaderboardPreviewCard(
-                    accent              = accent,
-                    theme               = theme,
-                    onOpenXp            = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
-                    onOpenAchievements  = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
                 )
             }
             item {
@@ -343,14 +331,14 @@ private fun ProfileHeroBanner(
     level          : Int,
     xp             : Int,
     xpPerLevel     : Int,
-    fitnessGoal    : String = "",
     userPlan        : UserPlan = UserPlan.FREE,
     aiCredits       : Int = 0,
     accent          : Color,
     theme           : AppThemeState,
     onSettingsClick : () -> Unit,
-    onEditAvatar    : () -> Unit = {},
-    onNavigateToStore: () -> Unit = {}
+    onNavigateToStore: () -> Unit = {},
+    onOpenXpRanking : () -> Unit = {},
+    onOpenRankRanking: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -367,26 +355,49 @@ private fun ProfileHeroBanner(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 52.dp, bottom = 32.dp),
+                .statusBarsPadding()
+                .padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg1.copy(0.75f))
-                        .border(1.dp, theme.stroke, CircleShape)
-                        .clickable(onClick = onSettingsClick),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(18.dp))
+                    Row(
+                        modifier = Modifier
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(theme.bg1.copy(0.75f))
+                            .border(1.dp, accent.copy(0.40f), RoundedCornerShape(18.dp))
+                            .clickable(onClick = onSettingsClick)
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
+                        Text(
+                            "TEMA",
+                            color      = accent,
+                            fontSize   = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Text(
+                        "PROFİL",
+                        color = theme.text0,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        maxLines = 1
+                    )
                 }
 
                 // Kredi / Plan chip — sağ üst köşe, tıklanınca store'a gider
@@ -424,128 +435,254 @@ private fun ProfileHeroBanner(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
+            val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
+            val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
+            val rankColor = rankColor(rank)
 
-            Box(modifier = Modifier.size(110.dp)) {
+            Spacer(Modifier.height(18.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                theme.bg1.copy(0.90f),
+                                theme.bg2.copy(0.52f),
+                                theme.bg1.copy(0.74f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(900f, 680f)
+                        )
+                    )
+                    .border(1.dp, accent.copy(0.30f), RoundedCornerShape(28.dp))
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(106.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(accent)
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(accent.copy(0.20f), Color.Transparent),
+                                center = Offset(520f, 80f),
+                                radius = 520f
+                            )
+                        )
                 )
                 Box(
                     modifier = Modifier
-                        .size(98.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(theme.bg2),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (avatar.startsWith("http")) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(rankColor.copy(0.16f), Color.Transparent),
+                                center = Offset(20f, 440f),
+                                radius = 460f
+                            )
                         )
-                    } else {
-                        Text(avatar, fontSize = 40.sp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(modifier = Modifier.size(122.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(accent.copy(0.24f), Color.Transparent)
+                                    )
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(106.dp)
+                                .clip(CircleShape)
+                                .background(Brush.sweepGradient(listOf(accent, rankColor, accent)))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(94.dp)
+                                .clip(CircleShape)
+                                .background(theme.bg0)
+                                .border(1.dp, theme.stroke.copy(0.55f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (avatar.startsWith("http")) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            } else {
+                                Text(avatar, fontSize = 42.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        name.uppercase(),
+                        color = theme.text0,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                        maxLines = 1
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BadgeChip("★ ${rank.uppercase()}", rankColor)
+                        BadgeChip("LVL $level", accent)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(theme.bg0.copy(0.46f))
+                            .border(1.dp, theme.stroke.copy(0.38f), RoundedCornerShape(18.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Column {
+                                Text(
+                                    "LEVEL $level → ${level + 1}",
+                                    color = theme.text2,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(Modifier.height(3.dp))
+                                Text(
+                                    "$xpInLevel / $xpPerLevel XP",
+                                    color = theme.text0,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Text(
+                                if (xpLeft == 0) "SEVİYE HAZIR" else "$xpLeft XP KALDI",
+                                color = accent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape)
+                                .background(theme.stroke.copy(0.32f))
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
+                                    .fillMaxHeight()
+                                    .clip(CircleShape)
+                                    .background(Brush.horizontalGradient(listOf(rankColor, accent)))
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 54.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        HeroMiniStat(
+                            label = "TOPLAM XP",
+                            value = "$xp",
+                            icon = Icons.Rounded.Bolt,
+                            color = accent,
+                            theme = theme,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenXpRanking
+                        )
+                        HeroMiniStat(
+                            label = "RÜTBE",
+                            value = rank.uppercase(),
+                            icon = Icons.Rounded.EmojiEvents,
+                            color = rankColor,
+                            theme = theme,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenRankRanking
+                        )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(theme.bg0)
-                        .padding(3.dp)
-                        .clip(CircleShape)
-                        .background(accent)
-                        .clickable(onClick = onEditAvatar),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Edit,
-                        null,
-                        tint     = Color.Black,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(14.dp))
-
+@Composable
+private fun HeroMiniStat(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(0.11f))
+            .border(1.dp, color.copy(0.28f), RoundedCornerShape(16.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 11.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(color.copy(0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
             Text(
-                name.uppercase(),
-                color         = theme.text0,
-                fontSize      = 18.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                value,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
             )
-
-            if (fitnessGoal.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    fitnessGoal,
-                    color    = theme.text1,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                val rankColor = rankColor(rank)
-                BadgeChip("★ ${rank.uppercase()}", rankColor)
-                BadgeChip("LVL $level", accent)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
-            Column(
-                modifier              = Modifier.width(220.dp),
-                horizontalAlignment   = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "LEVEL $level → ${level + 1}",
-                        color         = theme.text2,
-                        fontSize      = 8.sp,
-                        fontWeight    = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Text("${xp % xpPerLevel} XP", color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(5.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(5.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg3)
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(accent, accent.copy(0.65f))
-                                )
-                            )
-                    )
-                }
-            }
+            Text(
+                label,
+                color = theme.text2,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.8.sp,
+                maxLines = 1
+            )
         }
     }
 }
@@ -587,6 +724,15 @@ private data class PerformanceMetric(
     val color : Color
 )
 
+private fun formatProfileDurationValue(seconds: Int): String =
+    (seconds / 60).coerceAtLeast(1).toString()
+
+private fun formatProfileDistanceValue(meters: Float): String =
+    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
+
+private fun formatProfileDistanceUnit(meters: Float): String =
+    if (meters >= 1000f) "km" else "m"
+
 @Composable
 private fun PerformanceMetricsSection(
     accent            : Color,
@@ -596,16 +742,24 @@ private fun PerformanceMetricsSection(
     longestStreak     : Int,
     totalWorkouts     : Int,
     totalExercises    : Int,
+    totalDurationSeconds: Int,
+    totalDistanceMeters : Float,
     onNavigateToDetail: () -> Unit
 ) {
-    val metrics = listOf(
-        PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple),
-        PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral),
-        PerformanceMetric(longestStreak.toString(),  strings.unitStreak, "EN UZUN SERİ",            Icons.Rounded.EmojiEvents,   CardGreen),
-        PerformanceMetric(totalExercises.toString(), "kez",              "TOPLAM EGZERSİZ",         Icons.Rounded.FitnessCenter, CardCyan),
-    )
+    val metrics = buildList {
+        add(PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral))
+        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents,   CardGreen))
+        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.FitnessCenter, CardCyan))
+        if (totalDurationSeconds > 0) {
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, CardGreen))
+        }
+        if (totalDistanceMeters > 0f) {
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, Color(0xFF64D2FF)))
+        }
+    }
 
-    Column(modifier = Modifier.padding(top = 32.dp)) {
+    Column(modifier = Modifier.padding(top = 18.dp)) {
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
@@ -984,8 +1138,7 @@ private fun SettingsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(accent.copy(0.08f))
-                .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
+                .glassCard(accent, theme, RoundedCornerShape(16.dp))
                 .clickable(onClick = onEditProfile)
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
@@ -1046,9 +1199,7 @@ private fun SettingsSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                .glassCard(accent, theme, RoundedCornerShape(16.dp))
         ) {
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive
                               else strings.notificationsOff
@@ -1057,6 +1208,7 @@ private fun SettingsSection(
                 label   = strings.notificationsLabel,
                 sub     = notifStatus,
                 theme   = theme,
+                accent  = accent,
                 onClick = onNotificationsClick
             )
             HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
@@ -1065,15 +1217,8 @@ private fun SettingsSection(
                 label   = strings.languageLabel,
                 sub     = strings.currentLanguageName,
                 theme   = theme,
+                accent  = accent,
                 onClick = onLanguageClick
-            )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(
-                icon    = Icons.Rounded.Security,
-                label   = strings.securityLabel,
-                sub     = strings.securityValue,
-                theme   = theme,
-                onClick = {}
             )
         }
 
@@ -1122,6 +1267,7 @@ private fun SettingsRow(
     label  : String,
     sub    : String,
     theme  : AppThemeState,
+    accent : Color,
     onClick: () -> Unit = {}
 ) {
     Row(
@@ -1136,16 +1282,17 @@ private fun SettingsRow(
             Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(theme.bg2),
+                .background(accent.copy(0.12f))
+                .border(1.dp, accent.copy(0.24f), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = theme.text1, modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(label, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(sub,   color = theme.text2, fontSize = 11.sp)
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = theme.text2, modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = accent.copy(0.55f), modifier = Modifier.size(16.dp))
     }
 }
 
@@ -1796,17 +1943,114 @@ private fun BodyMetricTile(
 ) {
     Box(
         modifier = modifier
+            .heightIn(min = 92.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(1.dp, color.copy(0.25f), RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(color.copy(0.12f), theme.bg1.copy(0.92f))
+                )
+            )
+            .border(1.dp, color.copy(0.30f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
             Text(value, color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
             Text(unit, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
             Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 0.5.sp)
         }
+    }
+}
+
+@Composable
+private fun PerformanceShortcutsSection(
+    accent         : Color,
+    theme          : AppThemeState,
+    weightKg       : Double,
+    onWeightClick  : () -> Unit,
+    onExerciseClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        PerformanceShortcutCard(
+            title    = "Vücut Kilosu",
+            subtitle = if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
+                       else "Kilo trendi ve AI analiz",
+            icon     = Icons.Rounded.ShowChart,
+            accent   = accent,
+            theme    = theme,
+            onClick  = onWeightClick
+        )
+        PerformanceShortcutCard(
+            title    = "Hareket Performansı",
+            subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+            icon     = Icons.Rounded.TrendingUp,
+            accent   = accent,
+            theme    = theme,
+            onClick  = onExerciseClick
+        )
+    }
+}
+
+@Composable
+private fun PerformanceShortcutCard(
+    title   : String,
+    subtitle: String,
+    icon    : ImageVector,
+    accent  : Color,
+    theme   : AppThemeState,
+    onClick : () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassCard(accent, theme)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(accent.copy(0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint     = accent,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                color      = theme.text0,
+                fontSize   = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                subtitle,
+                color    = theme.text2,
+                fontSize = 11.sp
+            )
+        }
+
+        Icon(
+            Icons.Rounded.ArrowForwardIos,
+            null,
+            tint     = accent.copy(0.6f),
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 
@@ -1821,7 +2065,7 @@ fun WeightTrackingCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp)) {
         Text(
-            "AĞIRLIK TAKİBİ",
+            "PERFORMANS ÖLÇÜTLERİ",
             style         = androidx.compose.material3.MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -1854,14 +2098,14 @@ fun WeightTrackingCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Kilo Takip Et",
+                    "Vücut Kilosu",
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
-                    else "Ölçümlerini kaydet, AI koçun analiz etsin",
+                    else "Kilo ölçümlerini performans verilerinle birlikte takip et",
                     color    = theme.text2,
                     fontSize = 11.sp
                 )
@@ -1887,7 +2131,7 @@ fun ExerciseProgressionCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) {
         Text(
-            "ANTRENMAN GELİŞİMİ",
+            "SPOR PERFORMANSI",
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -1918,13 +2162,13 @@ fun ExerciseProgressionCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Egzersiz Gelişimi",
+                    "Hareket Performansı",
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Set başına ağırlık · Grafik · AI Analiz",
+                    "Ağırlık · Süre · Mesafe · AI Analiz",
                     color    = theme.text2,
                     fontSize = 11.sp
                 )

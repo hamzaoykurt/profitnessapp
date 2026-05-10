@@ -13,11 +13,13 @@ import com.avonix.profitness.data.program.dto.ProgramDto
 import com.avonix.profitness.data.program.dto.ProgramExerciseWithNameDto
 import com.avonix.profitness.data.sync.SyncManager
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramDay
 import com.avonix.profitness.domain.model.ProgramExercise
 import com.avonix.profitness.domain.model.ProgramType
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -55,7 +57,7 @@ class ProgramRepositoryImpl @Inject constructor(
 
     override fun observeExercises(): Flow<List<ExerciseItem>> =
         exerciseDao.observeAll()
-            .map { list -> list.map { it.toDomain() } }
+            .map { list -> list.map { it.toDomain() }.filterValidExerciseNames() }
             .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -68,7 +70,8 @@ class ProgramRepositoryImpl @Inject constructor(
                 val local = programDao.getUserPrograms(userId)
                 if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }
                 // Room boşsa Supabase'den çek
-                syncManager.pullPrograms(userId)
+                syncManager.pullExercises().getOrThrow()
+                syncManager.pullPrograms(userId).getOrThrow()
                 programDao.getUserPrograms(userId).map { it.toDomain() }
             }
         }
@@ -84,9 +87,9 @@ class ProgramRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val local = exerciseDao.getAll()
-                if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }
+                if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }.filterValidExerciseNames()
                 syncManager.pullExercises()
-                exerciseDao.getAll().map { it.toDomain() }
+                exerciseDao.getAll().map { it.toDomain() }.filterValidExerciseNames()
             }
         }
 
@@ -97,6 +100,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun createFromTemplate(userId: String, templateKey: String): Result<Program> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 val template = findTemplate(templateKey)
                     ?: error("Template bulunamadı: $templateKey")
 
@@ -117,7 +122,9 @@ class ProgramRepositoryImpl @Inject constructor(
 
                 val programDto = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId); eq("is_active", true) } }
-                    .decodeSingle<ProgramDto>()
+                    .decodeList<ProgramDto>()
+                    .maxByOrNull { it.created_at }
+                    ?: error("Aktif program bulunamadı")
 
                 // Tüm egzersizleri çek
                 val allExercises = supabase.postgrest["exercises"]
@@ -156,14 +163,18 @@ class ProgramRepositoryImpl @Inject constructor(
                                     put("reps", templateEx.reps)
                                     put("rest_seconds", templateEx.restSeconds)
                                     put("order_index", exIdx)
+                                    templateEx.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                                    templateEx.targetDistanceMeters?.let { put("target_distance_meters", it) }
+                                    templateEx.targetElevationMeters?.let { put("target_elevation_meters", it) }
+                                    templateEx.targetInclinePercent?.let { put("target_incline_percent", it) }
                                 })
                         }
                     }
                 }
 
                 // Room'a sync et (Supabase'den tam veri çek)
-                syncManager.pullPrograms(userId)
-                syncManager.pullExercises()
+                syncManager.pullExercises().getOrThrow()
+                syncManager.pullPrograms(userId).getOrThrow()
 
                 // Oluşturulan programı Room'dan döndür
                 programDao.getActiveProgram(userId)?.toDomain()
@@ -174,6 +185,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun createManual(userId: String, name: String, days: List<ManualDayInput>): Result<Program> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 supabase.postgrest["programs"]
                     .update({ set("is_active", false) }) {
                         filter { eq("user_id", userId); eq("is_active", true) }
@@ -189,7 +202,9 @@ class ProgramRepositoryImpl @Inject constructor(
 
                 val programDto = supabase.postgrest["programs"]
                     .select { filter { eq("user_id", userId); eq("is_active", true) } }
-                    .decodeSingle<ProgramDto>()
+                    .decodeList<ProgramDto>()
+                    .maxByOrNull { it.created_at }
+                    ?: error("Aktif program bulunamadı")
 
                 days.forEachIndexed { dayIdx, dayInput ->
                     supabase.postgrest["program_days"]
@@ -215,6 +230,8 @@ class ProgramRepositoryImpl @Inject constructor(
                                 put("reps", exInput.reps)
                                 put("rest_seconds", exInput.restSeconds)
                                 put("order_index", exInput.orderIndex)
+                                exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                                exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
                             })
                     }
                 }
@@ -229,6 +246,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun setActive(programId: String, userId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser(userId)
+
                 supabase.postgrest["programs"]
                     .update({ set("is_active", false) }) {
                         filter { eq("user_id", userId); eq("is_active", true) }
@@ -247,6 +266,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun updateProgramName(programId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser()
+
                 supabase.postgrest["programs"]
                     .update({ set("name", name) }) { filter { eq("id", programId) } }
                 programDao.updateName(programId, name)
@@ -260,6 +281,8 @@ class ProgramRepositoryImpl @Inject constructor(
         days: List<ManualDayInput>
     ): Result<Program> = withContext(Dispatchers.IO) {
         runCatching {
+            requireAuthenticatedUser()
+
             // Mimari karar (content-addressable snapshot):
             // Düzenleme programın id'sini değiştirmez — mevcut satır mutate edilir.
             // Paylaşılan kopya (shared_programs.program_data) ayrı, immutable bir snapshot
@@ -323,6 +346,8 @@ class ProgramRepositoryImpl @Inject constructor(
                             put("reps", exInput.reps)
                             put("rest_seconds", exInput.restSeconds)
                             put("order_index", exInput.orderIndex)
+                            exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
+                            exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
                         })
                 }
             }
@@ -343,6 +368,8 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun deleteProgram(programId: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                requireAuthenticatedUser()
+
                 // Room'dan hemen sil (anında UI yansıması)
                 programDao.deleteProgram(programId)
 
@@ -386,6 +413,11 @@ class ProgramRepositoryImpl @Inject constructor(
         repsDefault: Int
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
         runCatching {
+            val userId = requireAuthenticatedUser()
+            require(!ExerciseNameRules.isCompositeName(name)) {
+                "Tek kayitta birden fazla hareket adi kullanilamaz."
+            }
+
             supabase.postgrest["exercises"]
                 .insert(buildJsonObject {
                     put("name", name)
@@ -395,6 +427,7 @@ class ProgramRepositoryImpl @Inject constructor(
                     put("sets_default", setsDefault)
                     put("reps_default", repsDefault)
                     put("description", "")
+                    put("created_by", userId)
                 })
 
             val dto = supabase.postgrest["exercises"]
@@ -420,6 +453,11 @@ class ProgramRepositoryImpl @Inject constructor(
         notes: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            requireAuthenticatedUser(userId)
+            require(!ExerciseNameRules.isCompositeName(name)) {
+                "Tek talepte birden fazla hareket adi kullanilamaz."
+            }
+
             supabase.postgrest["exercise_requests"]
                 .insert(buildJsonObject {
                     put("user_id", userId)
@@ -438,6 +476,25 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun syncFromRemote(userId: String) {
         syncManager.pullPrograms(userId)
         syncManager.pullExercises()
+    }
+
+    private suspend fun requireAuthenticatedUser(expectedUserId: String? = null): String {
+        supabase.auth.awaitInitialization()
+
+        var session = supabase.auth.currentSessionOrNull()
+        if (session == null) {
+            runCatching { supabase.auth.loadFromStorage() }
+            session = supabase.auth.currentSessionOrNull()
+        }
+
+        val userId = session?.user?.id
+            ?: throw IllegalStateException("Oturum süresi doldu. Lütfen tekrar giriş yapın.")
+
+        if (expectedUserId != null && expectedUserId != userId) {
+            throw IllegalStateException("Oturum kullanıcı bilgisi güncel değil. Lütfen tekrar giriş yapın.")
+        }
+
+        return userId
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -467,7 +524,8 @@ class ProgramRepositoryImpl @Inject constructor(
                     dayIndex = dwe.day.dayIndex,
                     title = dwe.day.title,
                     isRestDay = dwe.day.isRestDay,
-                    exercises = (exerciseMap[dwe.day.id] ?: emptyList()).map { pe ->
+                    exercises = (exerciseMap[dwe.day.id] ?: emptyList()).mapNotNull { pe ->
+                        if (ExerciseNameRules.isCompositeName(pe.exerciseName)) return@mapNotNull null
                         ProgramExercise(
                             id = pe.id,
                             programDayId = pe.programDayId,
@@ -480,7 +538,13 @@ class ProgramRepositoryImpl @Inject constructor(
                             restSeconds = pe.restSeconds,
                             orderIndex = pe.orderIndex,
                             category = pe.category,
-                            imageUrl = pe.imageUrl
+                            imageUrl = pe.imageUrl,
+                            sportType = pe.sportType,
+                            trackingMode = pe.trackingMode,
+                            targetDurationSeconds = pe.targetDurationSeconds,
+                            targetDistanceMeters = pe.targetDistanceMeters,
+                            targetElevationMeters = pe.targetElevationMeters,
+                            targetInclinePercent = pe.targetInclinePercent
                         )
                     }
                 )
@@ -492,13 +556,20 @@ class ProgramRepositoryImpl @Inject constructor(
         id = id, name = name, nameEn = nameEn,
         targetMuscle = targetMuscle, category = category,
         setsDefault = setsDefault, repsDefault = repsDefault,
-        description = description
+        description = description,
+        sportType = sportType,
+        trackingMode = trackingMode
     )
 
     private fun ExerciseDto.toDomain() = ExerciseItem(
         id = id, name = name, nameEn = name_en,
         targetMuscle = target_muscle, category = category,
         setsDefault = sets_default, repsDefault = reps_default,
-        description = description
+        description = description,
+        sportType = sport_type,
+        trackingMode = tracking_mode
     )
+
+    private fun List<ExerciseItem>.filterValidExerciseNames(): List<ExerciseItem> =
+        filterNot { ExerciseNameRules.isCompositeName(it.name) }
 }

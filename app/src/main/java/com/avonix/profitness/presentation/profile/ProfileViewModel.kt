@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.Period
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -59,6 +60,8 @@ data class ProfileState(
     val longestStreak        : Int                  = 0,
     val totalWorkouts        : Int                  = 0,
     val totalExercises       : Int                  = 0,
+    val totalDurationSeconds : Int                  = 0,
+    val totalDistanceMeters  : Float                = 0f,
     /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
     val weeklyActivity       : List<Float>           = List(7) { 0f },
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
@@ -142,6 +145,7 @@ class ProfileViewModel @Inject constructor(
             val allAchDef       = async { profileRepository.getAllAchievements() }
             val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
             val localStreakDef   = async { workoutRepository.getStreak(userId) }
+            val trackedDef       = async { workoutRepository.getTrackedExerciseSummaries(userId) }
 
             val profile          = profileDef.await().getOrNull()
             val stats            = statsDef.await().getOrNull()
@@ -150,6 +154,7 @@ class ProfileViewModel @Inject constructor(
             val allAch           = allAchDef.await().getOrNull().orEmpty()
             val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
             val localStreak      = localStreakDef.await().getOrElse { stats?.current_streak ?: 0 }
+            val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
 
             // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
             // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
@@ -180,20 +185,22 @@ class ProfileViewModel @Inject constructor(
             val xpForNext    = 500   // Her seviye sabit 500 XP
             val totalWorkouts= stats?.total_workouts ?: 0
             val totalExercises= stats?.total_exercises ?: 0
+            val totalDurationSeconds = trackedSummaries.sumOf { it.totalDurationSeconds }
+            val totalDistanceMeters = trackedSummaries.sumOf { it.totalDistanceMeters.toDouble() }.toFloat()
             val currentXp    = stats?.xp ?: 0
 
             // BMI ve vücut yağı hesapla
             val h = profile?.height_cm ?: 0.0
             val w = profile?.weight_kg ?: 0.0
             val bmi = if (h > 0 && w > 0) w / ((h / 100.0) * (h / 100.0)) else 0.0
+            val birthDate = profile?.birth_date ?: ""
+            val age = ageFromBirthDate(birthDate) ?: 25
 
             val isMale = (profile?.gender ?: "").lowercase() == "male"
             val bodyFat = if (bmi > 0) {
-                val raw = 1.2 * bmi + (if (isMale) -10.8 else 0.0) - 5.4
+                val raw = 1.2 * bmi + 0.23 * age + (if (isMale) -10.8 else 0.0) - 5.4
                 raw.coerceIn(3.0, 60.0)
             } else 0.0
-
-            val birthDate = profile?.birth_date ?: ""
 
             // Rank hesapla ve gerekirse güncelle
             val computedRank  = computeRank(currentXp)
@@ -215,6 +222,8 @@ class ProfileViewModel @Inject constructor(
                     longestStreak       = stats?.longest_streak ?: 0,
                     totalWorkouts       = totalWorkouts,
                     totalExercises      = totalExercises,
+                    totalDurationSeconds= totalDurationSeconds,
+                    totalDistanceMeters = totalDistanceMeters,
                     fitnessGoal         = profile?.fitness_goal.orEmpty(),
                     heightCm            = profile?.height_cm ?: 0.0,
                     weightKg            = profile?.weight_kg ?: 0.0,
@@ -253,8 +262,9 @@ class ProfileViewModel @Inject constructor(
             if (result.isSuccess) {
                 val newBmi = if (heightCm > 0 && weightKg > 0) weightKg / ((heightCm / 100.0) * (heightCm / 100.0)) else 0.0
                 val isMale2 = gender.lowercase() == "male"
+                val age = ageFromBirthDate(birthDate) ?: 25
                 val newBodyFat = if (newBmi > 0) {
-                    (1.2 * newBmi + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
+                    (1.2 * newBmi + 0.23 * age + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0
                 updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
@@ -283,6 +293,12 @@ class ProfileViewModel @Inject constructor(
     }
 
     // ── Yardımcı: 13 haftalık grafik ──────────────────────────────────────────
+
+    private fun ageFromBirthDate(birthDate: String): Int? =
+        runCatching {
+            val date = LocalDate.parse(birthDate, DateTimeFormatter.ISO_LOCAL_DATE)
+            Period.between(date, LocalDate.now()).years.takeIf { it in 8..100 }
+        }.getOrNull()
 
     private fun buildWeeklyChart(workoutDates: List<String>): List<Int> {
         val today  = LocalDate.now()

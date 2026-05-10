@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 7,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -141,16 +141,84 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration 6→7 / 7→8: Eski debug kurulumlarında cihazda daha ileri Room
+         * user_version kalabiliyor. 7→8, `programs` index'lerini idempotent şekilde
+         * garanti ederek Room schema validation'ını mevcut yerel DB'lerle hizalar.
+         */
         val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) = Unit
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_is_active " +
-                    "ON programs (user_id, is_active)"
-                )
+                database.execSQL("PRAGMA defer_foreign_keys = TRUE")
+                database.execSQL("DROP TABLE IF EXISTS programs_new")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS programs_new (
+                        id TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        is_active INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        content_hash TEXT DEFAULT NULL,
+                        applied_from_shared_id TEXT DEFAULT NULL,
+                        PRIMARY KEY(id)
+                    )
+                """)
+                database.execSQL("""
+                    INSERT INTO programs_new (
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    )
+                    SELECT
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    FROM programs
+                """)
+                database.execSQL("DROP TABLE programs")
+                database.execSQL("ALTER TABLE programs_new RENAME TO programs")
                 database.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_programs_user_id_created_at " +
                     "ON programs (user_id, created_at)"
                 )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_is_active " +
+                    "ON programs (user_id, is_active)"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN duration_seconds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN distance_meters REAL DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE exercises ADD COLUMN sport_type TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE exercises ADD COLUMN tracking_mode TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_duration_seconds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_distance_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_elevation_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_incline_percent REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN elevation_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN incline_percent REAL DEFAULT NULL")
             }
         }
     }

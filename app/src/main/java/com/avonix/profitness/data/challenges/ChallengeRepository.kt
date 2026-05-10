@@ -75,4 +75,7 @@ interface ChallengeRepository {
 
     /** Sahip → event challenge'ı tamamen siler. */
     suspend fun deleteEventChallenge(challengeId: String): Result<Unit>
+
+    /** Challenge sahibinin karşılıklı takip ettiği arkadaşlarına davet gönderir. Döner: davet sayısı. */
+    suspend fun inviteFriendsToChallenge(challengeId: String, userIds: List<String>): Result<Int>
 }

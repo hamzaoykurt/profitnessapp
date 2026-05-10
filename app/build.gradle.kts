@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 val localProperties = Properties()
@@ -15,11 +16,16 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
     localProperties.load(it)
 }
 
+fun secret(name: String, defaultValue: String = ""): String =
+    localProperties.getProperty(name)
+        ?: System.getenv(name)
+        ?: defaultValue
+
 // Keystore: CI'da KEYSTORE_BASE64'ten decode et, lokalde varsayılan debug keystore'u kullan
-val ksBase64: String = localProperties.getProperty("KEYSTORE_BASE64", "")
-val ksPassword: String = localProperties.getProperty("KEYSTORE_PASSWORD", "android")
-val ksAlias: String = localProperties.getProperty("KEY_ALIAS", "androiddebugkey")
-val ksKeyPassword: String = localProperties.getProperty("KEY_PASSWORD", "android")
+val ksBase64: String = secret("KEYSTORE_BASE64")
+val ksPassword: String = secret("KEYSTORE_PASSWORD", "android")
+val ksAlias: String = secret("KEY_ALIAS", "androiddebugkey")
+val ksKeyPassword: String = secret("KEY_PASSWORD", "android")
 
 val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
     val bytes = Base64.getDecoder().decode(ksBase64.trim())
@@ -44,9 +50,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
-        buildConfigField("String", "GEMINI_API_KEY",    "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
+        buildConfigField("String", "SUPABASE_URL",      "\"${secret("SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("SUPABASE_ANON_KEY")}\"")
+        buildConfigField("String", "MAPS_API_KEY",      "\"${secret("MAPS_API_KEY")}\"")
     }
 
     signingConfigs {
@@ -89,6 +95,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.profileinstaller)
 
     // Compose UX/UI
     implementation(platform(libs.androidx.compose.bom))
@@ -116,6 +123,10 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
 
+    // Google Places autocomplete
+    implementation(libs.google.places)
+    implementation(libs.google.material)
+
     // DataStore (theme persistence)
     implementation(libs.androidx.datastore.preferences)
 
@@ -141,4 +152,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    baselineProfile(project(":baselineprofile"))
 }

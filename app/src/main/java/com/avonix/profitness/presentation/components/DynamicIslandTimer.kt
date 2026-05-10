@@ -6,7 +6,10 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.RestTimerState
+import com.avonix.profitness.presentation.workout.TimerMode
+import com.avonix.profitness.presentation.workout.TimerPurpose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -50,6 +55,7 @@ fun DynamicIslandTimer(
     timer    : RestTimerState,
     topOffset: Dp = 48.dp,
     onStop   : () -> Unit = {},
+    onTogglePause: () -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
     val accent  = MaterialTheme.colorScheme.primary
@@ -69,7 +75,7 @@ fun DynamicIslandTimer(
     }
 
     // Hiç aktif değilse gösterme
-    if (!timer.isRunning && !timer.isDone) return
+    if (!timer.isRunning && !timer.isPaused && !timer.isDone) return
 
     // ── Glow pulse when running ───────────────────────────────────────────────
     val glowAlpha = remember { Animatable(0f) }
@@ -86,7 +92,7 @@ fun DynamicIslandTimer(
 
     // ── Arc progress ─────────────────────────────────────────────────────────
     val arcProgress by animateFloatAsState(
-        targetValue   = if (timer.totalSeconds > 0) 1f - timer.progress else 0f,
+        targetValue   = if (timer.mode == TimerMode.Countdown && timer.totalSeconds > 0) 1f - timer.progress else 0f,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label         = "arc_progress"
     )
@@ -129,6 +135,10 @@ fun DynamicIslandTimer(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onStop()
                         onDismiss()
+                    },
+                    onTogglePause = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onTogglePause()
                     }
                 )
             } else {
@@ -156,13 +166,15 @@ private fun CompactPill(
     glowAlpha: Float,
     onClick  : () -> Unit
 ) {
-    val min = timer.secondsLeft / 60
-    val sec = timer.secondsLeft % 60
+    val displaySeconds = timer.displaySeconds
+    val min = displaySeconds / 60
+    val sec = displaySeconds % 60
     val timeStr = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
-                  else "${timer.secondsLeft}s"
+                  else "${displaySeconds}s"
 
     val pillColor = when {
         timer.isDone    -> Amber
+        timer.isPaused  -> Amber
         timer.isRunning -> accent
         else            -> accent
     }
@@ -170,6 +182,7 @@ private fun CompactPill(
     Box(modifier = Modifier.wrapContentSize()) {
         Row(
             modifier = Modifier
+                .widthIn(max = 168.dp)
                 .clip(RoundedCornerShape(22.dp))
                 .background(
                     Brush.linearGradient(
@@ -196,12 +209,26 @@ private fun CompactPill(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (timer.isDone) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = Amber,
+                    modifier = Modifier.size(17.dp)
+                )
                 Text(
-                    "💪  Hazırsın!",
+                    theme.t("Hazırsın!", "Ready!"),
                     color      = Amber,
                     fontSize   = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 0.5.sp
+                )
+            } else if (timer.isPaused) {
+                Text(
+                    theme.t("Duraklatıldı", "Paused"),
+                    color      = Amber,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.4.sp
                 )
             } else {
                 Text(
@@ -215,7 +242,8 @@ private fun CompactPill(
                     color      = TextSecondary,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines   = 1
+                    maxLines   = 1,
+                    modifier   = Modifier.widthIn(max = 58.dp)
                 )
             }
         }
@@ -232,11 +260,13 @@ private fun ExpandedIsland(
     glowAlpha   : Float,
     cornerRadius: Dp,
     onCollapse  : () -> Unit,
-    onStop      : () -> Unit
+    onStop      : () -> Unit,
+    onTogglePause: () -> Unit
 ) {
-    val pillColor = if (timer.isDone) Amber else accent
-    val min = timer.secondsLeft / 60
-    val sec = timer.secondsLeft % 60
+    val pillColor = if (timer.isDone || timer.isPaused) Amber else accent
+    val displaySeconds = timer.displaySeconds
+    val min = displaySeconds / 60
+    val sec = displaySeconds % 60
 
     Box(
         modifier = Modifier
@@ -308,28 +338,20 @@ private fun ExpandedIsland(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (timer.isDone) "DİNLENDİN" else "SET ARASI",
+                            text = timer.headerLabel(theme),
                             color      = pillColor,
                             fontSize   = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 2.sp
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(theme.bg3)
-                            .clickable(onClick = onStop),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Close,
-                            null,
-                            tint     = TextMuted,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    Text(
+                        text = if (timer.isPaused) theme.t("DURAKLATILDI", "PAUSED") else theme.t("AKTİF", "ACTIVE"),
+                        color = if (timer.isPaused) Amber else TextMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.4.sp
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -394,25 +416,46 @@ private fun ExpandedIsland(
                     // Center content
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         if (timer.isDone) {
-                            Text("✅", fontSize = 32.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = Amber,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(Modifier.height(6.dp))
                             Text(
-                                "HAZIRSIN",
+                                theme.t("HAZIRSIN", "READY"),
                                 color      = Amber,
                                 fontSize   = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 2.sp
                             )
+                        } else if (timer.isPaused) {
+                            Text(
+                                text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
+                                       else "$displaySeconds",
+                                color      = TextPrimary,
+                                fontSize   = 38.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                theme.t("duraklatıldı", "paused"),
+                                color      = Amber,
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
                         } else {
                             Text(
                                 text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
-                                       else "${timer.secondsLeft}",
+                                       else "$displaySeconds",
                                 color      = TextPrimary,
                                 fontSize   = 38.sp,
                                 fontWeight = FontWeight.Black
                             )
                             if (min == 0) {
                                 Text(
-                                    "saniye",
+                                    theme.t("saniye", "seconds"),
                                     color      = TextMuted,
                                     fontSize   = 10.sp,
                                     fontWeight = FontWeight.Medium,
@@ -437,14 +480,78 @@ private fun ExpandedIsland(
 
                 // ── Hint ──────────────────────────────────────────────────────
                 Text(
-                    text = if (timer.isDone) "Sonraki seti başlatmak için hazırsın"
-                           else "Kapat için dokun",
+                    text = if ((timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) && timer.isDone) theme.t("Süre kaydedildi", "Duration saved")
+                           else if (timer.isDone) theme.t("Sonraki seti başlatmak için hazırsın", "Ready for the next set")
+                           else if (timer.isPaused) theme.t("Devam ettirebilir veya durdurup kaydedebilirsin", "Resume or stop to save")
+                           else if (timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) theme.t("Durdurunca süre kaydedilir", "Duration saves when stopped")
+                           else theme.t("Durdur veya duraklat", "Stop or pause"),
                     color      = TextMuted,
                     fontSize   = 10.sp,
                     letterSpacing = 0.5.sp
                 )
+
+                if (!timer.isDone) {
+                    Spacer(Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        TimerActionButton(
+                            text = if (timer.isPaused) theme.t("DEVAM", "RESUME") else theme.t("DURAKLAT", "PAUSE"),
+                            icon = if (timer.isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                            color = if (timer.isPaused) accent else Amber,
+                            theme = theme,
+                            onClick = onTogglePause,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TimerActionButton(
+                            text = theme.t("DURDUR", "STOP"),
+                            icon = Icons.Rounded.StopCircle,
+                            color = accent,
+                            theme = theme,
+                            onClick = onStop,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun TimerActionButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    theme: AppThemeState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 46.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(color.copy(0.24f), theme.bg3.copy(0.88f))
+                )
+            )
+            .border(1.dp, color.copy(0.55f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(17.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = text,
+            color = TextPrimary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.1.sp
+        )
     }
 }
 
@@ -481,4 +588,16 @@ private fun MiniArcIndicator(
             )
         }
     }
+}
+
+private fun RestTimerState.headerLabel(theme: AppThemeState): String = when {
+    purpose == TimerPurpose.Activity && isDone -> theme.t("SÜRE KAYDEDİLDİ", "DURATION SAVED")
+    purpose == TimerPurpose.TimedSet && isDone -> theme.t("SET SÜRESİ KAYDEDİLDİ", "SET DURATION SAVED")
+    isPaused -> theme.t("DURAKLATILDI", "PAUSED")
+    purpose == TimerPurpose.Activity && mode == TimerMode.Stopwatch -> theme.t("KRONOMETRE", "STOPWATCH")
+    purpose == TimerPurpose.TimedSet && mode == TimerMode.Stopwatch -> theme.t("SET KRONOMETRESİ", "SET STOPWATCH")
+    purpose == TimerPurpose.TimedSet -> theme.t("SET SAYACI", "SET TIMER")
+    purpose == TimerPurpose.Activity -> theme.t("GERİ SAYIM", "COUNTDOWN")
+    isDone -> theme.t("DİNLENDİN", "RESTED")
+    else -> theme.t("SET ARASI", "BETWEEN SETS")
 }

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -29,7 +30,9 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.data.store.BillingProduct
 import com.avonix.profitness.data.store.UserPlan
+import com.avonix.profitness.presentation.components.AppBackButton
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
@@ -60,19 +63,19 @@ private data class MasterFeature(
 )
 
 private val ALL_FEATURES = listOf(
-    MasterFeature(Icons.Rounded.FitnessCenter,    "Antrenman takibi",                   UserPlan.FREE),
-    MasterFeature(Icons.Rounded.BarChart,          "Temel analitik",                     UserPlan.FREE),
-    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",           UserPlan.FREE),
-    MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Coach (kredi tabanlı)",           UserPlan.FREE),
-    MasterFeature(Icons.Rounded.AllInclusive,      "Sınırsız AI Coach sohbeti",          UserPlan.PRO),
-    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program oluşturma",           UserPlan.PRO),
-    MasterFeature(Icons.Rounded.TrendingUp,        "Gelişmiş performans analizi",        UserPlan.PRO),
-    MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri (AI)",  UserPlan.PRO),
-    MasterFeature(Icons.Rounded.MonitorWeight,     "Ağırlık takibi + AI trend analizi",  UserPlan.PRO),
-    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",        UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                   UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",           UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Diamond,           "Tüm özellikler dahil",               UserPlan.ELITE)
+    MasterFeature(Icons.Rounded.FitnessCenter,    "Forge antrenman takibi",              UserPlan.FREE),
+    MasterFeature(Icons.Rounded.BarChart,          "Temel gelişim metrikleri",            UserPlan.FREE),
+    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",            UserPlan.FREE),
+    MasterFeature(Icons.Rounded.ChatBubbleOutline, "Oracle sohbeti (kredi ile)",          UserPlan.FREE),
+    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli Oracle sohbeti",       UserPlan.PRO),
+    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program üretimi",              UserPlan.PRO),
+    MasterFeature(Icons.Rounded.TrendingUp,        "Antrenman performans analizi",        UserPlan.PRO),
+    MasterFeature(Icons.Rounded.ShowChart,         "Egzersiz ilerleme grafikleri",        UserPlan.PRO),
+    MasterFeature(Icons.Rounded.MonitorWeight,     "Kilo ve trend yorumları",             UserPlan.PRO),
+    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",         UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                    UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",            UserPlan.ELITE),
+    MasterFeature(Icons.Rounded.Diamond,           "Tüm Forge özellikleri dahil",         UserPlan.ELITE)
 )
 
 // Plan sıralaması: FREE < PRO < ELITE
@@ -121,6 +124,46 @@ private val CREDIT_PACKAGES = listOf(
     CreditPackage(200, "₺299", "₺1,5/kredi", null,         CardCyan)
 )
 
+private fun cleanPrice(label: String): String = label.substringBefore("/").trim()
+
+private fun readableOn(accent: Color): Color =
+    if (accent.luminance() > 0.5f) Color.Black else Color.White
+
+private fun planTiersFrom(products: List<BillingProduct>): List<PlanTier> {
+    if (products.isEmpty()) return PLANS
+    fun product(plan: UserPlan, period: String) =
+        products.firstOrNull { it.kind == "subscription" && it.plan == plan && it.billingPeriod == period }
+
+    return PLANS.map { tier ->
+        when (tier.plan) {
+            UserPlan.FREE -> tier
+            else -> {
+                val monthly = product(tier.plan, "month")
+                val yearly = product(tier.plan, "year")
+                tier.copy(
+                    monthlyPrice = monthly?.priceLabel?.let(::cleanPrice) ?: tier.monthlyPrice,
+                    yearlyPrice = yearly?.priceLabel?.let(::cleanPrice) ?: tier.yearlyPrice
+                )
+            }
+        }
+    }
+}
+
+private fun creditPackagesFrom(products: List<BillingProduct>): List<CreditPackage> {
+    val creditProducts = products.filter { it.kind == "credit_pack" && it.creditAmount > 0 }
+    if (creditProducts.isEmpty()) return CREDIT_PACKAGES
+    val accents = listOf(Lime, Forge500, CardCyan, CardPurple)
+    return creditProducts.mapIndexed { index, product ->
+        CreditPackage(
+            credits = product.creditAmount,
+            price = product.priceLabel,
+            perCredit = "Güvenli checkout",
+            badge = product.badge,
+            accentColor = accents[index % accents.size]
+        )
+    }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -149,7 +192,9 @@ fun StoreScreen(
         if (state.plan != UserPlan.FREE) selectedPlan = state.plan
     }
 
-    val selectedTier = PLANS.first { it.plan == selectedPlan }
+    val plans = remember(state.products) { planTiersFrom(state.products) }
+    val creditPackages = remember(state.products) { creditPackagesFrom(state.products) }
+    val selectedTier = plans.first { it.plan == selectedPlan }
     val isCurrent    = state.plan == selectedPlan
     val isFree       = selectedPlan == UserPlan.FREE
     val hasPaidPlan  = state.plan != UserPlan.FREE
@@ -158,7 +203,13 @@ fun StoreScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(theme.bg0)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { }
     ) {
+        PageAccentBloom()
+
         Column(modifier = Modifier.fillMaxSize()) {
 
             // Top bar
@@ -170,6 +221,14 @@ fun StoreScreen(
                 onBack      = onBack,
                 onTabChange = { activeTab = it }
             )
+
+            if (state.billingSandboxAvailable) {
+                PaymentModeBand(
+                    state = state,
+                    theme = theme,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
             // Tab content
             AnimatedContent(
@@ -197,6 +256,7 @@ fun StoreScreen(
                             selectedPlan = it
                         },
                         onYearlyChange  = viewModel::setYearly,
+                        plans           = plans,
                         onPurchase      = { viewModel.purchasePlan(selectedPlan) },
                         onCancelPlan    = { showCancelDialog = true }
                     )
@@ -204,10 +264,35 @@ fun StoreScreen(
                         theme      = theme,
                         haptic     = haptic,
                         state      = state,
+                        packages   = creditPackages,
                         onPurchase = { viewModel.purchaseCredits(it) }
                     )
                 }
             }
+        }
+
+        if (state.pendingOrderId != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(0.48f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { viewModel.dismissPendingOrder() }
+                    .zIndex(14f)
+            )
+            PendingOrderPanel(
+                state = state,
+                theme = theme,
+                onSandboxComplete = viewModel::completeSandboxCheckout,
+                onDismiss = viewModel::dismissPendingOrder,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .imePadding()
+                    .padding(horizontal = 16.dp)
+                    .zIndex(15f)
+            )
         }
 
         // Toast
@@ -232,13 +317,13 @@ fun StoreScreen(
                         .shadow(12.dp, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .background(theme.bg2)
-                        .border(1.dp, Lime.copy(0.3f), RoundedCornerShape(12.dp))
+                        .border(1.dp, theme.effectiveAccentColor.copy(0.3f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(Icons.Rounded.CheckCircle, null,
-                        tint = Lime, modifier = Modifier.size(16.dp))
+                        tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
                     Text(msg, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
             }
@@ -259,6 +344,221 @@ fun StoreScreen(
     }
 }
 
+@Composable
+private fun PendingOrderPanel(
+    state: StoreState,
+    theme: AppThemeState,
+    onSandboxComplete: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = theme.effectiveAccentColor
+    var cardNumber by remember { mutableStateOf("4242 4242 4242 4242") }
+    var expiry by remember { mutableStateOf("12/30") }
+    var cvc by remember { mutableStateOf("123") }
+    val digits = cardNumber.filter { it.isDigit() }
+    val expiryDigits = expiry.filter { it.isDigit() }
+    val canSubmit = state.sandboxAvailable && digits.length == 16 && expiryDigits.length == 4 && cvc.length >= 3
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(16.dp, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg1)
+            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(18.dp))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { }
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.ReceiptLong, null, tint = accent, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Demo ödeme", color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    if (state.sandboxAvailable) "Test kartı ile satın alma akışını tamamla."
+                    else "Demo ödeme modu şu an kapalı.",
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+                Icon(Icons.Rounded.Close, null, tint = theme.text2, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        if (state.sandboxAvailable) {
+            Spacer(Modifier.height(10.dp))
+            DemoField(
+                value = cardNumber,
+                onValueChange = {
+                    cardNumber = it
+                        .filter { ch -> ch.isDigit() }
+                        .take(16)
+                        .chunked(4)
+                        .joinToString(" ")
+                },
+                label = "Kart numarası",
+                placeholder = "4242 4242 4242 4242",
+                theme = theme
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DemoField(
+                    value = expiry,
+                    onValueChange = {
+                        val raw = it.filter { ch -> ch.isDigit() }.take(4)
+                        expiry = if (raw.length > 2) "${raw.take(2)}/${raw.drop(2)}" else raw
+                    },
+                    label = "SKT",
+                    placeholder = "12/30",
+                    theme = theme,
+                    modifier = Modifier.weight(1f)
+                )
+                DemoField(
+                    value = cvc,
+                    onValueChange = { cvc = it.filter { ch -> ch.isDigit() }.take(4) },
+                    label = "CVC",
+                    placeholder = "123",
+                    theme = theme,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Test kartı hazır dolduruldu. Gerçek ödeme alınmaz.",
+                color = theme.text2.copy(0.72f),
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (canSubmit) accent.copy(0.14f) else theme.bg2)
+                    .border(1.dp, if (canSubmit) accent.copy(0.35f) else theme.stroke, RoundedCornerShape(14.dp))
+                    .clickable(enabled = !state.isLoading && canSubmit) { onSandboxComplete() }
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Rounded.Science, null, tint = accent, modifier = Modifier.size(17.dp))
+                        Text("Demo ödemeyi tamamla", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        } else {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Ödeme tamamlandığında üyelik ve kredi hakların otomatik olarak hesabına yansır.",
+                color = theme.text2.copy(0.65f),
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun PaymentModeBand(
+    state: StoreState,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    val accent = if (state.billingSandboxAvailable) theme.effectiveAccentColor else Amber
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(accent.copy(0.08f))
+            .border(
+                1.dp,
+                accent.copy(0.24f),
+                RoundedCornerShape(14.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
+            null,
+            tint = accent,
+            modifier = Modifier.size(20.dp)
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (state.billingSandboxAvailable) "Demo ödeme modu açık" else "Demo ödeme modu kapalı",
+                color = theme.text0,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                if (state.billingSandboxAvailable)
+                    "Satın alma akışını güvenle deneyebilirsin; gerçek çekim yapılmaz."
+                else
+                    "Satın alma isteği oluşturulur, ödeme tamamlanınca haklar hesabına işlenir.",
+                color = theme.text2,
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DemoField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    val accent = theme.effectiveAccentColor
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, fontSize = 11.sp) },
+        placeholder = { Text(placeholder, fontSize = 12.sp, color = theme.text2.copy(0.55f)) },
+        singleLine = true,
+        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = theme.text0,
+            unfocusedTextColor = theme.text0,
+            focusedBorderColor = accent.copy(0.55f),
+            unfocusedBorderColor = theme.stroke,
+            focusedLabelColor = accent,
+            unfocusedLabelColor = theme.text2,
+            cursorColor = accent,
+            focusedContainerColor = theme.bg0,
+            unfocusedContainerColor = theme.bg0
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
 // ── Top Bar ───────────────────────────────────────────────────────────────────
 
 @Composable
@@ -270,36 +570,39 @@ private fun StoreTopBar(
     onBack     : () -> Unit,
     onTabChange: (Int) -> Unit
 ) {
-    val accent = Lime
+    val accent = theme.effectiveAccentColor
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(theme.bg0)
             .statusBarsPadding()
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBackIosNew, null,
-                    tint = theme.text1, modifier = Modifier.size(20.dp))
+            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Forge Merkezi",
+                    color      = theme.text0,
+                    fontSize   = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Üyelik, Oracle kredisi ve analiz hakları",
+                    color      = theme.text2,
+                    fontSize   = 10.sp,
+                    lineHeight = 13.sp
+                )
             }
-            Text(
-                "MAĞAZA",
-                color         = theme.text0,
-                fontSize      = 14.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp,
-                modifier      = Modifier.weight(1f),
-                textAlign     = TextAlign.Center
-            )
-            // Plan/kredi chip
+
             val isPaid    = plan != UserPlan.FREE
-            val chipColor = if (isPaid) accent.copy(0.12f) else accent.copy(0.08f)
+            val chipColor = if (isPaid) accent.copy(0.14f) else accent.copy(0.08f)
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -314,50 +617,47 @@ private fun StoreTopBar(
                     null, tint = accent, modifier = Modifier.size(13.dp)
                 )
                 Text(
-                    if (isPaid) "${plan.displayName} · $credits" else "$credits",
+                    if (isPaid) "${plan.displayName} · $credits" else "$credits kredi",
                     color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        Spacer(Modifier.height(6.dp))
-
-        // Tab row
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(theme.bg1.copy(0.72f))
+                .border(1.dp, theme.stroke.copy(0.42f), RoundedCornerShape(18.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            listOf("Abonelik" to Icons.Rounded.WorkspacePremium,
+            listOf("Üyelik" to Icons.Rounded.WorkspacePremium,
                    "AI Kredi"  to Icons.Rounded.Bolt
             ).forEachIndexed { idx, (label, icon) ->
                 val isActive = activeTab == idx
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isActive) Lime.copy(0.12f) else theme.bg1)
-                        .border(
-                            1.dp,
-                            if (isActive) Lime.copy(0.45f) else theme.stroke,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (isActive) accent.copy(0.16f) else Color.Transparent)
+                        .border(1.dp, if (isActive) accent.copy(0.36f) else Color.Transparent, RoundedCornerShape(14.dp))
                         .clickable(
                             indication        = null,
                             interactionSource = remember { MutableInteractionSource() }
                         ) { onTabChange(idx) }
-                        .padding(vertical = 11.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Icon(icon, null,
-                        tint     = if (isActive) Lime else theme.text2,
+                        tint     = if (isActive) accent else theme.text2,
                         modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         label,
-                        color      = if (isActive) Lime else theme.text2,
+                        color      = if (isActive) accent else theme.text2,
                         fontSize   = 13.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
                     )
@@ -365,8 +665,7 @@ private fun StoreTopBar(
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = theme.stroke.copy(0.25f), thickness = 0.5.dp)
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -384,6 +683,7 @@ private fun SubscriptionTab(
     hasPaidPlan   : Boolean,
     onSelectPlan  : (UserPlan) -> Unit,
     onYearlyChange: (Boolean) -> Unit,
+    plans         : List<PlanTier>,
     onPurchase    : () -> Unit,
     onCancelPlan  : () -> Unit
 ) {
@@ -394,25 +694,37 @@ private fun SubscriptionTab(
         state.isYearly -> "/yıl"
         else           -> "/ay"
     }
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val ctaReserve = if (isFree) navBottom + 24.dp else navBottom + 116.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 130.dp)
+            contentPadding = PaddingValues(bottom = ctaReserve)
         ) {
             item {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
+                AccountSummaryHero(state = state, theme = theme)
+                Spacer(Modifier.height(12.dp))
+                AiCostMatrix(theme = theme)
+                Spacer(Modifier.height(16.dp))
                 BillingToggle(
                     isYearly = state.isYearly,
                     onToggle = onYearlyChange,
                     theme    = theme
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
             }
 
             item {
+                SectionLabel(
+                    title = "Plan seçimi",
+                    subtitle = if (state.isYearly) "Yıllık fiyatlandırma aktif" else "Aylık fiyatlandırma aktif",
+                    theme = theme
+                )
+                Spacer(Modifier.height(10.dp))
                 PlanSelector(
-                    plans        = PLANS,
+                    plans        = plans,
                     selectedPlan = selectedPlan,
                     currentPlan  = state.plan,
                     isYearly     = state.isYearly,
@@ -462,7 +774,7 @@ private fun SubscriptionTab(
 
             item {
                 Text(
-                    "Abonelikler otomatik yenilenir. İstediğin zaman iptal edebilirsin.\nFiyatlar KDV dahildir.",
+                    "Plan değişiklikleri güvenli ödeme onayından sonra hesabına yansır. İstediğin zaman ücretsiz plana dönebilirsin.",
                     modifier   = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
@@ -510,6 +822,220 @@ private fun SubscriptionTab(
     }
 }
 
+@Composable
+private fun SectionLabel(
+    title: String,
+    subtitle: String,
+    theme: AppThemeState
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                color = theme.text2,
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountSummaryHero(
+    state: StoreState,
+    theme: AppThemeState
+) {
+    val planAccent = when (state.plan) {
+        UserPlan.FREE -> theme.effectiveAccentColor
+        UserPlan.PRO -> Forge500
+        UserPlan.ELITE -> CardPurple
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        planAccent.copy(0.18f),
+                        theme.bg1.copy(0.92f),
+                        theme.bg2.copy(0.82f)
+                    )
+                )
+            )
+            .border(1.dp, planAccent.copy(0.24f), RoundedCornerShape(22.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Forge hesabın",
+                    color = theme.text0,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Antrenman takibi, Oracle sohbeti ve AI analizleri aynı merkezden yönetilir.",
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(planAccent.copy(0.14f))
+                    .border(1.dp, planAccent.copy(0.28f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.VerifiedUser, null, tint = planAccent, modifier = Modifier.size(20.dp))
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SummaryMetric(
+                label = "Aktif plan",
+                value = state.plan.displayName,
+                icon = Icons.Rounded.WorkspacePremium,
+                accent = planAccent,
+                theme = theme,
+                modifier = Modifier.weight(1f)
+            )
+            SummaryMetric(
+                label = "AI kredi",
+                value = "${state.credits}",
+                icon = Icons.Rounded.Bolt,
+                accent = theme.effectiveAccentColor,
+                theme = theme,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(theme.bg0.copy(0.36f))
+                .border(1.dp, theme.stroke.copy(0.26f), RoundedCornerShape(14.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+            Text(
+                if (state.plan == UserPlan.FREE)
+                    "Oracle ve AI özellikleri kredi kullandıkça çalışır."
+                else
+                    "${state.plan.displayName} hakların aktif; ekstra AI işlemleri krediyle tamamlanır.",
+                color = theme.text1,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    accent: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.bg0.copy(0.52f))
+            .border(1.dp, accent.copy(0.18f), RoundedCornerShape(12.dp))
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(accent.copy(0.11f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(15.dp))
+        }
+        Column {
+            Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text(value, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun AiCostMatrix(theme: AppThemeState) {
+    val accent = theme.effectiveAccentColor
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1.copy(0.86f))
+            .border(1.dp, accent.copy(0.18f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Oracle kredi rehberi", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CostPill("Sohbet", "1 kredi", accent, theme, Modifier.weight(1f))
+            CostPill("Program", "8-12 kredi", Forge500, theme, Modifier.weight(1f))
+            CostPill("Analiz", "3 kredi", CardCyan, theme, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun CostPill(
+    title: String,
+    value: String,
+    accent: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(accent.copy(0.08f))
+            .border(1.dp, accent.copy(0.2f), RoundedCornerShape(11.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(2.dp))
+        Text(value, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    }
+}
+
 // ── Credits Tab ───────────────────────────────────────────────────────────────
 
 @Composable
@@ -517,8 +1043,11 @@ private fun CreditsTab(
     theme     : AppThemeState,
     haptic    : androidx.compose.ui.hapticfeedback.HapticFeedback,
     state     : StoreState,
+    packages  : List<CreditPackage>,
     onPurchase: (Int) -> Unit
 ) {
+    val accent = theme.effectiveAccentColor
+
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
         contentPadding      = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
@@ -526,26 +1055,35 @@ private fun CreditsTab(
     ) {
         item {
             Column(
-                modifier            = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(accent.copy(0.16f), theme.bg1.copy(0.92f), theme.bg2.copy(0.78f))
+                        )
+                    )
+                    .border(1.dp, accent.copy(0.24f), RoundedCornerShape(22.dp))
+                    .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
                         .size(68.dp)
                         .clip(CircleShape)
-                        .background(Lime.copy(0.1f))
-                        .border(1.dp, Lime.copy(0.25f), CircleShape),
+                        .background(accent.copy(0.1f))
+                        .border(1.dp, accent.copy(0.25f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Bolt, null,
-                        tint = Lime, modifier = Modifier.size(32.dp))
+                        tint = accent, modifier = Modifier.size(32.dp))
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("AI Kredisi",
+                Text("Oracle kredileri",
                     color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    "Her AI işlemi 1 kredi harcar. FREE planında geçerlidir.",
+                    "Sohbet, program üretimi ve performans analizlerinde kullandığın AI enerjisi.",
                     color     = theme.text2,
                     fontSize  = 12.sp,
                     textAlign = TextAlign.Center,
@@ -557,23 +1095,23 @@ private fun CreditsTab(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Lime.copy(0.08f))
-                        .border(1.dp, Lime.copy(0.2f), RoundedCornerShape(20.dp))
+                        .background(theme.bg0.copy(0.36f))
+                        .border(1.dp, accent.copy(0.2f), RoundedCornerShape(20.dp))
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(Icons.Rounded.Bolt, null,
-                        tint = Lime, modifier = Modifier.size(15.dp))
+                        tint = accent, modifier = Modifier.size(15.dp))
                     Text("Mevcut kredi  ", color = theme.text2, fontSize = 13.sp)
                     Text("${state.credits}",
-                        color = Lime, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        color = accent, fontSize = 15.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
 
-        items(CREDIT_PACKAGES.size) { idx ->
-            val pkg = CREDIT_PACKAGES[idx]
+        items(packages.size) { idx ->
+            val pkg = packages[idx]
             CreditCard(
                 pkg       = pkg,
                 theme     = theme,
@@ -586,8 +1124,18 @@ private fun CreditsTab(
         }
 
         item {
+            BillingSafetyCard(theme = theme)
+        }
+
+        if (state.recentUsage.isNotEmpty()) {
+            item {
+                RecentUsageCard(state = state, theme = theme)
+            }
+        }
+
+        item {
             Text(
-                "Krediler abonelik gerektirmez.\nÖdeme bilgileri şifreli olarak saklanır.",
+                "Krediler abonelikten bağımsız saklanır ve güvenli ödeme onayı sonrası bakiyene eklenir.",
                 modifier  = Modifier.fillMaxWidth(),
                 color     = theme.text2.copy(0.4f),
                 fontSize  = 10.sp,
@@ -596,6 +1144,91 @@ private fun CreditsTab(
             )
         }
     }
+}
+
+@Composable
+private fun BillingSafetyCard(theme: AppThemeState) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardCyan.copy(0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.VerifiedUser, null, tint = CardCyan, modifier = Modifier.size(21.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text("Güvenli Forge bakiyesi", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "Kredi ve üyelik hakları ödeme onayından sonra korunarak hesabına işlenir.",
+                color = theme.text2,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentUsageCard(state: StoreState, theme: AppThemeState) {
+    val accent = theme.effectiveAccentColor
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Text("Son AI kullanımları", color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(10.dp))
+        state.recentUsage.take(5).forEach { usage ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(toolLabel(usage.tool), color = theme.text1, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text(
+                    if (usage.creditCost > 0) "-${usage.creditCost} kredi" else usageLabel(usage.source),
+                    color = if (usage.creditCost > 0) accent else theme.text2,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun toolLabel(tool: String): String = when (tool) {
+    "ORACLE_CHAT" -> "Oracle sohbet"
+    "PROGRAM_GENERATE_TEXT" -> "AI program"
+    "PROGRAM_GENERATE_MEDIA" -> "Dosyadan program"
+    "PROGRAM_EDIT" -> "Program düzenleme"
+    "WEIGHT_TREND_ANALYSIS" -> "Kilo analizi"
+    "EXERCISE_PROGRESS_ANALYSIS" -> "Egzersiz analizi"
+    "WORKOUT_PROGRESS_ANALYSIS" -> "Antrenman analizi"
+    "ORACLE_TO_PROGRAM" -> "Oracle program ekleme"
+    else -> tool.lowercase().replace('_', ' ')
+}
+
+private fun usageLabel(source: String): String = when (source) {
+    "free_limit" -> "ücretsiz hak"
+    "plan_limit" -> "plan hakkı"
+    else -> source
 }
 
 // ── Billing Toggle ────────────────────────────────────────────────────────────
@@ -607,6 +1240,8 @@ private fun BillingToggle(
     theme   : AppThemeState
 ) {
     val density = LocalDensity.current
+    val accent = theme.effectiveAccentColor
+    val onAccent = theme.effectiveOnAccentColor
 
     Row(
         modifier              = Modifier.fillMaxWidth(),
@@ -627,7 +1262,7 @@ private fun BillingToggle(
 
         // Toggle — animasyon dp→px dönüşümü ile
         val trackColor by animateColorAsState(
-            if (isYearly) Lime else theme.stroke,
+            if (isYearly) accent else theme.stroke,
             tween(200), label = "track"
         )
         // Thumb ne kadar kayacak (px cinsinden)
@@ -654,7 +1289,7 @@ private fun BillingToggle(
                     .size(20.dp)
                     .shadow(2.dp, CircleShape)
                     .clip(CircleShape)
-                    .background(if (isYearly) LimeText else Color.White)
+                    .background(if (isYearly) onAccent else Color.White)
             )
         }
 
@@ -676,10 +1311,10 @@ private fun BillingToggle(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Lime.copy(0.14f))
+                    .background(accent.copy(0.14f))
                     .padding(horizontal = 6.dp, vertical = 3.dp)
             ) {
-                Text("-%40", color = Lime, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
+                Text("-%40", color = accent, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -726,10 +1361,9 @@ private fun PlanTab(
     onClick   : () -> Unit,
     modifier  : Modifier = Modifier
 ) {
-    val accent = if (isSelected) Lime else theme.stroke
     val price  = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
 
-    val selColor = tier.accentColor.takeIf { tier.plan != UserPlan.FREE } ?: Lime
+    val selColor = tier.accentColor.takeIf { tier.plan != UserPlan.FREE } ?: theme.effectiveAccentColor
     val bgColor by animateColorAsState(
         if (isSelected) selColor.copy(0.1f) else theme.bg1,
         tween(180), label = "bg"
@@ -788,10 +1422,10 @@ private fun PlanTab(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Lime.copy(0.14f))
+                        .background(theme.effectiveAccentColor.copy(0.14f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Text("AKTİF", color = Lime, fontSize = 7.sp,
+                    Text("AKTİF", color = theme.effectiveAccentColor, fontSize = 7.sp,
                         fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
                 }
             }
@@ -858,10 +1492,10 @@ private fun PlanDetailCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(5.dp))
-                                .background(Lime.copy(0.13f))
+                                .background(theme.effectiveAccentColor.copy(0.13f))
                                 .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
-                            Text(tier.discountBadge, color = Lime, fontSize = 9.sp,
+                            Text(tier.discountBadge, color = theme.effectiveAccentColor, fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold)
                         }
                     }
@@ -896,7 +1530,7 @@ private fun PlanDetailCard(
                 !unlocked             -> theme.stroke
                 feature.minPlan == UserPlan.ELITE -> CardPurple
                 feature.minPlan == UserPlan.PRO   -> Forge500
-                else                              -> Lime.copy(0.7f)
+                else                              -> theme.effectiveAccentColor.copy(0.7f)
             }
 
             Row(
@@ -935,7 +1569,7 @@ private fun PlanDetailCard(
                     val unlockAccent = when (feature.minPlan) {
                         UserPlan.ELITE -> CardPurple
                         UserPlan.PRO   -> Forge500
-                        else           -> Lime
+                        else           -> theme.effectiveAccentColor
                     }
                     Box(
                         modifier = Modifier
@@ -976,6 +1610,7 @@ private fun CreditCard(
     isLoading : Boolean,
     onPurchase: () -> Unit
 ) {
+    val accent = theme.effectiveAccentColor
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -991,7 +1626,7 @@ private fun CreditCard(
             .background(theme.bg1)
             .border(
                 width = if (pkg.badge != null) 1.dp else 1.dp,
-                color = if (pkg.badge != null) Lime.copy(0.35f) else theme.stroke.copy(0.4f),
+                color = if (pkg.badge != null) accent.copy(0.35f) else theme.stroke.copy(0.4f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable(
@@ -1027,10 +1662,10 @@ private fun CreditCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(5.dp))
-                            .background(Lime.copy(0.13f))
+                            .background(accent.copy(0.13f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(pkg.badge, color = Lime, fontSize = 8.sp,
+                        Text(pkg.badge, color = accent, fontSize = 8.sp,
                             fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp)
                     }
                 }
@@ -1042,18 +1677,18 @@ private fun CreditCard(
         if (isLoading) {
             CircularProgressIndicator(
                 modifier    = Modifier.size(18.dp),
-                color       = Lime,
+                color       = accent,
                 strokeWidth = 2.dp
             )
         } else {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Lime.copy(0.12f))
-                    .border(1.dp, Lime.copy(0.3f), RoundedCornerShape(12.dp))
+                    .background(pkg.accentColor.copy(0.12f))
+                    .border(1.dp, pkg.accentColor.copy(0.3f), RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 9.dp)
             ) {
-                Text(pkg.price, color = Lime, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Text(pkg.price, color = pkg.accentColor, fontSize = 14.sp, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -1071,6 +1706,7 @@ private fun CtaButton(
     yearlyPerMonth: String,
     onClick       : () -> Unit
 ) {
+    val contentColor = readableOn(accentColor)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -1111,7 +1747,7 @@ private fun CtaButton(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier    = Modifier.size(20.dp),
-                    color       = if (isCurrent) TextMuted else LimeText,
+                    color       = if (isCurrent) TextMuted else contentColor,
                     strokeWidth = 2.dp
                 )
             } else if (isCurrent) {
@@ -1120,14 +1756,14 @@ private fun CtaButton(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(Icons.Rounded.CheckCircle, null,
-                        tint = Lime, modifier = Modifier.size(18.dp))
+                        tint = accentColor, modifier = Modifier.size(18.dp))
                     Text("Mevcut planınız",
-                        color = Lime, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        color = accentColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             } else {
                 Text(
                     "$price$period ile Başla",
-                    color      = if (accentColor == Lime) LimeText else Color.White,
+                    color      = contentColor,
                     fontWeight = FontWeight.Black,
                     fontSize   = 15.sp
                 )
@@ -1252,6 +1888,7 @@ fun PaywallDialog(
     onGoToStore: () -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1291,12 +1928,12 @@ fun PaywallDialog(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(Lime.copy(0.1f))
-                    .border(1.dp, Lime.copy(0.25f), CircleShape),
+                    .background(accent.copy(0.1f))
+                    .border(1.dp, accent.copy(0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.Lock, null,
-                    tint = Lime, modifier = Modifier.size(26.dp))
+                    tint = accent, modifier = Modifier.size(26.dp))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -1317,13 +1954,13 @@ fun PaywallDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Lime.copy(0.12f))
-                    .border(1.dp, Lime.copy(0.35f), RoundedCornerShape(14.dp))
+                    .background(accent.copy(0.12f))
+                    .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
                     .clickable { onGoToStore() }
                     .padding(vertical = 15.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Planları Gör", color = Lime, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                Text("Planları Gör", color = accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
             }
 
             Spacer(Modifier.height(10.dp))

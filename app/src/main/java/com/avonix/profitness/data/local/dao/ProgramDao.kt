@@ -31,7 +31,10 @@ interface ProgramDao {
     @Query("""
         SELECT pe.id, pe.program_day_id, pe.exercise_id, pe.sets, pe.reps,
                pe.weight_kg, pe.rest_seconds, pe.order_index,
-               e.name AS exercise_name, e.target_muscle, e.category, e.image_url
+               pe.target_duration_seconds, pe.target_distance_meters,
+               pe.target_elevation_meters, pe.target_incline_percent,
+               e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
+               e.sport_type, e.tracking_mode
         FROM program_exercises pe
         INNER JOIN exercises e ON pe.exercise_id = e.id
         WHERE pe.program_day_id = :dayId
@@ -42,7 +45,10 @@ interface ProgramDao {
     @Query("""
         SELECT pe.id, pe.program_day_id, pe.exercise_id, pe.sets, pe.reps,
                pe.weight_kg, pe.rest_seconds, pe.order_index,
-               e.name AS exercise_name, e.target_muscle, e.category, e.image_url
+               pe.target_duration_seconds, pe.target_distance_meters,
+               pe.target_elevation_meters, pe.target_incline_percent,
+               e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
+               e.sport_type, e.tracking_mode
         FROM program_exercises pe
         INNER JOIN exercises e ON pe.exercise_id = e.id
         WHERE pe.program_day_id IN (:dayIds)
@@ -53,7 +59,10 @@ interface ProgramDao {
     @Query("""
         SELECT pe.id, pe.program_day_id, pe.exercise_id, pe.sets, pe.reps,
                pe.weight_kg, pe.rest_seconds, pe.order_index,
-               e.name AS exercise_name, e.target_muscle, e.category, e.image_url
+               pe.target_duration_seconds, pe.target_distance_meters,
+               pe.target_elevation_meters, pe.target_incline_percent,
+               e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
+               e.sport_type, e.tracking_mode
         FROM program_exercises pe
         INNER JOIN exercises e ON pe.exercise_id = e.id
         WHERE pe.program_day_id IN (:dayIds)

@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.aicoach
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +23,7 @@ import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.CommunicationStyle
 import com.avonix.profitness.data.ai.ResponseLength
+import com.avonix.profitness.presentation.components.AppBackButton
 
 private const val TOTAL_STEPS = 3
 
@@ -30,6 +31,7 @@ private const val TOTAL_STEPS = 3
 fun AICoachOnboardingScreen(
     initialPrefs : AICoachPrefs = AICoachPrefs(),
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    onCancel     : (() -> Unit)? = null,
     onComplete   : (AICoachPrefs) -> Unit
 ) {
     val theme  = LocalAppTheme.current
@@ -40,6 +42,14 @@ fun AICoachOnboardingScreen(
     var selectedStyle   by remember { mutableStateOf(initialPrefs.communicationStyle) }
     var allowProfile    by remember { mutableStateOf(initialPrefs.allowProfileAccess) }
     var allowThirdParty by remember { mutableStateOf(initialPrefs.allowThirdPartyProcessing) }
+
+    BackHandler(enabled = step > 0 || onCancel != null) {
+        if (step > 0) {
+            step--
+        } else {
+            onCancel?.invoke()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
@@ -59,9 +69,12 @@ fun AICoachOnboardingScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 if (step > 0) {
-                    IconButton(onClick = { step-- }, modifier = Modifier.align(Alignment.CenterStart)) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = null, tint = theme.text2)
-                    }
+                    AppBackButton(
+                        onClick = { step-- },
+                        accent = accent,
+                        size = 48.dp,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    )
                 }
                 Text(
                     "ORACLE",

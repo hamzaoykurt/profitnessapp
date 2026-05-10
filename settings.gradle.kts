@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "profitnessapp"
 include(":app")
+include(":baselineprofile")

@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -49,6 +50,7 @@ class DashboardViewModel @Inject constructor(
             delay(STARTUP_EVENTS_DELAY_MS)
             reloadIfStale()
         }
+        observeSkipProgramFlag()
     }
 
     fun reloadIfStale() {
@@ -87,6 +89,16 @@ class DashboardViewModel @Inject constructor(
                     error            = err,
                     skipProgramToday = skipFlag
                 )
+            }
+        }
+    }
+
+    private fun observeSkipProgramFlag() {
+        viewModelScope.launch {
+            prefs.skippedFlow.collect { entries ->
+                val today = LocalDate.now().toString()
+                val skipFlag = entries.any { it.startsWith("$today|") }
+                _state.update { it.copy(skipProgramToday = skipFlag) }
             }
         }
     }

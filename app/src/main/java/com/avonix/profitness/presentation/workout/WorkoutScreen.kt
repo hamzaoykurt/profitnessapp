@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -71,7 +72,14 @@ data class Exercise(
     val restSeconds: Int = 60,           // set arası dinlenme
     val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu — sonraki harekete geçmeden önce
     val exerciseTableId: String = "", // FK to exercises table — used for DB logging
-    val weightKg: Float = 0f          // programdan gelen planlı ağırlık
+    val weightKg: Float = 0f,         // programdan gelen planlı ağırlık
+    val sportType: String = "",
+    val trackingMode: String = "",
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null,
+    val challengeId: String? = null
 )
 
 data class WorkoutDay(
@@ -168,29 +176,27 @@ fun WorkoutScreen(
 
     // ── Bildirim izni (Android 13+) ───────────────────────────────────────────
     var notifPermissionDenied by remember { mutableStateOf(false) }
-    var pendingTimerRequest by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var pendingTimerStart by remember { mutableStateOf<(() -> Unit)?>(null) }
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         notifPermissionDenied = !granted
-        pendingTimerRequest?.let { (seconds, exerciseName) ->
-            viewModel.startRestTimer(seconds, exerciseName)
-        }
-        pendingTimerRequest = null
+        pendingTimerStart?.invoke()
+        pendingTimerStart = null
     }
-    val startTimerWithPermission: (Int, String) -> Unit = { seconds, exerciseName ->
+    val startTimerWithPermission: (() -> Unit) -> Unit = { start ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
-                pendingTimerRequest = seconds to exerciseName
+                pendingTimerStart = start
                 notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                viewModel.startRestTimer(seconds, exerciseName)
+                start()
             }
         } else {
-            viewModel.startRestTimer(seconds, exerciseName)
+            start()
         }
     }
 
@@ -200,6 +206,12 @@ fun WorkoutScreen(
             when (event) {
                 is WorkoutEvent.ShowPaywall -> showPaywall = true
             }
+        }
+    }
+    BackHandler(enabled = showPaywall || notifPermissionDenied) {
+        when {
+            showPaywall -> showPaywall = false
+            notifPermissionDenied -> notifPermissionDenied = false
         }
     }
     if (showPaywall) {
@@ -214,7 +226,7 @@ fun WorkoutScreen(
 
     // Timer değişkenleri — hem overlay hem içerik için kullanılır
     val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive  = restTimer.isRunning || restTimer.isDone
+    val timerActive  = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
     val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
@@ -251,8 +263,12 @@ fun WorkoutScreen(
         DynamicIslandTimer(
             timer     = restTimer,
             topOffset = statusBarPad + 8.dp,
-            onStop    = { viewModel.stopRestTimer() },
-            onDismiss = { viewModel.dismissRestTimer() }
+            onStop    = { viewModel.stopVisibleTimer() },
+            onTogglePause = {
+                if (restTimer.isPaused) viewModel.resumeVisibleTimer()
+                else viewModel.pauseVisibleTimer()
+            },
+            onDismiss = { viewModel.dismissVisibleTimer() }
          )
 
         // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
@@ -424,7 +440,7 @@ private fun NoProgramView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "HENÜZ PROGRAMIN YOK",
+            theme.t("HENÜZ PROGRAMIN YOK", "NO PROGRAM YET"),
             color = accent,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -432,7 +448,10 @@ private fun NoProgramView(
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Antrenman programını şimdi oluştur.\nAI sana özel bir plan hazırlasın ya da kendin düzenle.",
+            theme.t(
+                "Antrenman programını şimdi oluştur.\nAI sana özel bir plan hazırlasın ya da kendin düzenle.",
+                "Create your training program now.\nLet AI prepare a personal plan or build it yourself."
+            ),
             color = theme.text2,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
@@ -450,7 +469,7 @@ private fun NoProgramView(
         ) {
             Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
-            Text("AI İLE OLUŞTUR", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
+            Text(theme.t("AI İLE OLUŞTUR", "CREATE WITH AI"), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -464,7 +483,7 @@ private fun NoProgramView(
         ) {
             Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(20.dp), tint = theme.text1)
             Spacer(Modifier.width(10.dp))
-            Text("MANUEL OLUŞTUR", fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
+            Text(theme.t("MANUEL OLUŞTUR", "CREATE MANUALLY"), fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
         }
     }
 }
@@ -477,7 +496,7 @@ private fun WorkoutContent(
     bottomPadding: Dp,
     timerActive: Boolean = false,
     timerBannerH: Dp = 0.dp,
-    onStartTimer: (Int, String) -> Unit
+    onStartTimer: (() -> Unit) -> Unit
 ) {
     val dayStates = state.dayStates
     val selectedDayIdx = state.selectedDayIdx
@@ -491,6 +510,9 @@ private fun WorkoutContent(
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
     WorkoutRefreshOnResumeEffect { dashboardVm.reloadIfStale() }
+    LaunchedEffect(state.challengeSyncVersion) {
+        if (state.challengeSyncVersion > 0) dashboardVm.refresh(force = true)
+    }
 
     // Event banner verisi stale ise resume sonrası yenilenir; UI tab geçişi bloklanmaz.
     val todayEvents = dashState.today
@@ -500,10 +522,23 @@ private fun WorkoutContent(
     val hasUpcomingSection = upcomingEvents.any {
         it.event?.dateIso != java.time.LocalDate.now().toString()
     }
+    val visibleExercises = remember(currentDay.exercises, todayEvents) {
+        currentDay.exercises + todayEvents.mapNotNull { event ->
+            challengeExerciseForHome(event, currentDay.exercises)
+        }
+    }
 
     val listState = rememberLazyListState()
     // Açılan kartı ekranın ortasına scroll et
     var expandedExIdx by remember { mutableStateOf(-1) }
+
+    BackHandler(enabled = detailChallengeId != null || expandedExIdx >= 0) {
+        when {
+            detailChallengeId != null -> detailChallengeId = null
+            expandedExIdx >= 0        -> expandedExIdx = -1
+        }
+    }
+
     LaunchedEffect(expandedExIdx, hasTodayBanner) {
         if (expandedExIdx >= 0) {
             // Header items: StreakBanner(0), [EventBanner(1)?], Header, DaySelector, SectionLabel
@@ -519,7 +554,7 @@ private fun WorkoutContent(
     val timer = restTimer
     LaunchedEffect(timer.isRunning, timer.exerciseName) {
         if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
-            val exIdx = currentDay.exercises.indexOfFirst { it.name == timer.exerciseName }
+            val exIdx = visibleExercises.indexOfFirst { it.name == timer.exerciseName }
             if (exIdx >= 0) {
                 expandedExIdx = exIdx
             }
@@ -602,7 +637,7 @@ private fun WorkoutContent(
         }
 
         // ── Section Label ─────────────────────────────────────────────────
-        if (!currentDay.isRestDay && currentDay.exercises.isNotEmpty() && !skipProgramToday) {
+        if (visibleExercises.isNotEmpty() && !skipProgramToday) {
             item {
                 Row(
                     modifier = Modifier
@@ -619,7 +654,7 @@ private fun WorkoutContent(
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = "${currentState.completedCount}/${currentDay.exercises.size} ${strings.completedLabel}",
+                        text = "${currentState.completedIds.count { id -> visibleExercises.any { it.id == id } }}/${visibleExercises.size} ${strings.completedLabel}",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -629,12 +664,12 @@ private fun WorkoutContent(
         }
 
         // ── Content: Rest day or exercise cards ──────────────────────────
-        if (currentDay.isRestDay) {
+        if (currentDay.isRestDay && visibleExercises.isEmpty()) {
             item { RestDayView() }
         } else if (skipProgramToday) {
             item { SkippedProgramNotice() }
         } else {
-            itemsIndexed(currentDay.exercises, key = { _, ex -> ex.id }) { idx, exercise ->
+            itemsIndexed(visibleExercises, key = { _, ex -> ex.id }) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
                 val doneSetIndices = if (isCompleted) {
@@ -644,29 +679,70 @@ private fun WorkoutContent(
                 }
                 // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
                 val timer = restTimer
-                val isThisExTimer = timer.exerciseName == exercise.name
+                val isThisExTimer = timer.exerciseId == exercise.id ||
+                    (timer.exerciseId.isBlank() && timer.exerciseName == exercise.name)
                 CinematicExerciseCard(
                     exercise          = exercise,
                     index             = idx,
                     isCompleted       = isCompleted,
                     doneSetIndices    = doneSetIndices,
                     onToggleSet       = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
-                    onComplete        = { viewModel.toggleExercise(selectedDayIdx, exercise.id) },
+                    onComplete        = {
+                        if (exercise.challengeId != null) viewModel.toggleChallengeActivity(selectedDayIdx, exercise)
+                        else viewModel.toggleExercise(selectedDayIdx, exercise.id)
+                    },
                     onShowDetail      = { showDetail = true },
                     onExpandChanged   = { expanded ->
                         expandedExIdx = if (expanded) idx else -1
                         if (expanded) viewModel.loadLastSession(exercise.id)
                     },
                     setWeights        = state.setWeights[exercise.id] ?: emptyMap(),
-                    setReps           = state.setReps[exercise.id] ?: emptyMap(),
+                    setDurations      = state.setDurations[exercise.id] ?: emptyMap(),
                     lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
+                    profileWeightKg   = state.profileWeightKg,
+                    activityDuration  = state.activityDurations[exercise.id]
+                        ?: exercise.targetDurationSeconds?.let { (it / 60f).trimmedUi() }
+                        ?: exercise.inferredHoldDurationSeconds()?.let { (it / 60f).trimmedUi() }
+                        ?: "",
+                    activityDistance  = state.activityDistances[exercise.id]
+                        ?: exercise.targetDistanceMeters?.trimmedUi()
+                        ?: "",
+                    activityElevation = state.activityElevations[exercise.id]
+                        ?: exercise.targetElevationMeters?.trimmedUi()
+                        ?: "",
+                    activityIncline   = state.activityInclines[exercise.id]
+                        ?: exercise.targetInclinePercent?.trimmedUi()
+                        ?: "",
                     onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
-                    onSetRepsChanged   = { si, v -> viewModel.updateSetReps(exercise.id, si, v) },
-                    timerSeconds      = if (isThisExTimer) timer.secondsLeft else exercise.restSeconds,
+                    onSetDurationChanged = { si, v -> viewModel.updateSetDuration(exercise.id, si, v) },
+                    onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
+                    onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
+                    onActivityElevationChanged = { v -> viewModel.updateActivityElevation(exercise.id, v) },
+                    onActivityInclineChanged = { v -> viewModel.updateActivityIncline(exercise.id, v) },
+                    timerSeconds      = if (isThisExTimer) timer.displaySeconds else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,
-                    onStartTimer      = { secs -> onStartTimer(secs.takeIf { it > 0 } ?: 60, exercise.name) },
-                    onStopTimer       = { viewModel.stopRestTimer() }
+                    onStartTimer      = { secs ->
+                        onStartTimer {
+                            viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
+                        }
+                    },
+                    onStartSetTimer   = { setIndex, secs ->
+                        onStartTimer {
+                            viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
+                        }
+                    },
+                    onStartSetStopwatchTimer = { setIndex ->
+                        onStartTimer {
+                            viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
+                        }
+                    },
+                    onStartStopwatchTimer = {
+                        onStartTimer {
+                            viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
+                        }
+                    },
+                    onStopTimer       = { viewModel.stopVisibleTimer() }
                 )
                 if (showDetail) {
                     LaunchedEffect(exercise.id) {
@@ -700,6 +776,81 @@ private fun WorkoutContent(
         )
     }
 }
+
+private fun challengeExerciseForHome(
+    event: com.avonix.profitness.domain.challenges.ChallengeSummary,
+    programExercises: List<Exercise>
+): Exercise? {
+    val ev = event.event ?: return null
+    if (ev.mode == com.avonix.profitness.domain.challenges.EventMode.MovementList) return null
+
+    val sameExercise = ev.exerciseId?.let { id ->
+        programExercises.any { it.exerciseTableId == id || it.id == id }
+    } ?: false
+    val sameSport = programExercises.any { exercise ->
+        val sport = SportType.fromRaw(exercise.sportType).takeUnless { exercise.sportType.isBlank() }
+            ?: classifySportType(exercise.category, exercise.name, exercise.target, exercise.reps)
+        sport == ev.sportType
+    }
+    if (sameExercise || sameSport) return null
+
+    val canonicalExerciseId = ev.exerciseId ?: return null
+    val trackingMode = when (event.targetType) {
+        com.avonix.profitness.domain.challenges.ChallengeTargetType.TotalDurationMinutes -> "duration"
+        else -> "duration_distance"
+    }
+    return Exercise(
+        id = "challenge-${event.id}",
+        name = event.title,
+        target = ev.sportType.label,
+        sets = 1,
+        reps = if (event.targetValue > 0) event.targetValue.toString() else "1",
+        image = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800",
+        category = "Kardiyo",
+        restSeconds = 60,
+        exerciseTableId = canonicalExerciseId,
+        sportType = ev.sportType.raw,
+        trackingMode = trackingMode,
+        targetDurationSeconds = if (trackingMode == "duration") (event.targetValue * 60).toInt() else null,
+        targetDistanceMeters = if (trackingMode != "duration") event.targetValue.toFloat() else null,
+        challengeId = event.id
+    )
+}
+
+private fun Float.trimmedUi(): String =
+    if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+
+private fun Exercise.inferredHoldDurationSeconds(): Int? {
+    val metric = classifyExerciseMetric(category, name, target, reps, sportType, trackingMode)
+    if (metric != ExerciseMetric.Duration) return null
+    val haystack = listOf(category, name, target)
+        .joinToString(" ")
+        .lowercase()
+        .normalizeWorkoutText()
+    val isTimedHold = listOf("plank", "wall sit", "hollow hold", "dead hang")
+        .any { it in haystack }
+    if (!isTimedHold) return null
+    val cleaned = reps.lowercase().normalizeWorkoutText().trim()
+    return when {
+        cleaned.contains("dk") || cleaned.contains("min") || cleaned.contains("dakika") ->
+            cleaned.filter { it.isDigit() || it == ',' || it == '.' }
+                .replace(',', '.')
+                .toFloatOrNull()
+                ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+        else ->
+            cleaned.filter { it.isDigit() }
+                .toIntOrNull()
+                ?.coerceAtLeast(1)
+    }
+}
+
+private fun String.normalizeWorkoutText(): String =
+    replace('\u0131', 'i')
+        .replace('\u011f', 'g')
+        .replace('\u00fc', 'u')
+        .replace('\u015f', 's')
+        .replace('\u00f6', 'o')
+        .replace('\u00e7', 'c')
 
 @Composable
 private fun SkippedProgramNotice() {
@@ -1057,17 +1208,40 @@ private fun RestDayView() {
             modifier = Modifier.padding(0.dp, 8.dp, 0.dp, 0.dp)
         )
         Spacer(Modifier.height(32.dp))
-        val tips = listOf(strings.recoveryTip1, strings.recoveryTip2, strings.recoveryTip3)
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            tips.forEach { tip ->
-                Box(
+        val tips = listOf(
+            Triple(Icons.Rounded.WaterDrop, CardCyan, strings.recoveryTip1),
+            Triple(Icons.Rounded.Bedtime, CardPurple, strings.recoveryTip2),
+            Triple(Icons.Rounded.Restaurant, CardGreen, strings.recoveryTip3)
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            tips.forEach { (icon, color, tip) ->
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(theme.bg2)
-                        .padding(20.dp, 14.dp)
+                        .glassCard(color, theme, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(tip, color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(color.copy(0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+                    }
+                    Text(
+                        tip,
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }

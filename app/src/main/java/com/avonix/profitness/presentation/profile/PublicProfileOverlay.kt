@@ -11,14 +11,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,7 +57,10 @@ import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
+import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.domain.social.PublicProfile
+import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -110,6 +115,9 @@ fun PublicProfileOverlay(
                 state.profile != null -> {
                     ProfileContent(
                         profile        = state.profile!!,
+                        challenges     = state.challenges,
+                        sharedPrograms = state.sharedPrograms,
+                        activityLoading = state.activityLoading,
                         onToggleFollow = { vm.toggleFollow() },
                         timerExtraPad  = timerExtraPad
                     )
@@ -124,16 +132,7 @@ fun PublicProfileOverlay(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (theme.isDark) Color.Black.copy(0.55f) else theme.bg2.copy(0.9f))
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(20.dp))
-                }
+                AppBackButton(onClick = onBack, size = 48.dp)
             }
         }
     }
@@ -142,6 +141,9 @@ fun PublicProfileOverlay(
 @Composable
 private fun ProfileContent(
     profile: PublicProfile,
+    challenges: List<ChallengeSummary>,
+    sharedPrograms: List<SharedProgram>,
+    activityLoading: Boolean,
     onToggleFollow: () -> Unit,
     timerExtraPad: Dp
 ) {
@@ -367,6 +369,13 @@ private fun ProfileContent(
             Box(Modifier.width(1.dp).height(32.dp).background(theme.stroke.copy(0.3f)))
             FollowCountBlock(profile.followingCount, "TAKİP", Modifier.weight(1f))
         }
+
+        Spacer(Modifier.height(18.dp))
+        ActivitySection(
+            challenges = challenges,
+            sharedPrograms = sharedPrograms,
+            loading = activityLoading
+        )
     }
 }
 
@@ -399,6 +408,109 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 1.5.sp
         )
+    }
+}
+
+@Composable
+private fun ActivitySection(
+    challenges: List<ChallengeSummary>,
+    sharedPrograms: List<SharedProgram>,
+    loading: Boolean
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "AKTİVİTE",
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.weight(1f).height(1.dp).background(theme.stroke.copy(0.25f)))
+        }
+        Spacer(Modifier.height(10.dp))
+        if (loading) {
+            Box(Modifier.fillMaxWidth().height(70.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = accent, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+            }
+            return@Column
+        }
+
+        if (challenges.isEmpty() && sharedPrograms.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(theme.bg1)
+                    .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(18.dp))
+                    .padding(18.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Henüz görünür challenge veya program paylaşımı yok.", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+            return@Column
+        }
+
+        challenges.take(4).forEach { challenge ->
+            ActivityMiniCard(
+                icon = Icons.Rounded.Event,
+                title = challenge.title,
+                meta = "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.unit}",
+                accent = accent
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        sharedPrograms.take(4).forEach { program ->
+            ActivityMiniCard(
+                icon = Icons.Rounded.Bookmark,
+                title = program.title,
+                meta = "${program.downloadsCount} uygulama · ${program.likesCount} beğeni",
+                accent = accent
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ActivityMiniCard(
+    icon: ImageVector,
+    title: String,
+    meta: String,
+    accent: Color
+) {
+    val theme = LocalAppTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(16.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(accent.copy(0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(meta, color = theme.text2, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

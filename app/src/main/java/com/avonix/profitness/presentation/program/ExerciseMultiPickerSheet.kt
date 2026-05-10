@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.domain.challenges.MovementInput
 import com.avonix.profitness.domain.model.ExerciseItem
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.classifyExerciseMetric
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 
 private val multiCategoryColors = mapOf(
     "Göğüs"   to CardCoral,
@@ -94,13 +97,14 @@ fun ExerciseMultiPickerSheet(
             selected.remove(ex.id)
             orderedIds.remove(ex.id)
         } else {
+            val activityBased = isActivityBasedExercise(ex)
             orderedIds.add(ex.id)
             selected[ex.id] = MovementInput(
                 exerciseId      = ex.id,
                 sortIndex       = orderedIds.size - 1,
-                suggestedSets   = ex.setsDefault.coerceAtLeast(1),
-                suggestedReps   = ex.repsDefault.coerceAtLeast(1),
-                suggestedDurSec = null
+                suggestedSets   = if (activityBased) null else ex.setsDefault.coerceAtLeast(1),
+                suggestedReps   = if (activityBased) null else ex.repsDefault.coerceAtLeast(1),
+                suggestedDurSec = if (activityBased) defaultActivityDurationSeconds(ex) else null
             )
             expandedId = ex.id
         }
@@ -307,8 +311,10 @@ fun ExerciseMultiPickerSheet(
                         ) {
                             val mi = selected[exercise.id]
                             if (mi != null) {
+                                val activityBased = isActivityBasedExercise(exercise)
                                 MovementConfigPanel(
                                     accent = accent,
+                                    activityBased = activityBased,
                                     sets = mi.suggestedSets ?: 0,
                                     reps = mi.suggestedReps ?: 0,
                                     durSec = mi.suggestedDurSec ?: 0,
@@ -379,6 +385,7 @@ fun ExerciseMultiPickerSheet(
 @Composable
 private fun MovementConfigPanel(
     accent: Color,
+    activityBased: Boolean,
     sets: Int,
     reps: Int,
     durSec: Int,
@@ -402,36 +409,38 @@ private fun MovementConfigPanel(
                 .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp)
         ) {
-            MultiCounterField(
-                label = "SET",
-                value = sets,
-                onDecrement = { onChange((sets - 1).coerceAtLeast(0), reps, durSec) },
-                onIncrement = { onChange((sets + 1).coerceAtMost(10), reps, durSec) },
-                accent = accent
-            )
-            HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-            MultiCounterField(
-                label = "TEKRAR",
-                value = reps,
-                onDecrement = { onChange(sets, (reps - 1).coerceAtLeast(0), durSec) },
-                onIncrement = { onChange(sets, (reps + 1).coerceAtMost(100), durSec) },
-                accent = accent
-            )
-            HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-            MultiCounterField(
-                label = "SÜRE",
-                value = durSec,
-                step = 15,
-                onDecrement = { onChange(sets, reps, (durSec - 15).coerceAtLeast(0)) },
-                onIncrement = { onChange(sets, reps, (durSec + 15).coerceAtMost(3600)) },
-                displayOverride = if (durSec == 0) "—" else "${durSec}s",
-                accent = accent
-            )
+            if (activityBased) {
+                MultiCounterField(
+                    label = "SÜRE",
+                    value = durSec,
+                    step = 60,
+                    onDecrement = { onChange(0, 0, (durSec - 60).coerceAtLeast(0)) },
+                    onIncrement = { onChange(0, 0, (durSec + 60).coerceAtMost(10800)) },
+                    displayOverride = formatDurationShort(durSec),
+                    accent = accent
+                )
+            } else {
+                MultiCounterField(
+                    label = "SET",
+                    value = sets,
+                    onDecrement = { onChange((sets - 1).coerceAtLeast(0), reps, 0) },
+                    onIncrement = { onChange((sets + 1).coerceAtMost(10), reps, 0) },
+                    accent = accent
+                )
+                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                MultiCounterField(
+                    label = "TEKRAR",
+                    value = reps,
+                    onDecrement = { onChange(sets, (reps - 1).coerceAtLeast(0), 0) },
+                    onIncrement = { onChange(sets, (reps + 1).coerceAtMost(100), 0) },
+                    accent = accent
+                )
+            }
         }
 
         Spacer(Modifier.height(10.dp))
         Text(
-            "0 = öneri yok (isteğe bağlı)",
+            if (activityBased) "Süre önerisi isteğe bağlıdır" else "0 = öneri yok (isteğe bağlı)",
             color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Light
         )
         Spacer(Modifier.height(10.dp))
@@ -533,3 +542,27 @@ private fun MultiPickerCategoryChip(
         )
     }
 }
+
+private fun isActivityBasedExercise(exercise: ExerciseItem): Boolean {
+    return classifyExerciseMetric(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault.toString(),
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    ) != ExerciseMetric.Strength
+}
+
+private fun defaultActivityDurationSeconds(exercise: ExerciseItem): Int =
+    defaultDurationSecondsForExercise(
+        category = exercise.category,
+        name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+        target = exercise.targetMuscle,
+        reps = exercise.repsDefault,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
+
+private fun formatDurationShort(seconds: Int): String =
+    if (seconds <= 0) "—" else "${(seconds / 60).coerceAtLeast(1)} dk"

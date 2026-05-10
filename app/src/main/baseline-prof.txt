@@ -1,0 +1,24 @@
+# Manual safety-net profile for cold-start and first-interaction jank.
+# The generated profile can miss logged-in tab flows when the generator device has no session.
+HSPLcom/avonix/profitness/ProfitnessApplication;->**(**)**
+HSPLcom/avonix/profitness/MainActivity;->**(**)**
+HSPLcom/avonix/profitness/core/theme/**->**(**)**
+HSPLcom/avonix/profitness/presentation/navigation/**->**(**)**
+HSPLcom/avonix/profitness/presentation/auth/**->**(**)**
+HSPLcom/avonix/profitness/presentation/dashboard/**->**(**)**
+HSPLcom/avonix/profitness/presentation/workout/**->**(**)**
+HPLcom/avonix/profitness/presentation/components/**->**(**)**
+HPLcom/avonix/profitness/presentation/program/**->**(**)**
+HPLcom/avonix/profitness/presentation/aicoach/**->**(**)**
+HPLcom/avonix/profitness/presentation/discover/**->**(**)**
+HPLcom/avonix/profitness/presentation/friends/**->**(**)**
+HPLcom/avonix/profitness/presentation/challenges/**->**(**)**
+HPLcom/avonix/profitness/presentation/profile/**->**(**)**
+HPLcom/avonix/profitness/presentation/store/**->**(**)**
+HPLcom/avonix/profitness/presentation/weight/**->**(**)**
+HPLcom/avonix/profitness/presentation/leaderboard/**->**(**)**
+HPLcom/avonix/profitness/data/local/**->**(**)**
+HPLcom/avonix/profitness/data/workout/**->**(**)**
+HPLcom/avonix/profitness/data/program/**->**(**)**
+HPLcom/avonix/profitness/data/profile/**->**(**)**
+HPLcom/avonix/profitness/data/challenges/**->**(**)**

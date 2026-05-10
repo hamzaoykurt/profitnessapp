@@ -8,6 +8,7 @@ import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
+import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
 import com.avonix.profitness.domain.challenges.toDomain
@@ -32,7 +33,7 @@ class ChallengeRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 supabase.postgrest.rpc(
-                    "list_public_challenges",
+                    "list_visible_challenges",
                     buildJsonObject {
                         put("p_limit", limit)
                         put("p_offset", offset)
@@ -89,8 +90,15 @@ class ChallengeRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createEventChallenge(req: CreateEventChallengeRequest): Result<String> =
-        withContext(Dispatchers.IO) {
+    override suspend fun createEventChallenge(req: CreateEventChallengeRequest): Result<String> {
+        if (req.mode == EventMode.Physical && req.location.isNullOrBlank()) {
+            return Result.failure(IllegalArgumentException("physical_location_required"))
+        }
+        if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
+            return Result.failure(IllegalArgumentException("online_url_required"))
+        }
+
+        return withContext(Dispatchers.IO) {
             runCatching {
                 val movementsJson = buildJsonArray {
                     req.movements.forEach { m ->
@@ -113,6 +121,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                         val desc = req.description?.trim().orEmpty()
                         if (desc.isNotEmpty()) put("p_description", desc) else put("p_description", JsonNull)
                         put("p_event_mode",    req.mode.raw)
+                        put("p_sport_type",    req.sportType.raw)
+                        if (req.exerciseId != null) put("p_event_exercise_id", req.exerciseId) else put("p_event_exercise_id", JsonNull)
                         put("p_event_date",    req.dateIso)
                         if (req.timeIso != null) put("p_event_time", req.timeIso) else put("p_event_time", JsonNull)
                         put("p_event_timezone", req.timezone)
@@ -139,6 +149,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 ).decodeAs<String>()
             }
         }
+    }
 
     override suspend fun joinChallenge(challengeId: String, password: String?): Result<Boolean> =
         withContext(Dispatchers.IO) {
@@ -308,6 +319,20 @@ class ChallengeRepositoryImpl @Inject constructor(
                     buildJsonObject { put("p_challenge_id", challengeId) }
                 )
                 Unit
+            }
+        }
+
+    override suspend fun inviteFriendsToChallenge(challengeId: String, userIds: List<String>): Result<Int> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val idsJson = buildJsonArray { userIds.distinct().forEach { add(it) } }
+                supabase.postgrest.rpc(
+                    "invite_friends_to_challenge",
+                    buildJsonObject {
+                        put("p_challenge_id", challengeId)
+                        put("p_user_ids", idsJson)
+                    }
+                ).decodeAs<Int>()
             }
         }
 }

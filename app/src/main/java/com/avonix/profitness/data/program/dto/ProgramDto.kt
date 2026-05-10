@@ -59,6 +59,10 @@ data class ProgramExerciseWithNameDto(
     val weight_kg: Float? = null,   // DB'de NULL olabilir
     val rest_seconds: Int = 90,
     val order_index: Int = 0,
+    val target_duration_seconds: Int? = null,
+    val target_distance_meters: Float? = null,
+    val target_elevation_meters: Float? = null,
+    val target_incline_percent: Float? = null,
     // joined from exercises table
     val exercises: ExerciseNameDto? = null
 )
@@ -68,7 +72,9 @@ data class ExerciseNameDto(
     val name: String,
     val target_muscle: String,
     val category: String? = null,   // DB'de NULL olabilir
-    val image_url: String? = null   // DB'de NULL olabilir
+    val image_url: String? = null,  // DB'de NULL olabilir
+    val sport_type: String? = null,
+    val tracking_mode: String? = null
 )
 
 fun ProgramExerciseWithNameDto.toDomain() = ProgramExercise(
@@ -83,7 +89,13 @@ fun ProgramExerciseWithNameDto.toDomain() = ProgramExercise(
     restSeconds = rest_seconds,
     orderIndex = order_index,
     category = exercises?.category ?: "",
-    imageUrl = exercises?.image_url ?: ""
+    imageUrl = exercises?.image_url ?: "",
+    sportType = exercises?.sport_type ?: "",
+    trackingMode = exercises?.tracking_mode ?: "",
+    targetDurationSeconds = target_duration_seconds,
+    targetDistanceMeters = target_distance_meters,
+    targetElevationMeters = target_elevation_meters,
+    targetInclinePercent = target_incline_percent
 )
 
 @Serializable
@@ -95,7 +107,9 @@ data class ExerciseDto(
     val category: String,
     val sets_default: Int,
     val reps_default: Int,
-    val description: String = ""
+    val description: String = "",
+    val sport_type: String = "",
+    val tracking_mode: String = ""
 )
 
 fun ExerciseDto.toDomain() = ExerciseItem(
@@ -106,5 +120,7 @@ fun ExerciseDto.toDomain() = ExerciseItem(
     category = category,
     setsDefault = sets_default,
     repsDefault = reps_default,
-    description = description
+    description = description,
+    sportType = sport_type,
+    trackingMode = tracking_mode
 )

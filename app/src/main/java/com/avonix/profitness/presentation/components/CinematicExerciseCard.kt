@@ -35,6 +35,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.isDurationSetExercise
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -49,23 +52,78 @@ fun CinematicExerciseCard(
     onComplete: () -> Unit = {},
     onShowDetail: (() -> Unit)? = null,
     onExpandChanged: ((Boolean) -> Unit)? = null,
-    // Progressive overload — per-set weight & reps
+    // Progressive overload — per-set weight input
     setWeights: Map<Int, String> = emptyMap(),
-    setReps: Map<Int, String> = emptyMap(),
+    setDurations: Map<Int, String> = emptyMap(),
     lastSessionData: Map<Int, Pair<Float?, Int?>> = emptyMap(),
+    profileWeightKg: Float = 0f,
+    activityDuration: String = "",
+    activityDistance: String = "",
+    activityElevation: String = "",
+    activityIncline: String = "",
     onSetWeightChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
-    onSetRepsChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
+    onSetDurationChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
+    onActivityDurationChanged: (String) -> Unit = {},
+    onActivityDistanceChanged: (String) -> Unit = {},
+    onActivityElevationChanged: (String) -> Unit = {},
+    onActivityInclineChanged: (String) -> Unit = {},
     // Timer — ViewModel'den gelir, lokal state yok
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
     timerDone: Boolean = false,
     onStartTimer: (seconds: Int) -> Unit = {},
+    onStartSetTimer: (setIndex: Int, seconds: Int) -> Unit = { _, _ -> },
+    onStartSetStopwatchTimer: (setIndex: Int) -> Unit = {},
+    onStartStopwatchTimer: () -> Unit = {},
     onStopTimer: () -> Unit = {}
 ) {
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     var isExpanded by remember { mutableStateOf(false) }
+    var showActivityTimerSetup by remember { mutableStateOf(false) }
+    var showTimedSetTimerSetup by remember { mutableStateOf(false) }
+    val trackingSpec = remember(
+        exercise.category, exercise.name, exercise.target, exercise.reps,
+        exercise.sportType, exercise.trackingMode
+    ) {
+        activityTrackingSpec(
+            category = exercise.category,
+            name = exercise.name,
+            target = exercise.target,
+            reps = exercise.reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        )
+    }
+    val activityMetric = trackingSpec.metric
+    val durationSetBased = isDurationSetExercise(
+        category = exercise.category,
+        name = exercise.name,
+        target = exercise.target,
+        reps = exercise.reps,
+        sets = exercise.sets,
+        sportTypeRaw = exercise.sportType,
+        trackingModeRaw = exercise.trackingMode
+    )
+    val activityBased = activityMetric != ExerciseMetric.Strength && !durationSetBased
+    val nextTimedSetIndex = remember(durationSetBased, doneSetIndices, exercise.sets) {
+        if (durationSetBased) {
+            (0 until exercise.sets).firstOrNull { it !in doneSetIndices } ?: 0
+        } else {
+            0
+        }
+    }
+    val nextTimedSetDurationSeconds = remember(durationSetBased, nextTimedSetIndex, setDurations, exercise.reps, exercise.targetDurationSeconds) {
+        if (durationSetBased) {
+            setDurations[nextTimedSetIndex]?.toIntOrNull()?.takeIf { it > 0 }
+                ?: exercise.targetDurationSeconds?.takeIf { it > 0 }
+                ?: exercise.reps.toDurationSetSecondsLabel().toIntOrNull()
+                ?: 60
+        } else {
+            0
+        }
+    }
 
     // Timer bu egzersiz için başladığında kartı otomatik aç
     LaunchedEffect(timerRunning) {
@@ -99,15 +157,7 @@ fun CinematicExerciseCard(
         ForgeCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication        = null
-                ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    isExpanded = !isExpanded
-                    onExpandChanged?.invoke(isExpanded)
-                },
+                .clip(RoundedCornerShape(24.dp)),
             glowColor = if (isCompleted) accent else Color.Transparent
         ) {
             // animateContentSize gives the same bouncy height expansion as before,
@@ -123,7 +173,19 @@ fun CinematicExerciseCard(
                     )
             ) {
                 // ── Fixed-height image header ────────────────────────────────────
-                Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication        = null
+                        ) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            isExpanded = !isExpanded
+                            onExpandChanged?.invoke(isExpanded)
+                        }
+                ) {
                     AsyncImage(
                         model = exercise.image,
                         contentDescription = null,
@@ -221,7 +283,17 @@ fun CinematicExerciseCard(
                                 Text(text = exercise.target, color = Mist, style = MaterialTheme.typography.bodySmall)
                             }
                             val doneCount = doneSetIndices.size
-                            StatBadge(sets = exercise.sets, reps = exercise.reps, done = doneCount)
+                            StatBadge(
+                                sets = exercise.sets,
+                                reps = if (durationSetBased) {
+                                    exercise.targetDurationSeconds?.toString() ?: exercise.reps
+                                } else {
+                                    exercise.reps
+                                },
+                                done = doneCount,
+                                isActivity = activityBased,
+                                isDurationSet = durationSetBased
+                            )
                         }
                     }
                 }
@@ -236,29 +308,88 @@ fun CinematicExerciseCard(
                             .padding(20.dp)
                     ) {
                         Spacer(Modifier.height(4.dp))
-                        repeat(exercise.sets) { i ->
-                            val lastData = lastSessionData[i]
-                            SetRow(
-                                setNumber       = i + 1,
-                                reps            = exercise.reps,
-                                isDone          = i in doneSetIndices,
-                                weightValue     = setWeights[i] ?: "",
-                                repsValue       = setReps[i] ?: "",
-                                lastWeightKg    = lastData?.first,
-                                lastRepsActual  = lastData?.second,
-                                plannedWeightKg = exercise.weightKg,
-                                onWeightChanged = { onSetWeightChanged(i, it) },
-                                onRepsChanged   = { onSetRepsChanged(i, it) },
-                                onToggle        = {
-                                    val wasAlreadyDone = i in doneSetIndices
-                                    onToggleSet(i)
-                                    if (!wasAlreadyDone) onStartTimer(exercise.restSeconds)
-                                }
+                        if (activityBased) {
+                            ActivityMetricsPanel(
+                                durationValue = activityDuration,
+                                distanceValue = activityDistance,
+                                elevationValue = activityElevation,
+                                inclineValue = activityIncline,
+                                specLabel = trackingSpec.sportType.label,
+                                supportsDistance = trackingSpec.supportsDistance,
+                                supportsElevation = trackingSpec.supportsElevation,
+                                supportsIncline = trackingSpec.supportsIncline,
+                                isDone = isCompleted,
+                                onDurationChanged = onActivityDurationChanged,
+                                onDistanceChanged = onActivityDistanceChanged,
+                                onElevationChanged = onActivityElevationChanged,
+                                onInclineChanged = onActivityInclineChanged
                             )
-                            if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
+                        } else if (durationSetBased) {
+                            repeat(exercise.sets) { i ->
+                                TimedSetRow(
+                                    setNumber = i + 1,
+                                    durationValue = setDurations[i]
+                                        ?: exercise.targetDurationSeconds?.toString()
+                                        ?: exercise.reps.toDurationSetSecondsLabel(),
+                                    isDone = i in doneSetIndices,
+                                    onDurationChanged = { onSetDurationChanged(i, it) },
+                                    onToggle = { onToggleSet(i) }
+                                )
+                                if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
+                            }
+                        } else {
+                            repeat(exercise.sets) { i ->
+                                val lastData = lastSessionData[i]
+                                val defaultWeightKg = when {
+                                    exercise.weightKg > 0f -> exercise.weightKg
+                                    exercise.category.equals("Bodyweight", ignoreCase = true) && profileWeightKg > 0f -> profileWeightKg
+                                    else -> 0f
+                                }
+                                SetRow(
+                                    setNumber       = i + 1,
+                                    reps            = exercise.reps,
+                                    isDone          = i in doneSetIndices,
+                                    weightValue     = setWeights[i] ?: "",
+                                    lastWeightKg    = lastData?.first,
+                                    lastRepsActual  = lastData?.second,
+                                    defaultWeightKg = defaultWeightKg,
+                                    onWeightChanged = { onSetWeightChanged(i, it) },
+                                    onToggle        = { onToggleSet(i) }
+                                )
+                                if (i < exercise.sets - 1) Spacer(Modifier.height(6.dp))
+                            }
                         }
 
                         Spacer(Modifier.height(14.dp))
+                        if (activityBased && showActivityTimerSetup) {
+                            ActivityTimerSetupPanel(
+                                initialMinutes = activityDuration,
+                                onStartCountdown = { seconds ->
+                                    showActivityTimerSetup = false
+                                    onStartTimer(seconds)
+                                },
+                                onStartStopwatch = {
+                                    showActivityTimerSetup = false
+                                    onStartStopwatchTimer()
+                                }
+                            )
+                            Spacer(Modifier.height(14.dp))
+                        }
+                        if (durationSetBased && showTimedSetTimerSetup) {
+                            ActivityTimerSetupPanel(
+                                initialMinutes = "",
+                                initialSeconds = nextTimedSetDurationSeconds,
+                                onStartCountdown = { seconds ->
+                                    showTimedSetTimerSetup = false
+                                    onStartSetTimer(nextTimedSetIndex, seconds)
+                                },
+                                onStartStopwatch = {
+                                    showTimedSetTimerSetup = false
+                                    onStartSetStopwatchTimer(nextTimedSetIndex)
+                                }
+                            )
+                            Spacer(Modifier.height(14.dp))
+                        }
                         HorizontalDivider(color = Snow.copy(0.08f))
                         Spacer(Modifier.height(12.dp))
 
@@ -267,40 +398,48 @@ fun CinematicExerciseCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RestTimerChip(
-                                seconds        = timerSeconds,
-                                isRunning      = timerRunning,
-                                isDone         = timerDone,
-                                defaultSeconds = exercise.restSeconds,
-                                onStart        = { onStartTimer(exercise.restSeconds) },
-                                onStop         = onStopTimer
-                            )
+                            if (activityBased) {
+                                RestTimerChip(
+                                    seconds        = timerSeconds,
+                                    isRunning      = timerRunning,
+                                    isDone         = timerDone,
+                                    defaultSeconds = activityDuration.toDurationSeconds(),
+                                    idleLabel      = "SAYAÇ",
+                                    doneLabel      = "SÜRE BİTTİ",
+                                    onStart        = {
+                                        if (timerRunning) onStopTimer()
+                                        else showActivityTimerSetup = !showActivityTimerSetup
+                                    },
+                                    onStop         = onStopTimer
+                                )
+                            } else if (durationSetBased) {
+                                RestTimerChip(
+                                    seconds        = timerSeconds,
+                                    isRunning      = timerRunning,
+                                    isDone         = timerDone,
+                                    defaultSeconds = nextTimedSetDurationSeconds,
+                                    idleLabel      = "SET SAYACI",
+                                    doneLabel      = "SET BİTTİ",
+                                    onStart        = {
+                                        if (timerRunning) onStopTimer()
+                                        else showTimedSetTimerSetup = !showTimedSetTimerSetup
+                                    },
+                                    onStop         = onStopTimer
+                                )
+                            } else {
+                                Spacer(Modifier.weight(1f))
+                            }
 
-                            Button(
+                            CompleteActionButton(
+                                isCompleted = isCompleted,
+                                accent = accent,
+                                onAccent = onAccent,
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onComplete()
                                     isExpanded = false
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isCompleted) Surface3 else accent
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(16.dp, 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.CheckCircle, null,
-                                    tint = if (isCompleted) TextSecondary else onAccent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = if (isCompleted) "GERİ AL" else "TAMAMLA",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 12.sp,
-                                    color = if (isCompleted) TextSecondary else onAccent
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }
@@ -309,25 +448,435 @@ fun CinematicExerciseCard(
     }
 }
 
-// ── Set Row — ağırlık & tekrar girişli ───────────────────────────────────────
+@Composable
+private fun ActivityMetricsPanel(
+    durationValue: String,
+    distanceValue: String,
+    elevationValue: String,
+    inclineValue: String,
+    specLabel: String,
+    supportsDistance: Boolean,
+    supportsElevation: Boolean,
+    supportsIncline: Boolean,
+    isDone: Boolean,
+    onDurationChanged: (String) -> Unit,
+    onDistanceChanged: (String) -> Unit,
+    onElevationChanged: (String) -> Unit,
+    onInclineChanged: (String) -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        if (isDone) accent.copy(0.18f) else Surface3.copy(0.70f),
+                        Surface2.copy(0.48f)
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                if (isDone) accent.copy(0.42f) else Snow.copy(0.08f),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(14.dp)
+    ) {
+        Text(
+            text = if (supportsDistance) "$specLabel · süre ve mesafe" else "$specLabel · süre",
+            color = if (isDone) accent else TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.2.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            WeightInputField(
+                value = durationValue,
+                onValueChange = onDurationChanged,
+                placeholder = "0",
+                label = "Süre",
+                isDone = isDone,
+                accent = accent,
+                suffix = "dk",
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f)
+            )
+            if (supportsDistance) {
+                WeightInputField(
+                    value = distanceValue,
+                    onValueChange = onDistanceChanged,
+                    placeholder = "0",
+                    label = "Mesafe",
+                    isDone = isDone,
+                    accent = accent,
+                    suffix = "m",
+                    keyboardType = KeyboardType.Decimal,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (supportsElevation || supportsIncline) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                if (supportsElevation) {
+                    WeightInputField(
+                        value = elevationValue,
+                        onValueChange = onElevationChanged,
+                        placeholder = "0",
+                        label = "Yükselti",
+                        isDone = isDone,
+                        accent = accent,
+                        suffix = "m",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (supportsIncline) {
+                    WeightInputField(
+                        value = inclineValue,
+                        onValueChange = onInclineChanged,
+                        placeholder = "0",
+                        label = "Eğim",
+                        isDone = isDone,
+                        accent = accent,
+                        suffix = "%",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricDisplayTile(
+    label: String,
+    value: String,
+    accent: Color,
+    isDone: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 58.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Surface3.copy(0.86f), Surface2.copy(0.64f))
+                )
+            )
+            .border(
+                1.dp,
+                if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
+                RoundedCornerShape(13.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.76f))
+                .border(1.dp, if (isDone) accent.copy(0.48f) else Snow.copy(0.08f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Timer,
+                null,
+                tint = if (isDone) accent else TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = label,
+                color = TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.7.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = value,
+                color = if (isDone) accent else Snow,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActivityTimerSetupPanel(
+    initialMinutes: String,
+    initialSeconds: Int? = null,
+    onStartCountdown: (Int) -> Unit,
+    onStartStopwatch: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    var mode by remember { mutableStateOf("stopwatch") }
+    val initialTotalSeconds = remember(initialMinutes, initialSeconds) {
+        initialSeconds ?: initialMinutes.toDurationSeconds()
+    }
+    var hours by remember(initialTotalSeconds) { mutableStateOf(if (initialTotalSeconds >= 3600) (initialTotalSeconds / 3600).toString() else "") }
+    var minutes by remember(initialTotalSeconds) { mutableStateOf(((initialTotalSeconds % 3600) / 60).takeIf { it > 0 }?.toString() ?: "") }
+    var seconds by remember(initialTotalSeconds) { mutableStateOf((initialTotalSeconds % 60).takeIf { it > 0 }?.toString() ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface3.copy(0.55f))
+            .border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
+            .padding(12.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TimerModeChip(
+                label = "KRONOMETRE",
+                selected = mode == "stopwatch",
+                onClick = { mode = "stopwatch" },
+                modifier = Modifier.weight(1f)
+            )
+            TimerModeChip(
+                label = "GERİ SAYIM",
+                selected = mode == "countdown",
+                onClick = { mode = "countdown" },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (mode == "countdown") {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SmallTimeInput(hours, { hours = it }, "saat", Modifier.weight(1f))
+                SmallTimeInput(minutes, { minutes = it }, "dk", Modifier.weight(1f))
+                SmallTimeInput(seconds, { seconds = it }, "sn", Modifier.weight(1f))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        val countdownSeconds = (hours.toIntOrNull() ?: 0) * 3600 +
+            (minutes.toIntOrNull() ?: 0) * 60 +
+            (seconds.toIntOrNull() ?: 0)
+        val enabled = mode == "stopwatch" || countdownSeconds > 0
+        Button(
+            onClick = {
+                if (mode == "stopwatch") onStartStopwatch()
+                else onStartCountdown(countdownSeconds)
+            },
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = accent),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = if (mode == "stopwatch") "KRONOMETREYİ BAŞLAT" else "GERİ SAYIMI BAŞLAT",
+                fontWeight = FontWeight.Black,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimerModeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) accent.copy(0.22f) else Surface3.copy(0.6f))
+            .border(1.dp, if (selected) accent.copy(0.5f) else Snow.copy(0.08f), RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (selected) accent else TextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun SmallTimeInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    suffix: String,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    WeightInputField(
+        value = value,
+        onValueChange = { onValueChange(it.take(2)) },
+        placeholder = "0",
+        isDone = false,
+        accent = accent,
+        suffix = suffix,
+        keyboardType = KeyboardType.Number,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun CompleteActionButton(
+    isCompleted: Boolean,
+    accent: Color,
+    onAccent: Color,
+    onClick: () -> Unit
+) {
+    val bg = if (isCompleted) {
+        Brush.horizontalGradient(listOf(Surface3.copy(0.88f), Surface2.copy(0.72f)))
+    } else {
+        Brush.horizontalGradient(listOf(accent, accent.copy(0.86f)))
+    }
+    Row(
+        modifier = Modifier
+            .heightIn(min = 54.dp)
+            .widthIn(min = 168.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(bg)
+            .border(
+                1.dp,
+                if (isCompleted) Snow.copy(0.10f) else Snow.copy(0.18f),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(if (isCompleted) Surface1.copy(0.74f) else Color.White.copy(0.22f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.CheckCircle,
+                null,
+                tint = if (isCompleted) TextSecondary else onAccent,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+        Spacer(Modifier.width(9.dp))
+        Text(
+            text = if (isCompleted) "GERİ AL" else "TAMAMLA",
+            color = if (isCompleted) TextSecondary else onAccent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+// ── Set Row — ağırlık girişli; set/tekrar programdan gelir ───────────────────
+@Composable
+private fun TimedSetRow(
+    setNumber: Int,
+    durationValue: String,
+    isDone: Boolean,
+    onDurationChanged: (String) -> Unit,
+    onToggle: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val haptic = LocalHapticFeedback.current
+    val durationSeconds = durationValue.toDurationSetSecondsLabel()
+    val durationDisplay = durationSeconds.ifBlank { "0" }
+    val bgAlpha by animateFloatAsState(
+        if (isDone) 0.20f else 0.08f,
+        tween(250),
+        label = "timed_set_bg"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
+                        Surface2.copy(0.48f)
+                    )
+                )
+            )
+            .border(1.dp, if (isDone) accent.copy(0.50f) else Snow.copy(0.08f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
+                    .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape)
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggle()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isDone) accent else TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.widthIn(min = 92.dp).weight(0.92f)) {
+                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(2.dp))
+                Text("$durationDisplay sn", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(10.dp))
+            WeightInputField(
+                value = durationSeconds,
+                onValueChange = onDurationChanged,
+                placeholder = "60",
+                label = "Süre",
+                isDone = isDone,
+                accent = accent,
+                suffix = "sn",
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
 @Composable
 private fun SetRow(
     setNumber: Int,
     reps: String,
     isDone: Boolean,
     weightValue: String,
-    repsValue: String,
     lastWeightKg: Float?,
     lastRepsActual: Int?,
-    plannedWeightKg: Float,
+    defaultWeightKg: Float,
     onWeightChanged: (String) -> Unit,
-    onRepsChanged: (String) -> Unit,
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
     val bgAlpha by animateFloatAsState(
-        if (isDone) 0.15f else 0.08f,
+        if (isDone) 0.20f else 0.08f,
         tween(250),
         label = "set_bg"
     )
@@ -335,70 +884,84 @@ private fun SetRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.5f))
-            .padding(12.dp, 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
+                        Surface2.copy(0.48f)
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                if (isDone) accent.copy(0.50f) else Snow.copy(0.08f),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(12.dp)
     ) {
-        // Üst satır: checkbox + set no + ağırlık input + tekrar input
+        // Üst satır: checkbox + set no + program tekrarı + ağırlık input
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Checkbox
-            Icon(
-                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (isDone) accent else TextMuted,
+            Box(
                 modifier = Modifier
-                    .size(18.dp)
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
+                    .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape)
                     .clickable {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onToggle()
-                    }
-            )
-            Spacer(Modifier.width(8.dp))
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isDone) accent else TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
 
-            // Set number
-            Text(
-                text = "Set $setNumber",
-                color = if (isDone) accent else TextPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(42.dp)
-            )
+            Column(Modifier.widthIn(min = 92.dp).weight(0.92f)) {
+                Text(
+                    text = "Set $setNumber",
+                    color = if (isDone) accent else TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "$reps tekrar",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
 
             // Ağırlık input
             WeightInputField(
                 value = weightValue,
                 onValueChange = onWeightChanged,
-                placeholder = if (plannedWeightKg > 0) "${"%.0f".format(plannedWeightKg)}" else "kg",
+                placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "0",
+                label = "Ağırlık",
                 isDone = isDone,
                 accent = accent,
                 suffix = "kg",
                 keyboardType = KeyboardType.Decimal,
                 modifier = Modifier.weight(1f)
             )
-
-            Spacer(Modifier.width(6.dp))
-
-            // Tekrar input
-            WeightInputField(
-                value = repsValue,
-                onValueChange = onRepsChanged,
-                placeholder = reps,
-                isDone = isDone,
-                accent = accent,
-                suffix = "rep",
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.weight(1f)
-            )
         }
 
         // Alt satır: önceki antrenman bilgisi
         if (lastWeightKg != null || lastRepsActual != null) {
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(8.dp))
             val lastText = buildString {
                 append("Son: ")
                 if (lastWeightKg != null) append("${"%.1f".format(lastWeightKg)}kg")
@@ -408,9 +971,9 @@ private fun SetRow(
             Text(
                 text = lastText,
                 color = TextMuted,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(start = 26.dp)
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 42.dp)
             )
         }
     }
@@ -421,57 +984,79 @@ private fun WeightInputField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    label: String? = null,
     isDone: Boolean,
     accent: Color,
     suffix: String,
     keyboardType: KeyboardType,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Surface3.copy(0.6f))
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .heightIn(min = 58.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Surface3.copy(0.86f), Surface2.copy(0.64f))
+                )
+            )
+            .border(
+                1.dp,
+                if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
+                RoundedCornerShape(13.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        BasicTextField(
-            value = value,
-            onValueChange = { newVal ->
-                // Sadece sayısal karakter ve nokta/virgül izin ver
-                val filtered = newVal.filter { it.isDigit() || it == '.' || it == ',' }
-                onValueChange(filtered)
-            },
-            textStyle = TextStyle(
-                color = if (isDone) accent else Snow,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            ),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-            decorationBox = { inner ->
-                Box(contentAlignment = Alignment.Center) {
-                    if (value.isEmpty()) {
-                        Text(
-                            text = placeholder,
-                            color = TextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        )
+        if (label != null) {
+            Text(
+                text = label,
+                color = TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.7.sp
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BasicTextField(
+                value = value,
+                onValueChange = { newVal ->
+                    // Sadece sayısal karakter ve nokta/virgül izin ver
+                    val filtered = newVal.filter { it.isDigit() || it == '.' || it == ',' }
+                    onValueChange(filtered)
+                },
+                textStyle = TextStyle(
+                    color = if (isDone) accent else Snow,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Start
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                color = TextMuted.copy(0.82f),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                        inner()
                     }
-                    inner()
                 }
-            }
-        )
-        Text(
-            text = suffix,
-            color = if (isDone) accent.copy(0.6f) else TextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 2.dp)
-        )
+            )
+            Text(
+                text = suffix,
+                color = if (isDone) accent.copy(0.72f) else TextMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(start = 6.dp)
+            )
+        }
     }
 }
 
@@ -482,6 +1067,8 @@ private fun RestTimerChip(
     isRunning: Boolean,
     isDone: Boolean,
     defaultSeconds: Int = 90,
+    idleLabel: String = "SÜRE",
+    doneLabel: String = "DİNLENDİN! ✓",
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
@@ -499,42 +1086,75 @@ private fun RestTimerChip(
 
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
+    val isIdle = !isRunning && !isDone
     val chipColor = when {
         isDone    -> Amber
         isRunning -> accent
-        else      -> Surface3
+        else      -> accent
+    }
+    val chipBackground = when {
+        isDone -> Brush.horizontalGradient(
+            listOf(Amber.copy(0.28f), Amber.copy(0.12f))
+        )
+        isRunning -> Brush.horizontalGradient(
+            listOf(accent.copy(0.34f), accent.copy(0.18f))
+        )
+        else -> Brush.horizontalGradient(
+            listOf(accent.copy(0.20f), Surface3.copy(0.62f))
+        )
     }
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(chipColor.copy(0.15f))
-            .border(1.dp, chipColor.copy(0.3f), RoundedCornerShape(10.dp))
+            .heightIn(min = 48.dp)
+            .widthIn(min = 132.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(chipBackground)
+            .border(
+                1.dp,
+                chipColor.copy(if (isIdle) 0.62f else 0.74f),
+                RoundedCornerShape(14.dp)
+            )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (isRunning) onStop() else onStart()
             }
-            .padding(12.dp, 8.dp)
+            .padding(horizontal = 12.dp, vertical = 9.dp)
             .then(if (isRunning) Modifier.scale(pulseScale.value) else Modifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Rounded.Timer, null, tint = chipColor, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(chipColor.copy(if (isIdle) 0.22f else 0.30f))
+                .border(1.dp, chipColor.copy(0.36f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Timer,
+                null,
+                tint = chipColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(Modifier.width(9.dp))
         Text(
             text = when {
-                isDone    -> "DİNLENDİN! ✓"
+                isDone    -> doneLabel
                 isRunning -> "${seconds}s"
-                else      -> "${defaultSeconds}s REST"
+                else      -> idleLabel
             },
-            color = chipColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
+            color = if (isIdle) Snow else chipColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = if (isIdle) 0.9.sp else 0.2.sp
         )
     }
 }
 
 @Composable
-fun StatBadge(sets: Int, reps: String, done: Int = 0) {
+fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = false, isDurationSet: Boolean = false) {
     Box(
         modifier = Modifier
             .background(Color.White.copy(0.1f), RoundedCornerShape(12.dp))
@@ -542,13 +1162,19 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0) {
             .padding(12.dp, 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
-            Spacer(Modifier.width(4.dp))
-            Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            if (isActivity) {
+                Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            } else {
+                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(text = if (isDurationSet) reps.toDurationSetDisplayLabel() else reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "($done✓)",
+                    text = "(${done} tamam)",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
@@ -556,4 +1182,52 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0) {
             }
         }
     }
+}
+
+private fun String.toDurationSetDisplayLabel(): String {
+    val seconds = toDurationSetSecondsLabel()
+    return if (seconds.isBlank()) this else "${seconds} sn"
+}
+
+private fun String.toDurationSetSecondsLabel(): String {
+    val normalized = lowercase().normalizeTurkishForWorkout().trim()
+    if (normalized.isBlank()) return ""
+    val numeric = normalized
+        .filter { it.isDigit() || it == ',' || it == '.' }
+        .replace(',', '.')
+        .toFloatOrNull()
+        ?: return ""
+    val seconds = when {
+        normalized.contains("dk") || normalized.contains("min") || normalized.contains("dakika") ->
+            (numeric * 60f).toInt()
+        else -> numeric.toInt()
+    }
+    return seconds.coerceAtLeast(1).toString()
+}
+
+private fun String.normalizeTurkishForWorkout(): String =
+    replace('\u0131', 'i')
+        .replace('\u011f', 'g')
+        .replace('\u00fc', 'u')
+        .replace('\u015f', 's')
+        .replace('\u00f6', 'o')
+        .replace('\u00e7', 'c')
+
+private fun String.toDurationSeconds(): Int =
+    replace(',', '.')
+        .toFloatOrNull()
+        ?.let { (it * 60f).toInt().coerceAtLeast(1) }
+        ?: 0
+
+private fun String.toDurationLabel(): String {
+    val totalSeconds = toDurationSeconds()
+    if (totalSeconds <= 0) return "0:00"
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return buildString {
+        if (hours > 0) append("${hours}sa ")
+        if (minutes > 0) append("${minutes}dk ")
+        if (seconds > 0 || isEmpty()) append("${seconds}sn")
+    }.trim()
 }
