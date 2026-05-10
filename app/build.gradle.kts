@@ -83,6 +83,12 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf(
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=${project.buildDir}/compose_metrics",
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=${project.buildDir}/compose_metrics"
+        )
     }
     buildFeatures {
         compose = true
@@ -109,6 +115,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
     // Google Fonts (Space Grotesk)
     implementation("androidx.compose.ui:ui-text-google-fonts")
 

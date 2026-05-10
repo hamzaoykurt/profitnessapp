@@ -56,6 +56,11 @@ import com.avonix.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.avonix.profitness.presentation.dashboard.ChallengeTodayBanner
 import com.avonix.profitness.presentation.dashboard.DashboardViewModel
 import com.avonix.profitness.presentation.dashboard.UpcomingEventsSection
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
@@ -86,7 +91,7 @@ data class Exercise(
 data class WorkoutDay(
     val day: String,
     val title: String,
-    val exercises: List<Exercise>,
+    val exercises: ImmutableList<Exercise>,
     val isRestDay: Boolean = false,
     val totalKcal: Int = 0,
     val durationMin: Int = 0,
@@ -95,8 +100,8 @@ data class WorkoutDay(
 
 // ── Demo Data — 7 günün hepsi dolu ─────────────────────────────────────────
 
-val DEMO_WORKOUTS = listOf(
-    WorkoutDay("Pzt", "GÖĞÜS & TRİSEPS", listOf(
+val DEMO_WORKOUTS = persistentListOf(
+    WorkoutDay("Pzt", "GÖĞÜS & TRİSEPS", persistentListOf(
         Exercise("1", "Bench Press", "Göğüs", 4, "8-12",
             "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800", category = "Strength"),
         Exercise("2", "Incline DB Press", "Üst Göğüs", 3, "10",
@@ -106,7 +111,7 @@ val DEMO_WORKOUTS = listOf(
         Exercise("4", "Cable Flyes", "Göğüs", 3, "15",
             "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800", category = "Cable")
     ), totalKcal = 420, durationMin = 55),
-    WorkoutDay("Sal", "SIRT & BiSEPS", listOf(
+    WorkoutDay("Sal", "SIRT & BiSEPS", persistentListOf(
         Exercise("5", "Lat Pulldown", "Sırt", 4, "10-15",
             "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800", category = "Cable"),
         Exercise("6", "Barbell Row", "Orta Sırt", 4, "8-10",
@@ -116,8 +121,8 @@ val DEMO_WORKOUTS = listOf(
         Exercise("8", "Hammer Curl", "Biceps", 3, "12",
             "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800", category = "Strength")
     ), totalKcal = 380, durationMin = 50),
-    WorkoutDay("Çar", "DİNLENME", emptyList(), isRestDay = true),
-    WorkoutDay("Per", "OMUZ & BACAK", listOf(
+    WorkoutDay("Çar", "DİNLENME", persistentListOf(), isRestDay = true),
+    WorkoutDay("Per", "OMUZ & BACAK", persistentListOf(
         Exercise("9", "Squat", "Quadriceps", 4, "8-12",
             "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800", category = "Strength"),
         Exercise("10", "Shoulder Press", "Omuz", 4, "10",
@@ -127,7 +132,7 @@ val DEMO_WORKOUTS = listOf(
         Exercise("12", "Romanian DL", "Hamstring", 3, "10",
             "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800", category = "Strength")
     ), totalKcal = 510, durationMin = 65),
-    WorkoutDay("Cum", "CORE & KARDİYO", listOf(
+    WorkoutDay("Cum", "CORE & KARDİYO", persistentListOf(
         Exercise("13", "Plank", "Core", 3, "60s",
             "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=800", category = "Bodyweight"),
         Exercise("14", "Mountain Climber", "Core/Cardio", 3, "30s",
@@ -137,8 +142,8 @@ val DEMO_WORKOUTS = listOf(
         Exercise("16", "Burpee", "Full Body", 3, "15",
             "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800", category = "Bodyweight")
     ), totalKcal = 480, durationMin = 45),
-    WorkoutDay("Cmt", "DİNLENME", emptyList(), isRestDay = true),
-    WorkoutDay("Paz", "MOBİLİTE & GERİNME", listOf(
+    WorkoutDay("Cmt", "DİNLENME", persistentListOf(), isRestDay = true),
+    WorkoutDay("Paz", "MOBİLİTE & GERİNME", persistentListOf(
         Exercise("17", "Hip Flexor Stretch", "Kalça", 2, "60s",
             "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800", category = "Bodyweight"),
         Exercise("18", "Thoracic Rotation", "Sırt Mobilite", 2, "10 rep",
@@ -154,7 +159,7 @@ val DEMO_WORKOUTS = listOf(
 
 data class WorkoutDayState(
     val day: WorkoutDay,
-    val completedIds: Set<String> = emptySet()
+    val completedIds: ImmutableSet<String> = persistentSetOf()
 ) {
     val completedCount get() = completedIds.size
     val totalCount get() = day.exercises.size
@@ -508,6 +513,29 @@ private fun NoProgramView(
     }
 }
 
+@Stable
+private data class ExerciseDraftInputs(
+    val setWeights: Map<Int, String> = emptyMap(),
+    val setDurations: Map<Int, String> = emptyMap()
+)
+
+private fun Map<String, DraftInput>.draftsForExercise(exerciseId: String, totalSets: Int): ExerciseDraftInputs {
+    if (totalSets <= 0) return ExerciseDraftInputs()
+
+    var weights: Map<Int, String> = emptyMap()
+    var durations: Map<Int, String> = emptyMap()
+    for (setIndex in 0 until totalSets) {
+        val draft = this[draftInputKey(exerciseId, setIndex)] ?: continue
+        if (draft.hasWeight) {
+            weights = weights + (setIndex to draft.weight)
+        }
+        if (draft.hasDuration) {
+            durations = durations + (setIndex to draft.duration)
+        }
+    }
+    return ExerciseDraftInputs(setWeights = weights, setDurations = durations)
+}
+
 @Composable
 private fun WorkoutContent(
     state: WorkoutScreenState,
@@ -522,6 +550,7 @@ private fun WorkoutContent(
     val selectedDayIdx = state.selectedDayIdx
     val currentState = dayStates[selectedDayIdx]
     val currentDay   = currentState.day
+    val draftInputs by viewModel.draftInputs.collectAsStateWithLifecycle()
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
@@ -699,6 +728,11 @@ private fun WorkoutContent(
                 val timer = restTimer
                 val isThisExTimer = timer.exerciseId == exercise.id ||
                     (timer.exerciseId.isBlank() && timer.exerciseName == exercise.name)
+                val exerciseDrafts = remember(draftInputs, exercise.id, exercise.sets) {
+                    draftInputs.draftsForExercise(exercise.id, exercise.sets)
+                }
+                val setWeights = state.setWeights[exercise.id].orEmpty() + exerciseDrafts.setWeights
+                val setDurations = state.setDurations[exercise.id].orEmpty() + exerciseDrafts.setDurations
                 CinematicExerciseCard(
                     exercise          = exercise,
                     index             = idx,
@@ -714,8 +748,8 @@ private fun WorkoutContent(
                         expandedExIdx = if (expanded) idx else -1
                         if (expanded) viewModel.loadLastSession(exercise.id)
                     },
-                    setWeights        = state.setWeights[exercise.id] ?: emptyMap(),
-                    setDurations      = state.setDurations[exercise.id] ?: emptyMap(),
+                    setWeights        = setWeights,
+                    setDurations      = setDurations,
                     lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
                     profileWeightKg   = state.profileWeightKg,
                     activityDuration  = state.activityDurations[exercise.id]
@@ -1106,7 +1140,7 @@ fun CircularProgressRing(
 // ── Day Selector Strip ─────────────────────────────────────────────────────
 @Composable
 private fun DaySelector(
-    days: List<WorkoutDayState>,
+    days: ImmutableList<WorkoutDayState>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit
 ) {

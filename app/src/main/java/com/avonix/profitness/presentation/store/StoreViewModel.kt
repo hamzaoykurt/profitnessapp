@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.store
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.store.BillingProduct
@@ -7,17 +8,21 @@ import com.avonix.profitness.data.store.BillingUsage
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.store.UserPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
+@Stable
 data class StoreState(
     val plan       : UserPlan = UserPlan.FREE,
     val credits    : Int      = UserPlanRepository.FREE_STARTER_CREDITS,
     val status     : String   = "free",
-    val products   : List<BillingProduct> = emptyList(),
-    val recentUsage: List<BillingUsage> = emptyList(),
+    val products   : ImmutableList<BillingProduct> = persistentListOf(),
+    val recentUsage: ImmutableList<BillingUsage> = persistentListOf(),
     val billingSandboxAvailable: Boolean = false,
     val pendingOrderId: String? = null,
     val pendingOrderMessage: String? = null,
@@ -47,8 +52,8 @@ class StoreViewModel @Inject constructor(
                         plan = snapshot.plan,
                         credits = snapshot.credits,
                         status = snapshot.status,
-                        products = snapshot.products,
-                        recentUsage = snapshot.recentUsage,
+                        products = snapshot.products.toImmutableList(),
+                        recentUsage = snapshot.recentUsage.toImmutableList(),
                         billingSandboxAvailable = snapshot.sandboxAvailable
                     )
                 }

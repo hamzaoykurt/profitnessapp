@@ -23,6 +23,7 @@ import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -546,9 +547,9 @@ class ProgramRepositoryImpl @Inject constructor(
                             targetElevationMeters = pe.targetElevationMeters,
                             targetInclinePercent = pe.targetInclinePercent
                         )
-                    }
+                    }.toImmutableList()
                 )
-            }
+            }.toImmutableList()
         )
     }
 

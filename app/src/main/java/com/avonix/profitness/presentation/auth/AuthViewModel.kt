@@ -52,6 +52,7 @@ class AuthViewModel @Inject constructor(
             val loggedIn = runCatching { authRepository.awaitSessionLoaded() }.getOrDefault(false)
             if (loggedIn) {
                 sendEvent(AuthEvent.NavigateToDashboard)
+                updateState { it.copy(isSessionLoading = false) }
             } else {
                 updateState { it.copy(isSessionLoading = false) }
             }

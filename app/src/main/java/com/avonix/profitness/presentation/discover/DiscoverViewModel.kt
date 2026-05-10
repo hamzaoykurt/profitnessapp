@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.discover
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.data.discover.DiscoverRepository
@@ -11,6 +12,12 @@ import com.avonix.profitness.domain.model.Program
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,9 +30,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Feed ekran state'i — sealed değil, tek state; empty/loading/error alt-bayraklarla. */
+@Stable
 data class DiscoverProgramsState(
-    val items       : List<SharedProgram> = emptyList(),
-    val savedItems  : List<SharedProgram> = emptyList(),
+    val items       : ImmutableList<SharedProgram> = persistentListOf(),
+    val savedItems  : ImmutableList<SharedProgram> = persistentListOf(),
     val sort        : DiscoverSort        = DiscoverSort.NEWEST,
     val isLoading   : Boolean             = false,
     val savedLoading: Boolean             = false,
@@ -36,13 +44,13 @@ data class DiscoverProgramsState(
     val savedError  : String?             = null,
     val shareResult : ShareResult?        = null,
     val applyResult : ApplyResult?        = null,
-    val applyingProgramIds: Set<String>   = emptySet(),
+    val applyingProgramIds: ImmutableSet<String>   = persistentSetOf(),
     val appliedProgramMap : Map<String, String> = emptyMap(),
-    val localDeletingProgramIds: Set<String> = emptySet(),
+    val localDeletingProgramIds: ImmutableSet<String> = persistentSetOf(),
     // Kullanıcının kendi paylaşımları
-    val myShared         : List<MySharedProgram> = emptyList(),
+    val myShared         : ImmutableList<MySharedProgram> = persistentListOf(),
     val myLoading        : Boolean               = false,
-    val myDeleteInFlight : Set<String>           = emptySet(),
+    val myDeleteInFlight : ImmutableSet<String>  = persistentSetOf(),
     val myActionMsg      : String?               = null
 )
 
@@ -77,8 +85,11 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private var savedFeedOffset = 0
+    private var isInitialized = false
 
-    init {
+    fun initLoad() {
+        if (isInitialized) return
+        isInitialized = true
         loadFirstPage()
         loadSavedFirstPage()
         loadMyShared()
@@ -184,7 +195,7 @@ class DiscoverViewModel @Inject constructor(
             var mutated: SharedProgram? = null
             val items = s.items.map {
                 if (it.id == programId) block(it).also { updated -> mutated = updated } else it
-            }
+            }.toImmutableList()
             val savedItems = s.savedItems
                 .map {
                     if (it.id == programId) block(it).also { updated -> mutated = updated } else it
@@ -198,7 +209,7 @@ class DiscoverViewModel @Inject constructor(
                         !updated.isSavedByMe -> list.filter { it.id != updated.id }
                         else -> list
                     }
-                }
+                }.toImmutableList()
             s.copy(items = items, savedItems = savedItems)
         }
     }
@@ -214,7 +225,7 @@ class DiscoverViewModel @Inject constructor(
         if (!isRefresh) {
             _state.update {
                 it.copy(
-                    savedItems = emptyList(),
+                    savedItems = persistentListOf(),
                     savedLoading = true,
                     savedError = null,
                     savedCanLoadMore = true
@@ -228,7 +239,7 @@ class DiscoverViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(savedLoading = true, savedError = null) }
 
-            val existing = if (reset) emptyList() else _state.value.savedItems
+            val existing = if (reset) persistentListOf() else _state.value.savedItems
             var offset = if (reset) 0 else savedFeedOffset
             var canScanMore = true
             var scannedPages = 0
@@ -321,7 +332,7 @@ class DiscoverViewModel @Inject constructor(
         }
         _state.update {
             it.copy(
-                applyingProgramIds = it.applyingProgramIds + sharedProgramId,
+                applyingProgramIds = (it.applyingProgramIds + sharedProgramId).toImmutableSet(),
                 applyResult = null
             )
         }
@@ -336,7 +347,7 @@ class DiscoverViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             applyResult = ApplyResult.Success,
-                            applyingProgramIds = it.applyingProgramIds - sharedProgramId,
+                            applyingProgramIds = (it.applyingProgramIds - sharedProgramId).toImmutableSet(),
                             appliedProgramMap = it.appliedProgramMap + (sharedProgramId to localProgramId)
                         )
                     }
@@ -346,7 +357,7 @@ class DiscoverViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             applyResult = ApplyResult.Error(err.message ?: "Uygulanamadı"),
-                            applyingProgramIds = it.applyingProgramIds - sharedProgramId
+                            applyingProgramIds = (it.applyingProgramIds - sharedProgramId).toImmutableSet()
                         )
                     }
                 }
@@ -362,7 +373,7 @@ class DiscoverViewModel @Inject constructor(
             _state.update { it.copy(myLoading = true) }
             discoverRepo.listMyShared()
                 .onSuccess { list ->
-                    _state.update { it.copy(myShared = list, myLoading = false) }
+                    _state.update { it.copy(myShared = list.toImmutableList(), myLoading = false) }
                 }
                 .onFailure {
                     _state.update { it.copy(myLoading = false) }
@@ -377,8 +388,8 @@ class DiscoverViewModel @Inject constructor(
         val snapshot = s.myShared
         _state.update {
             it.copy(
-                myShared         = it.myShared.filter { m -> m.id != sharedId },
-                myDeleteInFlight = it.myDeleteInFlight + sharedId
+                myShared         = it.myShared.filter { m -> m.id != sharedId }.toImmutableList(),
+                myDeleteInFlight = (it.myDeleteInFlight + sharedId).toImmutableSet()
             )
         }
         viewModelScope.launch {
@@ -387,8 +398,8 @@ class DiscoverViewModel @Inject constructor(
                     // Feed'de de kalmasın
                     _state.update {
                         it.copy(
-                            items            = it.items.filter { p -> p.id != sharedId },
-                            myDeleteInFlight = it.myDeleteInFlight - sharedId,
+                            items            = it.items.filter { p -> p.id != sharedId }.toImmutableList(),
+                            myDeleteInFlight = (it.myDeleteInFlight - sharedId).toImmutableSet(),
                             myActionMsg      = "Paylaşım silindi"
                         )
                     }
@@ -398,7 +409,7 @@ class DiscoverViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             myShared         = snapshot,
-                            myDeleteInFlight = it.myDeleteInFlight - sharedId,
+                            myDeleteInFlight = (it.myDeleteInFlight - sharedId).toImmutableSet(),
                             myActionMsg      = "Silme başarısız: ${err.message ?: "bilinmeyen hata"}"
                         )
                     }
@@ -412,23 +423,23 @@ class DiscoverViewModel @Inject constructor(
     fun consumeError()       { _state.update { it.copy(error = null) } }
 
     fun markLocalProgramDeleting(programId: String) {
-        _state.update { it.copy(localDeletingProgramIds = it.localDeletingProgramIds + programId) }
+        _state.update { it.copy(localDeletingProgramIds = (it.localDeletingProgramIds + programId).toImmutableSet()) }
     }
 
     fun unmarkLocalProgramDeleting(programId: String) {
-        _state.update { it.copy(localDeletingProgramIds = it.localDeletingProgramIds - programId) }
+        _state.update { it.copy(localDeletingProgramIds = (it.localDeletingProgramIds - programId).toImmutableSet()) }
     }
 
     fun confirmLocalProgramDeleted(programId: String) {
         _state.update { state ->
             state.copy(
-                localDeletingProgramIds = state.localDeletingProgramIds - programId,
+                localDeletingProgramIds = (state.localDeletingProgramIds - programId).toImmutableSet(),
                 appliedProgramMap = state.appliedProgramMap.filterValues { it != programId }
             )
         }
     }
 
-    private fun List<SharedProgram>.sortedFor(sort: DiscoverSort): List<SharedProgram> =
+    private fun Iterable<SharedProgram>.sortedFor(sort: DiscoverSort): ImmutableList<SharedProgram> =
         when (sort) {
             DiscoverSort.NEWEST -> sortedWith(
                 compareByDescending<SharedProgram> { it.createdAtIso }
@@ -439,5 +450,5 @@ class DiscoverViewModel @Inject constructor(
                     .thenByDescending { it.likesCount + it.savesCount }
                     .thenByDescending { it.createdAtIso }
             )
-        }
+        }.toImmutableList()
 }

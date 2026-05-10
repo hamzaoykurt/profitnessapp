@@ -77,10 +77,10 @@ fun ProfileScreen(
         }
     }
 
-    // Tab geçişinde stale ise yenile (5 dk cache)
+    // Tab geçiş animasyonu bittikten sonra ilk profil yükünü başlat.
     LaunchedEffect(Unit) {
-        delay(350)
-        viewModel.reloadIfStale()
+        delay(300)
+        viewModel.initLoad()
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {

@@ -70,8 +70,11 @@ import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.workout.RestTimerState
 import com.avonix.profitness.presentation.workout.WorkoutScreen
 import com.avonix.profitness.presentation.workout.WorkoutViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 
+@Immutable
 sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
     object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
     object Program  : DashboardTab("program",  Icons.Rounded.CalendarMonth, "PLAN")
@@ -80,7 +83,7 @@ sealed class DashboardTab(val route: String, val icon: ImageVector, val label: S
     object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
 }
 
-private val ALL_TABS = listOf(
+private val ALL_TABS = persistentListOf(
     DashboardTab.Workout, DashboardTab.Program, DashboardTab.AICoach,
     DashboardTab.Discover, DashboardTab.Profile
 )
@@ -155,9 +158,20 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     // Timer aktifken diğer ekranlardaki içerik aşağı kayar
     val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val timerActive   = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
+    val timerExtraPadTarget by remember(timerActive, statusBarPad) {
+        derivedStateOf {
+            if (timerActive && selectedTab != DashboardTab.Workout) {
+                statusBarPad + 60.dp
+            } else {
+                0.dp
+            }
+        }
+    }
+    val showGlobalTimer by remember {
+        derivedStateOf { selectedTab != DashboardTab.Workout }
+    }
     val timerExtraPad by animateDpAsState(
-        targetValue   = if (timerActive && selectedTab != DashboardTab.Workout)
-                            (statusBarPad + 60.dp) else 0.dp,
+        targetValue   = timerExtraPadTarget,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
         label         = "dash_timer_pad"
     )
@@ -165,13 +179,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers
     var swipeAccum by remember { mutableStateOf(0f) }
+    val selectedTabIndex by remember {
+        derivedStateOf { ALL_TABS.indexOf(selectedTab) }
+    }
     val draggableState = rememberDraggableState { delta -> swipeAccum += delta }
     val swipeModifier = Modifier.draggable(
         state       = draggableState,
         orientation = Orientation.Horizontal,
         onDragStarted = { swipeAccum = 0f },
         onDragStopped = { velocity ->
-            val curIdx = ALL_TABS.indexOf(selectedTab)
+            val curIdx = selectedTabIndex
             // Fast fling (velocity) OR slow-but-wide drag both trigger tab change
             val byVelocity = abs(velocity) > 500f
             val byDistance = abs(swipeAccum) > 120f
@@ -297,21 +314,21 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         if (useNavRail) {
             AppNavRail(
                 tabs     = ALL_TABS,
-                selected = selectedTab,
+                selected = { selectedTab },
                 onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
                 modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
             )
         } else {
             AppNavBar(
                 tabs     = ALL_TABS,
-                selected = selectedTab,
+                selected = { selectedTab },
                 onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
             )
         }
 
         // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
-        if (selectedTab != DashboardTab.Workout) {
+        if (showGlobalTimer) {
             DynamicIslandTimer(
                 timer     = restTimer,
                 topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
@@ -498,8 +515,8 @@ fun AppBackground(modifier: Modifier = Modifier) {
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun AppNavRail(
-    tabs    : List<DashboardTab>,
-    selected: DashboardTab,
+    tabs    : ImmutableList<DashboardTab>,
+    selected: () -> DashboardTab,
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -508,6 +525,7 @@ private fun AppNavRail(
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(32.dp)
+    val selectedTab = selected()
 
     Box(
         modifier = modifier
@@ -551,7 +569,7 @@ private fun AppNavRail(
             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
         ) {
             tabs.forEach { tab ->
-                val isSelected = tab == selected
+                val isSelected = tab == selectedTab
                 val itemShape = RoundedCornerShape(24.dp)
                 Column(
                     modifier = Modifier
@@ -607,8 +625,8 @@ private fun AppNavRail(
 
 @Composable
 fun AppNavBar(
-    tabs    : List<DashboardTab>,
-    selected: DashboardTab,
+    tabs    : ImmutableList<DashboardTab>,
+    selected: () -> DashboardTab,
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -618,7 +636,8 @@ fun AppNavBar(
     val haptic = LocalHapticFeedback.current
     val shape  = RoundedCornerShape(40.dp)
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val selectedState by rememberUpdatedState(selected)
+    val selectedTab = selected()
+    val selectedState by rememberUpdatedState(selectedTab)
     val onSelectState by rememberUpdatedState(onSelect)
     val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
     var navWidthPx by remember { mutableStateOf(0f) }
@@ -628,8 +647,8 @@ fun AppNavBar(
     fun nearestTabAt(x: Float): DashboardTab? =
         itemLayouts.entries.minByOrNull { (_, layout) -> abs(layout.center - x) }?.key
 
-    val visualTab = dragX?.let { nearestTabAt(it) } ?: selected
-    val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selected]
+    val visualTab = dragX?.let { nearestTabAt(it) } ?: selectedTab
+    val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selectedTab]
     val targetWidth = visualLayout?.width ?: 0f
     val targetCenter = when {
         isDragging && dragX != null && targetWidth > 0f ->
@@ -755,7 +774,7 @@ fun AppNavBar(
                 tabs.forEach { tab ->
                     NavCapsuleItem(
                         tab        = tab,
-                        isSelected = tab == selected,
+                        isSelected = tab == selectedTab,
                         showSelectedChrome = false,
                         accent     = accent,
                         theme      = theme,

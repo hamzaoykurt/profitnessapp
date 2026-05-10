@@ -1,6 +1,11 @@
 package com.avonix.profitness.core.theme
 
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+
 /** All user-visible UI strings, available in Turkish and English. */
+@Stable
 data class AppStrings(
 
     // ── Profile – metrics section ────────────────────────────────────────────
@@ -10,7 +15,7 @@ data class AppStrings(
     // ── Profile – weekly activity ────────────────────────────────────────────
     val weeklyActivity      : String,
     val thisWeekSummary     : String,
-    val dayAbbreviations    : List<String>,
+    val dayAbbreviations    : ImmutableList<String>,
     val unitDays            : String,
     val unitStreak          : String,
 
@@ -169,7 +174,7 @@ val TurkishStrings = AppStrings(
     seeAll              = "Tümünü Gör",
     weeklyActivity      = "HAFTALIK AKTİVİTE",
     thisWeekSummary     = "Bu hafta 5 antrenman",
-    dayAbbreviations    = listOf("Pzt", "Sal", "Çrş", "Per", "Cum", "Cmt", "Paz"),
+    dayAbbreviations    = persistentListOf("Pzt", "Sal", "Çrş", "Per", "Cum", "Cmt", "Paz"),
     unitDays            = "gün",
     unitStreak          = "seri",
     fatRatioLabel       = "YAĞ ORANI",
@@ -314,7 +319,7 @@ val EnglishStrings = AppStrings(
     seeAll              = "See All",
     weeklyActivity      = "WEEKLY ACTIVITY",
     thisWeekSummary     = "5 workouts this week",
-    dayAbbreviations    = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+    dayAbbreviations    = persistentListOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
     unitDays            = "days",
     unitStreak          = "streak",
     fatRatioLabel       = "BODY FAT",

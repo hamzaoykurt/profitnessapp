@@ -1,5 +1,7 @@
 package com.avonix.profitness.domain.model
 
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -12,7 +14,7 @@ data class Program(
     val name: String,
     val type: ProgramType,
     val isActive: Boolean,
-    val days: List<ProgramDay> = emptyList(),
+    val days: ImmutableList<ProgramDay> = persistentListOf(),
     val createdAt: String = "",
     /** SHA-256 of the canonical program content. Server-maintained; used to detect drift vs shared snapshots. */
     val contentHash: String? = null,
@@ -27,7 +29,7 @@ data class ProgramDay(
     val dayIndex: Int,
     val title: String,
     val isRestDay: Boolean,
-    val exercises: List<ProgramExercise> = emptyList()
+    val exercises: ImmutableList<ProgramExercise> = persistentListOf()
 )
 
 @Serializable

@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.workout
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.notification.WorkoutNotificationManager
@@ -21,6 +22,10 @@ import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,8 +63,23 @@ data class RestTimerState(
     val displaySeconds get() = if (mode == TimerMode.Stopwatch) elapsedSeconds else secondsLeft
 }
 
+@Stable
+data class DraftInput(
+    val weight: String = "",
+    val reps: String = "",
+    val duration: String = "",
+    val hasWeight: Boolean = false,
+    val hasReps: Boolean = false,
+    val hasDuration: Boolean = false
+)
+
+internal fun draftInputKey(exerciseId: String, setIndex: Int): String = "$exerciseId:$setIndex"
+
+private fun DraftInput?.orEmpty(): DraftInput = this ?: DraftInput()
+
+@Stable
 data class WorkoutScreenState(
-    val dayStates: List<WorkoutDayState> = emptyList(),
+    val dayStates: ImmutableList<WorkoutDayState> = persistentListOf(),
     val selectedDayIdx: Int = 0,
     val isLoading: Boolean = true,
     val hasProgramLoaded: Boolean = false,
@@ -89,6 +109,7 @@ sealed class WorkoutEvent {
     data object ShowPaywall : WorkoutEvent()
 }
 
+@Stable
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
     private val programRepository  : ProgramRepository,
@@ -106,6 +127,8 @@ class WorkoutViewModel @Inject constructor(
     private var timerJob: Job? = null
     private val _restTimer = MutableStateFlow(RestTimerState())
     val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
+    private val _draftInputs = MutableStateFlow<Map<String, DraftInput>>(emptyMap())
+    val draftInputs: StateFlow<Map<String, DraftInput>> = _draftInputs.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
     private val draftPersistJobs = mutableMapOf<String, Job>()
 
@@ -567,7 +590,7 @@ class WorkoutViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     hasProgramLoaded = false,
-                    dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }
+                    dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }.toImmutableList()
                 )
             }
             return
@@ -597,7 +620,7 @@ class WorkoutViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             hasProgramLoaded = false,
-                            dayStates = emptyList(),
+                            dayStates = persistentListOf(),
                             currentStreak = streak,
                             setCompletions = setCompletions
                         )
@@ -683,8 +706,14 @@ class WorkoutViewModel @Inject constructor(
                 // Tik'i kaldır: reps_actual'ı null yap (weight draft olarak korunur)
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, null)
             } else {
+                val setDraft = _draftInputs.value[draftInputKey(exerciseId, setIndex)]
                 if (isDurationSet) {
-                    val durationSeconds = currentState.setDurations[exerciseId]?.get(setIndex)
+                    val durationSeconds = setDraft
+                        ?.takeIf { it.hasDuration }
+                        ?.duration
+                        ?.toIntOrNull()
+                        ?.takeIf { it > 0 }
+                        ?: currentState.setDurations[exerciseId]?.get(setIndex)
                         ?.toIntOrNull()
                         ?.takeIf { it > 0 }
                         ?: exercise.plannedDurationSeconds()
@@ -700,11 +729,21 @@ class WorkoutViewModel @Inject constructor(
                     workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, 1)
                 } else {
                 // Tik ekle: tekrar sayısı programda tanımlı olan değerden gelir.
-                val reps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
+                val reps = setDraft
+                    ?.takeIf { it.hasReps }
+                    ?.reps
+                    ?.toIntOrNull()
+                    ?.takeIf { it > 0 }
+                    ?: exercise.reps.toIntOrNull()?.takeIf { it > 0 }
+                    ?: 1
                 // Ağırlık fallback: kullanıcı girdisi > son seans > program planı > vücut ağırlığı hareketinde profil kilosu.
                 val hasStateWeight = currentState.lastSessionData[exerciseId]?.get(setIndex)?.first != null
                 val persistedWeights = if (hasStateWeight) emptyMap() else loadPersistedExerciseWeights(userId, dbExerciseId)
-                val weight = currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                val weight = setDraft
+                    ?.takeIf { it.hasWeight }
+                    ?.weight
+                    ?.toFloatOrNull()
+                    ?: currentState.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
                     ?: currentState.lastSessionData[exerciseId]?.get(setIndex)?.first
                     ?: persistedWeights[setIndex]
                     ?: defaultWeightFor(exercise, currentState.profileWeightKg)
@@ -741,10 +780,9 @@ class WorkoutViewModel @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     fun updateSetWeight(exerciseId: String, setIndex: Int, value: String) {
-        updateState { state ->
-            val exerciseMap = state.setWeights[exerciseId].orEmpty().toMutableMap()
-            exerciseMap[setIndex] = value
-            state.copy(setWeights = state.setWeights + (exerciseId to exerciseMap))
+        val key = draftInputKey(exerciseId, setIndex)
+        _draftInputs.update { drafts ->
+            drafts + (key to drafts[key].orEmpty().copy(weight = value, hasWeight = true))
         }
         // Set tik atılmış olsa da olmasa da Room'a draft olarak yaz (debounced).
         scheduleDraftPersist(exerciseId, setIndex, weight = true, reps = false)
@@ -752,12 +790,11 @@ class WorkoutViewModel @Inject constructor(
 
     fun updateSetDuration(exerciseId: String, setIndex: Int, value: String) {
         val clean = value.filter { it.isDigit() }.take(4)
-        updateState { state ->
-            val exerciseMap = state.setDurations[exerciseId].orEmpty().toMutableMap()
-            exerciseMap[setIndex] = clean
-            state.copy(setDurations = state.setDurations + (exerciseId to exerciseMap))
+        val key = draftInputKey(exerciseId, setIndex)
+        _draftInputs.update { drafts ->
+            drafts + (key to drafts[key].orEmpty().copy(duration = clean, hasDuration = true))
         }
-        persistSetDurationDraft(exerciseId, setIndex, clean.toIntOrNull())
+        scheduleSetDurationPersist(exerciseId, setIndex)
     }
 
     fun updateActivityDuration(exerciseId: String, value: String) {
@@ -789,31 +826,11 @@ class WorkoutViewModel @Inject constructor(
     }
 
     fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
-        updateState { state ->
-            val exerciseMap = state.setReps[exerciseId].orEmpty().toMutableMap()
-            exerciseMap[setIndex] = value
-            state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
+        val key = draftInputKey(exerciseId, setIndex)
+        _draftInputs.update { drafts ->
+            drafts + (key to drafts[key].orEmpty().copy(reps = value, hasReps = true))
         }
-        // Tikli setler için reps_actual'ı anında yaz (debounce yok) — kullanıcı ekrandan çıkarsa
-        // 500ms bekleyen job iptal olur ve değer kaybolur. Tikli olmayan setlerde yine debounce kullan.
-        val state = uiState.value
-        val dayState = state.dayStates.getOrNull(state.selectedDayIdx)
-        val dbExerciseId = dayState?.day?.exercises?.find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
-        val isDone = setIndex in (state.setCompletions[dbExerciseId] ?: emptySet())
-        if (isDone) {
-            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
-            val programDayId = dayState?.day?.programDayId ?: return
-            if (programDayId.isBlank()) return
-            val r = value.toIntOrNull() ?: return
-            val key = "$exerciseId:$setIndex:r"
-            draftPersistJobs[key]?.cancel()
-            viewModelScope.launch {
-                workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, r)
-            }
-        } else {
-            scheduleDraftPersist(exerciseId, setIndex, weight = false, reps = true)
-        }
+        scheduleDraftPersist(exerciseId, setIndex, weight = false, reps = true)
     }
 
     /**
@@ -834,16 +851,35 @@ class WorkoutViewModel @Inject constructor(
         draftPersistJobs[key]?.cancel()
         draftPersistJobs[key] = viewModelScope.launch {
             delay(500L)
+            val latestDraft = _draftInputs.value[draftInputKey(exerciseId, setIndex)]
             val latest = uiState.value
             if (weight) {
-                val w = latest.setWeights[exerciseId]?.get(setIndex)?.toFloatOrNull()
+                val weightValue = latestDraft
+                    ?.takeIf { it.hasWeight }
+                    ?.weight
+                    ?: latest.setWeights[exerciseId]?.get(setIndex).orEmpty()
+                updateState { state ->
+                    val exerciseMap = state.setWeights[exerciseId].orEmpty().toMutableMap()
+                    exerciseMap[setIndex] = weightValue
+                    state.copy(setWeights = state.setWeights + (exerciseId to exerciseMap))
+                }
+                val w = weightValue.toFloatOrNull()
                 workoutRepository.upsertSetWeightDraft(userId, dbExerciseId, programDayId, setIndex, w)
             }
             if (reps) {
+                val repsValue = latestDraft
+                    ?.takeIf { it.hasReps }
+                    ?.reps
+                    ?: latest.setReps[exerciseId]?.get(setIndex).orEmpty()
+                updateState { state ->
+                    val exerciseMap = state.setReps[exerciseId].orEmpty().toMutableMap()
+                    exerciseMap[setIndex] = repsValue
+                    state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
+                }
                 // Sadece set zaten tikliyse reps_actual güncellenir — tikli olmayan set draft kalmalı.
                 val isDone = setIndex in (latest.setCompletions[dbExerciseId] ?: emptySet())
                 if (isDone) {
-                    val r = latest.setReps[exerciseId]?.get(setIndex)?.toIntOrNull()
+                    val r = repsValue.toIntOrNull()
                     if (r != null) {
                         workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, r)
                     }
@@ -852,7 +888,7 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    private fun persistSetDurationDraft(exerciseId: String, setIndex: Int, durationSeconds: Int?) {
+    private fun scheduleSetDurationPersist(exerciseId: String, setIndex: Int) {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
         val state = uiState.value
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
@@ -865,12 +901,23 @@ class WorkoutViewModel @Inject constructor(
         draftPersistJobs[key]?.cancel()
         draftPersistJobs[key] = viewModelScope.launch {
             delay(500L)
+            val latest = uiState.value
+            val latestDraft = _draftInputs.value[draftInputKey(exerciseId, setIndex)]
+            val durationValue = latestDraft
+                ?.takeIf { it.hasDuration }
+                ?.duration
+                ?: latest.setDurations[exerciseId]?.get(setIndex).orEmpty()
+            updateState { state ->
+                val exerciseMap = state.setDurations[exerciseId].orEmpty().toMutableMap()
+                exerciseMap[setIndex] = durationValue
+                state.copy(setDurations = state.setDurations + (exerciseId to exerciseMap))
+            }
             workoutRepository.upsertSetActivityMetrics(
                 userId = userId,
                 exerciseId = dbExerciseId,
                 programDayId = programDayId,
                 setIndex = setIndex,
-                durationSeconds = durationSeconds,
+                durationSeconds = durationValue.toIntOrNull(),
                 distanceMeters = null
             )
         }
@@ -1416,12 +1463,12 @@ class WorkoutViewModel @Inject constructor(
         updateState { state ->
             val updatedDays = state.dayStates.mapIndexed { idx, dayState ->
                 if (idx == dayIdx) {
-                    dayState.copy(completedIds = dayState.completedIds + exerciseId)
+                    dayState.copy(completedIds = (dayState.completedIds + exerciseId).toImmutableSet())
                 } else {
                     dayState
                 }
             }
-            state.copy(dayStates = updatedDays)
+            state.copy(dayStates = updatedDays.toImmutableList())
         }
     }
 
@@ -1429,12 +1476,12 @@ class WorkoutViewModel @Inject constructor(
         updateState { state ->
             val updatedDays = state.dayStates.mapIndexed { idx, dayState ->
                 if (idx == dayIdx) {
-                    dayState.copy(completedIds = dayState.completedIds - exerciseId)
+                    dayState.copy(completedIds = (dayState.completedIds - exerciseId).toImmutableSet())
                 } else {
                     dayState
                 }
             }
-            state.copy(dayStates = updatedDays)
+            state.copy(dayStates = updatedDays.toImmutableList())
         }
     }
 
@@ -1485,7 +1532,11 @@ class WorkoutViewModel @Inject constructor(
         val defaultWeight = defaultWeightFor(exercise, currentState.profileWeightKg)
 
         repeat(exercise.sets) { i ->
-            val w = userWeights[i]?.toFloatOrNull()
+            val w = _draftInputs.value[draftInputKey(exerciseId, i)]
+                ?.takeIf { it.hasWeight }
+                ?.weight
+                ?.toFloatOrNull()
+                ?: userWeights[i]?.toFloatOrNull()
                 ?: stateLastSessionMap[i]?.first
                 ?: persistedWeights[i]
                 ?: defaultWeight
@@ -1528,7 +1579,7 @@ class WorkoutViewModel @Inject constructor(
         program: Program,
         completions: Map<String, Set<String>>,
         setCompletions: Map<String, Set<Int>>
-    ): List<WorkoutDayState> {
+    ): ImmutableList<WorkoutDayState> {
         val sortedDays = program.days.sortedBy { it.dayIndex }
         val dayByIndex = sortedDays.associateBy { it.dayIndex }
 
@@ -1560,7 +1611,7 @@ class WorkoutViewModel @Inject constructor(
                             targetElevationMeters = pe.targetElevationMeters,
                             targetInclinePercent = pe.targetInclinePercent
                         )
-                    }
+                    }.toImmutableList()
                 )
 
                 // DB'deki completions exercises.id kullanır.
@@ -1581,7 +1632,7 @@ class WorkoutViewModel @Inject constructor(
                     }
                     .map { it.id }
                     .toSet()
-                val completedPeIds = loggedCompletedPeIds + setCompletedPeIds
+                val completedPeIds = (loggedCompletedPeIds + setCompletedPeIds).toImmutableSet()
 
                 WorkoutDayState(workoutDay, completedIds = completedPeIds)
             } else {
@@ -1590,11 +1641,11 @@ class WorkoutViewModel @Inject constructor(
                         day = DAY_LABELS[weekdayIdx],
                         title = "DİNLENME",
                         isRestDay = true,
-                        exercises = emptyList()
+                        exercises = persistentListOf()
                     )
                 )
             }
-        }
+        }.toImmutableList()
     }
 
     private suspend fun checkDayCompletion(dayIdx: Int, userId: String) {

@@ -71,6 +71,10 @@ import com.avonix.profitness.presentation.components.AppToast
 import com.avonix.profitness.presentation.components.AppToastData
 import com.avonix.profitness.presentation.components.AppToastType
 import com.avonix.profitness.presentation.components.glassCard
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.delay
 
 enum class DiscoverTab { Programs, Friends, Challenges }
 
@@ -89,17 +93,22 @@ fun DiscoverScreen(
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
-    val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toSet() }
+    val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toImmutableSet() }
     /**
      * Hash'leri Room'dan derle — Discover feed'i UYGULA/UYGULANDI çentiğini sunucu flag'i
      * yanında bu yerel set ile de teyit etsin ki kullanıcı bir programı düzenlediğinde
      * (hash değişir) bir sonraki feed pull'unu beklemeden kart anında "UYGULA"ya döner.
      */
     val myProgramHashes = remember(myPrograms) {
-        myPrograms.mapNotNull { it.contentHash }.toSet()
+        myPrograms.mapNotNull { it.contentHash }.toImmutableSet()
     }
 
     var currentToast by remember { mutableStateOf<AppToastData?>(null) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        viewModel.initLoad()
+    }
 
     LaunchedEffect(state.shareResult) {
         state.shareResult?.let { result ->
@@ -403,8 +412,8 @@ private fun DiscoverTabPill(
 @Composable
 private fun ProgramsList(
     state           : DiscoverProgramsState,
-    myProgramIds    : Set<String>,
-    myProgramHashes : Set<String>,
+    myProgramIds    : ImmutableSet<String>,
+    myProgramHashes : ImmutableSet<String>,
     bottomPadding   : Dp,
     onLike          : (String) -> Unit,
     onSave          : (String) -> Unit,
@@ -488,8 +497,8 @@ private fun ProgramsList(
 @Composable
 private fun SavedProgramsList(
     state           : DiscoverProgramsState,
-    myProgramIds    : Set<String>,
-    myProgramHashes : Set<String>,
+    myProgramIds    : ImmutableSet<String>,
+    myProgramHashes : ImmutableSet<String>,
     bottomPadding   : Dp,
     onLike          : (String) -> Unit,
     onSave          : (String) -> Unit,
@@ -1001,10 +1010,10 @@ private fun SubTabChip(
 
 @Composable
 private fun MySharedProgramsList(
-    items          : List<MySharedProgram>,
+    items          : ImmutableList<MySharedProgram>,
     isLoading      : Boolean,
     isRefreshing   : Boolean,
-    deleteInFlight : Set<String>,
+    deleteInFlight : ImmutableSet<String>,
     bottomPadding  : Dp,
     onDelete       : (String) -> Unit,
     onRefresh      : () -> Unit,

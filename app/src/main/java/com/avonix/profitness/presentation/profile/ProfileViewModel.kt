@@ -1,5 +1,6 @@
 package com.avonix.profitness.presentation.profile
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.profile.ProfileRepository
@@ -10,6 +11,8 @@ import com.avonix.profitness.data.workout.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -37,6 +40,7 @@ fun computeRank(xp: Int): String = when {
 
 // ── Achievement Modeli (UI için) ──────────────────────────────────────────────
 
+@Stable
 data class AchievementUiModel(
     val key        : String,
     val name       : String,
@@ -49,6 +53,7 @@ data class AchievementUiModel(
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
+@Stable
 data class ProfileState(
     val displayName          : String               = "",
     val avatar               : String               = "🏋️",
@@ -63,11 +68,11 @@ data class ProfileState(
     val totalDurationSeconds : Int                  = 0,
     val totalDistanceMeters  : Float                = 0f,
     /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
-    val weeklyActivity       : List<Float>           = List(7) { 0f },
+    val weeklyActivity       : ImmutableList<Float>  = List(7) { 0f }.toImmutableList(),
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
-    val weeklyWorkoutCounts  : List<Int>            = List(13) { 0 },
+    val weeklyWorkoutCounts  : ImmutableList<Int>   = List(13) { 0 }.toImmutableList(),
     /** Başarımlar — tüm tanımlı başarımlar unlocked durumlarıyla */
-    val achievements         : List<AchievementUiModel> = emptyList(),
+    val achievements         : ImmutableList<AchievementUiModel> = emptyList<AchievementUiModel>().toImmutableList(),
     val fitnessGoal          : String               = "",
     val heightCm             : Double               = 0.0,
     val weightKg             : Double               = 0.0,
@@ -100,9 +105,9 @@ class ProfileViewModel @Inject constructor(
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
 
     private var lastLoadMs = 0L
+    private var isInitialized = false
 
     init {
-        loadProfile()
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 planRepository.planFlow,
@@ -112,6 +117,12 @@ class ProfileViewModel @Inject constructor(
                     updateState { it.copy(userPlan = plan, aiCredits = credits) }
                 }
         }
+    }
+
+    fun initLoad() {
+        if (isInitialized) return
+        isInitialized = true
+        loadProfile()
     }
 
     /** Tab geçişleri ve ON_RESUME için — 5 dakika geçmediyse ve veri varsa atla */
@@ -163,7 +174,7 @@ class ProfileViewModel @Inject constructor(
                 if (i > todayIdx) return@map 0f   // gelecekteki günler
                 val date = monday.plusDays(i.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE)
                 completionRatios[date] ?: 0f
-            }
+            }.toImmutableList()
 
             // 13 haftalık antrenman grafiği
             val weeklyWorkoutCounts = buildWeeklyChart(workoutDates)
@@ -179,7 +190,7 @@ class ProfileViewModel @Inject constructor(
                     threshold  = ach.threshold,
                     isUnlocked = ach.key in unlockedKeys
                 )
-            }
+            }.toImmutableList()
 
             val lvl          = stats?.level ?: 1
             val xpForNext    = 500   // Her seviye sabit 500 XP
@@ -300,7 +311,7 @@ class ProfileViewModel @Inject constructor(
             Period.between(date, LocalDate.now()).years.takeIf { it in 8..100 }
         }.getOrNull()
 
-    private fun buildWeeklyChart(workoutDates: List<String>): List<Int> {
+    private fun buildWeeklyChart(workoutDates: List<String>): ImmutableList<Int> {
         val today  = LocalDate.now()
         val counts = MutableList(13) { 0 }
         workoutDates.forEach { dateStr ->
@@ -312,7 +323,7 @@ class ProfileViewModel @Inject constructor(
                 if (weeksAgo in 0..12) counts[12 - weeksAgo]++
             }
         }
-        return counts
+        return counts.toImmutableList()
     }
 
     // ── FAZ 5C: Achievement Kontrol ───────────────────────────────────────────
@@ -353,7 +364,7 @@ class ProfileViewModel @Inject constructor(
                 st.copy(
                     achievements = st.achievements.map { uiAch ->
                         if (uiAch.key in keysToUnlock) uiAch.copy(isUnlocked = true) else uiAch
-                    }
+                    }.toImmutableList()
                 )
             }
         }

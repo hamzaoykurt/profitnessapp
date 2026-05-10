@@ -2,6 +2,8 @@ package com.avonix.profitness.domain.discover
 
 import com.avonix.profitness.data.discover.dto.DiscoverFeedRowDto
 import com.avonix.profitness.data.discover.dto.MySharedProgramRowDto
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.json.JsonElement
 
 /** Domain model — UI tarafından tüketilir (DTO'dan bağımsız). */
@@ -13,7 +15,7 @@ data class SharedProgram(
     val title           : String,
     val description     : String?,
     val programData     : JsonElement?,
-    val tags            : List<String>,
+    val tags            : ImmutableList<String>,
     val difficulty      : Difficulty?,
     val durationWeeks   : Int?,
     val daysPerWeek     : Int?,
@@ -57,7 +59,7 @@ data class MySharedProgram(
     val originalProgramId: String?,
     val title           : String,
     val description     : String?,
-    val tags            : List<String>,
+    val tags            : ImmutableList<String>,
     val difficulty      : Difficulty?,
     val durationWeeks   : Int?,
     val daysPerWeek     : Int?,
@@ -80,7 +82,7 @@ internal fun MySharedProgramRowDto.toDomain(): MySharedProgram = MySharedProgram
     originalProgramId = original_program_id,
     title            = title,
     description      = description,
-    tags             = tags,
+    tags             = tags.toImmutableList(),
     difficulty       = Difficulty.fromRaw(difficulty),
     durationWeeks    = duration_weeks,
     daysPerWeek      = days_per_week,
@@ -104,7 +106,7 @@ internal fun DiscoverFeedRowDto.toDomain(): SharedProgram = SharedProgram(
     title            = title,
     description      = description,
     programData      = program_data,
-    tags             = tags,
+    tags             = tags.toImmutableList(),
     difficulty       = Difficulty.fromRaw(difficulty),
     durationWeeks    = duration_weeks,
     daysPerWeek      = days_per_week,

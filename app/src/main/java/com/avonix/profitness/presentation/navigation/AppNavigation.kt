@@ -21,7 +21,7 @@ import com.avonix.profitness.presentation.onboarding.OnboardingScreen
 import com.avonix.profitness.presentation.resetpassword.ResetPasswordScreen
 import kotlinx.coroutines.flow.StateFlow
 
-private val DURATION = 420
+private val DURATION = 280
 
 private fun slideEnter() = slideInHorizontally(
     initialOffsetX = { it / 4 },

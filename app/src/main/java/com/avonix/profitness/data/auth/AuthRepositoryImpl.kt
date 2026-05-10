@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
@@ -79,9 +80,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun awaitSessionLoaded(): Boolean {
-        // LoadingFromStorage bitene kadar bekle, ardından isLoggedIn() ile kontrol et.
-        supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
-        return isLoggedIn()
+        return withTimeoutOrNull(3_000) {
+            supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+        } != null && isLoggedIn()
     }
 
     override suspend fun sendPasswordReset(email: String): Result<Unit> =
