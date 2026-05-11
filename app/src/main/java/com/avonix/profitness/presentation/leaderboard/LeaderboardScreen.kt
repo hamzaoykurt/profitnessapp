@@ -57,14 +57,14 @@ fun LeaderboardScreen(
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "SIRALAMA",
+                            theme.t("SIRALAMA", "LEADERBOARD"),
                             color         = theme.text0,
                             fontSize      = 18.sp,
                             fontWeight    = FontWeight.Black,
                             letterSpacing = 2.sp
                         )
                         Text(
-                            "Diğer kullanıcılarla kıyasla",
+                            theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
                             color    = theme.text2,
                             fontSize = 11.sp
                         )
@@ -136,7 +136,7 @@ fun LeaderboardScreen(
                     Text(
                         when (state.selectedScope) {
                             LeaderboardScope.Global  -> "TOP 100"
-                            LeaderboardScope.Friends -> "ARKADAŞLAR"
+                            LeaderboardScope.Friends -> theme.t("ARKADAŞLAR", "FRIENDS")
                         },
                         color         = theme.text0,
                         fontSize      = 13.sp,
@@ -145,8 +145,8 @@ fun LeaderboardScreen(
                     )
                     Text(
                         when (state.selectedTab) {
-                            LeaderboardTab.Xp           -> "XP SIRALAMASI"
-                            LeaderboardTab.Achievements -> "BAŞARIM SIRALAMASI"
+                            LeaderboardTab.Xp           -> theme.t("XP SIRALAMASI", "XP RANKING")
+                            LeaderboardTab.Achievements -> theme.t("BAŞARIM SIRALAMASI", "ACHIEVEMENT RANKING")
                         },
                         color         = accent,
                         fontSize      = 10.sp,
@@ -175,7 +175,7 @@ fun LeaderboardScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "Sıralama yüklenemedi\n${state.error}",
+                            theme.t("Sıralama yüklenemedi", "Could not load leaderboard") + "\n${state.error}",
                             color      = theme.text2,
                             fontSize   = 13.sp,
                             fontWeight = FontWeight.Medium
@@ -201,8 +201,11 @@ fun LeaderboardScreen(
                         ) {
                             Text(
                                 when (state.selectedScope) {
-                                    LeaderboardScope.Global  -> "Henüz sıralamada kimse yok"
-                                    LeaderboardScope.Friends -> "Henüz arkadaşın yok.\nArkadaş eklemek için birini takip et — karşılıklı takip arkadaşlık sayılır."
+                                    LeaderboardScope.Global  -> theme.t("Henüz sıralamada kimse yok", "No one is ranked yet")
+                                    LeaderboardScope.Friends -> theme.t(
+                                        "Henüz arkadaşın yok.\nArkadaş eklemek için birini takip et — karşılıklı takip arkadaşlık sayılır.",
+                                        "You do not have friends yet.\nFollow someone to add a friend. Mutual follows count as friends."
+                                    )
                                 },
                                 color    = theme.text2,
                                 fontSize = 13.sp,
@@ -255,7 +258,7 @@ private fun TabSwitcher(
         )
         Spacer(Modifier.width(4.dp))
         TabButton(
-            label    = "Başarım",
+            label    = theme.t("Başarım", "Achievement"),
             icon     = Icons.Rounded.EmojiEvents,
             isActive = selected == LeaderboardTab.Achievements,
             accent   = accent,
@@ -295,7 +298,7 @@ private fun ScopeSwitcher(
         )
         Spacer(Modifier.width(3.dp))
         TabButton(
-            label    = "Arkadaşlar",
+            label    = theme.t("Arkadaşlar", "Friends"),
             icon     = Icons.Rounded.People,
             isActive = selected == LeaderboardScope.Friends,
             accent   = accent,
@@ -357,11 +360,11 @@ private fun MyPositionCard(
 ) {
     val scoreLabel = when (tab) {
         LeaderboardTab.Xp           -> "XP"
-        LeaderboardTab.Achievements -> "Başarım"
+        LeaderboardTab.Achievements -> theme.t("Başarım", "Achievement")
     }
     val scopeLabel = when (scope) {
-        LeaderboardScope.Global  -> "kullanıcı arasında"
-        LeaderboardScope.Friends -> "arkadaş arasında"
+        LeaderboardScope.Global  -> theme.t("kullanıcı arasında", "among users")
+        LeaderboardScope.Friends -> theme.t("arkadaş arasında", "among friends")
     }
     Box(
         modifier = modifier
@@ -392,7 +395,7 @@ private fun MyPositionCard(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "SENİN POZİSYONUN",
+                    theme.t("SENİN POZİSYONUN", "YOUR POSITION"),
                     color         = accent,
                     fontSize      = 10.sp,
                     fontWeight    = FontWeight.Black,
@@ -402,8 +405,8 @@ private fun MyPositionCard(
                     if (summary.totalUsers > 0 && summary.position > 0L)
                         "${summary.position} / ${summary.totalUsers} $scopeLabel"
                     else if (scope == LeaderboardScope.Friends)
-                        "Arkadaş listen boş veya henüz yerleşmedin"
-                    else "Henüz sıralama yok",
+                        theme.t("Arkadaş listen boş veya henüz yerleşmedin", "Your friends list is empty or you are not ranked yet")
+                    else theme.t("Henüz sıralama yok", "No ranking yet"),
                     color    = theme.text2,
                     fontSize = 12.sp
                 )
@@ -519,14 +522,14 @@ private fun LeaderboardRowItem(
                             .background(accent.copy(0.25f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("SEN", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        Text(theme.t("SEN", "YOU"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             Text(
                 when (tab) {
                     LeaderboardTab.Xp           -> "${row.score} XP"
-                    LeaderboardTab.Achievements -> "${row.score} başarım"
+                    LeaderboardTab.Achievements -> "${row.score} ${theme.t("başarım", "achievements")}"
                 },
                 color    = theme.text2,
                 fontSize = 11.sp

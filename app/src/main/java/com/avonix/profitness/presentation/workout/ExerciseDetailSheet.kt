@@ -111,13 +111,13 @@ fun ExerciseDetailSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (activityMetric == ActivityMetric.Strength) {
                     StatTile(label = "SET", value = exercise.sets.toString(), accent = accent, modifier = Modifier.weight(1f))
-                    StatTile(label = "TEKRAR", value = exercise.reps, accent = accent, modifier = Modifier.weight(1f))
+                    StatTile(label = theme.t("TEKRAR", "REPS"), value = exercise.reps, accent = accent, modifier = Modifier.weight(1f))
                 } else {
                     val totalDistance = weightHistory.mapNotNull { it.distanceMeters }.sum()
-                    StatTile(label = "SÜRE", value = plannedDurationLabel(exercise.reps), accent = accent, modifier = Modifier.weight(1f))
+                    StatTile(label = theme.t("SÜRE", "DURATION"), value = plannedDurationLabel(exercise.reps, theme), accent = accent, modifier = Modifier.weight(1f))
                     if (activityMetric == ActivityMetric.DurationDistance) {
                         StatTile(
-                            label = "MESAFE",
+                            label = theme.t("MESAFE", "DISTANCE"),
                             value = totalDistance.takeIf { it > 0f }?.let { formatDistance(it) } ?: "—",
                             accent = accent,
                             modifier = Modifier.weight(1f)
@@ -143,7 +143,7 @@ fun ExerciseDetailSheet(
                 AiCreditInfoRow(
                     isFree    = isFree,
                     credits   = aiCredits,
-                    costLabel = "3 kredi / AI analiz",
+                    costLabel = theme.t("3 kredi / AI analiz", "3 credits / AI analysis"),
                     theme     = theme
                 )
                 Spacer(Modifier.height(8.dp))
@@ -161,7 +161,7 @@ fun ExerciseDetailSheet(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                "NASIL YAPILIR",
+                theme.t("NASIL YAPILIR", "HOW TO DO IT"),
                 color = theme.text2,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -171,17 +171,17 @@ fun ExerciseDetailSheet(
 
             val steps = if (activityMetric == ActivityMetric.Strength) {
                 listOf(
-                    "Doğru başlangıç pozisyonunu al ve postürüne dikkat et.",
-                    "Hareketi kontrollü ve yavaş bir tempoda gerçekleştir.",
-                    "Hedef kas grubunu kasılırken hissetmeye odaklan.",
-                    "Baskı anında nefes ver, geri dönüşte nefes al."
+                    theme.t("Doğru başlangıç pozisyonunu al ve postürüne dikkat et.", "Start in the correct position and keep your posture clean."),
+                    theme.t("Hareketi kontrollü ve yavaş bir tempoda gerçekleştir.", "Move with control at a steady tempo."),
+                    theme.t("Hedef kas grubunu kasılırken hissetmeye odaklan.", "Focus on feeling the target muscle contract."),
+                    theme.t("Baskı anında nefes ver, geri dönüşte nefes al.", "Exhale during effort, inhale on the return.")
                 )
             } else {
                 listOf(
-                    "Süre hedefini antrenman kartında gir ve sayacı başlat.",
-                    "Mesafe kullanılan sporlarda tamamladığın metreyi ekle.",
-                    "Temponu sürdürülebilir tut ve performansı seanslar arasında karşılaştır.",
-                    "Bitirdiğinde hareketi tamamlayarak kaydı performans ölçütlerine aktar."
+                    theme.t("Süre hedefini antrenman kartında gir ve sayacı başlat.", "Enter the duration target on the workout card and start the timer."),
+                    theme.t("Mesafe kullanılan sporlarda tamamladığın metreyi ekle.", "For distance-based sports, add the meters you completed."),
+                    theme.t("Temponu sürdürülebilir tut ve performansı seanslar arasında karşılaştır.", "Keep a sustainable pace and compare performance between sessions."),
+                    theme.t("Bitirdiğinde hareketi tamamlayarak kaydı performans ölçütlerine aktar.", "When finished, complete the exercise to save it to performance metrics.")
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,13 +258,13 @@ private fun exerciseActivityMetric(exercise: Exercise): ActivityMetric {
     ) ActivityMetric.Duration else ActivityMetric.Strength
 }
 
-private fun plannedDurationLabel(reps: String): String {
+private fun plannedDurationLabel(reps: String, theme: AppThemeState): String {
     val raw = reps.trim()
     val number = raw.filter { it.isDigit() }.toIntOrNull()
     return when {
         raw.contains("dk", ignoreCase = true) || raw.contains("min", ignoreCase = true) -> raw
         raw.contains("s", ignoreCase = true) -> raw
-        number != null -> "$number dk"
+        number != null -> "$number ${theme.t("dk", "min")}"
         else -> raw.ifBlank { "—" }
     }
 }
@@ -294,7 +294,7 @@ private fun ProgressionSection(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text("İLERLEME", color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+            Text(theme.t("İLERLEME", "PROGRESS"), color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
             Spacer(Modifier.weight(1f))
 
             // Delta badge
@@ -425,7 +425,7 @@ private fun AiProgressionCard(
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("AI KOÇ", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Text(theme.t("AI KOÇ", "AI COACH"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             Spacer(Modifier.weight(1f))
             if (isFree && !isLoading) {
@@ -439,9 +439,9 @@ private fun AiProgressionCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(theme.t("3 kredi", "3 credits"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
-                    Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
+                    Text(theme.t("$credits kalan", "$credits left"), color = theme.text2, fontSize = 9.sp)
                 }
                 Spacer(Modifier.width(6.dp))
             }
@@ -469,10 +469,10 @@ private fun AiProgressionCard(
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text("Analiz yapılıyor...", color = theme.text2, fontSize = 12.sp)
+                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = theme.text2, fontSize = 12.sp)
             }
             insight.isBlank() -> Text(
-                "AI koçundan egzersiz gelişim analizi al",
+                theme.t("AI koçundan egzersiz gelişim analizi al", "Get exercise progress analysis from your AI coach"),
                 color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()

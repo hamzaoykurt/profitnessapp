@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,7 +97,8 @@ private const val FIRST_TAB_CONTENT_DELAY_MS = 140L
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
-    var selectedTab             by remember { mutableStateOf<DashboardTab>(DashboardTab.Workout) }
+    var selectedTabRoute        by rememberSaveable { mutableStateOf(DashboardTab.Workout.route) }
+    val selectedTab             = ALL_TABS.firstOrNull { it.route == selectedTabRoute } ?: DashboardTab.Workout
     val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     val readyTabs               = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     var warmupStage             by remember { mutableIntStateOf(0) }
@@ -196,10 +198,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 val goNext = if (byVelocity) velocity < 0f else swipeAccum < 0f
                 if (goNext && curIdx < ALL_TABS.lastIndex) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    selectedTab = ALL_TABS[curIdx + 1]
+                    selectedTabRoute = ALL_TABS[curIdx + 1].route
                 } else if (!goNext && curIdx > 0) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    selectedTab = ALL_TABS[curIdx - 1]
+                    selectedTabRoute = ALL_TABS[curIdx - 1].route
                 }
             }
             swipeAccum = 0f
@@ -264,11 +266,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     viewModel = workoutViewModel,
                     onNavigateToAIBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.AI
-                        selectedTab = DashboardTab.Program
+                        selectedTabRoute = DashboardTab.Program.route
                     },
                     onNavigateToManualBuilder = {
                         programInitialMode = com.avonix.profitness.presentation.program.BuilderMode.Manual
-                        selectedTab = DashboardTab.Program
+                        selectedTabRoute = DashboardTab.Program.route
                     },
                     onNavigateToStore = { showStore = true }
                 )
@@ -315,14 +317,14 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             AppNavRail(
                 tabs     = ALL_TABS,
                 selected = { selectedTab },
-                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                onSelect = { tab -> if (tab != selectedTab) selectedTabRoute = tab.route },
                 modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
             )
         } else {
             AppNavBar(
                 tabs     = ALL_TABS,
                 selected = { selectedTab },
-                onSelect = { tab -> if (tab != selectedTab) selectedTab = tab },
+                onSelect = { tab -> if (tab != selectedTab) selectedTabRoute = tab.route },
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(100f)
             )
         }

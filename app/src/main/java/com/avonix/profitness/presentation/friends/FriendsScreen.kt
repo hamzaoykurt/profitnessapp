@@ -47,6 +47,7 @@ import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
@@ -96,7 +97,7 @@ fun FriendsTab(
 
                 item {
                     Text(
-                        if (showingSearch) "SONUÇLAR" else "TAKİP ETTİKLERİN",
+                        if (showingSearch) theme.t("SONUÇLAR", "RESULTS") else theme.t("TAKİP ETTİKLERİN", "FOLLOWING"),
                         color = theme.text2,
                         fontSize = 10.sp,
                         letterSpacing = 3.sp,
@@ -112,8 +113,8 @@ fun FriendsTab(
                         item {
                             EmptyBlock(
                                 icon  = Icons.Rounded.Search,
-                                title = "Kullanıcı bulunamadı",
-                                sub   = "Farklı bir isim veya @kullanıcıadı dene"
+                                title = theme.t("Kullanıcı bulunamadı", "User not found"),
+                                sub   = theme.t("Farklı bir isim veya @kullanıcıadı dene", "Try another name or @username")
                             )
                         }
                     } else {
@@ -133,8 +134,8 @@ fun FriendsTab(
                         item {
                             EmptyBlock(
                                 icon  = Icons.Rounded.PersonOff,
-                                title = "Henüz kimseyi takip etmiyorsun",
-                                sub   = "Yukarıdaki aramadan kullanıcı bul ve takip et"
+                                title = theme.t("Henüz kimseyi takip etmiyorsun", "You are not following anyone yet"),
+                                sub   = theme.t("Yukarıdaki aramadan kullanıcı bul ve takip et", "Find and follow users from the search above")
                             )
                         }
                     } else {
@@ -183,7 +184,7 @@ private fun SearchBar(
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
                 Text(
-                    "@kullanıcıadı veya isim",
+                    theme.t("@kullanıcıadı veya isim", "@username or name"),
                     color = theme.text2.copy(0.65f),
                     fontSize = 14.sp
                 )
@@ -266,7 +267,7 @@ private fun UserRow(
                 Text("${user.totalXp} XP", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 if (user.isMutual) {
                     Text("·", color = theme.text2.copy(0.4f), fontSize = 11.sp)
-                    Text("ARKADAŞ", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("ARKADAŞ", "FRIEND"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -301,7 +302,7 @@ private fun FollowButton(isFollowing: Boolean, onClick: () -> Unit) {
             Icon(Icons.Rounded.PersonAdd, null, tint = textColor, modifier = Modifier.size(13.dp))
         }
         Text(
-            if (isFollowing) "TAKİPTE" else "TAKİP ET",
+            if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
             color = textColor,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,

@@ -59,14 +59,14 @@ fun AiCreditInfoRow(
         Spacer(Modifier.width(10.dp))
         Column {
             Text(
-                if (outOfCredits) "Kredi bitti!" else costLabel,
+                if (outOfCredits) theme.ui("Kredi bitti!") else theme.ui(costLabel),
                 color = badgeColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (outOfCredits) "Kredi satın al veya plana yükselt"
-                else "Kalan bakiye: $credits kredi",
+                if (outOfCredits) theme.ui("Kredi satın al veya plana yükselt")
+                else theme.ui("Kalan bakiye: %d kredi", "Remaining balance: %d credits").format(credits),
                 color = theme.text2,
                 fontSize = 11.sp
             )
@@ -81,7 +81,7 @@ fun AiCreditInfoRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                if (outOfCredits) "0 kredi" else "$credits kredi",
+                if (outOfCredits) theme.ui("0 kredi") else theme.ui("%d kredi", "%d credits").format(credits),
                 color = badgeColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold

@@ -114,7 +114,7 @@ fun WeightTrackingScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is WeightTrackingEvent.ShowSnackbar ->
-                    snackbarHostState.showSnackbar(event.message)
+                    snackbarHostState.showSnackbar(theme.ui(event.message))
                 is WeightTrackingEvent.ShowPaywall ->
                     showPaywall = true
             }
@@ -140,7 +140,7 @@ fun WeightTrackingScreen(
                 shape          = RoundedCornerShape(18.dp),
                 elevation      = FloatingActionButtonDefaults.elevation(8.dp, 4.dp)
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Ağırlık Ekle", modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Add, contentDescription = theme.t("Ağırlık Ekle", "Add Weight"), modifier = Modifier.size(24.dp))
             }
         }
     ) { innerPadding ->
@@ -184,7 +184,7 @@ fun WeightTrackingScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = "3 kredi / AI analiz",
+                            costLabel = theme.t("3 kredi / AI analiz", "3 credits / AI analysis"),
                             theme     = theme,
                             modifier  = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                         )
@@ -209,9 +209,9 @@ fun WeightTrackingScreen(
                         ) {
                             Icon(Icons.Rounded.History, null, tint = accent, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Geçmiş Kayıtlar", color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                            Text(theme.t("Geçmiş Kayıtlar", "History"), color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                             Spacer(Modifier.weight(1f))
-                            Text("${state.entries.size} kayıt", color = theme.text2, fontSize = 12.sp)
+                            Text(theme.t("${state.entries.size} kayıt", "${state.entries.size} entries"), color = theme.text2, fontSize = 12.sp)
                         }
                     }
                     if (state.entries.isEmpty()) {
@@ -267,14 +267,14 @@ private fun WeightHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
             Spacer(Modifier.width(14.dp))
-            Text("Vücut Kilosu", color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+            Text(theme.t("Vücut Kilosu", "Body Weight"), color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
         }
 
         Spacer(Modifier.height(20.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Güncel Kilo", color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+                Text(theme.t("Güncel Kilo", "Current Weight"), color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 if (latest != null) {
                     Row(verticalAlignment = Alignment.Bottom) {
@@ -320,7 +320,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, accent: Color, theme: AppTh
     ) {
         SummaryCard(
             modifier = Modifier.weight(1f),
-            label    = "Bu Hafta Ort.",
+            label    = theme.t("Bu Hafta Ort.", "This Week Avg."),
             value    = summary.thisWeekAvg?.let { "${"%.1f".format(it)} kg" } ?: "—",
             icon     = Icons.Rounded.CalendarToday,
             accent   = accent,
@@ -328,7 +328,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, accent: Color, theme: AppTh
         )
         SummaryCard(
             modifier = Modifier.weight(1f),
-            label    = "Geçen Hafta",
+            label    = theme.t("Geçen Hafta", "Last Week"),
             value    = summary.lastWeekAvg?.let { "${"%.1f".format(it)} kg" } ?: "—",
             icon     = Icons.Rounded.DateRange,
             accent   = accent,
@@ -343,7 +343,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, accent: Color, theme: AppTh
         val sign = if ((summary.deltaKg ?: 0.0) >= 0) "+" else ""
         SummaryCard(
             modifier   = Modifier.weight(1f),
-            label      = "Haftalık Fark",
+            label      = theme.t("Haftalık Fark", "Weekly Change"),
             value      = summary.deltaKg?.let { "$sign${"%.1f".format(it)} kg" } ?: "—",
             valueColor = deltaColor,
             icon       = Icons.Rounded.SwapVert,
@@ -394,9 +394,9 @@ private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: App
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Son 90 Gün Trendi", color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(theme.t("Son 90 Gün Trendi", "Last 90 Days Trend"), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
-            Text("${points.size} ölçüm", color = theme.text2, fontSize = 11.sp)
+            Text(theme.t("${points.size} ölçüm", "${points.size} entries"), color = theme.text2, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -505,7 +505,7 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("AI ANALİZ", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             Spacer(Modifier.weight(1f))
             if (isFree && !isLoading) {
@@ -519,9 +519,9 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(3.dp))
-                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(theme.t("3 kredi", "3 credits"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(5.dp))
-                    Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
+                    Text(theme.t("$credits kalan", "$credits left"), color = theme.text2, fontSize = 9.sp)
                 }
                 Spacer(Modifier.width(8.dp))
             }
@@ -545,10 +545,13 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
-                Text("Trend analizi yapılıyor...", color = theme.text2, fontSize = 13.sp)
+                Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = theme.text2, fontSize = 13.sp)
             }
             insight.isBlank() -> Text(
-                "En az 2 ölçüm eklediğinde AI koçun trendi analiz edecek.",
+                theme.t(
+                    "En az 2 ölçüm eklediğinde AI koçun trendi analiz edecek.",
+                    "Your AI coach will analyze the trend after you add at least 2 entries."
+                ),
                 color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
             )
             else              -> Text(insight, color = theme.text2, fontSize = 13.sp, lineHeight = 20.sp)
@@ -606,10 +609,10 @@ private fun WeightEntryRow(
         AlertDialog(
             onDismissRequest = { showDelete = false },
             containerColor   = theme.bg2,
-            title            = { Text("Kaydı sil?", color = theme.text1, fontWeight = FontWeight.Bold) },
+            title            = { Text(theme.t("Kaydı sil?", "Delete entry?"), color = theme.text1, fontWeight = FontWeight.Bold) },
             text             = { Text("${"%.1f".format(entry.weightKg)} kg — $dateStr", color = theme.text2, fontSize = 13.sp) },
-            confirmButton    = { TextButton(onClick = { showDelete = false; onDelete() }) { Text("Sil", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold) } },
-            dismissButton    = { TextButton(onClick = { showDelete = false }) { Text("İptal", color = theme.text2) } }
+            confirmButton    = { TextButton(onClick = { showDelete = false; onDelete() }) { Text(theme.t("Sil", "Delete"), color = Color(0xFFEF4444), fontWeight = FontWeight.Bold) } },
+            dismissButton    = { TextButton(onClick = { showDelete = false }) { Text(theme.t("İptal", "Cancel"), color = theme.text2) } }
         )
     }
 }
@@ -626,9 +629,12 @@ private fun EmptyWeightState(accent: Color, theme: AppThemeState) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("⚖️", fontSize = 48.sp)
-        Text("Henüz ölçüm yok", color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(theme.t("Henüz ölçüm yok", "No entries yet"), color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Text(
-            "İlk kilonu kaydetmek için + butonuna bas.\nAI koçun trend analizi yapabilsin diye\nen az 2 ölçüme ihtiyaç var.",
+            theme.t(
+                "İlk kilonu kaydetmek için + butonuna bas.\nAI koçun trend analizi yapabilsin diye\nen az 2 ölçüme ihtiyaç var.",
+                "Tap + to save your first weight.\nYour AI coach needs at least 2 entries\nto analyze your trend."
+            ),
             color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 20.sp
         )
     }
@@ -673,15 +679,15 @@ private fun AddEditWeightSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                if (state.editingEntry == null) "Ağırlık Ekle" else "Kaydı Düzenle",
+                if (state.editingEntry == null) theme.t("Ağırlık Ekle", "Add Weight") else theme.t("Kaydı Düzenle", "Edit Entry"),
                 color = theme.text1, fontSize = 18.sp, fontWeight = FontWeight.Black
             )
 
             OutlinedTextField(
                 value         = state.sheetWeightInput,
                 onValueChange = onWeightChange,
-                label         = { Text("Ağırlık (kg)", color = theme.text2) },
-                placeholder   = { Text("örn. 75.5", color = theme.text2.copy(0.5f)) },
+                label         = { Text(theme.t("Ağırlık (kg)", "Weight (kg)"), color = theme.text2) },
+                placeholder   = { Text(theme.t("örn. 75.5", "e.g. 75.5"), color = theme.text2.copy(0.5f)) },
                 trailingIcon  = { Text("kg", color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth(),
@@ -700,8 +706,8 @@ private fun AddEditWeightSheet(
             OutlinedTextField(
                 value         = state.sheetNoteInput,
                 onValueChange = onNoteChange,
-                label         = { Text("Not (isteğe bağlı)", color = theme.text2) },
-                placeholder   = { Text("sabah, spor sonrası, vb.", color = theme.text2.copy(0.5f)) },
+                label         = { Text(theme.t("Not (isteğe bağlı)", "Note (optional)"), color = theme.text2) },
+                placeholder   = { Text(theme.t("sabah, spor sonrası, vb.", "morning, after workout, etc."), color = theme.text2.copy(0.5f)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 modifier = Modifier.fillMaxWidth(),
@@ -727,7 +733,7 @@ private fun AddEditWeightSheet(
                 if (state.isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = theme.bg0, strokeWidth = 2.dp)
                 } else {
-                    Text(if (state.editingEntry == null) "Kaydet" else "Güncelle", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(if (state.editingEntry == null) theme.t("Kaydet", "Save") else theme.t("Güncelle", "Update"), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
 

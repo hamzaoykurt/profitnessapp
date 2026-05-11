@@ -21,6 +21,7 @@ import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.presentation.profile.computeRank
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -33,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -126,6 +128,7 @@ class WorkoutViewModel @Inject constructor(
 ) : BaseViewModel<WorkoutScreenState, WorkoutEvent>(WorkoutScreenState()) {
 
     private var observeJob: Job? = null
+    private var sessionJob: Job? = null
     private var timerJob: Job? = null
     private val _restTimer = MutableStateFlow(RestTimerState())
     val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
@@ -589,16 +592,38 @@ class WorkoutViewModel @Inject constructor(
     private fun startObserving() {
         val userId = supabase.auth.currentSessionOrNull()?.user?.id
         if (userId == null) {
-            updateState {
-                it.copy(
-                    isLoading = false,
-                    hasProgramLoaded = false,
-                    dayStates = DEMO_WORKOUTS.map { d -> WorkoutDayState(d) }.toImmutableList()
-                )
+            if (sessionJob?.isActive == true) return
+            sessionJob = viewModelScope.launch {
+                supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+                val resolvedUserId = supabase.auth.currentSessionOrNull()?.user?.id
+                if (resolvedUserId == null) {
+                    updateState { prev ->
+                        if (prev.hasProgramLoaded || prev.dayStates.isNotEmpty()) {
+                            prev.copy(isLoading = false)
+                        } else {
+                            prev.copy(
+                                isLoading = false,
+                                hasProgramLoaded = false,
+                                dayStates = persistentListOf(),
+                                currentProgramId = ""
+                            )
+                        }
+                    }
+                } else {
+                    startObservingForUser(resolvedUserId)
+                }
             }
             return
         }
 
+        // İlk seferde arka planda sync başlat
+        startObservingForUser(userId)
+    }
+
+    private fun startObservingForUser(userId: String) {
+        viewModelScope.launch {
+            syncCoordinator.refreshWorkout(userId)
+        }
         loadProfileWeight(userId)
 
         observeJob?.cancel()
@@ -657,7 +682,11 @@ class WorkoutViewModel @Inject constructor(
      * Room Flow zaten dinleniyor — yeni veri gelince UI otomatik güncellenir.
      */
     fun refresh() {
-        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id
+        if (userId == null) {
+            startObserving()
+            return
+        }
         // Observe zaten aktifse tekrar başlatma — sadece sync tetikle
         if (observeJob?.isActive != true) startObserving()
         loadProfileWeight(userId)

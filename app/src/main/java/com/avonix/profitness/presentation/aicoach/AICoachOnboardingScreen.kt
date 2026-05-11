@@ -166,7 +166,7 @@ fun AICoachOnboardingScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text      = if (step < TOTAL_STEPS - 1) "Devam Et" else "Oracle'ı Başlat",
+                    text      = if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("Oracle'ı Başlat", "Start Oracle"),
                     color     = Color.White,
                     style     = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -187,13 +187,13 @@ private fun LengthStep(
     onSelect : (ResponseLength) -> Unit
 ) {
     StepScaffold(
-        title    = "YANIT UZUNLUĞU",
-        subtitle = "Oracle sana nasıl cevap versin?"
+        title    = theme.t("YANIT UZUNLUĞU", "RESPONSE LENGTH"),
+        subtitle = theme.t("Oracle sana nasıl cevap versin?", "How should Oracle respond?")
     ) {
         ResponseLength.entries.forEach { length ->
             CenteredOptionCard(
-                title       = length.label,
-                description = length.description,
+                title       = length.localizedLabel(theme),
+                description = length.localizedDescription(theme),
                 selected    = selected == length,
                 accent      = accent,
                 theme       = theme,
@@ -213,13 +213,13 @@ private fun StyleStep(
     onSelect : (CommunicationStyle) -> Unit
 ) {
     StepScaffold(
-        title    = "KONUŞMA TARZI",
-        subtitle = "Oracle seninle nasıl konuşsun?"
+        title    = theme.t("KONUŞMA TARZI", "COMMUNICATION STYLE"),
+        subtitle = theme.t("Oracle seninle nasıl konuşsun?", "How should Oracle talk to you?")
     ) {
         CommunicationStyle.entries.forEach { style ->
             CenteredOptionCard(
-                title       = style.label,
-                description = style.description,
+                title       = style.localizedLabel(theme),
+                description = style.localizedDescription(theme),
                 selected    = selected == style,
                 accent      = accent,
                 theme       = theme,
@@ -241,12 +241,15 @@ private fun PermissionsStep(
     onThirdParty    : (Boolean) -> Unit
 ) {
     StepScaffold(
-        title    = "GİZLİLİK & İZİNLER",
-        subtitle = "Oracle verilerin hakkında ne bilsin?"
+        title    = theme.t("GİZLİLİK & İZİNLER", "PRIVACY & PERMISSIONS"),
+        subtitle = theme.t("Oracle verilerin hakkında ne bilsin?", "What should Oracle know about your data?")
     ) {
         PermissionCard(
-            title           = "Profil & Program Erişimi",
-            description     = "Oracle ismini, hedefini ve aktif programını bilerek sana özel tavsiyeler verir.",
+            title           = theme.t("Profil & Program Erişimi", "Profile & Program Access"),
+            description     = theme.t(
+                "Oracle ismini, hedefini ve aktif programını bilerek sana özel tavsiyeler verir.",
+                "Oracle gives personal advice using your name, goal, and active program."
+            ),
             checked         = allowProfile,
             recommended     = true,
             accent          = accent,
@@ -254,8 +257,11 @@ private fun PermissionsStep(
             onCheckedChange = onProfileChange
         )
         PermissionCard(
-            title           = "3. Parti Veri İşleme",
-            description     = "Konuşma geçmişinin model iyileştirme amacıyla işlenmesine izin ver.",
+            title           = theme.t("3. Parti Veri İşleme", "Third-Party Data Processing"),
+            description     = theme.t(
+                "Konuşma geçmişinin model iyileştirme amacıyla işlenmesine izin ver.",
+                "Allow your conversation history to be processed for model improvement."
+            ),
             checked         = allowThirdParty,
             recommended     = false,
             accent          = accent,
@@ -397,11 +403,37 @@ private fun PermissionCard(
                             .background(accent.copy(0.18f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("ÖNERİLEN", color = accent, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
+                        Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = accent, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
             Text(description, color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light, lineHeight = 18.sp)
         }
     }
+}
+
+private fun ResponseLength.localizedLabel(theme: AppThemeState): String = when (this) {
+    ResponseLength.SHORT -> theme.t("Kısa & Net", "Short & Direct")
+    ResponseLength.MEDIUM -> theme.t("Dengeli", "Balanced")
+    ResponseLength.LONG -> theme.t("Detaylı", "Detailed")
+}
+
+private fun ResponseLength.localizedDescription(theme: AppThemeState): String = when (this) {
+    ResponseLength.SHORT -> theme.t("Özet, doğrudan cevaplar", "Brief, direct answers")
+    ResponseLength.MEDIUM -> theme.t("Ne çok kısa ne çok uzun", "Not too short, not too long")
+    ResponseLength.LONG -> theme.t("Kapsamlı açıklamalar", "Comprehensive explanations")
+}
+
+private fun CommunicationStyle.localizedLabel(theme: AppThemeState): String = when (this) {
+    CommunicationStyle.FRIENDLY -> theme.t("Arkadaş Canlısı", "Friendly")
+    CommunicationStyle.COACH -> theme.t("Koç Tarzı", "Coach Style")
+    CommunicationStyle.SCIENTIFIC -> theme.t("Bilimsel & Analitik", "Scientific & Analytical")
+    CommunicationStyle.BLUNT -> theme.t("Sert & Dürüst", "Blunt & Honest")
+}
+
+private fun CommunicationStyle.localizedDescription(theme: AppThemeState): String = when (this) {
+    CommunicationStyle.FRIENDLY -> theme.t("Sıcak, samimi, destekleyici", "Warm, sincere, supportive")
+    CommunicationStyle.COACH -> theme.t("Disiplinli, hedef odaklı, motive edici", "Disciplined, goal-focused, motivating")
+    CommunicationStyle.SCIENTIFIC -> theme.t("Kanıta dayalı, teknik, açıklayıcı", "Evidence-based, technical, explanatory")
+    CommunicationStyle.BLUNT -> theme.t("Direkt, şekersiz, gerçekçi", "Direct, no sugarcoating, realistic")
 }

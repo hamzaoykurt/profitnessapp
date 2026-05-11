@@ -188,7 +188,7 @@ fun AICoachScreen(
                     AiCreditInfoRow(
                         isFree    = true,
                         credits   = state.aiCredits,
-                        costLabel = "1 kredi / mesaj",
+                        costLabel = theme.t("1 kredi / mesaj", "1 credit / message"),
                         theme     = theme,
                         modifier  = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
@@ -273,7 +273,7 @@ fun AICoachScreen(
                 IconButton(onClick = { viewModel.openHistory() }) {
                     Icon(
                         Icons.Rounded.History,
-                        contentDescription = "Geçmiş",
+                        contentDescription = theme.t("Geçmiş", "History"),
                         tint     = theme.text2.copy(0.6f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -348,7 +348,7 @@ fun AICoachScreen(
                 }) {
                     Icon(
                         Icons.Rounded.Add,
-                        contentDescription = "Yeni Sohbet",
+                        contentDescription = theme.t("Yeni Sohbet", "New Chat"),
                         tint     = theme.text2.copy(0.6f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -356,7 +356,7 @@ fun AICoachScreen(
                 IconButton(onClick = { viewModel.openPreferences() }) {
                     Icon(
                         Icons.Rounded.Settings,
-                        contentDescription = "Ayarlar",
+                        contentDescription = theme.t("Ayarlar", "Settings"),
                         tint     = theme.text2.copy(0.6f),
                         modifier = Modifier.size(18.dp)
                     )
@@ -387,7 +387,7 @@ fun AICoachScreen(
                 },
                 containerColor = theme.bg1,
                 title = {
-                    Text("Programı Planlarıma Ekle", color = theme.text1, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("Programı Planlarıma Ekle", "Add Program to My Plans"), color = theme.text1, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column {
@@ -402,17 +402,20 @@ fun AICoachScreen(
                                         strokeWidth = 2.dp,
                                         color = MaterialTheme.colorScheme.primary
                                     )
-                                    Text("Program oluşturuluyor...", color = theme.text2, fontSize = 13.sp)
+                                    Text(theme.t("Program oluşturuluyor...", "Creating program..."), color = theme.text2, fontSize = 13.sp)
                                 }
                             }
                             is ProgramStatus.Error -> {
-                                Text(ps.msg, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                                Text(theme.ui(ps.msg), color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                                 Spacer(Modifier.height(12.dp))
                                 ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
                             }
                             else -> {
                                 Text(
-                                    "Oracle'ın oluşturduğu program planlarına eklenecek.",
+                                    theme.t(
+                                        "Oracle'ın oluşturduğu program planlarına eklenecek.",
+                                        "The program created by Oracle will be added to your plans."
+                                    ),
                                     color = theme.text2,
                                     fontSize = 13.sp
                                 )
@@ -426,11 +429,11 @@ fun AICoachScreen(
                     if (state.programStatus !is ProgramStatus.Loading) {
                         TextButton(
                             onClick = {
-                                val name = programNameInput.trim().ifEmpty { "Oracle Programı" }
+                                val name = programNameInput.trim().ifEmpty { theme.t("Oracle Programı", "Oracle Program") }
                                 viewModel.applyProgram(pMsg.text, name)
                             }
                         ) {
-                            Text("Oluştur", color = MaterialTheme.colorScheme.primary)
+                            Text(theme.t("Oluştur", "Create"), color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 },
@@ -440,7 +443,7 @@ fun AICoachScreen(
                             programDialogMsg = null
                             viewModel.resetProgramStatus()
                         }) {
-                            Text("İptal", color = theme.text2)
+                            Text(theme.t("İptal", "Cancel"), color = theme.text2)
                         }
                     }
                 }
@@ -469,7 +472,10 @@ fun AICoachScreen(
                 ) {
                     Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Text(
-                        "\"${ps.name}\" planlarına eklendi! Plan sekmesinden görebilirsin.",
+                        theme.t(
+                            "\"${ps.name}\" planlarına eklendi! Plan sekmesinden görebilirsin.",
+                            "\"${ps.name}\" was added to your plans. You can find it in the Plan tab."
+                        ),
                         color = Snow,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -519,8 +525,8 @@ private fun ProgramNameField(value: String, onValueChange: (String) -> Unit, the
     OutlinedTextField(
         value         = value,
         onValueChange = onValueChange,
-        label         = { Text("Program Adı", fontSize = 12.sp) },
-        placeholder   = { Text("Oracle Programı", fontSize = 12.sp, color = theme.text2.copy(0.5f)) },
+        label         = { Text(theme.t("Program Adı", "Program Name"), fontSize = 12.sp) },
+        placeholder   = { Text(theme.t("Oracle Programı", "Oracle Program"), fontSize = 12.sp, color = theme.text2.copy(0.5f)) },
         singleLine    = true,
         modifier      = Modifier.fillMaxWidth(),
         colors        = OutlinedTextFieldDefaults.colors(
@@ -689,7 +695,7 @@ private fun SanctuaryMessage(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(11.dp))
-                                Text("Planlarıma Ekle", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -764,9 +770,9 @@ private fun SanctuaryInput(
             ) {
                 Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(3.dp))
-                Text("1 kredi / mesaj", color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text(theme.t("1 kredi / mesaj", "1 credit / message"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(6.dp))
-                Text("Kalan: $credits", color = theme.text2, fontSize = 10.sp)
+                Text(theme.t("Kalan: $credits", "$credits left"), color = theme.text2, fontSize = 10.sp)
             }
         }
     Row(
@@ -817,7 +823,7 @@ private fun SanctuaryInput(
             value         = value,
             onValueChange = onValueChange,
             placeholder   = {
-                Text("Sanctuary'ye sor...", color = Mist.copy(0.7f), fontSize = 14.sp, fontWeight = FontWeight.Light)
+                Text(theme.t("Sanctuary'ye sor...", "Ask Sanctuary..."), color = Mist.copy(0.7f), fontSize = 14.sp, fontWeight = FontWeight.Light)
             },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor   = Color.Transparent,
@@ -882,21 +888,24 @@ private fun SessionHistorySheet(
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             containerColor   = theme.bg1,
-            title = { Text("Sohbeti Sil", color = theme.text1, fontWeight = FontWeight.SemiBold) },
+            title = { Text(theme.t("Sohbeti Sil", "Delete Chat"), color = theme.text1, fontWeight = FontWeight.SemiBold) },
             text  = {
                 Text(
-                    "\"${target.title}\" sohbeti silinecek. Bu işlem geri alınamaz.",
+                    theme.t(
+                        "\"${target.title}\" sohbeti silinecek. Bu işlem geri alınamaz.",
+                        "\"${target.title}\" chat will be deleted. This cannot be undone."
+                    ),
                     color = theme.text2, fontSize = 13.sp
                 )
             },
             confirmButton = {
                 TextButton(onClick = { onDeleteSession(target.id); deleteTarget = null }) {
-                    Text("Sil", color = MaterialTheme.colorScheme.error)
+                    Text(theme.t("Sil", "Delete"), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
-                    Text("İptal", color = theme.text2)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2)
                 }
             }
         )
@@ -916,7 +925,7 @@ private fun SessionHistorySheet(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                "GEÇMİŞ SOHBETLER",
+                theme.t("GEÇMİŞ SOHBETLER", "CHAT HISTORY"),
                 style        = MaterialTheme.typography.labelSmall,
                 color        = accent,
                 letterSpacing = 3.sp,
@@ -942,7 +951,7 @@ private fun SessionHistorySheet(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        "Yeni Sohbet",
+                        theme.t("Yeni Sohbet", "New Chat"),
                         color    = accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -971,7 +980,7 @@ private fun SessionHistorySheet(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Henüz kaydedilmiş sohbet yok",
+                        theme.t("Henüz kaydedilmiş sohbet yok", "No saved chats yet"),
                         color    = theme.text2.copy(0.5f),
                         fontSize = 13.sp
                     )
@@ -1011,7 +1020,7 @@ private fun SessionHistorySheet(
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                text     = formatSessionDate(session.updatedAt),
+                                text     = formatSessionDate(session.updatedAt, theme),
                                 color    = theme.text2.copy(0.6f),
                                 fontSize = 10.sp
                             )
@@ -1023,7 +1032,7 @@ private fun SessionHistorySheet(
                         ) {
                             Icon(
                                 Icons.Rounded.DeleteOutline,
-                                contentDescription = "Sil",
+                                contentDescription = theme.t("Sil", "Delete"),
                                 tint     = theme.text2.copy(0.4f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -1035,17 +1044,17 @@ private fun SessionHistorySheet(
     }
 }
 
-private fun formatSessionDate(millis: Long): String {
+private fun formatSessionDate(millis: Long, theme: AppThemeState): String {
     val now        = System.currentTimeMillis()
     val diffMs     = now - millis
     val diffHours  = diffMs / (1000 * 60 * 60)
     val diffDays   = diffMs / (1000 * 60 * 60 * 24)
     return when {
-        diffHours < 1   -> "Az önce"
-        diffHours < 24  -> "${diffHours}s önce"
-        diffDays  == 1L -> "Dün"
-        diffDays  < 7   -> "${diffDays} gün önce"
-        else            -> SimpleDateFormat("d MMM", Locale("tr")).format(Date(millis))
+        diffHours < 1   -> theme.t("Az önce", "Just now")
+        diffHours < 24  -> theme.t("${diffHours}s önce", "${diffHours}h ago")
+        diffDays  == 1L -> theme.t("Dün", "Yesterday")
+        diffDays  < 7   -> theme.t("${diffDays} gün önce", "${diffDays} days ago")
+        else            -> SimpleDateFormat("d MMM", if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")).format(Date(millis))
     }
 }
 

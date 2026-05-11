@@ -387,13 +387,13 @@ private fun NotificationPermissionBanner(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Bildirim izni gerekli",
+                    theme.t("Bildirim izni gerekli", "Notification permission needed"),
                     color      = TextPrimary,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Timer sesi + arka plan bildirimleri",
+                    theme.t("Timer sesi + arka plan bildirimleri", "Timer sound + background notifications"),
                     color    = TextSecondary,
                     fontSize = 11.sp
                 )
@@ -413,7 +413,7 @@ private fun NotificationPermissionBanner(
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
                 Text(
-                    "İZİN VER",
+                    theme.t("İZİN VER", "ALLOW"),
                     color      = theme.effectiveOnAccentColor,
                     fontSize   = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
