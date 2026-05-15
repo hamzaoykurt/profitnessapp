@@ -148,7 +148,6 @@ jobs:
           ./gradlew :app:bundleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
 
       - name: Build internal test APK
-        if: github.event_name == 'workflow_dispatch'
         env:
           RAW_RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RAW_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -174,7 +173,6 @@ jobs:
           fi
 
       - name: Upload internal test APK
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: profitness-internal-test-apk
