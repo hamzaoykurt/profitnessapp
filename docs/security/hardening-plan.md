@@ -18,8 +18,8 @@ This means:
 - Supabase MCP access was verified on 2026-05-13 with a read-only table/RLS inventory query.
 - Supabase SQL access was re-verified on 2026-05-15 after revoking the old local personal access token.
 - Supabase SQL execution was verified with metadata-only function and migration-history queries.
-- The new hardening migration in this repo is not applied to the remote database yet.
-- Remote currently still has the old `apply_paid_billing_order(p_order_id, p_provider, p_provider_session_id)` signature and `public._challenge_my_progress(p_challenge_id, p_user_id)` as security definer.
+- The hardening migration was applied to the remote database on 2026-05-16 as `harden_security_controls`.
+- Remote keeps the old `apply_paid_billing_order(p_order_id, p_provider, p_provider_session_id)` signature for compatibility and also has the stricter `apply_paid_billing_order_verified(...)` path for signed billing flows.
 
 ## Completed locally
 
@@ -29,6 +29,8 @@ This means:
 - Changed GitHub Actions from debug APK release to release AAB generation.
 - Added production release signing requirements with `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`.
 - Hardened GitHub Actions and Gradle release signing secret parsing so accidental copied newlines in GitHub secrets do not break release keystore lookup.
+- Verified GitHub Actions release build succeeded on commit `f730544`; it produced GitHub Release `v14.0` with a release-signed AAB and mapping file.
+- Captured Android release signing SHA-256 for App Links: `A5:90:AE:C9:93:5F:56:DF:A1:28:65:05:61:2C:B0:DB:F8:65:A5:F8:C0:DE:A7:A1:AA:B2:DC:DD:CA:CC:7F:E2`.
 - Preserved phone testing by adding a manual internal-test APK artifact. It is release-signed and uploaded as a short-lived workflow artifact, not published as a public debug APK release.
 - Added Android App Links support for password reset.
 - Kept legacy `profitness://reset-password` handling during rollout so already-issued recovery emails do not break.
@@ -39,6 +41,7 @@ This means:
 - Added paid-order SKU and amount assertions before entitlement application.
 - Added strict AI idempotency behavior so one idempotency key cannot launch parallel Gemini calls.
 - Added a DB migration to harden `_challenge_my_progress`, `apply_paid_billing_order`, and `reserve_ai_usage`.
+- Applied the hardening migration to Supabase production and deployed updated `billing-webhook`, `billing-sandbox-complete`, and `ai-generate` Edge Functions.
 
 ## Open rollout tasks
 
@@ -46,14 +49,14 @@ This means:
 | --- | --- | --- | --- |
 | Critical | Rotate the Supabase access token that was present in `.mcp.json` | Done | User revoked the old token in Supabase; local `.mcp.json` no longer stores token-like args. |
 | High | Add Android release signing secrets to GitHub Actions | Done | User added `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. |
-| High | Verify GitHub release signing workflow | In progress | First push reached signing verification but failed to read the release keystore. Workflow now trims accidental copied whitespace from signing secrets and gives safer non-secret diagnostics. |
+| High | Verify GitHub release signing workflow | Done | Release workflow succeeded on commit `f730544` and published `v14.0`. |
 | High | Publish Android App Links `assetlinks.json` | Pending | Domain selected: `cosmibit.com`. Use the release SHA-256 fingerprint from CI. |
 | High | Add HTTPS reset redirect to Supabase Auth URL Configuration | Pending | Add exact `https://cosmibit.com/reset-password`. Do not remove the legacy redirect until one release cycle passes. |
 | High | Set GitHub reset link host config | Done | `RESET_PASSWORD_LINK_HOST=cosmibit.com` was added; workflow accepts either repository variable or secret. Redirect still safely falls back to the legacy reset redirect until `RESET_PASSWORD_REDIRECT_URL` is set. |
 | High | Configure provider webhook to sign `timestamp.rawBody` with HMAC-SHA256 | Pending provider integration | Headers expected: `x-webhook-timestamp`, `x-webhook-signature`, and stable event id via body or `x-webhook-id`; then set `BILLING_WEBHOOK_ALLOW_LEGACY_SECRET=false`. |
 | High | Add provider amount metadata to products if numeric amount checks are required | Pending provider integration | Existing label check is backward-compatible; `metadata.amount_minor` and `metadata.currency` make it stricter. |
-| High | Apply and verify `harden_security_controls` migration in Supabase | Pending approval | Apply after testing on staging/branch or during a controlled maintenance window. |
-| Medium | Deploy updated Edge Functions | Pending approval | Deploy `billing-webhook`, `ai-generate`, and `billing-sandbox-complete` together with the DB migration. |
+| High | Apply and verify `harden_security_controls` migration in Supabase | Done | Remote migration history shows `20260515212124_harden_security_controls`. Function grants were verified after apply. |
+| Medium | Deploy updated Edge Functions | Done | `billing-webhook` v1, `billing-sandbox-complete` v2, and `ai-generate` v3 are active. |
 | Medium | Remove legacy custom scheme reset filter | Deferred | Only after all active reset emails and deployed clients have moved to verified HTTPS links. |
 
 ## Safe rollout sequence
@@ -103,11 +106,18 @@ This means:
   - `supabase/functions/billing-sandbox-complete/index.ts`
 - Static grep confirmed the old debug release path and static webhook header are gone from the touched release/webhook paths.
 - Supabase MCP read access and SQL metadata queries were successful.
+- Remote Supabase migration history includes `harden_security_controls`.
+- Remote Edge Function versions verified active:
+  - `billing-webhook` v1 with JWT disabled intentionally for provider webhooks.
+  - `billing-sandbox-complete` v2 with JWT enabled.
+  - `ai-generate` v3 with JWT enabled.
+- Endpoint smoke checks returned expected `401` responses for unauthenticated/unsigned requests to `billing-webhook` and `ai-generate`.
+- GitHub Actions release workflow `25941770568` passed and built the release AAB in 7m 48s.
 
 ## Current verification blockers
 
 - Local Supabase database is not running on `127.0.0.1:54322`, so `npx supabase migration list --local` could not verify local migration state.
-- The first GitHub Actions release run failed before build at release keystore verification. This is a CI secret-format/keystore-read issue, not an app runtime-flow failure. Re-run after the whitespace-normalization workflow fix is pushed.
+- Supabase advisors still report existing non-blocking notices: RLS-enabled internal tables without public policies, one mutable search-path trigger helper, and Auth leaked-password protection disabled.
 
 ## Rollback strategy
 
