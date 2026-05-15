@@ -21,14 +21,20 @@ fun secret(name: String, defaultValue: String = ""): String =
         ?: System.getenv(name)
         ?: defaultValue
 
+fun singleLineSecret(name: String, defaultValue: String = ""): String =
+    secret(name, defaultValue).trim()
+
+fun base64Secret(name: String): String =
+    secret(name).filterNot { it.isWhitespace() }
+
 // Debug keystore: local development only.
-val ksBase64: String = secret("KEYSTORE_BASE64")
-val ksPassword: String = secret("KEYSTORE_PASSWORD", "android")
-val ksAlias: String = secret("KEY_ALIAS", "androiddebugkey")
-val ksKeyPassword: String = secret("KEY_PASSWORD", "android")
+val ksBase64: String = base64Secret("KEYSTORE_BASE64")
+val ksPassword: String = singleLineSecret("KEYSTORE_PASSWORD", "android")
+val ksAlias: String = singleLineSecret("KEY_ALIAS", "androiddebugkey")
+val ksKeyPassword: String = singleLineSecret("KEY_PASSWORD", "android")
 
 val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
-    val bytes = Base64.getDecoder().decode(ksBase64.trim())
+    val bytes = Base64.getDecoder().decode(ksBase64)
     val f = rootProject.file("build/ci_signing.keystore")
     f.parentFile?.mkdirs()
     f.writeBytes(bytes)
@@ -37,12 +43,12 @@ val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
     File(System.getProperty("user.home"), ".android/debug.keystore")
 }
 
-val releaseKsBase64: String = secret("RELEASE_KEYSTORE_BASE64")
-val releaseKsPassword: String = secret("RELEASE_KEYSTORE_PASSWORD")
-val releaseKsAlias: String = secret("RELEASE_KEY_ALIAS")
-val releaseKsKeyPassword: String = secret("RELEASE_KEY_PASSWORD")
+val releaseKsBase64: String = base64Secret("RELEASE_KEYSTORE_BASE64")
+val releaseKsPassword: String = singleLineSecret("RELEASE_KEYSTORE_PASSWORD")
+val releaseKsAlias: String = singleLineSecret("RELEASE_KEY_ALIAS")
+val releaseKsKeyPassword: String = singleLineSecret("RELEASE_KEY_PASSWORD")
 val releaseKeystore: File? = releaseKsBase64.takeIf { it.isNotBlank() }?.let { encoded ->
-    val bytes = Base64.getDecoder().decode(encoded.trim())
+    val bytes = Base64.getDecoder().decode(encoded)
     val f = rootProject.file("build/release_signing.keystore")
     f.parentFile?.mkdirs()
     f.writeBytes(bytes)

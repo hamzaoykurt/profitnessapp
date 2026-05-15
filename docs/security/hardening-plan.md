@@ -1,6 +1,6 @@
 # Profitness Security Hardening Plan
 
-Last updated: 2026-05-15
+Last updated: 2026-05-16
 
 ## Guiding principle
 
@@ -28,6 +28,7 @@ This means:
 - Kept `.mcp.json` and `local.properties` untracked/ignored.
 - Changed GitHub Actions from debug APK release to release AAB generation.
 - Added production release signing requirements with `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`.
+- Hardened GitHub Actions and Gradle release signing secret parsing so accidental copied newlines in GitHub secrets do not break release keystore lookup.
 - Preserved phone testing by adding a manual internal-test APK artifact. It is release-signed and uploaded as a short-lived workflow artifact, not published as a public debug APK release.
 - Added Android App Links support for password reset.
 - Kept legacy `profitness://reset-password` handling during rollout so already-issued recovery emails do not break.
@@ -45,6 +46,7 @@ This means:
 | --- | --- | --- | --- |
 | Critical | Rotate the Supabase access token that was present in `.mcp.json` | Done | User revoked the old token in Supabase; local `.mcp.json` no longer stores token-like args. |
 | High | Add Android release signing secrets to GitHub Actions | Done | User added `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. |
+| High | Verify GitHub release signing workflow | In progress | First push reached signing verification but failed to read the release keystore. Workflow now trims accidental copied whitespace from signing secrets and gives safer non-secret diagnostics. |
 | High | Publish Android App Links `assetlinks.json` | Pending | Domain selected: `cosmibit.com`. Use the release SHA-256 fingerprint from CI. |
 | High | Add HTTPS reset redirect to Supabase Auth URL Configuration | Pending | Add exact `https://cosmibit.com/reset-password`. Do not remove the legacy redirect until one release cycle passes. |
 | High | Set GitHub reset link host config | Done | `RESET_PASSWORD_LINK_HOST=cosmibit.com` was added; workflow accepts either repository variable or secret. Redirect still safely falls back to the legacy reset redirect until `RESET_PASSWORD_REDIRECT_URL` is set. |
@@ -105,7 +107,7 @@ This means:
 ## Current verification blockers
 
 - Local Supabase database is not running on `127.0.0.1:54322`, so `npx supabase migration list --local` could not verify local migration state.
-- Android debug Kotlin compilation currently fails in `MainActivity` import/symbol resolution for theme/navigation symbols. This predates the security rollout work in the dirty working tree and should be resolved before shipping.
+- The first GitHub Actions release run failed before build at release keystore verification. This is a CI secret-format/keystore-read issue, not an app runtime-flow failure. Re-run after the whitespace-normalization workflow fix is pushed.
 
 ## Rollback strategy
 

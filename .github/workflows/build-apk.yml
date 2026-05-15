@@ -81,25 +81,38 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
+          normalize_text_secret() {
+            printf '%s' "$1" | python3 -c 'import sys; print(sys.stdin.read().strip(), end="")'
+          }
+
+          RELEASE_KEYSTORE_BASE64="$(printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          RELEASE_KEYSTORE_PASSWORD="$(normalize_text_secret "$RELEASE_KEYSTORE_PASSWORD")"
+          RELEASE_KEY_ALIAS="$(normalize_text_secret "$RELEASE_KEY_ALIAS")"
+          RELEASE_KEY_PASSWORD="$(normalize_text_secret "$RELEASE_KEY_PASSWORD")"
+
           if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$RELEASE_KEYSTORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
             echo "::error::Release signing secrets are required: RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD."
             exit 1
           fi
 
           mkdir -p build
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > build/release_signing.keystore
+          if ! printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > build/release_signing.keystore; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 is not valid base64. Copy the full contents of the generated .base64.txt file, not the file path."
+            exit 1
+          fi
 
-          SHA1=$(keytool -list -v \
+          KEYTOOL_OUTPUT=$(keytool -list -v \
             -keystore build/release_signing.keystore \
             -alias "$RELEASE_KEY_ALIAS" \
             -storepass "$RELEASE_KEYSTORE_PASSWORD" \
-            -keypass "$RELEASE_KEY_PASSWORD" 2>/dev/null | awk -F': ' '/SHA1:/{print $2; exit}')
+            -keypass "$RELEASE_KEY_PASSWORD" 2>&1) || {
+              echo "::error::Could not read release keystore. Check keystore password, key alias, and key password."
+              keytool -list -v -keystore build/release_signing.keystore -storepass "$RELEASE_KEYSTORE_PASSWORD" 2>/dev/null | sed -n 's/^Alias name: /Available alias: /p' || true
+              exit 1
+            }
 
-          SHA256=$(keytool -list -v \
-            -keystore build/release_signing.keystore \
-            -alias "$RELEASE_KEY_ALIAS" \
-            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
-            -keypass "$RELEASE_KEY_PASSWORD" 2>/dev/null | awk -F': ' '/SHA256:/{print $2; exit}')
+          SHA1=$(printf '%s\n' "$KEYTOOL_OUTPUT" | awk -F': ' '/SHA1:/{print $2; exit}')
+          SHA256=$(printf '%s\n' "$KEYTOOL_OUTPUT" | awk -F': ' '/SHA256:/{print $2; exit}')
 
           if [ -z "$SHA1" ]; then
             echo "::error::Could not read SHA-1 from release keystore. Check keystore password, key alias, and key password."
@@ -117,20 +130,36 @@ jobs:
 
       - name: Build Release Bundle
         env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:bundleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
+          RAW_RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RAW_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RAW_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RAW_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          normalize_text_secret() {
+            printf '%s' "$1" | python3 -c 'import sys; print(sys.stdin.read().strip(), end="")'
+          }
+          export RELEASE_KEYSTORE_BASE64="$(printf '%s' "$RAW_RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          export RELEASE_KEYSTORE_PASSWORD="$(normalize_text_secret "$RAW_RELEASE_KEYSTORE_PASSWORD")"
+          export RELEASE_KEY_ALIAS="$(normalize_text_secret "$RAW_RELEASE_KEY_ALIAS")"
+          export RELEASE_KEY_PASSWORD="$(normalize_text_secret "$RAW_RELEASE_KEY_PASSWORD")"
+          ./gradlew :app:bundleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
 
       - name: Build internal test APK
         if: github.event_name == 'workflow_dispatch'
         env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
+          RAW_RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RAW_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RAW_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RAW_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          normalize_text_secret() {
+            printf '%s' "$1" | python3 -c 'import sys; print(sys.stdin.read().strip(), end="")'
+          }
+          export RELEASE_KEYSTORE_BASE64="$(printf '%s' "$RAW_RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          export RELEASE_KEYSTORE_PASSWORD="$(normalize_text_secret "$RAW_RELEASE_KEYSTORE_PASSWORD")"
+          export RELEASE_KEY_ALIAS="$(normalize_text_secret "$RAW_RELEASE_KEY_ALIAS")"
+          export RELEASE_KEY_PASSWORD="$(normalize_text_secret "$RAW_RELEASE_KEY_PASSWORD")"
+          ./gradlew :app:assembleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
 
       - name: Rename release artifacts
         run: |
