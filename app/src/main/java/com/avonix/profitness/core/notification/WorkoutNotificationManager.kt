@@ -8,6 +8,11 @@ import android.media.ToneGenerator
 import android.os.Build
 import com.avonix.profitness.service.WorkoutForegroundService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,6 +35,7 @@ class WorkoutNotificationManager @Inject constructor(
     private var lastTimerSecondsLeft = Int.MIN_VALUE
     private var lastActivityUpdateAt = 0L
     private var lastActivitySeconds = Int.MIN_VALUE
+    private val soundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // ── Oturum Kontrolü ──────────────────────────────────────────────────────
 
@@ -152,25 +158,31 @@ class WorkoutNotificationManager @Inject constructor(
      * harici ses dosyası gerekmez.
      */
     fun playTimerEndSound() {
-        try {
-            if (toneGenerator == null) {
-                toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+        soundScope.launch {
+            try {
+                val tone = synchronized(this@WorkoutNotificationManager) {
+                    if (toneGenerator == null) {
+                        toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+                    }
+                    toneGenerator
+                } ?: return@launch
+                // Three short beeps without blocking the caller thread.
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
+                delay(320)
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
+                delay(320)
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 400)
+            } catch (_: Exception) {
+                // Ses cihazı meşgulse sessizce devam et
             }
-            val tone = toneGenerator ?: return
-            // Üç ardışık bip: 200ms bip → 120ms sessiz → 200ms bip → 120ms sessiz → 400ms bip
-            tone.startTone(ToneGenerator.TONE_PROP_BEEP,  200)
-            Thread.sleep(320)
-            tone.startTone(ToneGenerator.TONE_PROP_BEEP,  200)
-            Thread.sleep(320)
-            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 400)
-        } catch (_: Exception) {
-            // Ses cihazı meşgulse sessizce devam et
         }
     }
 
     private fun releaseTone() {
-        runCatching { toneGenerator?.release() }
-        toneGenerator = null
+        synchronized(this) {
+            runCatching { toneGenerator?.release() }
+            toneGenerator = null
+        }
     }
 
     // ── Yardımcı ─────────────────────────────────────────────────────────────

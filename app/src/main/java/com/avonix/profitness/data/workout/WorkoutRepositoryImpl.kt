@@ -102,9 +102,6 @@ class WorkoutRepositoryImpl @Inject constructor(
                 synced = false
             ))
 
-            // 3. Arka planda Supabase'e sync et
-            runCatching { syncManager.pushUnsyncedWorkouts() }
-
             logId
         }
     }
@@ -254,8 +251,9 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun syncFromRemote(userId: String) {
         syncManager.pullExercises()
         syncManager.pullPrograms(userId)
-        syncManager.pushSetCompletions(userId)
-        syncManager.pullSetCompletions(userId)
+        syncManager.pushUnsyncedWorkouts().getOrThrow()
+        syncManager.pushSetCompletions(userId).getOrThrow()
+        syncManager.pullSetCompletions(userId).getOrThrow()
         syncManager.pullWorkoutLogs(userId)
         syncManager.pullWorkoutLogDates(userId)
     }
@@ -286,14 +284,11 @@ class WorkoutRepositoryImpl @Inject constructor(
                     date = today,
                     synced = false
                 ))
-                runCatching { syncManager.pushUnsyncedWorkouts() }
             }
 
             setCompletionDao.insert(
                 SetCompletionEntity(userId, exerciseId, programDayId, setIndex, today, weightKg, repsActual, null, null)
             )
-            setCompletionDao.getSet(userId, exerciseId, programDayId, setIndex, today)
-                ?.let { syncSetCompletionBestEffort(it) }
             Unit
         }
     }
@@ -304,7 +299,6 @@ class WorkoutRepositoryImpl @Inject constructor(
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             setCompletionDao.delete(userId, exerciseId, programDayId, setIndex, today)
-            syncSetDeletionBestEffort(userId, exerciseId, programDayId, setIndex, today)
             Unit
         }
     }
@@ -315,7 +309,6 @@ class WorkoutRepositoryImpl @Inject constructor(
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             setCompletionDao.deleteAllForExercise(userId, exerciseId, programDayId, today)
-            syncExerciseSetDeletionBestEffort(userId, exerciseId, programDayId, today)
             Unit
         }
     }
@@ -330,11 +323,6 @@ class WorkoutRepositoryImpl @Inject constructor(
             repeat(totalSets) { i ->
                 setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, i, today, defaultRepsActual)
             }
-            val entries = setCompletionDao.getForDate(userId, exerciseId, today)
-                .filter { it.programDayId == programDayId }
-            entries.forEach { entry ->
-                syncSetCompletionBestEffort(entry)
-            }
         }
     }
 
@@ -344,8 +332,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val entity = setCompletionDao.upsertWeight(userId, exerciseId, programDayId, setIndex, today, weightKg)
-            syncSetCompletionBestEffort(entity)
+            setCompletionDao.upsertWeight(userId, exerciseId, programDayId, setIndex, today, weightKg)
             Unit
         }
     }
@@ -356,8 +343,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val entity = setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
-            syncSetCompletionBestEffort(entity)
+            setCompletionDao.upsertRepsActual(userId, exerciseId, programDayId, setIndex, today, repsActual)
             Unit
         }
     }
@@ -369,7 +355,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val entity = setCompletionDao.upsertActivityMetrics(
+            setCompletionDao.upsertActivityMetrics(
                 userId = userId,
                 exerciseId = exerciseId,
                 programDayId = programDayId,
@@ -380,7 +366,6 @@ class WorkoutRepositoryImpl @Inject constructor(
                 elevationMeters = elevationMeters,
                 inclinePercent = inclinePercent
             )
-            syncSetCompletionBestEffort(entity)
             Unit
         }
     }

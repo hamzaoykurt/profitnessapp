@@ -9,7 +9,8 @@ import androidx.room.Index
     primaryKeys = ["user_id", "exercise_id", "program_day_id", "set_index", "date"],
     indices = [
         Index(value = ["user_id", "program_day_id", "date"]),
-        Index(value = ["user_id", "exercise_id", "date"])
+        Index(value = ["user_id", "exercise_id", "date"]),
+        Index(value = ["user_id", "dirty", "updated_at_ms"])
     ]
 )
 data class SetCompletionEntity(
@@ -23,5 +24,9 @@ data class SetCompletionEntity(
     @ColumnInfo(name = "duration_seconds") val durationSeconds: Int? = null,
     @ColumnInfo(name = "distance_meters")  val distanceMeters: Float? = null,
     @ColumnInfo(name = "elevation_meters") val elevationMeters: Float? = null,
-    @ColumnInfo(name = "incline_percent")  val inclinePercent: Float? = null
+    @ColumnInfo(name = "incline_percent")  val inclinePercent: Float? = null,
+    @ColumnInfo(name = "synced", defaultValue = "1") val synced: Boolean = false,
+    @ColumnInfo(name = "dirty", defaultValue = "0") val dirty: Boolean = true,
+    @ColumnInfo(name = "deleted", defaultValue = "0") val deleted: Boolean = false,
+    @ColumnInfo(name = "updated_at_ms", defaultValue = "0") val updatedAtMs: Long = System.currentTimeMillis()
 )

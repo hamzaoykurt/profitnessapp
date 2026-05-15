@@ -2,6 +2,7 @@ package com.avonix.profitness.data.social
 
 import com.avonix.profitness.domain.social.FollowListKind
 import com.avonix.profitness.domain.social.FriendAchievementRow
+import com.avonix.profitness.domain.social.FriendStreakRow
 import com.avonix.profitness.domain.social.FriendXpRow
 import com.avonix.profitness.domain.social.PublicProfile
 import com.avonix.profitness.domain.social.UserSummary
@@ -30,6 +31,9 @@ interface SocialRepository {
 
     /** Arkadaş başarım leaderboard. */
     suspend fun getFriendLeaderboardAchievements(limit: Int = 100): Result<List<FriendAchievementRow>>
+
+    /** Arkadaş aktif günlük seri leaderboard. */
+    suspend fun getFriendLeaderboardStreak(limit: Int = 100): Result<List<FriendStreakRow>>
 
     /** Public profilde gösterilecek, kullanıcının oluşturduğu görünür challenge'lar. */
     suspend fun listUserCreatedChallenges(userId: String, limit: Int = 12): Result<List<ChallengeSummary>>

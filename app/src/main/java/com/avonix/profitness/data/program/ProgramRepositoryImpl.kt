@@ -57,7 +57,7 @@ class ProgramRepositoryImpl @Inject constructor(
             .flowOn(Dispatchers.IO)
 
     override fun observeExercises(): Flow<List<ExerciseItem>> =
-        exerciseDao.observeAll()
+        exerciseDao.observeVisible(visibleExerciseOwnerId())
             .map { list -> list.map { it.toDomain() }.filterValidExerciseNames() }
             .flowOn(Dispatchers.IO)
 
@@ -87,10 +87,11 @@ class ProgramRepositoryImpl @Inject constructor(
     override suspend fun getAllExercises(): Result<List<ExerciseItem>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val local = exerciseDao.getAll()
+                val userId = visibleExerciseOwnerId()
+                val local = exerciseDao.getVisible(userId)
                 if (local.isNotEmpty()) return@runCatching local.map { it.toDomain() }.filterValidExerciseNames()
                 syncManager.pullExercises()
-                exerciseDao.getAll().map { it.toDomain() }.filterValidExerciseNames()
+                exerciseDao.getVisible(userId).map { it.toDomain() }.filterValidExerciseNames()
             }
         }
 
@@ -415,12 +416,14 @@ class ProgramRepositoryImpl @Inject constructor(
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
         runCatching {
             val userId = requireAuthenticatedUser()
+            val exerciseId = UUID.randomUUID().toString()
             require(!ExerciseNameRules.isCompositeName(name)) {
                 "Tek kayitta birden fazla hareket adi kullanilamaz."
             }
 
             supabase.postgrest["exercises"]
                 .insert(buildJsonObject {
+                    put("id", exerciseId)
                     put("name", name)
                     put("name_en", nameEn)
                     put("target_muscle", targetMuscle)
@@ -432,7 +435,7 @@ class ProgramRepositoryImpl @Inject constructor(
                 })
 
             val dto = supabase.postgrest["exercises"]
-                .select { filter { eq("name", name) } }
+                .select { filter { eq("id", exerciseId) } }
                 .decodeSingle<ExerciseDto>()
 
             // Room'a da ekle
@@ -440,7 +443,10 @@ class ProgramRepositoryImpl @Inject constructor(
                 id = dto.id, name = dto.name, nameEn = dto.name_en,
                 targetMuscle = dto.target_muscle, category = dto.category,
                 setsDefault = dto.sets_default, repsDefault = dto.reps_default,
-                description = dto.description
+                description = dto.description,
+                sportType = dto.sport_type,
+                trackingMode = dto.tracking_mode,
+                createdBy = dto.created_by
             ))
 
             dto.toDomain()
@@ -475,9 +481,13 @@ class ProgramRepositoryImpl @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     override suspend fun syncFromRemote(userId: String) {
-        syncManager.pullPrograms(userId)
         syncManager.pullExercises()
+        syncManager.pullPrograms(userId)
     }
+
+    private fun visibleExerciseOwnerId(): String? =
+        supabase.auth.currentSessionOrNull()?.user?.id
+            ?: supabase.auth.currentUserOrNull()?.id
 
     private suspend fun requireAuthenticatedUser(expectedUserId: String? = null): String {
         supabase.auth.awaitInitialization()

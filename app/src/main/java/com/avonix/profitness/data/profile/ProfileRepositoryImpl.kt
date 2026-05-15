@@ -51,24 +51,34 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var _ratiosKey: String? = null           // "userId|weekStart"
     @Volatile private var _workoutDates: List<String>? = null
     @Volatile private var _workoutDatesKey: String? = null     // "userId|fromDate"
+    @Volatile private var skipStatsDiskCache: Boolean = false
 
     private fun invalidateProfile() {
         _profile = null; _profileUid = null
-        disk.removeByPrefix("profile_")
     }
     private fun invalidateStats() {
         _stats = null; _statsUid = null
         _allWorkoutDates = null; _allWorkoutDatesUid = null
         _ratios = null; _ratiosKey = null
         _workoutDates = null; _workoutDatesKey = null
-        disk.removeByPrefix("stats_")
-        disk.removeByPrefix("ratios_")
-        disk.removeByPrefix("wdates_")
+        skipStatsDiskCache = true
+    }
+
+    private suspend fun invalidateProfileOnIo() {
+        invalidateProfile()
+        disk.removeByPrefixOnIo("profile_")
+    }
+
+    private suspend fun invalidateStatsOnIo() {
+        invalidateStats()
+        disk.removeByPrefixOnIo("stats_")
+        disk.removeByPrefixOnIo("ratios_")
+        disk.removeByPrefixOnIo("wdates_")
     }
 
     override suspend fun getProfile(userId: String): Result<ProfileDto> {
         _profile?.takeIf { _profileUid == userId }?.let { return Result.success(it) }
-        disk.get<ProfileDto>("profile_$userId")?.let {
+        disk.getOnIo<ProfileDto>("profile_$userId")?.let {
             _profile = it; _profileUid = userId; return Result.success(it)
         }
         return withContext(Dispatchers.IO) {
@@ -94,7 +104,7 @@ class ProfileRepositoryImpl @Inject constructor(
         gender      : String,
         birthDate   : String
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        invalidateProfile()
+        invalidateProfileOnIo()
         runCatching {
             supabase.postgrest["profiles"].upsert(
                 buildJsonObject {
@@ -116,7 +126,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun uploadProfilePhoto(userId: String, imageBytes: ByteArray): Result<String> =
         withContext(Dispatchers.IO) {
-            invalidateProfile()
+            invalidateProfileOnIo()
             runCatching {
                 val path = "avatars/$userId.jpg"
                 // Var olan dosyayi sil (varsa)
@@ -141,7 +151,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun updateRank(userId: String, rank: String): Result<Unit> =
         withContext(Dispatchers.IO) {
-            invalidateProfile()
+            invalidateProfileOnIo()
             runCatching {
                 supabase.postgrest["profiles"].upsert(
                     buildJsonObject {
@@ -155,8 +165,10 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun getUserStats(userId: String): Result<UserStatsDto> {
         _stats?.takeIf { _statsUid == userId }?.let { return Result.success(it) }
-        disk.get<UserStatsDto>("stats_$userId")?.let {
-            _stats = it; _statsUid = userId; return Result.success(it)
+        if (!skipStatsDiskCache) {
+            disk.getOnIo<UserStatsDto>("stats_$userId")?.let {
+                _stats = it; _statsUid = userId; return Result.success(it)
+            }
         }
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -198,6 +210,21 @@ class ProfileRepositoryImpl @Inject constructor(
 
                 // longest_streak: saklanmış değer ile hesaplananın büyüğü
                 val longestStreak = maxOf(base.longest_streak, streak)
+                if (
+                    base.total_workouts != totalWorkouts ||
+                    base.current_streak != streak ||
+                    base.longest_streak != longestStreak
+                ) {
+                    runCatching {
+                        supabase.postgrest["user_stats"]
+                            .upsert(buildJsonObject {
+                                put("user_id", userId)
+                                put("total_workouts", totalWorkouts)
+                                put("current_streak", streak)
+                                put("longest_streak", longestStreak)
+                            })
+                    }
+                }
 
                 base.copy(
                     total_workouts  = totalWorkouts,
@@ -234,8 +261,10 @@ class ProfileRepositoryImpl @Inject constructor(
     ): Result<List<String>> {
         val key = "$userId|$fromDate"
         _workoutDates?.takeIf { _workoutDatesKey == key }?.let { return Result.success(it) }
-        disk.get<List<String>>("wdates_$key")?.let {
-            _workoutDates = it; _workoutDatesKey = key; return Result.success(it)
+        if (!skipStatsDiskCache) {
+            disk.getOnIo<List<String>>("wdates_$key")?.let {
+                _workoutDates = it; _workoutDatesKey = key; return Result.success(it)
+            }
         }
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -257,8 +286,10 @@ class ProfileRepositoryImpl @Inject constructor(
     ): Result<Map<String, Float>> {
         val key = "$userId|$weekStart"
         _ratios?.takeIf { _ratiosKey == key }?.let { return Result.success(it) }
-        disk.get<List<RatioEntry>>("ratios_$key")?.associate { it.date to it.ratio }?.let {
-            _ratios = it; _ratiosKey = key; return Result.success(it)
+        if (!skipStatsDiskCache) {
+            disk.getOnIo<List<RatioEntry>>("ratios_$key")?.associate { it.date to it.ratio }?.let {
+                _ratios = it; _ratiosKey = key; return Result.success(it)
+            }
         }
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -318,7 +349,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun getUnlockedAchievementKeys(userId: String): Result<Set<String>> {
         _unlockedKeys?.takeIf { _unlockedKeysUid == userId }?.let { return Result.success(it) }
-        disk.get<List<String>>("unlocked_$userId")?.toSet()?.let {
+        disk.getOnIo<List<String>>("unlocked_$userId")?.toSet()?.let {
             _unlockedKeys = it; _unlockedKeysUid = userId; return Result.success(it)
         }
         return withContext(Dispatchers.IO) {
@@ -351,7 +382,7 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun unlockAchievements(userId: String, achievementKeys: List<String>): Result<Unit> =
         withContext(Dispatchers.IO) {
             if (achievementKeys.isEmpty()) return@withContext Result.success(Unit)
-            _unlockedKeys = null; _unlockedKeysUid = null; disk.removeByPrefix("unlocked_")
+            _unlockedKeys = null; _unlockedKeysUid = null; disk.removeByPrefixOnIo("unlocked_")
             runCatching {
                 val targetKeys = achievementKeys.distinct()
                 val achievements = supabase.postgrest["achievements"]
@@ -385,7 +416,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun getAllAchievements(): Result<List<AchievementDto>> {
         _allAchievements?.let { return Result.success(it) }
-        disk.get<List<AchievementDto>>("achievements")?.let {
+        disk.getOnIo<List<AchievementDto>>("achievements")?.let {
             _allAchievements = it; return Result.success(it)
         }
         return withContext(Dispatchers.IO) {
@@ -397,7 +428,12 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun invalidateStatsCache() { invalidateStats() }
+    override fun invalidateStatsCache() {
+        invalidateStats()
+        disk.removeByPrefixAsync("stats_")
+        disk.removeByPrefixAsync("ratios_")
+        disk.removeByPrefixAsync("wdates_")
+    }
 
     private suspend fun getAllWorkoutDates(userId: String): List<java.time.LocalDate> {
         _allWorkoutDates?.takeIf { _allWorkoutDatesUid == userId }?.let { return it }

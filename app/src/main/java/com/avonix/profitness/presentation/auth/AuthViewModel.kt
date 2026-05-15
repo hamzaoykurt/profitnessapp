@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.auth
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.data.auth.AuthRepository
+import com.avonix.profitness.data.store.UserPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +34,8 @@ data class AuthState(
     val resendCooldown : Boolean        = false,
     /** Supabase diskten session yüklenirken true — bu sürede auth UI gösterilmez. */
     val isSessionLoading: Boolean       = true,
+    /** Başlangıçta diskten geçerli session restore edildiyse navigation event'i kaçsa bile dashboard'a geçilir. */
+    val restoredSessionAuthenticated: Boolean = false,
 )
 
 sealed class AuthEvent {
@@ -44,17 +47,28 @@ sealed class AuthEvent {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val planRepository: UserPlanRepository
 ) : BaseViewModel<AuthState, AuthEvent>(AuthState()) {
 
     init {
         viewModelScope.launch {
             val loggedIn = runCatching { authRepository.awaitSessionLoaded() }.getOrDefault(false)
             if (loggedIn) {
-                sendEvent(AuthEvent.NavigateToDashboard)
-                updateState { it.copy(isSessionLoading = false) }
+                runCatching { planRepository.refresh() }
+                updateState {
+                    it.copy(
+                        isSessionLoading = false,
+                        restoredSessionAuthenticated = true
+                    )
+                }
             } else {
-                updateState { it.copy(isSessionLoading = false) }
+                updateState {
+                    it.copy(
+                        isSessionLoading = false,
+                        restoredSessionAuthenticated = false
+                    )
+                }
             }
         }
     }
@@ -75,6 +89,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.signIn(trimmed, password)
                 .onSuccess {
+                    runCatching { planRepository.refresh() }
                     updateState { it.copy(isLoading = false) }
                     sendEvent(AuthEvent.NavigateToDashboard)
                 }
@@ -129,6 +144,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.verifyOtp(email, code)
                 .onSuccess {
+                    runCatching { planRepository.refresh() }
                     updateState { it.copy(otpLoading = false, screen = AuthFlowScreen.Login) }
                     sendEvent(AuthEvent.NavigateToOnboarding)
                 }
@@ -189,7 +205,12 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             authRepository.signOut()
-            updateState { it.copy(isSessionLoading = false) }
+            updateState {
+                it.copy(
+                    isSessionLoading = false,
+                    restoredSessionAuthenticated = false
+                )
+            }
             sendEvent(AuthEvent.NavigateToAuth)
         }
     }

@@ -79,7 +79,7 @@ fun ProfileScreen(
 
     // Tab geçiş animasyonu bittikten sonra ilk profil yükünü başlat.
     LaunchedEffect(Unit) {
-        delay(50)
+        delay(16)
         viewModel.initLoad()
     }
 
@@ -97,6 +97,8 @@ fun ProfileScreen(
                     level            = state.level,
                     xp               = state.xp,
                     xpPerLevel       = state.xpPerLevel,
+                    currentStreak     = state.currentStreak,
+                    streakRankPosition = state.streakRankPosition,
                     userPlan         = state.userPlan,
                     aiCredits        = state.aiCredits,
                     accent           = accent,
@@ -104,7 +106,8 @@ fun ProfileScreen(
                     onSettingsClick  = { showAppearance = true },
                     onNavigateToStore = onNavigateToStore,
                     onOpenXpRanking   = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
-                    onOpenRankRanking = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) }
+                    onOpenRankRanking = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Achievements) },
+                    onOpenStreakRanking = { onNavigateToLeaderboard(com.avonix.profitness.presentation.leaderboard.LeaderboardTab.Streak) }
                 )
             }
             item {
@@ -335,6 +338,8 @@ private fun ProfileHeroBanner(
     level          : Int,
     xp             : Int,
     xpPerLevel     : Int,
+    currentStreak  : Int,
+    streakRankPosition: Long,
     userPlan        : UserPlan = UserPlan.FREE,
     aiCredits       : Int = 0,
     accent          : Color,
@@ -342,7 +347,8 @@ private fun ProfileHeroBanner(
     onSettingsClick : () -> Unit,
     onNavigateToStore: () -> Unit = {},
     onOpenXpRanking : () -> Unit = {},
-    onOpenRankRanking: () -> Unit = {}
+    onOpenRankRanking: () -> Unit = {},
+    onOpenStreakRanking: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -636,6 +642,16 @@ private fun ProfileHeroBanner(
                             onClick = onOpenRankRanking
                         )
                     }
+                    Spacer(Modifier.height(10.dp))
+                    HeroMiniStat(
+                        label = "SERİ SIRALAMASI",
+                        value = if (streakRankPosition > 0L) "#$streakRankPosition · $currentStreak gün" else "$currentStreak gün",
+                        icon = Icons.Rounded.LocalFireDepartment,
+                        color = Color(0xFFFF6B4A),
+                        theme = theme,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onOpenStreakRanking
+                    )
                 }
             }
         }

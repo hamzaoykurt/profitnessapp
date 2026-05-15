@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.profile
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.leaderboard.LeaderboardRepository
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.dto.AchievementDto
 import com.avonix.profitness.data.store.UserPlan
@@ -63,6 +64,8 @@ data class ProfileState(
     val xpPerLevel           : Int                  = 1000,
     val currentStreak        : Int                  = 0,
     val longestStreak        : Int                  = 0,
+    val streakRankPosition   : Long                 = 0L,
+    val streakRankTotalUsers : Long                 = 0L,
     val totalWorkouts        : Int                  = 0,
     val totalExercises       : Int                  = 0,
     val totalDurationSeconds : Int                  = 0,
@@ -84,7 +87,7 @@ data class ProfileState(
     val isLoading            : Boolean              = true,
     val isSaving             : Boolean              = false,
     val userPlan             : UserPlan             = UserPlan.FREE,
-    val aiCredits            : Int                  = UserPlanRepository.FREE_STARTER_CREDITS
+    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -99,6 +102,7 @@ sealed class ProfileEvent {
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileRepository : ProfileRepository,
+    private val leaderboardRepository: LeaderboardRepository,
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
     private val supabase          : SupabaseClient
@@ -166,6 +170,7 @@ class ProfileViewModel @Inject constructor(
             val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
             val localStreak      = localStreakDef.await().getOrElse { stats?.current_streak ?: 0 }
             val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
+            val streakRank       = leaderboardRepository.getMyStreakRank().getOrNull()
 
             // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
             // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
@@ -231,6 +236,8 @@ class ProfileViewModel @Inject constructor(
                     xpPerLevel          = xpForNext,
                     currentStreak       = localStreak,
                     longestStreak       = stats?.longest_streak ?: 0,
+                    streakRankPosition  = streakRank?.rank_position ?: 0L,
+                    streakRankTotalUsers= streakRank?.total_users ?: 0L,
                     totalWorkouts       = totalWorkouts,
                     totalExercises      = totalExercises,
                     totalDurationSeconds= totalDurationSeconds,

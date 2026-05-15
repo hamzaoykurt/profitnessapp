@@ -1,13 +1,19 @@
-name: Android CI/CD Build & Release
+name: Android CI/CD Release
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Also publish a versioned GitHub Release"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  build-and-deploy:
-    name: Build & Deploy
+  release:
+    name: Build Release AAB
     runs-on: ubuntu-latest
 
     permissions:
@@ -40,47 +46,63 @@ jobs:
           MINOR=$((NEXT % 10))
           TAG="v$MAJOR.$MINOR"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "apk_name=Profitness_$TAG.apk" >> $GITHUB_OUTPUT
+          echo "aab_name=Profitness_$TAG.aab" >> $GITHUB_OUTPUT
+          echo "apk_name=Profitness_${TAG}_internal-test.apk" >> $GITHUB_OUTPUT
+          echo "mapping_name=Profitness_$TAG-mapping.txt" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Inject credentials into local.properties
+      - name: Inject public build configuration
+        env:
+          RESET_PASSWORD_LINK_HOST: ${{ vars.RESET_PASSWORD_LINK_HOST || secrets.RESET_PASSWORD_LINK_HOST }}
+          RESET_PASSWORD_REDIRECT_URL: ${{ vars.RESET_PASSWORD_REDIRECT_URL || secrets.RESET_PASSWORD_REDIRECT_URL }}
         run: |
+          RESET_PASSWORD_LINK_HOST="${RESET_PASSWORD_LINK_HOST:-cosmibit.com}"
+          RESET_PASSWORD_REDIRECT_URL="${RESET_PASSWORD_REDIRECT_URL:-profitness://reset-password}"
+          if [ -z "$RESET_PASSWORD_LINK_HOST" ] || [ -z "$RESET_PASSWORD_REDIRECT_URL" ]; then
+            echo "::error::Reset password link configuration could not be resolved."
+            exit 1
+          fi
+          if [ "$RESET_PASSWORD_REDIRECT_URL" = "profitness://reset-password" ]; then
+            echo "::warning::Using legacy password reset redirect. Publish assetlinks.json and set RESET_PASSWORD_REDIRECT_URL to enable verified Android App Links."
+          fi
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"              >> local.properties
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"    >> local.properties
           echo "MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}"              >> local.properties
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"          >> local.properties
-          echo "KEYSTORE_BASE64=${{ secrets.DEBUG_KEYSTORE_BASE64 }}"  >> local.properties
-          echo "KEYSTORE_PASSWORD=android"                              >> local.properties
-          echo "KEY_ALIAS=androiddebugkey"                              >> local.properties
-          echo "KEY_PASSWORD=android"                                   >> local.properties
+          echo "RESET_PASSWORD_LINK_HOST=$RESET_PASSWORD_LINK_HOST"     >> local.properties
+          echo "RESET_PASSWORD_REDIRECT_URL=$RESET_PASSWORD_REDIRECT_URL" >> local.properties
 
-      - name: Verify Android signing certificate
+      - name: Verify release signing certificate
         id: signing
         shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          if [ -z "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" ]; then
-            echo "::error::DEBUG_KEYSTORE_BASE64 secret is missing. Without a fixed keystore, GitHub APKs can be signed with a different certificate and Google Places API restrictions will block them."
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$RELEASE_KEYSTORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
+            echo "::error::Release signing secrets are required: RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD."
             exit 1
           fi
 
           mkdir -p build
-          printf '%s' "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > build/ci_signing.keystore
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > build/release_signing.keystore
 
           SHA1=$(keytool -list -v \
-            -keystore build/ci_signing.keystore \
-            -alias androiddebugkey \
-            -storepass android \
-            -keypass android 2>/dev/null | awk -F': ' '/SHA1:/{print $2; exit}')
+            -keystore build/release_signing.keystore \
+            -alias "$RELEASE_KEY_ALIAS" \
+            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
+            -keypass "$RELEASE_KEY_PASSWORD" 2>/dev/null | awk -F': ' '/SHA1:/{print $2; exit}')
 
           SHA256=$(keytool -list -v \
-            -keystore build/ci_signing.keystore \
-            -alias androiddebugkey \
-            -storepass android \
-            -keypass android 2>/dev/null | awk -F': ' '/SHA256:/{print $2; exit}')
+            -keystore build/release_signing.keystore \
+            -alias "$RELEASE_KEY_ALIAS" \
+            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
+            -keypass "$RELEASE_KEY_PASSWORD" 2>/dev/null | awk -F': ' '/SHA256:/{print $2; exit}')
 
           if [ -z "$SHA1" ]; then
-            echo "::error::Could not read SHA-1 from DEBUG_KEYSTORE_BASE64. Check keystore password, key alias, and key password."
+            echo "::error::Could not read SHA-1 from release keystore. Check keystore password, key alias, and key password."
             exit 1
           fi
 
@@ -93,15 +115,43 @@ jobs:
       - name: Grant Gradlew Permission
         run: chmod +x gradlew
 
-      - name: Build Debug Artifact
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
+      - name: Build Release Bundle
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :app:bundleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
 
-      - name: Rename APK
+      - name: Build internal test APK
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-daemon -Dorg.gradle.parallel=true --no-configuration-cache --no-build-cache
+
+      - name: Rename release artifacts
         run: |
-          mv app/build/outputs/apk/debug/app-debug.apk \
-             "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+          mkdir -p release
+          cp app/build/outputs/bundle/release/app-release.aab "release/${{ steps.version.outputs.aab_name }}"
+          cp app/build/outputs/mapping/release/mapping.txt "release/${{ steps.version.outputs.mapping_name }}"
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk "release/${{ steps.version.outputs.apk_name }}"
+          fi
+
+      - name: Upload internal test APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: profitness-internal-test-apk
+          path: release/${{ steps.version.outputs.apk_name }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Create Versioned Release
+        if: github.event_name == 'push' || inputs.publish_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -111,11 +161,13 @@ jobs:
             - **Commit:** ${{ github.sha }}
             - **Branch:** ${{ github.ref_name }}
             - **Timestamp:** ${{ github.event.head_commit.timestamp }}
-            - **Android signing SHA-1:** `${{ steps.signing.outputs.sha1 }}`
+            - **Release signing SHA-1:** `${{ steps.signing.outputs.sha1 }}`
 
-            If Google Places shows API 9011 on this APK, add the SHA-1 above to the Google Cloud API key restriction for package `com.avonix.profitness`.
+            Use the SHA-256 fingerprint from this workflow when publishing the Android App Links `assetlinks.json` file for the reset-password domain.
 
             ${{ github.event.head_commit.message }}
-          files: "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+          files: |
+            release/${{ steps.version.outputs.aab_name }}
+            release/${{ steps.version.outputs.mapping_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

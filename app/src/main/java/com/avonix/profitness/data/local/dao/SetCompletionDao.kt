@@ -38,7 +38,8 @@ interface SetCompletionDao {
      */
     @Query("""
         SELECT * FROM set_completions
-        WHERE user_id = :userId AND date >= :weekStart AND reps_actual IS NOT NULL
+        WHERE user_id = :userId AND date >= :weekStart
+          AND reps_actual IS NOT NULL AND deleted = 0
     """)
     fun observeForWeek(userId: String, weekStart: String): Flow<List<SetCompletionEntity>>
 
@@ -50,15 +51,23 @@ interface SetCompletionDao {
 
     @Query("""
         SELECT * FROM set_completions
-        WHERE user_id = :userId
+        WHERE user_id = :userId AND deleted = 0
         ORDER BY date ASC, exercise_id ASC, set_index ASC
     """)
     suspend fun getAllForUser(userId: String): List<SetCompletionEntity>
 
     @Query("""
         SELECT * FROM set_completions
+        WHERE user_id = :userId AND (dirty = 1 OR synced = 0)
+        ORDER BY updated_at_ms ASC, date ASC, exercise_id ASC, set_index ASC
+    """)
+    suspend fun getDirtyForUser(userId: String): List<SetCompletionEntity>
+
+    @Query("""
+        SELECT * FROM set_completions
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+          AND deleted = 0
         LIMIT 1
     """)
     suspend fun getSet(
@@ -69,25 +78,33 @@ interface SetCompletionDao {
     /** Partial update — sadece weight_kg'yi günceller, reps_actual'a dokunmaz. */
     @Query("""
         UPDATE set_completions
-        SET weight_kg = :weightKg
+        SET weight_kg = :weightKg,
+            synced = 0,
+            dirty = 1,
+            deleted = 0,
+            updated_at_ms = :updatedAtMs
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
     """)
     suspend fun updateWeight(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, date: String, weightKg: Float?
+        setIndex: Int, date: String, weightKg: Float?, updatedAtMs: Long
     ): Int
 
     /** Partial update — sadece reps_actual'ı günceller, weight_kg'ye dokunmaz. */
     @Query("""
         UPDATE set_completions
-        SET reps_actual = :repsActual
+        SET reps_actual = :repsActual,
+            synced = 0,
+            dirty = 1,
+            deleted = 0,
+            updated_at_ms = :updatedAtMs
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
     """)
     suspend fun updateRepsActual(
         userId: String, exerciseId: String, programDayId: String,
-        setIndex: Int, date: String, repsActual: Int?
+        setIndex: Int, date: String, repsActual: Int?, updatedAtMs: Long
     ): Int
 
     /** Upsert weight — kayıt varsa sadece ağırlığı günceller, yoksa yeni draft oluşturur. */
@@ -96,12 +113,23 @@ interface SetCompletionDao {
         userId: String, exerciseId: String, programDayId: String,
         setIndex: Int, date: String, weightKg: Float?
     ): SetCompletionEntity {
-        val rows = updateWeight(userId, exerciseId, programDayId, setIndex, date, weightKg)
+        val now = System.currentTimeMillis()
+        val rows = updateWeight(userId, exerciseId, programDayId, setIndex, date, weightKg, now)
         if (rows == 0) {
-            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null, null, null))
+            insert(
+                SetCompletionEntity(
+                    userId = userId,
+                    exerciseId = exerciseId,
+                    programDayId = programDayId,
+                    setIndex = setIndex,
+                    date = date,
+                    weightKg = weightKg,
+                    updatedAtMs = now
+                )
+            )
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
-            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg, null, null, null)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, weightKg = weightKg, updatedAtMs = now)
     }
 
     /** Upsert reps_actual — kayıt varsa sadece reps_actual'ı günceller, yoksa yeni kayıt oluşturur. */
@@ -110,12 +138,23 @@ interface SetCompletionDao {
         userId: String, exerciseId: String, programDayId: String,
         setIndex: Int, date: String, repsActual: Int?
     ): SetCompletionEntity {
-        val rows = updateRepsActual(userId, exerciseId, programDayId, setIndex, date, repsActual)
+        val now = System.currentTimeMillis()
+        val rows = updateRepsActual(userId, exerciseId, programDayId, setIndex, date, repsActual, now)
         if (rows == 0) {
-            insert(SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual, null, null))
+            insert(
+                SetCompletionEntity(
+                    userId = userId,
+                    exerciseId = exerciseId,
+                    programDayId = programDayId,
+                    setIndex = setIndex,
+                    date = date,
+                    repsActual = repsActual,
+                    updatedAtMs = now
+                )
+            )
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
-            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, null, repsActual, null, null)
+            ?: SetCompletionEntity(userId, exerciseId, programDayId, setIndex, date, repsActual = repsActual, updatedAtMs = now)
     }
 
     /** Partial update — süre ve mesafeyi günceller, ağırlık/tekrar/tik durumuna dokunmaz. */
@@ -124,14 +163,18 @@ interface SetCompletionDao {
         SET duration_seconds = :durationSeconds,
             distance_meters = :distanceMeters,
             elevation_meters = :elevationMeters,
-            incline_percent = :inclinePercent
+            incline_percent = :inclinePercent,
+            synced = 0,
+            dirty = 1,
+            deleted = 0,
+            updated_at_ms = :updatedAtMs
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
     """)
     suspend fun updateActivityMetrics(
         userId: String, exerciseId: String, programDayId: String,
         setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?,
-        elevationMeters: Float?, inclinePercent: Float?
+        elevationMeters: Float?, inclinePercent: Float?, updatedAtMs: Long
     ): Int
 
     /** Upsert süre/mesafe — kayıt varsa metrikleri günceller, yoksa draft oluşturur. */
@@ -141,23 +184,64 @@ interface SetCompletionDao {
         setIndex: Int, date: String, durationSeconds: Int?, distanceMeters: Float?,
         elevationMeters: Float? = null, inclinePercent: Float? = null
     ): SetCompletionEntity {
+        val now = System.currentTimeMillis()
         val rows = updateActivityMetrics(
             userId, exerciseId, programDayId, setIndex, date,
-            durationSeconds, distanceMeters, elevationMeters, inclinePercent
+            durationSeconds, distanceMeters, elevationMeters, inclinePercent, now
         )
         if (rows == 0) {
             insert(
                 SetCompletionEntity(
                     userId, exerciseId, programDayId, setIndex, date,
-                    null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent
+                    null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent,
+                    updatedAtMs = now
                 )
             )
         }
         return getSet(userId, exerciseId, programDayId, setIndex, date)
             ?: SetCompletionEntity(
                 userId, exerciseId, programDayId, setIndex, date,
-                null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent
+                null, null, durationSeconds, distanceMeters, elevationMeters, inclinePercent,
+                updatedAtMs = now
             )
+    }
+
+    @Query("""
+        UPDATE set_completions
+        SET synced = 0, dirty = 1, deleted = 1, updated_at_ms = :updatedAtMs
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
+    """)
+    suspend fun markDeleted(userId: String, exerciseId: String, programDayId: String, setIndex: Int, date: String, updatedAtMs: Long): Int
+
+    @Transaction
+    suspend fun delete(userId: String, exerciseId: String, programDayId: String, setIndex: Int, date: String) {
+        markDeleted(userId, exerciseId, programDayId, setIndex, date, System.currentTimeMillis())
+    }
+
+    @Query("""
+        UPDATE set_completions
+        SET synced = 0, dirty = 1, deleted = 1, updated_at_ms = :updatedAtMs
+        WHERE user_id = :userId AND exercise_id = :exerciseId
+          AND program_day_id = :programDayId AND date = :date
+    """)
+    suspend fun markAllForExerciseDeleted(userId: String, exerciseId: String, programDayId: String, date: String, updatedAtMs: Long)
+
+    @Transaction
+    suspend fun deleteAllForExercise(userId: String, exerciseId: String, programDayId: String, date: String) {
+        markAllForExerciseDeleted(userId, exerciseId, programDayId, date, System.currentTimeMillis())
+    }
+
+    @Query("""
+        UPDATE set_completions
+        SET synced = 0, dirty = 1, deleted = 1, updated_at_ms = :updatedAtMs
+        WHERE user_id = :userId AND program_day_id = :programDayId AND date = :date
+    """)
+    suspend fun markAllForDayDeleted(userId: String, programDayId: String, date: String, updatedAtMs: Long)
+
+    @Transaction
+    suspend fun deleteAllForDay(userId: String, programDayId: String, date: String) {
+        markAllForDayDeleted(userId, programDayId, date, System.currentTimeMillis())
     }
 
     @Query("""
@@ -165,25 +249,13 @@ interface SetCompletionDao {
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND program_day_id = :programDayId AND set_index = :setIndex AND date = :date
     """)
-    suspend fun delete(userId: String, exerciseId: String, programDayId: String, setIndex: Int, date: String)
-
-    @Query("""
-        DELETE FROM set_completions
-        WHERE user_id = :userId AND exercise_id = :exerciseId
-          AND program_day_id = :programDayId AND date = :date
-    """)
-    suspend fun deleteAllForExercise(userId: String, exerciseId: String, programDayId: String, date: String)
-
-    @Query("""
-        DELETE FROM set_completions
-        WHERE user_id = :userId AND program_day_id = :programDayId AND date = :date
-    """)
-    suspend fun deleteAllForDay(userId: String, programDayId: String, date: String)
+    suspend fun hardDelete(userId: String, exerciseId: String, programDayId: String, setIndex: Int, date: String)
 
     /** Belirli bir güne ait set kayıtlarını çeker (draft + completed). */
     @Query("""
         SELECT * FROM set_completions
         WHERE user_id = :userId AND exercise_id = :exerciseId AND date = :date
+          AND deleted = 0
         ORDER BY set_index ASC
     """)
     suspend fun getForDate(userId: String, exerciseId: String, date: String): List<SetCompletionEntity>
@@ -192,6 +264,7 @@ interface SetCompletionDao {
     @Query("""
         SELECT * FROM set_completions
         WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date = :date
+          AND deleted = 0
         ORDER BY exercise_id ASC, set_index ASC
     """)
     suspend fun getForDate(userId: String, exerciseIds: List<String>, date: String): List<SetCompletionEntity>
@@ -202,8 +275,9 @@ interface SetCompletionDao {
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND date = (
               SELECT MAX(date) FROM set_completions
-              WHERE user_id = :userId AND exercise_id = :exerciseId AND date < :today
+              WHERE user_id = :userId AND exercise_id = :exerciseId AND date < :today AND deleted = 0
           )
+          AND deleted = 0
         ORDER BY set_index ASC
     """)
     suspend fun getLastSessionSets(userId: String, exerciseId: String, today: String): List<SetCompletionEntity>
@@ -214,12 +288,12 @@ interface SetCompletionDao {
         INNER JOIN (
             SELECT exercise_id, MAX(date) AS last_date
             FROM set_completions
-            WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date < :today
+            WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date < :today AND deleted = 0
             GROUP BY exercise_id
         ) latest
           ON latest.exercise_id = sc.exercise_id
          AND latest.last_date = sc.date
-        WHERE sc.user_id = :userId AND sc.exercise_id IN (:exerciseIds)
+        WHERE sc.user_id = :userId AND sc.exercise_id IN (:exerciseIds) AND sc.deleted = 0
         ORDER BY sc.exercise_id ASC, sc.set_index ASC
     """)
     suspend fun getLastSessionSets(userId: String, exerciseIds: List<String>, today: String): List<SetCompletionEntity>
@@ -229,6 +303,7 @@ interface SetCompletionDao {
         SELECT * FROM set_completions
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND date >= :since
+          AND deleted = 0
           AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)
         ORDER BY date ASC, set_index ASC
     """)
@@ -255,18 +330,23 @@ interface SetCompletionDao {
                COALESCE(SUM(sc.elevation_meters), 0)                    AS total_elevation_meters,
                (SELECT MAX(date) FROM set_completions
                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                    AND deleted = 0
                     AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)) AS last_date,
                COALESCE((SELECT MAX(weight_kg) FROM set_completions
                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                  AND deleted = 0
                   AND date = (SELECT MAX(date) FROM set_completions
                                   WHERE user_id = :userId AND exercise_id = sc.exercise_id
+                                    AND deleted = 0
                                     AND weight_kg IS NOT NULL)), 0)     AS last_weight
         FROM set_completions sc
         INNER JOIN exercises e ON e.id = sc.exercise_id
         WHERE sc.user_id = :userId
+          AND sc.deleted = 0
           AND (sc.weight_kg IS NOT NULL OR sc.duration_seconds IS NOT NULL OR sc.distance_meters IS NOT NULL)
         GROUP BY sc.exercise_id
         ORDER BY last_date DESC, max_weight DESC
     """)
     suspend fun getTrackedExerciseSummaries(userId: String): List<ExerciseProgressSummary>
+
 }

@@ -61,7 +61,7 @@ data class ProgramUiState(
     val requestLoading: Boolean         = false,
     // Plan & credits (reactive)
     val userPlan     : UserPlan         = UserPlan.FREE,
-    val aiCredits    : Int              = UserPlanRepository.FREE_STARTER_CREDITS
+    val aiCredits    : Int              = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 sealed class ProgramEvent {
@@ -242,14 +242,29 @@ class ProgramViewModel @Inject constructor(
         }
         viewModelScope.launch {
             updateState { it.copy(requestLoading = true) }
-            programRepository.requestExercise(uid, name, targetMuscle, notes)
-                .onSuccess {
-                    updateState { it.copy(requestLoading = false) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Talebiniz alındı, en kısa sürede eklenecek!"))
+            programRepository.addExercise(
+                name = name.trim(),
+                nameEn = name.trim(),
+                targetMuscle = targetMuscle.trim().ifEmpty { "Genel" },
+                category = "Özel",
+                setsDefault = 3,
+                repsDefault = 10
+            )
+                .onSuccess { exercise ->
+                    updateState { state ->
+                        state.copy(
+                            requestLoading = false,
+                            exercises = (state.exercises + exercise)
+                                .distinctBy { it.id }
+                                .sortedWith(compareBy<ExerciseItem> { it.category }.thenBy { it.name })
+                        )
+                    }
+                    sendEvent(ProgramEvent.ShowSnackbar("Hareket özel listene eklendi."))
                 }
                 .onFailure {
                     updateState { it.copy(requestLoading = false) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Talep gönderilemedi, tekrar deneyin."))
+                    programRepository.requestExercise(uid, name, targetMuscle, notes)
+                    sendEvent(ProgramEvent.ShowSnackbar("Hareket eklenemedi; talep olarak kaydedildi."))
                 }
         }
     }
@@ -389,6 +404,7 @@ FORMAT:
             }
 
             // 4. Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
+            val addedExercises = linkedSetOf<String>()
             val skippedExercises = linkedSetOf<String>()
             val currentMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
@@ -413,6 +429,15 @@ FORMAT:
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
                         val exercise = findExerciseByName(exName, currentMap, currentMapEn)
+                            ?: programRepository.addExercise(exName, exName, targetMuscle, category, sets, reps)
+                                .getOrNull()
+                                ?.also {
+                                    currentMap[ExerciseNameRules.normalizedKey(it.name)] = it
+                                    if (it.nameEn.isNotBlank()) {
+                                        currentMapEn[ExerciseNameRules.normalizedKey(it.nameEn)] = it
+                                    }
+                                    addedExercises += it.name
+                                }
                         if (exercise == null) {
                             skippedExercises += exName
                         }
@@ -434,11 +459,15 @@ FORMAT:
                         val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(aiLoading = false, userPrograms = updated)
                     }
+                    val addedMessage = addedExercises.takeIf { it.isNotEmpty() }
+                        ?.joinToString(limit = 3, truncated = "...")
+                        ?.let { " Yeni hareketler özel listene eklendi: $it" }
+                        .orEmpty()
                     val skippedMessage = skippedExercises.takeIf { it.isNotEmpty() }
                         ?.joinToString(limit = 3, truncated = "...")
                         ?.let { " Listede olmayan hareketler eklenmedi: $it" }
                         .orEmpty()
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!$skippedMessage"))
+                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!$addedMessage$skippedMessage"))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
@@ -555,6 +584,7 @@ FORMAT:
             }
 
             // Egzersiz eşleştirme — exact + Levenshtein, yeni eklenenler de aranabilir
+            val addedEditExercises = linkedSetOf<String>()
             val skippedEditExercises = linkedSetOf<String>()
             val editMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val editMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
@@ -579,6 +609,15 @@ FORMAT:
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
                         val exercise = findExerciseByName(exName, editMap, editMapEn)
+                            ?: programRepository.addExercise(exName, exName, targetMuscle, category, sets, reps)
+                                .getOrNull()
+                                ?.also {
+                                    editMap[ExerciseNameRules.normalizedKey(it.name)] = it
+                                    if (it.nameEn.isNotBlank()) {
+                                        editMapEn[ExerciseNameRules.normalizedKey(it.nameEn)] = it
+                                    }
+                                    addedEditExercises += it.name
+                                }
                         if (exercise == null) {
                             skippedEditExercises += exName
                         }
@@ -599,6 +638,9 @@ FORMAT:
             }
 
             updateState { it.copy(aiEditLoading = false, aiEditResult = Pair(newName, editedDays)) }
+            addedEditExercises.takeIf { it.isNotEmpty() }
+                ?.joinToString(limit = 3, truncated = "...")
+                ?.let { sendEvent(ProgramEvent.ShowSnackbar("Yeni hareketler özel listene eklendi: $it")) }
             skippedEditExercises.takeIf { it.isNotEmpty() }
                 ?.joinToString(limit = 3, truncated = "...")
                 ?.let { sendEvent(ProgramEvent.ShowSnackbar("Listede olmayan hareketler eklenmedi: $it")) }

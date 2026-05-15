@@ -1,6 +1,7 @@
 package com.avonix.profitness.domain.social
 
 import com.avonix.profitness.data.social.dto.FriendAchievementRowDto
+import com.avonix.profitness.data.social.dto.FriendStreakRowDto
 import com.avonix.profitness.data.social.dto.FriendXpRowDto
 import com.avonix.profitness.data.social.dto.PublicProfileDto
 import com.avonix.profitness.data.social.dto.UserSearchRowDto
@@ -65,6 +66,17 @@ data class FriendAchievementRow(
     val isMe             : Boolean
 )
 
+/** Arkadaş leaderboard — aktif günlük seri */
+data class FriendStreakRow(
+    val userId        : String,
+    val username      : String?,
+    val displayName   : String,
+    val avatarUrl     : String?,
+    val currentStreak : Int,
+    val rankPosition  : Int,
+    val isMe          : Boolean
+)
+
 internal fun UserSearchRowDto.toDomain() = UserSummary(
     userId      = user_id,
     username    = username,
@@ -111,6 +123,16 @@ internal fun FriendAchievementRowDto.toDomain() = FriendAchievementRow(
     achievementCount = achievement_count,
     rankPosition     = rank_position,
     isMe             = is_me
+)
+
+internal fun FriendStreakRowDto.toDomain() = FriendStreakRow(
+    userId        = user_id,
+    username      = username,
+    displayName   = display_name ?: username ?: "Anonim",
+    avatarUrl     = cleanAvatarUrl(avatar_url),
+    currentStreak = current_streak,
+    rankPosition  = rank_position,
+    isMe          = is_me
 )
 
 /** list_my_follows RPC'si bu enum'u kullanır. */

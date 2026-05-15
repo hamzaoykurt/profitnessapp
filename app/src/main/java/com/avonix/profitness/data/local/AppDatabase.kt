@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 10,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -220,6 +220,100 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE set_completions ADD COLUMN elevation_meters REAL DEFAULT NULL")
                 database.execSQL("ALTER TABLE set_completions ADD COLUMN incline_percent REAL DEFAULT NULL")
             }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN synced INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN updated_at_ms INTEGER NOT NULL DEFAULT 0")
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_set_completions_user_id_dirty_updated_at_ms " +
+                    "ON set_completions (user_id, dirty, updated_at_ms)"
+                )
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.normalizeExercisesCreatedBySchema()
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.normalizeExercisesCreatedBySchema()
+            }
+        }
+
+        private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Boolean =
+            query("PRAGMA table_info($table)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == column) return true
+                }
+                false
+            }
+
+        private fun SupportSQLiteDatabase.normalizeExercisesCreatedBySchema() {
+            val createdBySelect = if (hasColumn("exercises", "created_by")) {
+                "created_by"
+            } else {
+                "NULL"
+            }
+
+            execSQL("DROP INDEX IF EXISTS index_exercises_created_by")
+            execSQL("DROP TABLE IF EXISTS exercises_new")
+            execSQL("""
+                CREATE TABLE exercises_new (
+                    id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    name_en TEXT NOT NULL,
+                    target_muscle TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    sets_default INTEGER NOT NULL,
+                    reps_default INTEGER NOT NULL,
+                    description TEXT NOT NULL,
+                    image_url TEXT NOT NULL,
+                    sport_type TEXT NOT NULL,
+                    tracking_mode TEXT NOT NULL,
+                    created_by TEXT,
+                    PRIMARY KEY(id)
+                )
+            """)
+            execSQL("""
+                INSERT INTO exercises_new (
+                    id,
+                    name,
+                    name_en,
+                    target_muscle,
+                    category,
+                    sets_default,
+                    reps_default,
+                    description,
+                    image_url,
+                    sport_type,
+                    tracking_mode,
+                    created_by
+                )
+                SELECT
+                    id,
+                    name,
+                    name_en,
+                    target_muscle,
+                    category,
+                    sets_default,
+                    reps_default,
+                    description,
+                    image_url,
+                    sport_type,
+                    tracking_mode,
+                    $createdBySelect
+                FROM exercises
+            """)
+            execSQL("DROP TABLE exercises")
+            execSQL("ALTER TABLE exercises_new RENAME TO exercises")
         }
     }
 }

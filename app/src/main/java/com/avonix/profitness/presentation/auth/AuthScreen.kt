@@ -75,8 +75,15 @@ fun AuthScreen(
         }
     }
 
-    // Session diskten yüklenirken splash göster
-    if (state.isSessionLoading) {
+    LaunchedEffect(state.isSessionLoading, state.restoredSessionAuthenticated) {
+        if (!state.isSessionLoading && state.restoredSessionAuthenticated) {
+            onNavigateToDashboard()
+        }
+    }
+
+    // Session diskten yüklenirken veya restore edilmiş session dashboard'a yönlenirken
+    // auth içeriğini hiç çizme; aksi halde login ekranı tek frame bile olsa görünür.
+    if (state.isSessionLoading || state.restoredSessionAuthenticated) {
         AuthLoadingSplash()
         return
     }

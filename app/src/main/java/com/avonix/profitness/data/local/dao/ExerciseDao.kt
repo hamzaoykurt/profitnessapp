@@ -12,8 +12,22 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises ORDER BY category, name")
     fun observeAll(): Flow<List<ExerciseEntity>>
 
+    @Query("""
+        SELECT * FROM exercises
+        WHERE created_by IS NULL OR created_by = :userId
+        ORDER BY category, name
+    """)
+    fun observeVisible(userId: String?): Flow<List<ExerciseEntity>>
+
     @Query("SELECT * FROM exercises ORDER BY category, name")
     suspend fun getAll(): List<ExerciseEntity>
+
+    @Query("""
+        SELECT * FROM exercises
+        WHERE created_by IS NULL OR created_by = :userId
+        ORDER BY category, name
+    """)
+    suspend fun getVisible(userId: String?): List<ExerciseEntity>
 
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun getById(id: String): ExerciseEntity?

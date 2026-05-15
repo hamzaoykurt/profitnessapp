@@ -106,7 +106,7 @@ fun DiscoverScreen(
     var currentToast by remember { mutableStateOf<AppToastData?>(null) }
 
     LaunchedEffect(Unit) {
-        delay(300)
+        delay(120)
         viewModel.initLoad()
     }
 

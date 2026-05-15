@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     const supabase = adminClient();
     const { data: order, error: orderError } = await supabase
       .from("billing_orders")
-      .select("id,user_id,status")
+      .select("id,user_id,status,sku,amount_label")
       .eq("id", orderId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -44,10 +44,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(409, { code: "order_not_pending", message: "Bu sipariş tamamlanamaz." });
     }
 
-    const { data, error } = await supabase.rpc("apply_paid_billing_order", {
+    const { data, error } = await supabase.rpc("apply_paid_billing_order_verified", {
       p_order_id: orderId,
       p_provider: "sandbox",
       p_provider_session_id: `sandbox_${crypto.randomUUID()}`,
+      p_sku: order.sku,
+      p_amount_label: order.amount_label,
     });
 
     if (error || data?.ok !== true) {

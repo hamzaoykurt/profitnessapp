@@ -4,7 +4,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,6 +83,9 @@ sealed class DashboardTab(val route: String, val icon: ImageVector, val label: S
     object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
 }
 
+private val NavIndicatorEaseOut = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+private val NavIndicatorEaseInOut = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)
+
 private val ALL_TABS = persistentListOf(
     DashboardTab.Workout, DashboardTab.Program, DashboardTab.AICoach,
     DashboardTab.Discover, DashboardTab.Profile
@@ -93,7 +95,7 @@ private data class NavItemLayout(val x: Float, val width: Float) {
     val center: Float get() = x + width / 2f
 }
 
-private const val FIRST_TAB_CONTENT_DELAY_MS = 140L
+private const val FIRST_TAB_CONTENT_DELAY_MS = 16L
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
@@ -146,13 +148,13 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        delay(650)
+        delay(120)
         warmupStage = 1
-        delay(650)
+        delay(180)
         warmupStage = 2
-        delay(900)
+        delay(220)
         warmupStage = 3
-        delay(1_000)
+        delay(260)
         warmupStage = 4
     }
     DashboardViewModelWarmup(stage = warmupStage)
@@ -222,19 +224,19 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             transitionSpec = {
                 val isFirstCompositionForTarget = targetState !in composedTabs
                 if (isFirstCompositionForTarget) {
-                    fadeIn(tween(90)) togetherWith fadeOut(tween(60))
+                    fadeIn(tween(60)) togetherWith fadeOut(tween(45))
                 } else {
                     val fromIdx = ALL_TABS.indexOf(initialState)
                     val toIdx   = ALL_TABS.indexOf(targetState)
                     // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
                     // on the full composable tree which is the #1 cause of jank during transitions.
-                    // Short durations (240/160ms) keep double-render window minimal.
+                    // Short durations keep the double-render window minimal.
                     val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
                     val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                    val enterSlide = tween<IntOffset>(240, easing = easeOut)
-                    val enterFade  = tween<Float>(200, easing = easeOut)
-                    val exitSlide  = tween<IntOffset>(160, easing = easeIn)
-                    val exitFade   = tween<Float>(120)
+                    val enterSlide = tween<IntOffset>(180, easing = easeOut)
+                    val enterFade  = tween<Float>(150, easing = easeOut)
+                    val exitSlide  = tween<IntOffset>(120, easing = easeIn)
+                    val exitFade   = tween<Float>(90)
                     if (toIdx > fromIdx) {
                         (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
                         (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
@@ -447,6 +449,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 }
 
 @Composable
+private fun TabWarmupSurface() {
+    Box(modifier = Modifier.fillMaxSize())
+}
+
+@Composable
 private fun DashboardViewModelWarmup(stage: Int) {
     if (stage >= 1) {
         hiltViewModel<ProgramViewModel>()
@@ -461,11 +468,6 @@ private fun DashboardViewModelWarmup(stage: Int) {
     if (stage >= 4) {
         hiltViewModel<ProfileViewModel>()
     }
-}
-
-@Composable
-private fun TabWarmupSurface() {
-    Box(modifier = Modifier.fillMaxSize())
 }
 
 // ── Global Rest Timer Banner ───────────────────────────────────────────────────
@@ -649,9 +651,12 @@ fun AppNavBar(
     fun nearestTabAt(x: Float): DashboardTab? =
         itemLayouts.entries.minByOrNull { (_, layout) -> abs(layout.center - x) }?.key
 
+    val indicatorEaseOut = NavIndicatorEaseOut
+    val indicatorEaseInOut = NavIndicatorEaseInOut
     val visualTab = dragX?.let { nearestTabAt(it) } ?: selectedTab
     val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selectedTab]
     val targetWidth = visualLayout?.width ?: 0f
+    val collapsedIndicatorWidth = with(density) { (if (responsive.isSmallPhone) 52.dp else 56.dp).toPx() }
     val targetCenter = when {
         isDragging && dragX != null && targetWidth > 0f ->
             dragX!!.coerceIn(targetWidth / 2f, (navWidthPx - targetWidth / 2f).coerceAtLeast(targetWidth / 2f))
@@ -663,11 +668,23 @@ fun AppNavBar(
         animationSpec = if (isDragging) snap() else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
         label = "nav_drag_center"
     )
-    val indicatorWidth by animateFloatAsState(
-        targetValue = targetWidth,
-        animationSpec = if (isDragging) tween(80, easing = FastOutSlowInEasing) else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-        label = "nav_drag_width"
-    )
+    val indicatorWidthAnim = remember { Animatable(0f) }
+    LaunchedEffect(selectedTab, targetWidth, isDragging) {
+        if (targetWidth <= 0f) return@LaunchedEffect
+        if (isDragging || indicatorWidthAnim.value == 0f) {
+            indicatorWidthAnim.snapTo(targetWidth)
+            return@LaunchedEffect
+        }
+        indicatorWidthAnim.animateTo(
+            targetValue = collapsedIndicatorWidth.coerceAtMost(targetWidth),
+            animationSpec = tween(110, easing = indicatorEaseInOut)
+        )
+        indicatorWidthAnim.animateTo(
+            targetValue = targetWidth,
+            animationSpec = tween(220, easing = indicatorEaseOut)
+        )
+    }
+    val indicatorWidth = indicatorWidthAnim.value
 
 
     Box(
@@ -806,29 +823,23 @@ private fun NavCapsuleItem(
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed         by interactionSource.collectIsPressedAsState()
 
-    // Pill width: selected shows label, unselected icon-only
-    val scale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.88f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "item_scale"
-    )
     val selectedGlow by animateFloatAsState(
         targetValue   = if (isSelected && showSelectedChrome) 1f else 0f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label         = "item_glow"
     )
-    val iconScale by animateFloatAsState(
-        targetValue   = if (isSelected) 1.08f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label         = "item_icon_scale"
-    )
     val itemShape = RoundedCornerShape(32.dp)
 
     Row(
         modifier = modifier
-            .scale(scale)
+            .width(
+                when {
+                    showLabel && isSelected -> 124.dp
+                    showLabel -> 56.dp
+                    else -> 52.dp
+                }
+            )
             .drawBehind {
                 if (selectedGlow > 0f) {
                     drawRoundRect(
@@ -864,36 +875,43 @@ private fun NavCapsuleItem(
             }
             .padding(
                 horizontal = when {
-                    showLabel && isSelected -> 20.dp
-                    showLabel -> 16.dp
+                    showLabel && isSelected -> 14.dp
+                    showLabel -> 0.dp
                     else -> 13.dp
                 },
                 vertical = 14.dp
             ),
         verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = if (isSelected && showLabel) {
+            Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        } else {
+            Arrangement.Center
+        }
     ) {
         Icon(
             imageVector        = tab.icon,
             contentDescription = tab.label,
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
-            modifier           = Modifier.size(24.dp).scale(iconScale)
+            modifier           = Modifier.size(24.dp)
         )
         AnimatedVisibility(
             visible = isSelected && showLabel,
             enter   = expandHorizontally(
-                spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
-            ) + fadeIn(tween(150, 60)),
+                animationSpec = tween(190, easing = NavIndicatorEaseOut),
+                expandFrom = Alignment.Start
+            ) + fadeIn(tween(150, delayMillis = 35)),
             exit    = shrinkHorizontally(
-                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
-            ) + fadeOut(tween(80))
+                animationSpec = tween(120, easing = NavIndicatorEaseInOut),
+                shrinkTowards = Alignment.Start
+            ) + fadeOut(tween(90))
         ) {
             Text(
                 text          = tab.label,
                 color         = accent,
                 fontSize      = 12.sp,
                 fontWeight    = FontWeight.Bold,
-                letterSpacing = 0.6.sp
+                letterSpacing = 0.6.sp,
+                maxLines      = 1
             )
         }
     }

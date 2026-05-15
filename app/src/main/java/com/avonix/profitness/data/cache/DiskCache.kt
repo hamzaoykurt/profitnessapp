@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -83,17 +84,36 @@ class DiskCache @Inject constructor(
         }
     }
 
+    suspend inline fun <reified T> getOnIo(key: String): T? =
+        withContext(Dispatchers.IO) { get<T>(key) }
+
     inline fun <reified T> put(key: String, value: T) {
         try {
             File(readyDir() ?: return, "$key.json").writeText(json.encodeToString(value))
         } catch (_: Exception) { /* sessizce yoksay — cache opsiyonel */ }
     }
 
+    suspend inline fun <reified T> putOnIo(key: String, value: T) {
+        withContext(Dispatchers.IO) { put(key, value) }
+    }
+
     fun remove(key: String) {
         File(readyDir() ?: return, "$key.json").delete()
     }
 
+    suspend fun removeOnIo(key: String) {
+        withContext(Dispatchers.IO) { remove(key) }
+    }
+
     fun removeByPrefix(prefix: String) {
         readyDir()?.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }
+    }
+
+    suspend fun removeByPrefixOnIo(prefix: String) {
+        withContext(Dispatchers.IO) { removeByPrefix(prefix) }
+    }
+
+    fun removeByPrefixAsync(prefix: String) {
+        ioScope.launch { removeByPrefix(prefix) }
     }
 }

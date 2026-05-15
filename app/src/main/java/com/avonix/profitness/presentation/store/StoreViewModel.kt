@@ -19,7 +19,7 @@ import javax.inject.Inject
 @Stable
 data class StoreState(
     val plan       : UserPlan = UserPlan.FREE,
-    val credits    : Int      = UserPlanRepository.FREE_STARTER_CREDITS,
+    val credits    : Int      = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
     val status     : String   = "free",
     val products   : ImmutableList<BillingProduct> = persistentListOf(),
     val recentUsage: ImmutableList<BillingUsage> = persistentListOf(),

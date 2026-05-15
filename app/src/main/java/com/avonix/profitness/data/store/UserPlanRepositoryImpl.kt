@@ -18,9 +18,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -47,6 +51,13 @@ class UserPlanRepositoryImpl @Inject constructor(
     }
 
     private val statusState = MutableStateFlow(BillingSnapshot())
+    private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        refreshScope.launch {
+            runCatching { refresh() }
+        }
+    }
 
     override val billingSnapshotFlow: Flow<BillingSnapshot> = statusState
 
@@ -127,7 +138,14 @@ class UserPlanRepositoryImpl @Inject constructor(
         functionName: String,
         body: Req
     ): Res {
-        val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+        supabase.auth.awaitInitialization()
+        var session = supabase.auth.currentSessionOrNull()
+        if (session == null) {
+            runCatching { supabase.auth.loadFromStorage() }
+            session = supabase.auth.currentSessionOrNull()
+        }
+
+        val accessToken = session?.accessToken
             ?: error("Satın alma ve AI limitleri için giriş yapmanız gerekiyor.")
 
         val response = httpClient.post(edgeUrl(functionName)) {

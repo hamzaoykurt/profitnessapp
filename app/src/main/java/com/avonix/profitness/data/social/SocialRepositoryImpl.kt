@@ -2,6 +2,7 @@ package com.avonix.profitness.data.social
 
 import com.avonix.profitness.data.social.dto.FollowListRowDto
 import com.avonix.profitness.data.social.dto.FriendAchievementRowDto
+import com.avonix.profitness.data.social.dto.FriendStreakRowDto
 import com.avonix.profitness.data.social.dto.FriendXpRowDto
 import com.avonix.profitness.data.social.dto.PublicProfileDto
 import com.avonix.profitness.data.social.dto.UserSearchRowDto
@@ -13,6 +14,7 @@ import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.domain.discover.toDomain
 import com.avonix.profitness.domain.social.FollowListKind
 import com.avonix.profitness.domain.social.FriendAchievementRow
+import com.avonix.profitness.domain.social.FriendStreakRow
 import com.avonix.profitness.domain.social.FriendXpRow
 import com.avonix.profitness.domain.social.PublicProfile
 import com.avonix.profitness.domain.social.UserSummary
@@ -128,6 +130,16 @@ class SocialRepositoryImpl @Inject constructor(
                     "get_friend_leaderboard_achievements",
                     buildJsonObject { put("p_limit", limit) }
                 ).decodeList<FriendAchievementRowDto>().map { it.toDomain() }
+            }
+        }
+
+    override suspend fun getFriendLeaderboardStreak(limit: Int): Result<List<FriendStreakRow>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "get_friend_leaderboard_streak",
+                    buildJsonObject { put("p_limit", limit) }
+                ).decodeList<FriendStreakRowDto>().map { it.toDomain() }
             }
         }
 

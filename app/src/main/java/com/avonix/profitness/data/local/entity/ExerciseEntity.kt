@@ -16,5 +16,6 @@ data class ExerciseEntity(
     val description: String = "",
     @ColumnInfo(name = "image_url") val imageUrl: String = "",
     @ColumnInfo(name = "sport_type") val sportType: String = "",
-    @ColumnInfo(name = "tracking_mode") val trackingMode: String = ""
+    @ColumnInfo(name = "tracking_mode") val trackingMode: String = "",
+    @ColumnInfo(name = "created_by") val createdBy: String? = null
 )

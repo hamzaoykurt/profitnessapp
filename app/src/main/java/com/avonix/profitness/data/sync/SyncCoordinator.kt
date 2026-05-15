@@ -45,10 +45,15 @@ class SyncCoordinator @Inject constructor(
     ) {
         syncManager.pullExercises().getOrThrow()
         syncManager.pullPrograms(userId).getOrThrow()
-        syncManager.pushSetCompletions(userId)
-        syncManager.pullSetCompletions(userId)
+        syncManager.pushUnsyncedWorkouts().getOrThrow()
+        syncManager.pushSetCompletions(userId).getOrThrow()
+        syncManager.pullSetCompletions(userId).getOrThrow()
         syncManager.pullWorkoutLogs(userId).getOrThrow()
-        syncManager.pullWorkoutLogDates(userId).getOrThrow()
+        if (force) {
+            syncManager.pullWorkoutLogDates(userId).getOrThrow()
+        } else {
+            syncManager.pullWorkoutLogDatesIfLocalEmpty(userId).getOrThrow()
+        }
     }
 
     suspend fun refreshPrograms(

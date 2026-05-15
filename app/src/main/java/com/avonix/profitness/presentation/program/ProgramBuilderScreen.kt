@@ -466,7 +466,7 @@ fun ProgramBuilderScreen(
 
     // Tab geçişinde stale ise yenile (3 dk cache)
     LaunchedEffect(Unit) {
-        delay(350)
+        delay(120)
         viewModel.reloadIfStale()
     }
 
@@ -484,7 +484,11 @@ fun ProgramBuilderScreen(
         ArchitectGrid()
         PageAccentBloom()
 
-        Crossfade(targetState = mode, label = "builder_fade") { m ->
+        Crossfade(
+            targetState = mode,
+            animationSpec = tween(140, easing = FastOutSlowInEasing),
+            label = "builder_fade"
+        ) { m ->
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },

@@ -167,6 +167,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(503, { code: "entitlement_unavailable", message: "AI kullanım hakkı doğrulanamadı." });
     }
     if (reservation?.allowed !== true) {
+      if (typeof reservation?.reason === "string" && reservation.reason.startsWith("idempotency_")) {
+        return jsonResponse(409, {
+          code: reservation.reason,
+          message: reservation.message ?? "Bu idempotency anahtarı için istek zaten işlendi veya işleniyor.",
+        });
+      }
       return jsonResponse(402, {
         code: reservation?.reason ?? "insufficient_entitlement",
         message: reservation?.message ?? "Bu işlem için kredi veya abonelik gerekiyor.",

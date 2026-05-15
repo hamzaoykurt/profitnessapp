@@ -1,5 +1,6 @@
 package com.avonix.profitness.data.auth
 
+import com.avonix.profitness.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
@@ -80,21 +81,32 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun awaitSessionLoaded(): Boolean {
-        return withTimeoutOrNull(3_000) {
-            supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
-        } != null && isLoggedIn()
+        return withContext(Dispatchers.IO) {
+            supabase.auth.awaitInitialization()
+
+            withTimeoutOrNull(3_000) {
+                supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+            }
+
+            var session = supabase.auth.currentSessionOrNull()
+            if (session == null) {
+                runCatching { supabase.auth.loadFromStorage() }
+                session = supabase.auth.currentSessionOrNull()
+            }
+
+            val user = supabase.auth.currentUserOrNull() ?: session?.user
+            session != null && user?.emailConfirmedAt != null
+        }
     }
 
     override suspend fun sendPasswordReset(email: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // redirectUrl: Supabase token'ı doğruladıktan sonra uygulamayı açar.
-                // AndroidManifest'teki intent-filter ile eşleşmeli.
                 // Supabase Dashboard → Auth → URL Configuration → Redirect URLs listesine
-                // "profitness://reset-password" eklenmiş olmalı.
+                // BuildConfig.RESET_PASSWORD_REDIRECT_URL eklenmiş olmalı.
                 supabase.auth.resetPasswordForEmail(
                     email       = email,
-                    redirectUrl = "profitness://reset-password"
+                    redirectUrl = BuildConfig.RESET_PASSWORD_REDIRECT_URL
                 )
             }
         }

@@ -69,3 +69,15 @@ data class FriendAchievementRowDto(
     val rank_position     : Int = 0,
     val is_me             : Boolean = false
 )
+
+/** RPC: public.get_friend_leaderboard_streak(p_limit) */
+@Serializable
+data class FriendStreakRowDto(
+    val user_id        : String,
+    val username       : String? = null,
+    val display_name   : String? = null,
+    val avatar_url     : String? = null,
+    val current_streak : Int = 0,
+    val rank_position  : Int = 0,
+    val is_me          : Boolean = false
+)

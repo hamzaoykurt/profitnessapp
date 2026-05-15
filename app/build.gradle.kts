@@ -21,7 +21,7 @@ fun secret(name: String, defaultValue: String = ""): String =
         ?: System.getenv(name)
         ?: defaultValue
 
-// Keystore: CI'da KEYSTORE_BASE64'ten decode et, lokalde varsayılan debug keystore'u kullan
+// Debug keystore: local development only.
 val ksBase64: String = secret("KEYSTORE_BASE64")
 val ksPassword: String = secret("KEYSTORE_PASSWORD", "android")
 val ksAlias: String = secret("KEY_ALIAS", "androiddebugkey")
@@ -36,6 +36,22 @@ val resolvedKeystore: File = if (ksBase64.isNotEmpty()) {
 } else {
     File(System.getProperty("user.home"), ".android/debug.keystore")
 }
+
+val releaseKsBase64: String = secret("RELEASE_KEYSTORE_BASE64")
+val releaseKsPassword: String = secret("RELEASE_KEYSTORE_PASSWORD")
+val releaseKsAlias: String = secret("RELEASE_KEY_ALIAS")
+val releaseKsKeyPassword: String = secret("RELEASE_KEY_PASSWORD")
+val releaseKeystore: File? = releaseKsBase64.takeIf { it.isNotBlank() }?.let { encoded ->
+    val bytes = Base64.getDecoder().decode(encoded.trim())
+    val f = rootProject.file("build/release_signing.keystore")
+    f.parentFile?.mkdirs()
+    f.writeBytes(bytes)
+    f
+}
+val hasReleaseSigning = releaseKeystore != null &&
+    releaseKsPassword.isNotBlank() &&
+    releaseKsAlias.isNotBlank() &&
+    releaseKsKeyPassword.isNotBlank()
 
 android {
     namespace = "com.avonix.profitness"
@@ -53,6 +69,9 @@ android {
         buildConfigField("String", "SUPABASE_URL",      "\"${secret("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAPS_API_KEY",      "\"${secret("MAPS_API_KEY")}\"")
+        buildConfigField("String", "RESET_PASSWORD_LINK_HOST", "\"${secret("RESET_PASSWORD_LINK_HOST", "cosmibit.com")}\"")
+        buildConfigField("String", "RESET_PASSWORD_REDIRECT_URL", "\"${secret("RESET_PASSWORD_REDIRECT_URL", "profitness://reset-password")}\"")
+        manifestPlaceholders["resetPasswordLinkHost"] = secret("RESET_PASSWORD_LINK_HOST", "cosmibit.com")
     }
 
     signingConfigs {
@@ -62,6 +81,14 @@ android {
             keyAlias      = ksAlias
             keyPassword   = ksKeyPassword
         }
+        create("release") {
+            if (releaseKeystore != null) {
+                storeFile = releaseKeystore
+            }
+            storePassword = releaseKsPassword
+            keyAlias = releaseKsAlias
+            keyPassword = releaseKsKeyPassword
+        }
     }
 
     buildTypes {
@@ -69,7 +96,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            signingConfig = signingConfigs.getByName("debug") // debug key ile imzala (şimdilik)
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -105,6 +136,18 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseRequested = allTasks.any { task ->
+        task.path in setOf(":app:assembleRelease", ":app:bundleRelease") ||
+            task.name in setOf("assembleRelease", "bundleRelease")
+    }
+    if (releaseRequested && !hasReleaseSigning) {
+        throw GradleException(
+            "Release signing requires RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD."
+        )
     }
 }
 

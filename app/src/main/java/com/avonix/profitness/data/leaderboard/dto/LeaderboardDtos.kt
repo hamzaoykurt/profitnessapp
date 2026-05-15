@@ -28,6 +28,19 @@ data class LeaderboardAchievementRowDto(
     val rank_position    : Long = 0L
 )
 
+/**
+ * Supabase RPC: public.get_leaderboard_streak(p_limit)
+ * Döner: user_id, display_name, avatar_url, current_streak, rank_position
+ */
+@Serializable
+data class LeaderboardStreakRowDto(
+    val user_id       : String,
+    val display_name  : String = "Anonim",
+    val avatar_url    : String? = null,
+    val current_streak: Int = 0,
+    val rank_position : Long = 0L
+)
+
 /** Supabase RPC: public.get_my_rank_xp() */
 @Serializable
 data class MyXpRankDto(
@@ -42,4 +55,12 @@ data class MyAchievementRankDto(
     val achievement_count: Long = 0L,
     val rank_position    : Long = 0L,
     val total_users      : Long = 0L
+)
+
+/** Supabase RPC: public.get_my_rank_streak() */
+@Serializable
+data class MyStreakRankDto(
+    val current_streak: Int = 0,
+    val rank_position : Long = 0L,
+    val total_users   : Long = 0L
 )

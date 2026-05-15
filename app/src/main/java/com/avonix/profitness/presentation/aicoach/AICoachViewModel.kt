@@ -58,7 +58,7 @@ data class AICoachState(
     val sessionCreatedAt : Long              = System.currentTimeMillis(),
     val programStatus    : ProgramStatus     = ProgramStatus.Idle,
     val userPlan         : UserPlan          = UserPlan.FREE,
-    val aiCredits        : Int               = UserPlanRepository.FREE_STARTER_CREDITS
+    val aiCredits        : Int               = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -321,11 +321,11 @@ Program adı: "$programName"
 Program içeriği:
 $messageText
 
-Egzersiz adları için SADECE şu listeden seç (tam adı kullan):
+Egzersiz adları için önce şu listeden en uygun tam adı kullan; karşılığı yoksa yeni hareket adını aynen yaz:
 $exerciseList
 
 Çıktı olarak SADECE şu JSON formatını ver, başka hiçbir şey yazma:
-{"name":"$programName","days":[{"title":"Gün 1 - Alt Vücut","isRestDay":false,"exercises":[{"exerciseName":"Squat","sets":3,"reps":10,"restSeconds":60}]},{"title":"Gün 2","isRestDay":true,"exercises":[]}]}
+{"name":"$programName","days":[{"title":"Gün 1 - Alt Vücut","isRestDay":false,"exercises":[{"exerciseName":"Squat","sets":3,"reps":10,"restSeconds":60,"targetMuscle":"Bacak","category":"Serbest Ağırlık"}]},{"title":"Gün 2","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
             val result = geminiRepository.chat(
@@ -367,9 +367,10 @@ $exerciseList
             }
 
             // 5. Egzersiz adlarını DB ID'lerle eşleştir (fuzzy matching)
-            val exerciseMap   = exercises.associateBy { it.name.trim().lowercase() }
+            val exerciseMap   = exercises.associateBy { it.name.trim().lowercase() }.toMutableMap()
             val exerciseMapEn = exercises.filter { it.nameEn.isNotBlank() }
                 .associateBy { it.nameEn.trim().lowercase() }
+                .toMutableMap()
 
             fun findExercise(aiName: String): com.avonix.profitness.domain.model.ExerciseItem? {
                 val key = aiName.trim().lowercase()
@@ -415,8 +416,16 @@ $exerciseList
                         val sets = flexInt(exObj, "sets", 3)
                         val reps = flexInt(exObj, "reps", 10)
                         val rest = flexInt(exObj, "restSeconds", 90)
+                        val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
+                        val category = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
                         val found = findExercise(exName)
+                            ?: programRepository.addExercise(exName, exName, targetMuscle, category, sets, reps)
+                                .getOrNull()
+                                ?.also {
+                                    exerciseMap[it.name.trim().lowercase()] = it
+                                    if (it.nameEn.isNotBlank()) exerciseMapEn[it.nameEn.trim().lowercase()] = it
+                                }
                         if (found != null) {
                             matchedExercises++
                             ManualExerciseInput(

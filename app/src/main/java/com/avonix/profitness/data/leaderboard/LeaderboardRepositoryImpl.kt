@@ -1,8 +1,10 @@
 package com.avonix.profitness.data.leaderboard
 
 import com.avonix.profitness.data.leaderboard.dto.LeaderboardAchievementRowDto
+import com.avonix.profitness.data.leaderboard.dto.LeaderboardStreakRowDto
 import com.avonix.profitness.data.leaderboard.dto.LeaderboardXpRowDto
 import com.avonix.profitness.data.leaderboard.dto.MyAchievementRankDto
+import com.avonix.profitness.data.leaderboard.dto.MyStreakRankDto
 import com.avonix.profitness.data.leaderboard.dto.MyXpRankDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -37,6 +39,16 @@ class LeaderboardRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun getStreakLeaderboard(limit: Int): Result<List<LeaderboardStreakRowDto>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "get_leaderboard_streak",
+                    buildJsonObject { put("p_limit", limit) }
+                ).decodeList<LeaderboardStreakRowDto>()
+            }
+        }
+
     override suspend fun getMyXpRank(): Result<MyXpRankDto> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -52,6 +64,15 @@ class LeaderboardRepositoryImpl @Inject constructor(
                 supabase.postgrest.rpc("get_my_rank_achievements")
                     .decodeSingleOrNull<MyAchievementRankDto>()
                     ?: MyAchievementRankDto()
+            }
+        }
+
+    override suspend fun getMyStreakRank(): Result<MyStreakRankDto> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc("get_my_rank_streak")
+                    .decodeSingleOrNull<MyStreakRankDto>()
+                    ?: MyStreakRankDto()
             }
         }
 }

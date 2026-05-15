@@ -65,6 +65,9 @@ import kotlinx.coroutines.delay
 
 // ── Data models ─────────────────────────────────────────────────────────────
 
+private const val FIRST_REMOTE_SYNC_DELAY_MS = 1_500L
+private const val FIRST_DASHBOARD_EVENTS_DELAY_MS = 1_700L
+
 @Stable
 data class Exercise(
     val id: String,
@@ -221,7 +224,7 @@ fun WorkoutScreen(
         }
     }
     LaunchedEffect(Unit) {
-        delay(800)
+        delay(FIRST_REMOTE_SYNC_DELAY_MS)
         viewModel.triggerInitialSync()
     }
 
@@ -522,18 +525,21 @@ private data class ExerciseDraftInputs(
 private fun Map<String, DraftInput>.draftsForExercise(exerciseId: String, totalSets: Int): ExerciseDraftInputs {
     if (totalSets <= 0) return ExerciseDraftInputs()
 
-    var weights: Map<Int, String> = emptyMap()
-    var durations: Map<Int, String> = emptyMap()
+    val weights = mutableMapOf<Int, String>()
+    val durations = mutableMapOf<Int, String>()
     for (setIndex in 0 until totalSets) {
         val draft = this[draftInputKey(exerciseId, setIndex)] ?: continue
         if (draft.hasWeight) {
-            weights = weights + (setIndex to draft.weight)
+            weights[setIndex] = draft.weight
         }
         if (draft.hasDuration) {
-            durations = durations + (setIndex to draft.duration)
+            durations[setIndex] = draft.duration
         }
     }
-    return ExerciseDraftInputs(setWeights = weights, setDurations = durations)
+    return ExerciseDraftInputs(
+        setWeights = if (weights.isEmpty()) emptyMap() else weights.toMap(),
+        setDurations = if (durations.isEmpty()) emptyMap() else durations.toMap()
+    )
 }
 
 @Composable
@@ -559,8 +565,8 @@ private fun WorkoutContent(
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        delay(500)
-        dashboardVm.refresh()
+        delay(FIRST_DASHBOARD_EVENTS_DELAY_MS)
+        dashboardVm.reloadIfStale()
     }
     WorkoutRefreshOnResumeEffect { dashboardVm.reloadIfStale() }
     LaunchedEffect(state.challengeSyncVersion) {
@@ -627,13 +633,13 @@ private fun WorkoutContent(
         contentPadding = PaddingValues(top = extraTopPad, bottom = bottomPadding + 16.dp)
     ) {
         // ── Streak Banner ─────────────────────────────────────────────────
-        item {
+        item(key = "streak", contentType = "header") {
             StreakBanner(streak = state.currentStreak)
         }
 
         // ── FAZ 7J-9: Upcoming events (next 7 days) — streak banner'ın hemen altında ──
         if (hasUpcomingSection) {
-            item {
+            item(key = "upcoming_events", contentType = "events") {
                 UpcomingEventsSection(
                     events = upcomingEvents,
                     onOpen = { detailChallengeId = it.id }
@@ -643,7 +649,7 @@ private fun WorkoutContent(
 
         // ── FAZ 7J-9: Today's joined challenge events (above program) ────
         if (hasTodayBanner) {
-            item {
+            item(key = "today_events", contentType = "events") {
                 ChallengeTodayBanner(
                     events = todayEvents,
                     onOpen = { detailChallengeId = it.id }
@@ -652,7 +658,7 @@ private fun WorkoutContent(
         }
 
         // ── Header: Greeting + Progress Ring ─────────────────────────────
-        item {
+        item(key = "dashboard_header", contentType = "header") {
             AnimatedContent(
                 targetState = selectedDayIdx,
                 transitionSpec = {
@@ -675,7 +681,7 @@ private fun WorkoutContent(
         }
 
         // ── Day Selector Strip ────────────────────────────────────────────
-        item {
+        item(key = "day_selector", contentType = "day_selector") {
             DaySelector(
                 days        = dayStates,
                 selectedIndex = selectedDayIdx,
@@ -685,7 +691,7 @@ private fun WorkoutContent(
 
         // ── Section Label ─────────────────────────────────────────────────
         if (visibleExercises.isNotEmpty() && !skipProgramToday) {
-            item {
+            item(key = "section_label", contentType = "section_label") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -712,17 +718,25 @@ private fun WorkoutContent(
 
         // ── Content: Rest day or exercise cards ──────────────────────────
         if (currentDay.isRestDay && visibleExercises.isEmpty()) {
-            item { RestDayView() }
+            item(key = "rest_day", contentType = "rest") { RestDayView() }
         } else if (skipProgramToday) {
-            item { SkippedProgramNotice() }
+            item(key = "skipped_program", contentType = "rest") { SkippedProgramNotice() }
         } else {
-            itemsIndexed(visibleExercises, key = { _, ex -> ex.id }) { idx, exercise ->
+            itemsIndexed(
+                visibleExercises,
+                key = { _, ex -> ex.id },
+                contentType = { _, _ -> "exercise_card" }
+            ) { idx, exercise ->
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
-                val doneSetIndices = if (isCompleted) {
-                    (0 until exercise.sets).toSet()
-                } else {
-                    state.setCompletions[exercise.exerciseTableId.ifBlank { exercise.id }] ?: emptySet()
+                val completionKey = exercise.exerciseTableId.ifBlank { exercise.id }
+                val persistedSetCompletions = state.setCompletions[completionKey]
+                val doneSetIndices = remember(isCompleted, exercise.sets, persistedSetCompletions) {
+                    if (isCompleted) {
+                        (0 until exercise.sets).toSet()
+                    } else {
+                        persistedSetCompletions ?: emptySet()
+                    }
                 }
                 // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
                 val timer = restTimer
@@ -731,8 +745,14 @@ private fun WorkoutContent(
                 val exerciseDrafts = remember(draftInputs, exercise.id, exercise.sets) {
                     draftInputs.draftsForExercise(exercise.id, exercise.sets)
                 }
-                val setWeights = state.setWeights[exercise.id].orEmpty() + exerciseDrafts.setWeights
-                val setDurations = state.setDurations[exercise.id].orEmpty() + exerciseDrafts.setDurations
+                val savedWeights = state.setWeights[exercise.id].orEmpty()
+                val savedDurations = state.setDurations[exercise.id].orEmpty()
+                val setWeights = remember(savedWeights, exerciseDrafts.setWeights) {
+                    if (exerciseDrafts.setWeights.isEmpty()) savedWeights else savedWeights + exerciseDrafts.setWeights
+                }
+                val setDurations = remember(savedDurations, exerciseDrafts.setDurations) {
+                    if (exerciseDrafts.setDurations.isEmpty()) savedDurations else savedDurations + exerciseDrafts.setDurations
+                }
                 CinematicExerciseCard(
                     exercise          = exercise,
                     index             = idx,

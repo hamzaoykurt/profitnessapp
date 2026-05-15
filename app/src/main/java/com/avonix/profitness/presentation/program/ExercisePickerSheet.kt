@@ -178,8 +178,12 @@ fun ExercisePickerSheet(
 
             // ── Category chips ────────────────────────────────────────────────
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 item {
                     PickerCategoryChip(
@@ -746,7 +750,7 @@ private fun PickerCategoryChip(
             .background(if (selected) color else color.copy(alpha = 0.06f))
             .border(1.dp, if (selected) color else color.copy(0.2f), RoundedCornerShape(50))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 18.dp, vertical = 11.dp)
     ) {
         Text(
             label,

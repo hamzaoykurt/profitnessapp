@@ -63,7 +63,7 @@ data class WeightTrackingState(
     val sheetNoteInput   : String                = "",
     val isSaving         : Boolean               = false,
     val userPlan         : com.avonix.profitness.data.store.UserPlan = com.avonix.profitness.data.store.UserPlan.FREE,
-    val aiCredits        : Int                   = com.avonix.profitness.data.store.UserPlanRepository.FREE_STARTER_CREDITS
+    val aiCredits        : Int                   = com.avonix.profitness.data.store.UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────

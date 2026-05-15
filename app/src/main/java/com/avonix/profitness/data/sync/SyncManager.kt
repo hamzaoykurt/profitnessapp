@@ -1,5 +1,6 @@
 package com.avonix.profitness.data.sync
 
+import android.content.Context
 import com.avonix.profitness.data.local.dao.ExerciseDao
 import com.avonix.profitness.data.local.dao.ProgramDao
 import com.avonix.profitness.data.local.dao.SetCompletionDao
@@ -17,6 +18,7 @@ import com.avonix.profitness.data.program.dto.ProgramDto
 import com.avonix.profitness.data.program.dto.ProgramExerciseWithNameDto
 import com.avonix.profitness.data.workout.dto.ExerciseLogDto
 import com.avonix.profitness.data.workout.dto.WorkoutLogDto
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -68,7 +70,8 @@ private data class SetCompletionUpsert(
     val duration_seconds: Int? = null,
     val distance_meters: Float? = null,
     val elevation_meters: Float? = null,
-    val incline_percent: Float? = null
+    val incline_percent: Float? = null,
+    val updated_at: String? = null
 )
 
 /**
@@ -81,6 +84,7 @@ private data class SetCompletionUpsert(
  */
 @Singleton
 class SyncManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val supabase: SupabaseClient,
     private val programDao: ProgramDao,
     private val exerciseDao: ExerciseDao,
@@ -88,6 +92,9 @@ class SyncManager @Inject constructor(
     private val setCompletionDao: SetCompletionDao
 ) {
     private val syncMutex = Mutex()
+    private val prefs by lazy {
+        context.getSharedPreferences("profitness_set_completion_sync", Context.MODE_PRIVATE)
+    }
 
     // ═════════════════════════════════════════════════════════════════════════
     //  PULL: Supabase → Room
@@ -99,8 +106,9 @@ class SyncManager @Inject constructor(
             runCatching {
                 pullExercises()
                 pullPrograms(userId)
-                pushSetCompletions(userId)
-                pullSetCompletions(userId)
+                pushUnsyncedWorkoutsWithoutLock().getOrThrow()
+                pushSetCompletions(userId).getOrThrow()
+                pullSetCompletions(userId).getOrThrow()
                 pullWorkoutLogs(userId)
                 // Seri sürekliliği için tüm geçmiş tarihleri de çek (uninstall sonrası restore)
                 pullWorkoutLogDates(userId)
@@ -224,12 +232,18 @@ class SyncManager @Inject constructor(
         }
     }
 
-    /** Set bazlı ağırlık/tekrar kayıtlarını Supabase'den Room'a geri yükler. */
-    suspend fun pullSetCompletions(userId: String) = withContext(Dispatchers.IO) {
+    /** Set bazlı ağırlık/tekrar kayıtlarını Supabase'den Room'a delta olarak geri yükler. */
+    suspend fun pullSetCompletions(userId: String, forceFull: Boolean = false) = withContext(Dispatchers.IO) {
         runCatching {
+            val lastPullAt = if (forceFull) null else readLastSetCompletionPullAt(userId)
             val remote = supabase.postgrest["set_completions"]
                 .select {
-                    filter { eq("user_id", userId) }
+                    filter {
+                        eq("user_id", userId)
+                        if (!lastPullAt.isNullOrBlank()) {
+                            gt("updated_at", lastPullAt)
+                        }
+                    }
                     order("date", Order.ASCENDING)
                     order("set_index", Order.ASCENDING)
                 }
@@ -237,6 +251,17 @@ class SyncManager @Inject constructor(
 
             if (remote.isNotEmpty()) {
                 setCompletionDao.upsertAll(remote.map { it.toEntity() })
+                remote.mapNotNull { it.updated_at }.maxOrNull()?.let { newest ->
+                    persistLastSetCompletionPullAt(userId, newest)
+                }
+            }
+        }
+    }
+
+    suspend fun pullWorkoutLogDatesIfLocalEmpty(userId: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            if (workoutDao.getWorkoutDates(userId).isEmpty()) {
+                pullWorkoutLogDates(userId).getOrThrow()
             }
         }
     }
@@ -247,6 +272,10 @@ class SyncManager @Inject constructor(
 
     /** Henüz sync edilmemiş workout_logs ve exercise_logs'u Supabase'e yazar. */
     suspend fun pushUnsyncedWorkouts() = syncMutex.withLock {
+        pushUnsyncedWorkoutsWithoutLock()
+    }
+
+    private suspend fun pushUnsyncedWorkoutsWithoutLock() =
         withContext(Dispatchers.IO) {
             runCatching {
                 val unsyncedLogs = workoutDao.getUnsyncedLogs()
@@ -285,30 +314,59 @@ class SyncManager @Inject constructor(
                 }
             }
         }
-    }
 
-    /** Mevcut lokal set kayıtlarını profile bağlı kalıcı Supabase tablosuna yazar. */
+    /** Dirty lokal set kayıtlarını profile bağlı kalıcı Supabase tablosuna yazar. */
     suspend fun pushSetCompletions(userId: String) = withContext(Dispatchers.IO) {
         runCatching {
-            val entries = setCompletionDao.getAllForUser(userId)
+            val entries = setCompletionDao.getDirtyForUser(userId)
             if (entries.isEmpty()) return@runCatching
-            supabase.postgrest["set_completions"]
-                .upsert(
-                    entries.map { it.toUpsert() },
-                    onConflict = "user_id,exercise_id,program_day_id,set_index,date",
-                    defaultToNull = false
+
+            entries.filter { it.deleted }.forEach { entity ->
+                supabase.postgrest["set_completions"].delete {
+                    filter {
+                        eq("user_id", entity.userId)
+                        eq("exercise_id", entity.exerciseId)
+                        eq("program_day_id", entity.programDayId)
+                        eq("set_index", entity.setIndex)
+                        eq("date", entity.date)
+                    }
+                }
+                setCompletionDao.hardDelete(
+                    entity.userId,
+                    entity.exerciseId,
+                    entity.programDayId,
+                    entity.setIndex,
+                    entity.date
                 )
+            }
+
+            val upserts = entries.filterNot { it.deleted }
+            if (upserts.isNotEmpty()) {
+                supabase.postgrest["set_completions"]
+                    .upsert(
+                        upserts.map { it.toUpsert() },
+                        onConflict = "user_id,exercise_id,program_day_id,set_index,date",
+                        defaultToNull = false
+                    )
+                setCompletionDao.upsertAll(upserts.map { it.copy(synced = true, dirty = false, deleted = false) })
+            }
         }
     }
 
     suspend fun pushSetCompletion(entity: SetCompletionEntity) = withContext(Dispatchers.IO) {
         runCatching {
+            if (entity.deleted) {
+                deleteSetCompletion(entity.userId, entity.exerciseId, entity.programDayId, entity.setIndex, entity.date).getOrThrow()
+                setCompletionDao.hardDelete(entity.userId, entity.exerciseId, entity.programDayId, entity.setIndex, entity.date)
+                return@runCatching
+            }
             supabase.postgrest["set_completions"]
                 .upsert(
                     entity.toUpsert(),
                     onConflict = "user_id,exercise_id,program_day_id,set_index,date",
                     defaultToNull = false
                 )
+            setCompletionDao.upsertAll(listOf(entity.copy(synced = true, dirty = false, deleted = false)))
         }
     }
 
@@ -398,7 +456,8 @@ class SyncManager @Inject constructor(
         repsDefault = reps_default,
         description = description,
         sportType = sport_type,
-        trackingMode = tracking_mode
+        trackingMode = tracking_mode,
+        createdBy = created_by
     )
 
     private fun WorkoutLogDto.toEntity(synced: Boolean) = WorkoutLogEntity(
@@ -447,6 +506,20 @@ class SyncManager @Inject constructor(
         durationSeconds = duration_seconds,
         distanceMeters = distance_meters,
         elevationMeters = elevation_meters,
-        inclinePercent = incline_percent
+        inclinePercent = incline_percent,
+        synced = true,
+        dirty = false,
+        deleted = false,
+        updatedAtMs = 0L
     )
+
+    private suspend fun readLastSetCompletionPullAt(userId: String): String? = withContext(Dispatchers.IO) {
+        prefs.getString(setCompletionPullKey(userId), null)
+    }
+
+    private fun persistLastSetCompletionPullAt(userId: String, value: String) {
+        prefs.edit().putString(setCompletionPullKey(userId), value).apply()
+    }
+
+    private fun setCompletionPullKey(userId: String): String = "set_pull_after:$userId"
 }

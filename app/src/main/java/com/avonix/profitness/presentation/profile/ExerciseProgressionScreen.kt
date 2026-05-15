@@ -65,7 +65,7 @@ data class ExerciseProgressionState(
     val aiLoadingSet    : Set<String>                     = emptySet(),
     val isLoading       : Boolean                         = true,
     val userPlan        : com.avonix.profitness.data.store.UserPlan = com.avonix.profitness.data.store.UserPlan.FREE,
-    val aiCredits       : Int                             = com.avonix.profitness.data.store.UserPlanRepository.FREE_STARTER_CREDITS
+    val aiCredits       : Int                             = com.avonix.profitness.data.store.UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 sealed class ExerciseProgressionEvent {

@@ -38,7 +38,7 @@ data class BillingUsage(
 data class BillingSnapshot(
     val plan: UserPlan = UserPlan.FREE,
     val status: String = "free",
-    val credits: Int = UserPlanRepository.FREE_STARTER_CREDITS,
+    val credits: Int = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
     val sandboxAvailable: Boolean = false,
     val products: List<BillingProduct> = emptyList(),
     val recentUsage: List<BillingUsage> = emptyList()
@@ -78,6 +78,9 @@ interface UserPlanRepository {
     suspend fun refundCredit()
 
     companion object {
+        /** Server bakiyesi gelene kadar yanıltıcı starter kredi göstermeyelim. */
+        const val INITIAL_CREDITS_PLACEHOLDER = 0
+
         /** Yeni FREE hesaplar bu kadar krediyle başlar. */
         const val FREE_STARTER_CREDITS = 5
     }

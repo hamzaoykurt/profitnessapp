@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.avonix.profitness.core.theme.AppThemeState
 import com.avonix.profitness.core.theme.AppThemeStateSaver
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(AppThemeState())
             }
 
-            val persisted by themeRepository.themeFlow.collectAsState(initial = null)
+            val persisted by themeRepository.themeFlow.collectAsStateWithLifecycle(initialValue = null)
             LaunchedEffect(persisted) {
                 persisted?.let { saved ->
                     themeState = saved
@@ -79,7 +80,12 @@ class MainActivity : ComponentActivity() {
 
     private fun extractRecoveryCode(intent: Intent) {
         val data = intent.data ?: return
-        if (data.scheme == "profitness" && data.host == "reset-password") {
+        val isVerifiedAppLink =
+            data.scheme == "https" &&
+            data.host == BuildConfig.RESET_PASSWORD_LINK_HOST &&
+            data.path == "/reset-password"
+        val isLegacyRecoveryLink = data.scheme == "profitness" && data.host == "reset-password"
+        if (isVerifiedAppLink || isLegacyRecoveryLink) {
             val code = data.getQueryParameter("code") ?: return
             recoveryCode.value = code
         }

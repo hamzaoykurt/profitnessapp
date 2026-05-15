@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.workout.Exercise
 import com.avonix.profitness.presentation.workout.ExerciseMetric
@@ -80,6 +82,7 @@ fun CinematicExerciseCard(
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
+    val context  = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     var showActivityTimerSetup by remember { mutableStateOf(false) }
     var showTimedSetTimerSetup by remember { mutableStateOf(false) }
@@ -156,6 +159,13 @@ fun CinematicExerciseCard(
             )
         )
     }
+    val imageRequest = remember(context, exercise.image) {
+        ImageRequest.Builder(context)
+            .data(exercise.image)
+            .size(720, 360)
+            .crossfade(false)
+            .build()
+    }
 
     Box(
         modifier = Modifier
@@ -197,7 +207,7 @@ fun CinematicExerciseCard(
                         }
                 ) {
                     AsyncImage(
-                        model = exercise.image,
+                        model = imageRequest,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

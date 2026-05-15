@@ -107,10 +107,12 @@ fun LeaderboardScreen(
                     LeaderboardScope.Global -> when (state.selectedTab) {
                         LeaderboardTab.Xp           -> state.myXp
                         LeaderboardTab.Achievements -> state.myAchievements
+                        LeaderboardTab.Streak       -> state.myStreak
                     }
                     LeaderboardScope.Friends -> when (state.selectedTab) {
                         LeaderboardTab.Xp           -> state.myFriendXp
                         LeaderboardTab.Achievements -> state.myFriendAchievements
+                        LeaderboardTab.Streak       -> state.myFriendStreak
                     }
                 }
                 MyPositionCard(
@@ -147,6 +149,7 @@ fun LeaderboardScreen(
                         when (state.selectedTab) {
                             LeaderboardTab.Xp           -> theme.t("XP SIRALAMASI", "XP RANKING")
                             LeaderboardTab.Achievements -> theme.t("BAŞARIM SIRALAMASI", "ACHIEVEMENT RANKING")
+                            LeaderboardTab.Streak       -> theme.t("SERİ SIRALAMASI", "STREAK RANKING")
                         },
                         color         = accent,
                         fontSize      = 10.sp,
@@ -187,10 +190,12 @@ fun LeaderboardScreen(
                     LeaderboardScope.Global -> when (state.selectedTab) {
                         LeaderboardTab.Xp           -> state.xpRows
                         LeaderboardTab.Achievements -> state.achievementRows
+                        LeaderboardTab.Streak       -> state.streakRows
                     }
                     LeaderboardScope.Friends -> when (state.selectedTab) {
                         LeaderboardTab.Xp           -> state.friendXpRows
                         LeaderboardTab.Achievements -> state.friendAchievementRows
+                        LeaderboardTab.Streak       -> state.friendStreakRows
                     }
                 }
                 if (rows.isEmpty()) {
@@ -264,6 +269,16 @@ private fun TabSwitcher(
             accent   = accent,
             theme    = theme,
             onClick  = { onSelect(LeaderboardTab.Achievements) },
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(4.dp))
+        TabButton(
+            label    = "Seri",
+            icon     = Icons.Rounded.LocalFireDepartment,
+            isActive = selected == LeaderboardTab.Streak,
+            accent   = accent,
+            theme    = theme,
+            onClick  = { onSelect(LeaderboardTab.Streak) },
             modifier = Modifier.weight(1f)
         )
     }
@@ -361,6 +376,7 @@ private fun MyPositionCard(
     val scoreLabel = when (tab) {
         LeaderboardTab.Xp           -> "XP"
         LeaderboardTab.Achievements -> theme.t("Başarım", "Achievement")
+        LeaderboardTab.Streak       -> theme.t("Gün", "Days")
     }
     val scopeLabel = when (scope) {
         LeaderboardScope.Global  -> theme.t("kullanıcı arasında", "among users")
@@ -530,6 +546,7 @@ private fun LeaderboardRowItem(
                 when (tab) {
                     LeaderboardTab.Xp           -> "${row.score} XP"
                     LeaderboardTab.Achievements -> "${row.score} ${theme.t("başarım", "achievements")}"
+                    LeaderboardTab.Streak       -> "${row.score} ${theme.t("gün", "days")}"
                 },
                 color    = theme.text2,
                 fontSize = 11.sp

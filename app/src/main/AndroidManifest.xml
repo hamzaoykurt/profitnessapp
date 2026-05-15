@@ -13,7 +13,7 @@
 
     <application
         android:name=".ProfitnessApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
@@ -31,8 +31,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Şifre sıfırlama deep link: profitness://reset-password#access_token=...&type=recovery -->
-            <!-- Supabase → Authentication → URL Configuration → Redirect URLs: profitness://reset-password -->
+            <!-- Verified Android App Link: https://${resetPasswordLinkHost}/reset-password?code=... -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${resetPasswordLinkHost}"
+                    android:path="/reset-password" />
+            </intent-filter>
+            <!-- Legacy recovery links remain accepted for already-issued emails during the App Links rollout. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

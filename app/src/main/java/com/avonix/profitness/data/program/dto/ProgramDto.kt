@@ -109,7 +109,8 @@ data class ExerciseDto(
     val reps_default: Int,
     val description: String = "",
     val sport_type: String = "",
-    val tracking_mode: String = ""
+    val tracking_mode: String = "",
+    val created_by: String? = null
 )
 
 fun ExerciseDto.toDomain() = ExerciseItem(

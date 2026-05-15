@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 // ── UI Modelleri ──────────────────────────────────────────────────────────────
 
-enum class LeaderboardTab { Xp, Achievements }
+enum class LeaderboardTab { Xp, Achievements, Streak }
 
 /** Sıralama kapsamı: tüm kullanıcılar mı, sadece arkadaşlar (mutual follow) mı? */
 enum class LeaderboardScope { Global, Friends }
@@ -40,12 +40,16 @@ data class LeaderboardState(
     val selectedScope       : LeaderboardScope     = LeaderboardScope.Global,
     val xpRows              : List<LeaderboardRow> = emptyList(),
     val achievementRows     : List<LeaderboardRow> = emptyList(),
+    val streakRows          : List<LeaderboardRow> = emptyList(),
     val friendXpRows        : List<LeaderboardRow> = emptyList(),
     val friendAchievementRows: List<LeaderboardRow> = emptyList(),
+    val friendStreakRows    : List<LeaderboardRow> = emptyList(),
     val myXp                : MyPositionSummary    = MyPositionSummary(),
     val myAchievements      : MyPositionSummary    = MyPositionSummary(),
+    val myStreak            : MyPositionSummary    = MyPositionSummary(),
     val myFriendXp          : MyPositionSummary    = MyPositionSummary(),
     val myFriendAchievements: MyPositionSummary    = MyPositionSummary(),
+    val myFriendStreak      : MyPositionSummary    = MyPositionSummary(),
     val isLoading           : Boolean              = true,
     val error               : String?              = null
 )
@@ -75,25 +79,34 @@ class LeaderboardViewModel @Inject constructor(
         viewModelScope.launch {
             val xpDeferred        = async { repo.getXpLeaderboard(100) }
             val achDeferred       = async { repo.getAchievementLeaderboard(100) }
+            val streakDeferred    = async { repo.getStreakLeaderboard(100) }
             val myXpDeferred      = async { repo.getMyXpRank() }
             val myAchDeferred     = async { repo.getMyAchievementRank() }
+            val myStreakDeferred  = async { repo.getMyStreakRank() }
             val friendXpDeferred  = async { socialRepo.getFriendLeaderboardXp(100) }
             val friendAchDeferred = async { socialRepo.getFriendLeaderboardAchievements(100) }
+            val friendStreakDeferred = async { socialRepo.getFriendLeaderboardStreak(100) }
 
             val xpRes        = xpDeferred.await()
             val achRes       = achDeferred.await()
+            val streakRes    = streakDeferred.await()
             val myXpRes      = myXpDeferred.await()
             val myAchRes     = myAchDeferred.await()
+            val myStreakRes  = myStreakDeferred.await()
             val friendXpRes  = friendXpDeferred.await()
             val friendAchRes = friendAchDeferred.await()
+            val friendStreakRes = friendStreakDeferred.await()
 
             val firstErr =
                 xpRes.exceptionOrNull()?.message
                     ?: achRes.exceptionOrNull()?.message
+                    ?: streakRes.exceptionOrNull()?.message
                     ?: myXpRes.exceptionOrNull()?.message
                     ?: myAchRes.exceptionOrNull()?.message
+                    ?: myStreakRes.exceptionOrNull()?.message
                     ?: friendXpRes.exceptionOrNull()?.message
                     ?: friendAchRes.exceptionOrNull()?.message
+                    ?: friendStreakRes.exceptionOrNull()?.message
 
             val xpRows = xpRes.getOrNull().orEmpty().map { dto ->
                 LeaderboardRow(
@@ -115,6 +128,16 @@ class LeaderboardViewModel @Inject constructor(
                     isMe        = uid != null && dto.user_id == uid
                 )
             }
+            val streakRows = streakRes.getOrNull().orEmpty().map { dto ->
+                LeaderboardRow(
+                    userId      = dto.user_id,
+                    displayName = dto.display_name.ifBlank { "Anonim" },
+                    avatar      = dto.avatar_url?.takeIf { it.isNotBlank() } ?: "🏋️",
+                    score       = dto.current_streak.toLong(),
+                    position    = dto.rank_position,
+                    isMe        = uid != null && dto.user_id == uid
+                )
+            }
 
             val myXp = myXpRes.getOrNull()?.let {
                 MyPositionSummary(
@@ -132,9 +155,18 @@ class LeaderboardViewModel @Inject constructor(
                 )
             } ?: MyPositionSummary()
 
+            val myStreak = myStreakRes.getOrNull()?.let {
+                MyPositionSummary(
+                    position   = it.rank_position,
+                    totalUsers = it.total_users,
+                    score      = it.current_streak.toLong()
+                )
+            } ?: MyPositionSummary()
+
             // ── Arkadaş (mutual follow) leaderboard'ları UI satırlarına çevir ─
             val friendXpList  = friendXpRes.getOrNull().orEmpty()
             val friendAchList = friendAchRes.getOrNull().orEmpty()
+            val friendStreakList = friendStreakRes.getOrNull().orEmpty()
 
             val friendXpRows = friendXpList.map { r ->
                 LeaderboardRow(
@@ -152,6 +184,16 @@ class LeaderboardViewModel @Inject constructor(
                     displayName = r.displayName,
                     avatar      = r.avatarUrl?.takeIf { it.isNotBlank() } ?: "🏋️",
                     score       = r.achievementCount.toLong(),
+                    position    = r.rankPosition.toLong(),
+                    isMe        = r.isMe
+                )
+            }
+            val friendStreakRows = friendStreakList.map { r ->
+                LeaderboardRow(
+                    userId      = r.userId,
+                    displayName = r.displayName,
+                    avatar      = r.avatarUrl?.takeIf { it.isNotBlank() } ?: "🏋️",
+                    score       = r.currentStreak.toLong(),
                     position    = r.rankPosition.toLong(),
                     isMe        = r.isMe
                 )
@@ -174,16 +216,28 @@ class LeaderboardViewModel @Inject constructor(
                 )
             } ?: MyPositionSummary(totalUsers = friendAchList.size.toLong())
 
+            val myFriendStreak = friendStreakList.firstOrNull { it.isMe }?.let {
+                MyPositionSummary(
+                    position   = it.rankPosition.toLong(),
+                    totalUsers = friendStreakList.size.toLong(),
+                    score      = it.currentStreak.toLong()
+                )
+            } ?: MyPositionSummary(totalUsers = friendStreakList.size.toLong())
+
             updateState {
                 it.copy(
                     xpRows               = xpRows,
                     achievementRows      = achRows,
+                    streakRows           = streakRows,
                     friendXpRows         = friendXpRows,
                     friendAchievementRows= friendAchRows,
+                    friendStreakRows     = friendStreakRows,
                     myXp                 = myXp,
                     myAchievements       = myAch,
+                    myStreak             = myStreak,
                     myFriendXp           = myFriendXp,
                     myFriendAchievements = myFriendAch,
+                    myFriendStreak       = myFriendStreak,
                     isLoading            = false,
                     error                = firstErr
                 )
