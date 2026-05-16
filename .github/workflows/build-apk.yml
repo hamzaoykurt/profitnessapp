@@ -51,7 +51,6 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "aab_name=Profitness_$TAG.aab" >> $GITHUB_OUTPUT
           echo "apk_name=Profitness_${TAG}_internal-test.apk" >> $GITHUB_OUTPUT
-          echo "mapping_name=Profitness_$TAG-mapping.txt" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

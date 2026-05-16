@@ -30,10 +30,17 @@ Use the release signing SHA-256 fingerprint from the GitHub Actions release work
     "target": {
       "namespace": "android_app",
       "package_name": "com.avonix.profitness",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_RELEASE_SIGNING_SHA256"]
+      "sha256_cert_fingerprints": [
+        "A5:90:AE:C9:93:5F:56:DF:A1:28:65:05:61:2C:B0:DB:F8:65:A5:F8:C0:DE:A7:A1:AA:B2:DC:DD:CA:CC:7F:E2"
+      ]
     }
   }
 ]
 ```
 
 Supabase Auth URL Configuration must allow the exact `RESET_PASSWORD_REDIRECT_URL`.
+
+Verification on 2026-05-16: `https://cosmibit.com/.well-known/assetlinks.json`
+currently returns the Squarespace coming-soon HTML page, not this JSON. App Links
+will not verify until the domain serves this exact JSON with an
+`application/json` response.

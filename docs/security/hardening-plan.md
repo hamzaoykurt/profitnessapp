@@ -29,9 +29,10 @@ This means:
 - Changed GitHub Actions from debug APK release to release AAB generation.
 - Added production release signing requirements with `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`.
 - Hardened GitHub Actions and Gradle release signing secret parsing so accidental copied newlines in GitHub secrets do not break release keystore lookup.
-- Verified GitHub Actions release build succeeded on commit `f730544`; it produced GitHub Release `v14.0` with a release-signed AAB and mapping file.
+- Verified GitHub Actions release build succeeded on commit `f730544`; it produced GitHub Release `v14.0` with a release-signed AAB.
 - Captured Android release signing SHA-256 for App Links: `A5:90:AE:C9:93:5F:56:DF:A1:28:65:05:61:2C:B0:DB:F8:65:A5:F8:C0:DE:A7:A1:AA:B2:DC:DD:CA:CC:7F:E2`.
-- Preserved phone testing by adding a manual internal-test APK artifact. It is release-signed and uploaded as a short-lived workflow artifact, not published as a public debug APK release.
+- Preserved phone testing by adding an internal-test APK artifact. It is release-signed, produced on push builds, and uploaded as a short-lived workflow artifact, not published as a public debug APK release.
+- Stopped publishing ProGuard/R8 `mapping.txt` files as GitHub Release assets. Mapping files are useful for crash deobfuscation but should not be public release downloads for this public repository.
 - Added Android App Links support for password reset.
 - Kept legacy `profitness://reset-password` handling during rollout so already-issued recovery emails do not break.
 - Disabled Android backup with `android:allowBackup="false"`.
@@ -50,11 +51,12 @@ This means:
 | Critical | Rotate the Supabase access token that was present in `.mcp.json` | Done | User revoked the old token in Supabase; local `.mcp.json` no longer stores token-like args. |
 | High | Add Android release signing secrets to GitHub Actions | Done | User added `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. |
 | High | Verify GitHub release signing workflow | Done | Release workflow succeeded on commit `f730544` and published `v14.0`. |
-| High | Publish Android App Links `assetlinks.json` | Pending | Domain selected: `cosmibit.com`. Use the release SHA-256 fingerprint from CI. |
+| High | Publish Android App Links `assetlinks.json` | Blocked on domain hosting | Domain selected: `cosmibit.com`. `docs/security/assetlinks.json` contains the exact JSON to publish. Live check on 2026-05-16 returned Squarespace coming-soon HTML instead of JSON. |
 | High | Add HTTPS reset redirect to Supabase Auth URL Configuration | Pending | Add exact `https://cosmibit.com/reset-password`. Do not remove the legacy redirect until one release cycle passes. |
 | High | Set GitHub reset link host config | Done | `RESET_PASSWORD_LINK_HOST=cosmibit.com` was added; workflow accepts either repository variable or secret. Redirect still safely falls back to the legacy reset redirect until `RESET_PASSWORD_REDIRECT_URL` is set. |
 | High | Configure provider webhook to sign `timestamp.rawBody` with HMAC-SHA256 | Pending provider integration | Headers expected: `x-webhook-timestamp`, `x-webhook-signature`, and stable event id via body or `x-webhook-id`; then set `BILLING_WEBHOOK_ALLOW_LEGACY_SECRET=false`. |
 | High | Add provider amount metadata to products if numeric amount checks are required | Pending provider integration | Existing label check is backward-compatible; `metadata.amount_minor` and `metadata.currency` make it stricter. |
+| Medium | Remove old public mapping release assets | Pending GitHub cleanup | Existing `v14.0`, `v14.1`, and `v14.2` releases still expose `Profitness_v14.x-mapping.txt`. Keep AAB assets; delete only mapping assets. Future releases no longer publish mapping files. |
 | High | Apply and verify `harden_security_controls` migration in Supabase | Done | Remote migration history shows `20260515212124_harden_security_controls`. Function grants were verified after apply. |
 | Medium | Deploy updated Edge Functions | Done | `billing-webhook` v1, `billing-sandbox-complete` v2, and `ai-generate` v3 are active. |
 | Medium | Remove legacy custom scheme reset filter | Deferred | Only after all active reset emails and deployed clients have moved to verified HTTPS links. |
@@ -96,6 +98,7 @@ This means:
 - Challenge list/detail progress must remain visible for users allowed to read the challenge.
 - Release artifacts must be signed with the production release key, not debug signing.
 - Manual phone-test APKs must remain available through GitHub Actions artifacts, but they must be release-signed and short-lived.
+- ProGuard/R8 mapping files must not be published as public GitHub Release assets. If crash deobfuscation is needed, keep them in a restricted location such as Play Console or private build storage.
 
 ## Verification already run locally
 
@@ -113,10 +116,15 @@ This means:
   - `ai-generate` v3 with JWT enabled.
 - Endpoint smoke checks returned expected `401` responses for unauthenticated/unsigned requests to `billing-webhook` and `ai-generate`.
 - GitHub Actions release workflow `25941770568` passed and built the release AAB in 7m 48s.
+- GitHub Actions workflow `25942884716` produced the release-signed phone-test APK artifact `profitness-internal-test-apk`.
+- GitHub Releases were checked on 2026-05-16: `v14.0`, `v14.1`, and `v14.2` still contain public `mapping.txt` assets from earlier runs.
+- `https://cosmibit.com/.well-known/assetlinks.json` was checked on 2026-05-16 and returned Squarespace coming-soon HTML, so Android App Links are not verifiable yet.
 
 ## Current verification blockers
 
 - Local Supabase database is not running on `127.0.0.1:54322`, so `npx supabase migration list --local` could not verify local migration state.
+- `cosmibit.com` does not yet serve the required `assetlinks.json`; publish `docs/security/assetlinks.json` at `/.well-known/assetlinks.json` before switching reset links to HTTPS.
+- Old public GitHub Release mapping assets should be deleted for `v14.0`, `v14.1`, and `v14.2`; the workflow has already been changed so future releases do not add new ones.
 - Supabase advisors still report existing non-blocking notices: RLS-enabled internal tables without public policies, one mutable search-path trigger helper, and Auth leaked-password protection disabled.
 
 ## Rollback strategy
