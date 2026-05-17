@@ -134,7 +134,10 @@ abstract class AppModule {
         // ── Gemini ───────────────────────────────────────────────────────────
 
         @Provides @Singleton
-        fun provideGeminiRepository(supabase: SupabaseClient): GeminiRepository {
+        fun provideGeminiRepository(
+            supabase: SupabaseClient,
+            planRepository: com.avonix.profitness.data.store.UserPlanRepository
+        ): GeminiRepository {
             val client = HttpClient(Android) {
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true })
@@ -144,7 +147,8 @@ abstract class AppModule {
                 httpClient = client,
                 supabase = supabase,
                 supabaseUrl = BuildConfig.SUPABASE_URL,
-                supabaseAnonKey = BuildConfig.SUPABASE_ANON_KEY
+                supabaseAnonKey = BuildConfig.SUPABASE_ANON_KEY,
+                planRepository = planRepository
             )
         }
     }

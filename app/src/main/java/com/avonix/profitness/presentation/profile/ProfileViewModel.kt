@@ -136,6 +136,12 @@ class ProfileViewModel @Inject constructor(
         loadProfile()
     }
 
+    fun refreshNow() {
+        lastLoadMs = 0L
+        profileRepository.invalidateStatsCache()
+        loadProfile()
+    }
+
     fun loadProfile() {
         viewModelScope.launch {
             // İlk açılışta loading göster; tekrar yükleme varsa eski veri görünür kalsın

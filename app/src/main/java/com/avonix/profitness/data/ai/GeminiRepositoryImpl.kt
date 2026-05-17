@@ -6,6 +6,7 @@ import com.avonix.profitness.data.ai.dto.GeminiInlineData
 import com.avonix.profitness.data.ai.dto.GeminiPart
 import com.avonix.profitness.data.ai.dto.GeminiRequest
 import com.avonix.profitness.data.ai.dto.GeminiSystemInstruction
+import com.avonix.profitness.data.store.UserPlanRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.ktor.client.HttpClient
@@ -28,7 +29,8 @@ class GeminiRepositoryImpl(
     private val httpClient: HttpClient,
     private val supabase: SupabaseClient,
     supabaseUrl: String,
-    private val supabaseAnonKey: String
+    private val supabaseAnonKey: String,
+    private val planRepository: UserPlanRepository
 ) : GeminiRepository {
 
     private val edgeFunctionUrl = "${supabaseUrl.trimEnd('/')}/functions/v1/$AI_EDGE_FUNCTION"
@@ -110,6 +112,7 @@ class GeminiRepositoryImpl(
         }
 
         val body = response.body<AiEdgeResponse>()
+        runCatching { planRepository.refresh() }
         return body.text?.trim()?.takeIf { it.isNotBlank() }
             ?: error("Gemini boş yanıt döndürdü.")
     }

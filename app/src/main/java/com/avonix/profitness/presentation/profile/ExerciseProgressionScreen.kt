@@ -51,6 +51,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -98,6 +99,12 @@ class ExerciseProgressionViewModel @Inject constructor(
             workoutRepository.syncFromRemote(userId)
             val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
             updateState { it.copy(summaries = summaries, isLoading = false) }
+
+            delay(800L)
+            val settledSummaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { summaries }
+            if (settledSummaries != uiState.value.summaries) {
+                updateState { it.copy(summaries = settledSummaries) }
+            }
         }
     }
 
@@ -184,6 +191,7 @@ fun ExerciseProgressionScreen(
     var showPaywall by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        viewModel.load()
         viewModel.events.collect { event ->
             when (event) {
                 is ExerciseProgressionEvent.ShowPaywall -> showPaywall = true
