@@ -139,7 +139,8 @@ fun CreateChallengeOverlay(
         startDateIso: String,
         endDateIso: String,
         visibility: ChallengeVisibility,
-        password: String?
+        password: String?,
+        maxParticipants: Int?
     ) -> Unit,
     /** Event challenge submit — new. */
     onFormChanged: () -> Unit,
@@ -157,6 +158,8 @@ fun CreateChallengeOverlay(
     var description by rememberSaveable { mutableStateOf("") }
     var visibility  by rememberSaveable { mutableStateOf(ChallengeVisibility.Public) }
     var password    by rememberSaveable { mutableStateOf("") }
+    var participantLimitEnabled by rememberSaveable { mutableStateOf(false) }
+    var participantLimit by rememberSaveable { mutableStateOf("10") }
 
     // ── Metric-only ───────────────────────────────────────────────────────
     var metricTargetType by rememberSaveable { mutableStateOf(ChallengeTargetType.TotalWorkouts) }
@@ -198,6 +201,8 @@ fun CreateChallengeOverlay(
         description,
         visibility,
         password,
+        participantLimitEnabled,
+        participantLimit,
         metricTargetType,
         metricTargetValue,
         days,
@@ -480,6 +485,15 @@ fun CreateChallengeOverlay(
                 )
             }
 
+            FieldLabel("KATILIM SINIRI")
+            ParticipantLimitSection(
+                enabled = participantLimitEnabled,
+                onEnabled = { participantLimitEnabled = it },
+                value = participantLimit,
+                onValue = { participantLimit = it },
+                accent = accent
+            )
+
             // ── Error ──
             error?.let {
                 Box(
@@ -512,7 +526,8 @@ fun CreateChallengeOverlay(
                                 today.format(fmt),
                                 metricEndDate.format(fmt),
                                 visibility,
-                                password.ifBlank { null }
+                                password.ifBlank { null },
+                                if (participantLimitEnabled) participantLimit.toIntOrNull() ?: 0 else null
                             )
                         } else {
                             val req = CreateEventChallengeRequest(
@@ -538,7 +553,8 @@ fun CreateChallengeOverlay(
                                 targetValue = if (eventMode != EventMode.MovementList && eventTargetEnabled)
                                     eventTargetValue.toLongOrNull() else null,
                                 visibility  = visibility,
-                                password    = password.ifBlank { null }
+                                password    = password.ifBlank { null },
+                                maxParticipants = if (participantLimitEnabled) participantLimit.toIntOrNull() ?: 0 else null
                             )
                             onSubmitEvent(req)
                         }
@@ -849,6 +865,7 @@ private fun EventForm(
             OptionalMetricTargetSection(
                 enabled = targetEnabled,
                 onEnabled = onTargetEnabled,
+                targetOptions = targetTypesForSport(sportType),
                 targetType = targetType,
                 onTargetType = onTargetType,
                 targetValue = targetValue,
@@ -868,6 +885,7 @@ private fun EventForm(
             OptionalMetricTargetSection(
                 enabled = targetEnabled,
                 onEnabled = onTargetEnabled,
+                targetOptions = targetTypesForSport(sportType),
                 targetType = targetType,
                 onTargetType = onTargetType,
                 targetValue = targetValue,
@@ -996,6 +1014,7 @@ private fun LazySportTypeRow(
 private fun OptionalMetricTargetSection(
     enabled: Boolean,
     onEnabled: (Boolean) -> Unit,
+    targetOptions: List<ChallengeTargetType>,
     targetType: ChallengeTargetType,
     onTargetType: (ChallengeTargetType) -> Unit,
     targetValue: String,
@@ -1042,11 +1061,7 @@ private fun OptionalMetricTargetSection(
     if (enabled) {
         FieldLabel("HEDEF TİPİ")
         Column(Modifier.padding(horizontal = 16.dp)) {
-            listOf(
-                ChallengeTargetType.TotalDistanceM,
-                ChallengeTargetType.TotalDistanceKm,
-                ChallengeTargetType.TotalDurationMinutes
-            ).forEach { t ->
+            targetOptions.forEach { t ->
                 TargetTypeOption(
                     type     = t,
                     isActive = t == targetType,
@@ -1061,6 +1076,64 @@ private fun OptionalMetricTargetSection(
         Column(Modifier.padding(horizontal = 16.dp)) {
             FieldLabel("HEDEF (${targetType.unit})", padded = false)
             NumberInputInline(value = targetValue, onValueChange = onTargetValue)
+        }
+    }
+}
+
+@Composable
+private fun ParticipantLimitSection(
+    enabled: Boolean,
+    onEnabled: (Boolean) -> Unit,
+    value: String,
+    onValue: (String) -> Unit,
+    accent: Color
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg1.copy(0.72f))
+            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+            .padding(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onEnabled(!enabled) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (enabled) accent else Color.Transparent)
+                    .border(1.dp, if (enabled) accent else theme.stroke, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (enabled) Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(13.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "KİŞİ SAYISINI SINIRLA",
+                    color = theme.text0,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    "Limit dolunca yeni katılım kapanır",
+                    color = theme.text2,
+                    fontSize = 10.sp
+                )
+            }
+        }
+        if (enabled) {
+            Spacer(Modifier.height(12.dp))
+            FieldLabel("MAKSİMUM KATILIMCI", padded = false)
+            NumberInputInline(value = value, onValueChange = onValue)
         }
     }
 }
@@ -1537,8 +1610,25 @@ private fun defaultTargetTypeForSport(sport: SportType): ChallengeTargetType = w
     SportType.Boxing,
     SportType.JumpRopeHiit,
     SportType.Football,
+    SportType.IndoorFootball,
+    SportType.Volleyball,
     SportType.BasketballTennis -> ChallengeTargetType.TotalDurationMinutes
     else -> ChallengeTargetType.TotalDistanceM
+}
+
+private fun targetTypesForSport(sport: SportType): List<ChallengeTargetType> = when (sport) {
+    SportType.YogaPilates,
+    SportType.Boxing,
+    SportType.JumpRopeHiit,
+    SportType.Football,
+    SportType.IndoorFootball,
+    SportType.Volleyball,
+    SportType.BasketballTennis -> listOf(ChallengeTargetType.TotalDurationMinutes)
+    else -> listOf(
+        ChallengeTargetType.TotalDistanceM,
+        ChallengeTargetType.TotalDistanceKm,
+        ChallengeTargetType.TotalDurationMinutes
+    )
 }
 
 private fun defaultTargetValueForSport(sport: SportType): String = when (sport) {
@@ -1551,6 +1641,8 @@ private fun defaultTargetValueForSport(sport: SportType): String = when (sport) 
     SportType.Boxing -> "30"
     SportType.JumpRopeHiit -> "20"
     SportType.Football -> "60"
+    SportType.IndoorFootball -> "60"
+    SportType.Volleyball -> "45"
     SportType.BasketballTennis -> "45"
     SportType.Strength -> "1"
 }
@@ -1566,6 +1658,8 @@ private fun canonicalExerciseIdForSport(sport: SportType, exercises: List<Exerci
         SportType.YogaPilates -> listOf("yoga", "pilates", "mobility")
         SportType.Boxing -> listOf("shadow boxing", "boxing", "boks")
         SportType.Football -> listOf("football", "soccer", "futbol")
+        SportType.IndoorFootball -> listOf("hali saha", "halisaha", "futsal", "football", "soccer", "futbol")
+        SportType.Volleyball -> listOf("volleyball", "voleybol")
         SportType.BasketballTennis -> listOf("basketball", "tennis", "basket", "tenis")
         SportType.Strength -> emptyList()
     }

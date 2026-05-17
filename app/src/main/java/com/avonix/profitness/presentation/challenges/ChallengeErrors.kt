@@ -11,6 +11,8 @@ internal fun Throwable.toChallengeUiMessage(
         "not_authenticated" in lower -> "Oturum süren dolmuş olabilir. Tekrar giriş yap."
         "invalid_title" in lower -> "Başlık 3-120 karakter arasında olmalı."
         "invalid_target_value" in lower -> "Hedef sıfırdan büyük olmalı."
+        "invalid_max_participants" in lower -> "Katılım sınırı en az 2 kişi olmalı."
+        "challenge_full" in lower -> "Bu challenge için katılım sınırı dolmuş."
         "invalid_event_mode" in lower -> "Etkinlik tipi geçersiz."
         "invalid_visibility" in lower -> "Görünürlük seçimi geçersiz."
         "physical_location_required" in lower -> "Fiziksel etkinlik için başlangıç konumu gerekli."

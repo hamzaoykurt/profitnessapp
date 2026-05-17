@@ -102,6 +102,7 @@ data class ChallengeSummary(
     val startDateIso      : String,
     val endDateIso        : String,
     val participantsCount : Int,
+    val maxParticipants   : Int? = null,
     val visibility        : ChallengeVisibility,
     val creatorId         : String,
     val creatorName       : String,
@@ -168,6 +169,7 @@ data class CreateEventChallengeRequest(
     val targetValue  : Long? = null,
     val visibility   : ChallengeVisibility = ChallengeVisibility.Public,
     val password     : String? = null,
+    val maxParticipants: Int? = null,
     val movements    : List<MovementInput> = emptyList()
 )
 
@@ -250,6 +252,7 @@ internal fun PublicChallengeRowDto.toDomain() = ChallengeSummary(
     startDateIso      = start_date,
     endDateIso        = end_date,
     participantsCount = participants_count,
+    maxParticipants   = max_participants,
     visibility        = ChallengeVisibility.fromRaw(visibility),
     creatorId         = creator_id,
     creatorName       = creator_name ?: "Anonim",
@@ -278,6 +281,7 @@ internal fun MyChallengeRowDto.toDomain() = ChallengeSummary(
     startDateIso      = start_date,
     endDateIso        = end_date,
     participantsCount = participants_count,
+    maxParticipants   = max_participants,
     visibility        = ChallengeVisibility.fromRaw(visibility),
     creatorId         = creator_id,
     creatorName       = creator_name ?: "Anonim",
@@ -326,6 +330,7 @@ internal fun ChallengeDetailDto.toDomain(): ChallengeDetail {
         startDateIso      = start_date,
         endDateIso        = end_date,
         participantsCount = participants_count,
+        maxParticipants   = max_participants,
         visibility        = ChallengeVisibility.fromRaw(visibility),
         creatorId         = creator_id,
         creatorName       = creator_name ?: "Anonim",

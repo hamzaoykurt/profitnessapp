@@ -17,6 +17,8 @@ enum class SportType(val raw: String, val label: String) {
     YogaPilates("yoga_pilates", "Yoga"),
     Boxing("boxing", "Boks"),
     Football("football", "Futbol"),
+    IndoorFootball("indoor_football", "Halı Saha"),
+    Volleyball("volleyball", "Voleybol"),
     BasketballTennis("basketball_tennis", "Basketbol/Tenis");
 
     companion object {
@@ -33,6 +35,8 @@ enum class SportType(val raw: String, val label: String) {
             YogaPilates,
             Boxing,
             Football,
+            IndoorFootball,
+            Volleyball,
             BasketballTennis
         )
     }
@@ -94,7 +98,13 @@ fun activityTrackingSpec(
         SportType.Strength -> {
             if (repsLooksTimed || isTimedHold) ExerciseMetric.Duration else ExerciseMetric.Strength
         }
-        SportType.YogaPilates, SportType.Boxing, SportType.JumpRopeHiit -> ExerciseMetric.Duration
+        SportType.YogaPilates,
+        SportType.Boxing,
+        SportType.JumpRopeHiit,
+        SportType.Football,
+        SportType.IndoorFootball,
+        SportType.Volleyball,
+        SportType.BasketballTennis -> ExerciseMetric.Duration
         else -> ExerciseMetric.DurationDistance
     }
 
@@ -171,7 +181,9 @@ fun classifySportType(
     if (listOf("jump rope", "ip atlama").any { it in haystack }) return SportType.JumpRopeHiit
     if (listOf("yoga", "pilates", "mobility", "stretch", "esneme").any { it in haystack }) return SportType.YogaPilates
     if (listOf("boxing", "boks", "mma", "shadow boxing", "kickbox").any { it in haystack }) return SportType.Boxing
-    if (listOf("football", "soccer", "futbol", "hali saha").any { it in haystack }) return SportType.Football
+    if (listOf("hali saha", "halisaha", "futsal").any { it in haystack }) return SportType.IndoorFootball
+    if (listOf("football", "soccer", "futbol").any { it in haystack }) return SportType.Football
+    if (listOf("voleybol", "volleyball").any { it in haystack }) return SportType.Volleyball
     if (listOf("basket", "basketball", "tennis", "tenis").any { it in haystack }) return SportType.BasketballTennis
 
     val strengthKeywords = listOf(

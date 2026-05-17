@@ -28,7 +28,8 @@ interface ChallengeRepository {
         startDateIso: String,
         endDateIso  : String,
         visibility  : ChallengeVisibility = ChallengeVisibility.Public,
-        password    : String? = null
+        password    : String? = null,
+        maxParticipants: Int? = null
     ): Result<String>
 
     /** Yeni event challenge yarat (physical / online / movement_list). Döner: yeni challenge id. */

@@ -130,7 +130,8 @@ class ChallengesViewModel @Inject constructor(
         startDateIso: String,
         endDateIso: String,
         visibility: ChallengeVisibility,
-        password: String?
+        password: String?,
+        maxParticipants: Int?
     ) {
         if (title.isBlank()) {
             _state.update { it.copy(createError = "Başlık boş olamaz") }
@@ -138,6 +139,10 @@ class ChallengesViewModel @Inject constructor(
         }
         if (targetValue <= 0) {
             _state.update { it.copy(createError = "Hedef sıfırdan büyük olmalı") }
+            return
+        }
+        if (maxParticipants != null && maxParticipants < 2) {
+            _state.update { it.copy(createError = "Katılım sınırı en az 2 kişi olmalı") }
             return
         }
         _state.update { it.copy(createInFlight = true, createError = null) }
@@ -150,7 +155,8 @@ class ChallengesViewModel @Inject constructor(
                 startDateIso = startDateIso,
                 endDateIso   = endDateIso,
                 visibility   = visibility,
-                password     = password
+                password     = password,
+                maxParticipants = maxParticipants
             )
             res.fold(
                 onSuccess = { newChallengeId ->
@@ -211,6 +217,10 @@ class ChallengesViewModel @Inject constructor(
         }
         if (req.targetType != null && (req.targetValue ?: 0L) <= 0L) {
             _state.update { it.copy(createError = "Hedef sıfırdan büyük olmalı") }
+            return
+        }
+        if (req.maxParticipants != null && req.maxParticipants < 2) {
+            _state.update { it.copy(createError = "Katılım sınırı en az 2 kişi olmalı") }
             return
         }
         _state.update { it.copy(createInFlight = true, createError = null) }

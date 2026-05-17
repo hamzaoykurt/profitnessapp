@@ -238,9 +238,10 @@ fun ChallengeDetailOverlay(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             val unit = c.targetType.unit
+                            val participantText = c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}"
                             StatChip("Hedef", "${c.targetValue} $unit", Icons.Rounded.Flag, accent, Modifier.weight(1f))
                             StatChip("İlerleme", "${c.myProgress} $unit", Icons.Rounded.EmojiEvents, accent, Modifier.weight(1f))
-                            StatChip("Katılımcı", "${c.participantsCount}", Icons.Rounded.People, accent, Modifier.weight(1f))
+                            StatChip("Katılımcı", participantText, Icons.Rounded.People, accent, Modifier.weight(1f))
                         }
                     }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,6 +78,7 @@ import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.discover.DiscoverSort
 import com.avonix.profitness.domain.social.UserSummary
+import com.avonix.profitness.presentation.workout.SportType
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -95,6 +97,10 @@ fun ChallengesTab(
     val accent = MaterialTheme.colorScheme.primary
     val vm: ChallengesViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    var kindFilter by rememberSaveable { mutableStateOf(ChallengeKindFilter.All) }
+    var sportFilterRaw by rememberSaveable { mutableStateOf<String?>(null) }
+    var targetFilterRaw by rememberSaveable { mutableStateOf<String?>(null) }
+    var mineStatusFilter by rememberSaveable { mutableStateOf(MyChallengeStatusFilter.All) }
 
     Box(Modifier.fillMaxSize()) {
 
@@ -145,6 +151,19 @@ fun ChallengesTab(
                 }
             }
 
+            ChallengeFilterBar(
+                scope = state.scope,
+                kindFilter = kindFilter,
+                onKindFilter = { kindFilter = it },
+                sportFilterRaw = sportFilterRaw,
+                onSportFilter = { sportFilterRaw = it },
+                targetFilterRaw = targetFilterRaw,
+                onTargetFilter = { targetFilterRaw = it },
+                mineStatusFilter = mineStatusFilter,
+                onMineStatusFilter = { mineStatusFilter = it },
+                accent = accent
+            )
+
             // ── Liste ─────────────────────────────────────────────────────
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
@@ -158,15 +177,26 @@ fun ChallengesTab(
                         }
                     }
                     else -> {
-                        val list = remember(state.scope, state.browseList, state.myList, sort) {
+                        val list = remember(
+                            state.scope,
+                            state.browseList,
+                            state.myList,
+                            sort,
+                            kindFilter,
+                            sportFilterRaw,
+                            targetFilterRaw,
+                            mineStatusFilter
+                        ) {
                             val base = if (state.scope == ChallengesScope.Browse) state.browseList else state.myList
-                            base.sortedFor(sort)
+                            base
+                                .filteredFor(state.scope, kindFilter, sportFilterRaw, targetFilterRaw, mineStatusFilter)
+                                .sortedFor(sort)
                         }
                         if (list.isEmpty()) {
                             EmptyBlock(
                                 text = if (state.scope == ChallengesScope.Browse)
-                                    "Aktif public challenge bulunmuyor.\nİlk sen yarat → sağ alt +"
-                                else "Henüz challenge'a katılmadın.\nKEŞFET sekmesinden birine katıl.",
+                                    "Bu filtrelere uygun aktif challenge yok."
+                                else "Bu filtrelere uygun katıldığın challenge yok.",
                                 theme = theme
                             )
                         } else {
@@ -234,8 +264,8 @@ fun ChallengesTab(
                 exercises = state.exercises,
                 onDismiss = { vm.closeCreate() },
                 onFormChanged = { vm.clearCreateError() },
-                onSubmit  = { title, desc, tt, tv, sd, ed, vis, pw ->
-                    vm.submitCreate(title, desc, tt, tv, sd, ed, vis, pw)
+                onSubmit  = { title, desc, tt, tv, sd, ed, vis, pw, maxParticipants ->
+                    vm.submitCreate(title, desc, tt, tv, sd, ed, vis, pw, maxParticipants)
                 },
                 onSubmitEvent = { req -> vm.submitCreateEvent(req) }
             )
@@ -449,9 +479,168 @@ private fun InviteFriendRow(
     }
 }
 
+private enum class ChallengeKindFilter(val label: String) {
+    All("TÜMÜ"),
+    Metric("METRİK"),
+    Event("ETKİNLİK"),
+    Movement("HAREKET")
+}
+
+private enum class MyChallengeStatusFilter(val label: String) {
+    All("TÜMÜ"),
+    Active("DEVAM"),
+    Completed("TAMAM"),
+    Ended("BİTEN")
+}
+
+@Composable
+private fun ChallengeFilterBar(
+    scope: ChallengesScope,
+    kindFilter: ChallengeKindFilter,
+    onKindFilter: (ChallengeKindFilter) -> Unit,
+    sportFilterRaw: String?,
+    onSportFilter: (String?) -> Unit,
+    targetFilterRaw: String?,
+    onTargetFilter: (String?) -> Unit,
+    mineStatusFilter: MyChallengeStatusFilter,
+    onMineStatusFilter: (MyChallengeStatusFilter) -> Unit,
+    accent: Color
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+    ) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp)
+        ) {
+            items(ChallengeKindFilter.entries.size) { idx ->
+                val filter = ChallengeKindFilter.entries[idx]
+                FilterChip(
+                    label = filter.label,
+                    active = kindFilter == filter,
+                    accent = accent,
+                    onClick = { onKindFilter(filter) }
+                )
+            }
+            if (scope == ChallengesScope.Mine) {
+                items(MyChallengeStatusFilter.entries.size) { idx ->
+                    val filter = MyChallengeStatusFilter.entries[idx]
+                    FilterChip(
+                        label = filter.label,
+                        active = mineStatusFilter == filter,
+                        accent = accent,
+                        onClick = { onMineStatusFilter(filter) }
+                    )
+                }
+            }
+            item {
+                FilterChip(
+                    label = "AKTİVİTE: TÜMÜ",
+                    active = sportFilterRaw == null,
+                    accent = accent,
+                    onClick = { onSportFilter(null) }
+                )
+            }
+            items(SportType.challengeChoices.size) { idx ->
+                val sport = SportType.challengeChoices[idx]
+                FilterChip(
+                    label = sport.label.uppercase(),
+                    active = sportFilterRaw == sport.raw,
+                    accent = accent,
+                    onClick = { onSportFilter(sport.raw) }
+                )
+            }
+            item {
+                FilterChip(
+                    label = "METRİK: TÜMÜ",
+                    active = targetFilterRaw == null,
+                    accent = accent,
+                    onClick = { onTargetFilter(null) }
+                )
+            }
+            items(ChallengeTargetType.entries.size) { idx ->
+                val target = ChallengeTargetType.entries[idx]
+                FilterChip(
+                    label = target.label.uppercase(),
+                    active = targetFilterRaw == target.raw,
+                    accent = accent,
+                    onClick = { onTargetFilter(target.raw) }
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp)
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(theme.stroke.copy(0.22f))
+        )
+    }
+}
+
+@Composable
+private fun FilterChip(
+    label: String,
+    active: Boolean,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Box(
+        modifier = Modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) accent.copy(0.22f) else theme.bg1.copy(0.62f))
+            .border(
+                1.dp,
+                if (active) accent.copy(0.56f) else theme.stroke.copy(0.42f),
+                RoundedCornerShape(999.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            color = if (active) accent else theme.text2,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.8.sp,
+            maxLines = 1
+        )
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  Scope chip
 // ═══════════════════════════════════════════════════════════════════════════
+
+private fun List<ChallengeSummary>.filteredFor(
+    scope: ChallengesScope,
+    kindFilter: ChallengeKindFilter,
+    sportFilterRaw: String?,
+    targetFilterRaw: String?,
+    mineStatusFilter: MyChallengeStatusFilter
+): List<ChallengeSummary> = filter { c ->
+    val kindMatches = when (kindFilter) {
+        ChallengeKindFilter.All -> true
+        ChallengeKindFilter.Metric -> c.kind == ChallengeKind.Metric
+        ChallengeKindFilter.Event -> c.kind == ChallengeKind.Event
+        ChallengeKindFilter.Movement -> c.event?.mode == EventMode.MovementList
+    }
+    val sportMatches = sportFilterRaw == null || c.event?.sportType?.raw == sportFilterRaw
+    val targetMatches = targetFilterRaw == null || c.targetType.raw == targetFilterRaw
+    val statusMatches = scope != ChallengesScope.Mine || when (mineStatusFilter) {
+        MyChallengeStatusFilter.All -> true
+        MyChallengeStatusFilter.Active -> !c.isCompleted && statusOf(c.startDateIso, c.endDateIso) != CardStatus.Ended
+        MyChallengeStatusFilter.Completed -> c.isCompleted
+        MyChallengeStatusFilter.Ended -> !c.isCompleted && statusOf(c.startDateIso, c.endDateIso) == CardStatus.Ended
+    }
+    kindMatches && sportMatches && targetMatches && statusMatches
+}
 
 private fun List<ChallengeSummary>.sortedFor(sort: DiscoverSort): List<ChallengeSummary> =
     when (sort) {
@@ -556,11 +745,15 @@ private fun ChallengeCard(
     val today = java.time.LocalDate.now().toString()
     val daysLeft = daysBetween(today, c.endDateIso) ?: 0L
     val daysUntilStart = daysBetween(today, c.startDateIso) ?: 0L
+    val completedColor = Color(0xFF22C55E)
+    val cardAccent = if (c.isCompleted) completedColor else accent
+    val isEnded = status == CardStatus.Ended && !c.isCompleted
+    val isFull = c.maxParticipants?.let { c.participantsCount >= it && !c.isJoined } == true
 
     val borderColor = when {
-        c.isCompleted -> accent.copy(0.7f)
+        c.isCompleted -> completedColor.copy(0.8f)
+        isEnded -> theme.text2.copy(0.35f)
         c.isJoined    -> accent.copy(0.55f)
-        status == CardStatus.Ended -> theme.stroke.copy(0.35f)
         else -> theme.stroke.copy(0.5f)
     }
 
@@ -571,9 +764,9 @@ private fun ChallengeCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        theme.bg2.copy(0.92f),
-                        theme.bg1.copy(0.70f),
-                        theme.bg1.copy(0.56f)
+                        if (isEnded) theme.bg2.copy(0.52f) else theme.bg2.copy(0.92f),
+                        if (isEnded) theme.bg1.copy(0.46f) else theme.bg1.copy(0.70f),
+                        if (isEnded) theme.bg1.copy(0.36f) else theme.bg1.copy(0.56f)
                     )
                 )
             )
@@ -581,14 +774,14 @@ private fun ChallengeCard(
             .clickable(onClick = onTap)
     ) {
         // Subtle accent glow overlay (joined/live için belirgin)
-        if (c.isJoined || status == CardStatus.Live) {
+        if (c.isCompleted || (!isEnded && (c.isJoined || status == CardStatus.Live))) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(accent.copy(0.16f), accent.copy(0.04f), Color.Transparent),
+                            colors = listOf(cardAccent.copy(0.16f), cardAccent.copy(0.04f), Color.Transparent),
                             radius = 520f
                         )
                     )
@@ -603,7 +796,7 @@ private fun ChallengeCard(
                         .width(4.dp)
                         .fillMaxHeight()
                         .background(
-                            Brush.verticalGradient(listOf(accent, accent.copy(0.4f)))
+                            Brush.verticalGradient(listOf(cardAccent, cardAccent.copy(0.4f)))
                         )
                 )
             }
@@ -624,7 +817,7 @@ private fun ChallengeCard(
                     StatusPill(
                         status = if (c.isCompleted) CardStatus.Ended else status,
                         completed = c.isCompleted,
-                        accent = accent,
+                        accent = cardAccent,
                         theme = theme
                     )
                 }
@@ -657,10 +850,10 @@ private fun ChallengeCard(
                         .clip(RoundedCornerShape(18.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(accent.copy(0.20f), theme.bg2.copy(0.58f))
+                                listOf(cardAccent.copy(0.20f), theme.bg2.copy(0.58f))
                             )
                         )
-                        .border(1.dp, accent.copy(0.34f), RoundedCornerShape(18.dp))
+                        .border(1.dp, cardAccent.copy(0.34f), RoundedCornerShape(18.dp))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -668,14 +861,14 @@ private fun ChallengeCard(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(accent.copy(0.20f))
-                            .border(1.dp, accent.copy(0.42f), RoundedCornerShape(12.dp)),
+                            .background(cardAccent.copy(0.20f))
+                            .border(1.dp, cardAccent.copy(0.42f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             targetIcon(c.targetType),
                             null,
-                            tint = accent,
+                            tint = cardAccent,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -691,7 +884,7 @@ private fun ChallengeCard(
                         Spacer(Modifier.width(5.dp))
                         Text(
                             c.targetType.unit,
-                            color = accent,
+                            color = cardAccent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(bottom = 4.dp)
@@ -728,7 +921,7 @@ private fun ChallengeCard(
                             .background(theme.bg2.copy(0.5f))
                             .padding(horizontal = 10.dp, vertical = 7.dp)
                     ) {
-                        Icon(Icons.Rounded.CalendarMonth, null, tint = accent, modifier = Modifier.size(13.dp))
+                        Icon(Icons.Rounded.CalendarMonth, null, tint = cardAccent, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(5.dp))
                         Text(
                             humanDate(c.event.dateIso) + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: ""),
@@ -779,13 +972,13 @@ private fun ChallengeCard(
                         Spacer(Modifier.weight(1f))
                         Text(
                             "%${(c.progressPct * 100).toInt()}",
-                            color = accent,
+                            color = cardAccent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black
                         )
                     }
                     Spacer(Modifier.height(5.dp))
-                    ProgressBar(pct = c.progressPct, accent = accent, theme.stroke)
+                    ProgressBar(pct = c.progressPct, accent = cardAccent, theme.stroke)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -798,7 +991,7 @@ private fun ChallengeCard(
                             Icon(Icons.Rounded.People, null, tint = theme.text2, modifier = Modifier.size(12.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "${c.participantsCount}",
+                                c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}",
                                 color = theme.text1,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black
@@ -806,7 +999,7 @@ private fun ChallengeCard(
                             Spacer(Modifier.width(10.dp))
                             // Countdown / status
                             val (cdIcon, cdText, cdColor) = when {
-                                c.isCompleted -> Triple(Icons.Rounded.Check, "TAMAMLANDI", accent)
+                                c.isCompleted -> Triple(Icons.Rounded.Check, "TAMAMLANDI", completedColor)
                                 status == CardStatus.NotStarted ->
                                     Triple(Icons.Rounded.HourglassBottom,
                                         if (daysUntilStart == 0L) "Bugün başlıyor"
@@ -839,8 +1032,9 @@ private fun ChallengeCard(
                     JoinPill(
                         isJoined = c.isJoined,
                         isInvited = c.isInvited,
+                        isFull = isFull,
                         inFlight = inFlight,
-                        canAct   = !c.isCompleted && status != CardStatus.Ended,
+                        canAct   = !c.isCompleted && status != CardStatus.Ended && !isFull,
                         accent   = accent,
                         theme    = theme,
                         onClick  = onToggle
@@ -895,6 +1089,7 @@ private fun StatusPill(
 private fun JoinPill(
     isJoined: Boolean,
     isInvited: Boolean,
+    isFull: Boolean,
     inFlight: Boolean,
     canAct: Boolean,
     accent: Color,
@@ -930,6 +1125,7 @@ private fun JoinPill(
                 else     -> Icons.Rounded.Bolt
             }
             val label = when {
+                isFull    -> "DOLU"
                 !canAct  -> "KAPALI"
                 isJoined -> "KATILDIN"
                 isInvited -> "DAVET"
