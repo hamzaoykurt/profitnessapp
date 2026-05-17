@@ -239,6 +239,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun getStreak(userId: String): Result<Int> =
         withContext(Dispatchers.IO) {
             runCatching {
+                syncManager.pullWorkoutLogDatesIfHistoricalMissing(userId).getOrThrow()
                 val dates = workoutDao.getWorkoutDates(userId)
                 calculateStreak(dates)
             }

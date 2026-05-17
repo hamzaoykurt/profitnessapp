@@ -52,7 +52,7 @@ class SyncCoordinator @Inject constructor(
         if (force) {
             syncManager.pullWorkoutLogDates(userId).getOrThrow()
         } else {
-            syncManager.pullWorkoutLogDatesIfLocalEmpty(userId).getOrThrow()
+            syncManager.pullWorkoutLogDatesIfHistoricalMissing(userId).getOrThrow()
         }
     }
 

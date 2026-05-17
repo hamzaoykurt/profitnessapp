@@ -266,6 +266,18 @@ class SyncManager @Inject constructor(
         }
     }
 
+    suspend fun pullWorkoutLogDatesIfHistoricalMissing(userId: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            val weekStart = LocalDate.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+            if (workoutDao.countWorkoutLogsBefore(userId, weekStart) == 0) {
+                pullWorkoutLogDates(userId).getOrThrow()
+            }
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     //  PUSH: Room → Supabase
     // ═════════════════════════════════════════════════════════════════════════

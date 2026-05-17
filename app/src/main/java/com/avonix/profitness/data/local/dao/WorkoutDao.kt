@@ -92,6 +92,9 @@ interface WorkoutDao {
     @Query("SELECT DISTINCT date FROM workout_logs WHERE user_id = :userId ORDER BY date DESC")
     suspend fun getWorkoutDates(userId: String): List<String>
 
+    @Query("SELECT COUNT(*) FROM workout_logs WHERE user_id = :userId AND date < :beforeDate")
+    suspend fun countWorkoutLogsBefore(userId: String, beforeDate: String): Int
+
     @Query("SELECT * FROM workout_logs WHERE synced = 0")
     suspend fun getUnsyncedLogs(): List<WorkoutLogEntity>
 
