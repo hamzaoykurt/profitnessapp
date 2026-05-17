@@ -55,7 +55,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             val loggedIn = runCatching { authRepository.awaitSessionLoaded() }.getOrDefault(false)
             if (loggedIn) {
-                runCatching { planRepository.refresh() }
+                viewModelScope.launch { runCatching { planRepository.refresh() } }
                 updateState {
                     it.copy(
                         isSessionLoading = false,
