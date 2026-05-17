@@ -1,360 +1,334 @@
 # Profitness Android + Supabase Altyapi Denetimi
 
-Tarih: 2026-05-13
-Kapsam: Android uygulama kodu, Room modeli/migration zinciri, Supabase migration'lari, Edge Function'lar, canli Supabase metadata okumalari.
-Kisit: Kotlin, SQL ve proje konfigurasyonunda refactor uygulanmadi; yalnizca rapor uretildi. Secret, token ve env degerleri rapora yazilmadi.
+Denetim tarihi: 2026-05-17, Europe/Istanbul  
+Kapsam: Android uygulama kodu, Room/offline sync, Supabase migrations, Edge Functions, Storage, canli Supabase metadata/advisor/log kontrolleri.  
+Sinir: Bu denetim yalniz rapordur. Kotlin, SQL, proje yapilandirmasi veya canli Supabase semasi degistirilmedi. Hassas degerler ve token/env icerikleri rapora yazilmadi.
 
 ## Architectural Health Score
 
-Genel skor: **62 / 100**
+**Genel skor: 72 / 100**
 
-| Pilar | Puan | Degerlendirme |
+| Alan | Puan | Yorum |
 | --- | ---: | --- |
-| Android mimari | 21 / 35 | Hilt, Room, ViewModel/StateFlow ve repository yapisi var; ancak Supabase SDK presentation katmanina sizmis, bazi ekranlar/VM'ler kurumsal bakim sinirinin cok uzerinde. |
-| Supabase/Postgres guvenlik ve performans | 25 / 35 | RLS yaygin, billing/AI service role kullanimi server tarafinda; fakat RPC execute yuzeyi fazla genis, public/private wrapper modeli sertlestirilmeli, webhook dogrulamasi olgun degil. |
-| Offline/sync/error handling | 13 / 20 | Room-first yazim, dirty/synced alanlari ve delta pull yonunde iyi adimlar var; conflict modeli, retry/backoff, idempotent sync state ve domain-safe hata modeli eksik. |
-| Test/observability/operasyonel olgunluk | 3 / 10 | Compile smoke calisiyor ama test kaynagi yok; analytics NoOp, crash/perf observability ve Supabase advisor otomasyonu yok. |
+| Android mimari | 23 / 35 | Hilt, Room, Compose, ViewModel/StateFlow ve repository yapisi urun icin uygun; ancak presentation katmaninda `SupabaseClient` sizintisi, buyuk ekran/ViewModel dosyalari ve zayif typed error modeli devam ediyor. |
+| Supabase/Postgres guvenlik ve performans | 30 / 35 | Yeni hardening ciddi ilerleme saglamis: tum public tablolar RLS acik, anon RPC yuzeyi keskin sekilde daraltilmis, Edge Function JWT modeli daha iyi. Kalan advisor bulgulari ve webhook legacy fallback kapatilmazsa kurumsal kabulde soru isareti olur. |
+| Offline/sync/error handling | 14 / 20 | Room-first yaklasim ve `SyncCoordinator` TTL/in-flight dedupe iyi yonde; fakat durable queue, conflict policy, retry/backoff ve domain-safe hata modeli tamamlanmamis. |
+| Test/observability/operasyonel olgunluk | 5 / 10 | `lintDebug` basarili; Supabase advisor/log kontrolleri yapilabiliyor. Buna karsin test kaynaklari yok, `testDebugUnitTest` NO-SOURCE, runtime observability henuz urun standardinda degil. |
 
-Stack suitability: Kotlin + Compose + Hilt + Room + Supabase bu urun icin uygun; mevcut risk teknik secimden degil, sinirlarin buyurken korunmamasindan geliyor. Mimariyi kurumsal seviyeye tasimak icin ana is, yeni teknoloji eklemek degil: SDK sinirlarini data layer'a hapsetmek, sync'i deterministik hale getirmek, RPC izinlerini daraltmak ve test/observability temellerini koymak.
+**Stack suitability:** Hilt + Room + Compose + Supabase bu urun icin dogru secim. Son yapisal degisiklikler ozellikle Supabase tarafini MVP guvenlik seviyesinden daha olgun bir seviyeye tasimis. Kurumsal urun seviyesinin onundeki ana engel artik veritabani aciklari degil; Android katman sinirlari, test eksikligi, sync dayanıkliligi ve network/latency butcesi.
 
-Risk heatmap:
+### Risk Heatmap
 
-| Alan | Risk | Not |
+| Risk | Sicaklik | Durum |
 | --- | --- | --- |
-| Presentation katmani | High | `SupabaseClient` birden cok ViewModel/Screen icinde dogrudan kullaniliyor. |
-| Public RPC yuzeyi | High | Canli metadata: 69 public function icinde 8 anon executable; 42 private function icinde 8 anon executable. |
-| Offline sync | High | Yerel dirty queue var ama conflict/retry/partial failure protokolu urun standardinda degil. |
-| Edge billing/AI | Medium | Service role sadece Edge/server tarafinda; olumlu. Webhook imzasi/timestamp ve audit modeli zayif. |
-| Test/observability | High | Test dosyasi bulunmadi; `:app:testDebugUnitTest` `NO-SOURCE`. |
+| Presentation katmanina Supabase SDK sizintisi | High | Degismemis. En az 20 presentation referansi var. |
+| Buyuk Compose/Screen/ViewModel dosyalari | High | Degismemis/yuksek. En buyuk dosyalar 1.8k-3k satir bandinda. |
+| Public/anon RPC yuzeyi | Medium-Low | Iyilesmis. Canli DB'de anon executable public function sayisi 1'e dusmus. |
+| Private security definer fonksiyon yuzeyi | Medium | `private` schema anon'a kapali; ancak 45 private fonksiyon authenticated role'a executable. Wrapper/body ayrimi bilincli tutulmali. |
+| Billing/AI Edge Function service role kullanimi | Medium-Low | Service role Edge Function icinde sinirli; JWT required fonksiyonlar dogru. Webhook public olmak zorunda, HMAC var; legacy secret fallback kapatilmasi gerekir. |
+| Offline sync partial failure/conflict | Medium-High | Delta pull ve dedupe iyi; durable operation log ve conflict contract eksik. |
+| Test/QA kaniti | High | Unit/instrumentation test klasorleri yok; Gradle test task'i NO-SOURCE. |
+| Supabase advisor bulgulari | Medium | `function_search_path_mutable`, `rls_enabled_no_policy`, FK index, RLS initplan ve duplicate index uyarilari kalmis. |
+
+## Since Last Audit: Ne Degisti?
+
+- Supabase hardening migration'lari eklenmis ve canli DB'de uygulanmis gorunuyor: anon table grant revoke, public RPC execute grant sikilastirma, private function execute grant sikilastirma, avatar URL constraint, AI credit/billing hardening.
+- Canli grant kontrolunde public function sayisi 74; anon executable public function sayisi 1; private schema anon executable 0. Bu onceki kritik RPC yetki genislemesi riskini ciddi sekilde dusuruyor.
+- Edge Functions canli listesinde hassas cagri fonksiyonlari `verify_jwt=true`: `ai-generate`, `gemini-generate`, `billing-status`, `billing-checkout`, `billing-sandbox-complete`. Public kalanlar `billing-webhook` ve `email-assets`; bu model mimari olarak kabul edilebilir.
+- Profil fotografi ve online event URL tarafinda yeni savunmalar var: MIME/5 MB kontrolu, public profile-photo bucket siniri, avatar URL check constraint ve `http/https` URL normalize edici.
+- Android tarafinda buyuk dosya, presentation SDK coupling, untyped `Result<T>` ve test eksikligi riski ayni agirlikta devam ediyor.
 
 ## Structural Findings
 
-### 1. Presentation katmanina Supabase SDK siziyor
+### 1. Presentation katmani Supabase SDK'ya dogrudan bagli
 
-Pillar: Android mimari
-Severity: High
-Evidence: `AppModule.kt` global `SupabaseClient` sagliyor (`app/src/main/java/com/avonix/profitness/di/AppModule.kt:122`), sonra presentation siniflari bunu dogrudan aliyor: `WorkoutViewModel.kt:125`, `AICoachViewModel.kt:78`, `ProgramViewModel.kt:85`, `WeightTrackingViewModel.kt:83`, `ProfileViewModel.kt:104`, `ExerciseProgressionScreen.kt:80`. `WorkoutViewModel` icinde session erisimi cok sayida methoda dagilmis (`WorkoutViewModel.kt:590`, `WorkoutViewModel.kt:660`, `WorkoutViewModel.kt:1197`, `WorkoutViewModel.kt:1964`).
-
-Violation: ViewModel'ler domain/use-case kontrati yerine Supabase auth/session detayini biliyor. Bu, UI state ve repository sorumlulugunu karistiriyor.
-
-Why it Matters: Auth lifecycle degisimi, token refresh, RLS hata davranisi veya SDK upgrade'i presentation katmanini kirar. Testlerde Supabase mock'lamak zorlasir; offline-first Room akisi ile remote session akisi ayni yerde birbirine baglanir.
-
-Senior Fix:
+- **Pillar:** Android mimari
+- **Severity:** High
+- **Kanıt:** `presentation/workout/WorkoutViewModel.kt:127`, `presentation/aicoach/AICoachViewModel.kt:78`, `presentation/program/ProgramViewModel.kt:85`, `presentation/profile/ProfileViewModel.kt:109`, `presentation/profile/ExerciseProgressionScreen.kt:81`, `presentation/discover/DiscoverViewModel.kt:64`. `rg` taramasinda presentation altinda 20 `SupabaseClient` referansi bulundu.
+- **Violation:** Presentation katmani auth/session ve postgrest detaylarini biliyor. ViewModel'ler business flow yerine Supabase session resolution ve network orchestration tasiyor.
+- **Why it matters:** Test yazmak, offline-first davranisi izole etmek ve SDK degisimlerini absorbe etmek zorlasiyor. UI state hatalari dogrudan backend SDK davranisina bagimli kaliyor.
+- **Senior Fix:** SDK'yi data katmaninda tut; presentation sadece use case veya repository port'u gorsun.
 
 ```kotlin
 interface CurrentUserProvider {
     suspend fun requireUserId(): UserId
 }
 
-class SupabaseCurrentUserProvider @Inject constructor(
-    private val supabase: SupabaseClient
-) : CurrentUserProvider {
-    override suspend fun requireUserId(): UserId =
-        supabase.auth.currentSessionOrNull()?.user?.id
-            ?.let(::UserId)
-            ?: throw AuthFailure.NotAuthenticated
+class StartWorkoutUseCase(
+    private val userProvider: CurrentUserProvider,
+    private val workouts: WorkoutRepository
+) {
+    suspend operator fun invoke(input: StartWorkoutInput): DomainResult<WorkoutSession> {
+        val userId = userProvider.requireUserId()
+        return workouts.start(userId, input)
+    }
 }
-
-@HiltViewModel
-class WorkoutViewModel @Inject constructor(
-    private val syncWorkout: SyncWorkoutUseCase,
-    private val currentUser: CurrentUserProvider
-) : ViewModel()
 ```
 
-Refactor Effort: Medium. Once `CurrentUserProvider` and use-case boundaries exist, migration can be feature-by-feature.
+- **Refactor Effort:** M-L. En once `WorkoutViewModel`, `AICoachViewModel`, `ProgramViewModel`, `ProfileViewModel` icin auth/session abstraction cikarilmali.
 
-### 2. Buyuk ekran/VM dosyalari bakim sinirini asmis
+### 2. Ekran ve ViewModel dosyalari kurumsal bakim esigini asiyor
 
-Pillar: Android mimari
-Severity: Medium-High
-Evidence: En buyuk dosyalar: `ProgramBuilderScreen.kt` 3098 satir, `ChallengeDetailOverlay.kt` 2318 satir, `ProfileScreen.kt` 2308 satir, `WorkoutViewModel.kt` 2014 satir, `StoreScreen.kt` 1973 satir. `ProgramBuilderScreen.kt:423` ana composable icinde navigation, hilt VM alma, context ve lifecycle gibi farkli sorumluluklari topluyor.
-
-Violation: Feature UI, interaction state, side-effect ve domain orchestration tek dosyalarda birikmis.
-
-Why it Matters: Her degisiklik genis recomposition yuzeyi, merge conflict ve regresyon riski dogurur. Kurumsal urunde feature sahipligi, snapshot testleri ve design review icin dosya sinirlari daha ince olmali.
-
-Senior Fix:
+- **Pillar:** Android mimari
+- **Severity:** High
+- **Kanıt:** `ProgramBuilderScreen.kt` 2983 satir, `ChallengeDetailOverlay.kt` 2249 satir, `ProfileScreen.kt` 2219 satir, `StoreScreen.kt` 1916 satir, `WorkoutViewModel.kt` 1879 satir, `CreateChallengeOverlay.kt` 1804 satir.
+- **Violation:** Tek dosyada route, layout, state mapping, form validation, network-trigger ve rendering birikiyor.
+- **Why it matters:** Degisiklik etkisi tahmin edilemez hale gelir; Compose recomposition hatalari, preview/test yazimi ve code review kalitesi duser.
+- **Senior Fix:** Dosya bolme UI refactor'u davranis degistirmeden yapilmali: route/state/effect/components ayrimi.
 
 ```kotlin
 @Composable
-fun ProgramBuilderRoute(
-    viewModel: ProgramViewModel = hiltViewModel(),
-    onBack: () -> Unit
-) {
+fun ProgramBuilderRoute(viewModel: ProgramViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ProgramBuilderScreen(
         state = state,
-        actions = ProgramBuilderActions.from(viewModel),
-        onBack = onBack
+        onAction = viewModel::onAction
     )
 }
 ```
 
-Refactor Effort: High. Ilk fazda route/screen/state/actions ayrimi, ikinci fazda sheet ve section dosyalarina bolme onerilir.
+- **Refactor Effort:** L. Once `ProgramBuilderScreen` ve `WorkoutViewModel`, sonra `ProfileScreen` ve challenge overlay'leri.
 
-### 3. `Result<T>` ve `runCatching` domain-safe hata modeli icin yetersiz
+### 3. `Result<T>` ve `runCatching` domain-safe hata modeli yerine gecmis
 
-Pillar: Offline/sync/error handling
-Severity: Medium
-Evidence: Repository kontratlari yaygin olarak `Result<T>` donuyor (`ChallengeRepository.kt:14`, `DiscoverRepository.kt:10`, `AuthRepository.kt:4`). Implementasyonlarda `runCatching` genis yakalama seklinde kullaniliyor (`ChallengeRepositoryImpl.kt:33`, `AuthRepositoryImpl.kt:26`, `GeminiRepositoryImpl.kt:41`). UI tarafinda string parse veya generic hata kullanimi var (`AuthViewModel.kt:147`, `AuthViewModel.kt:265`).
-
-Violation: Domain hatalari tipli degil; network, auth, validation, RLS/permission ve conflict ayni kanaldan akiyor.
-
-Why it Matters: UI state loading/error/data tutarliligini bozabilir. Retriable/non-retriable ayrimi, telemetry ve kullaniciya dogru mesaj verme zorlasir.
-
-Senior Fix:
+- **Pillar:** Offline/sync/error handling
+- **Severity:** Medium-High
+- **Kanıt:** `rg` sonucunda 203 `Result<` ve 219 `runCatching` kullanimi. Ornekler: `data/program/ProgramRepository.kt`, `data/profile/ProfileRepository.kt`, `data/sync/SyncManager.kt:236`, `presentation/aicoach/AICoachViewModel.kt:194`.
+- **Violation:** Kotlin `Result` exception'i tasir ama domain kararlarini tipli hale getirmez. UI genellikle "basarisiz" gorur; auth expired, quota exceeded, conflict, network timeout, validation, RLS denied ayrimi kaybolur.
+- **Why it matters:** Billing/AI, sync ve auth akislari kullaniciya farkli aksiyon gerektirir. Untyped hata modeli support maliyetini ve retry/rollback bug'larini artirir.
+- **Senior Fix:** `DomainError` sealed hierarchy ve `DomainResult` kullan.
 
 ```kotlin
-sealed interface AppFailure {
-    data object NotAuthenticated : AppFailure
-    data object Offline : AppFailure
-    data class PermissionDenied(val operation: String) : AppFailure
-    data class Validation(val field: String, val reason: String) : AppFailure
-    data class Remote(val code: String, val retryable: Boolean) : AppFailure
+sealed interface DomainError {
+    data object Unauthorized : DomainError
+    data object Offline : DomainError
+    data class QuotaExceeded(val remainingCredits: Int?) : DomainError
+    data class Conflict(val entity: String) : DomainError
+    data class Unexpected(val cause: Throwable) : DomainError
 }
 
-typealias AppResult<T> = Either<AppFailure, T>
+typealias DomainResult<T> = Either<DomainError, T>
 ```
 
-Refactor Effort: Medium. Once error mapper is added at repository boundary, ViewModel state can become deterministic.
+- **Refactor Effort:** M. Once AI/billing ve sync repository'leri; sonra presentation state mapping.
 
-### 4. Room-first sync dogru yonde, fakat conflict ve partial failure modeli eksik
+### 4. Sync mimarisi iyilesmis, fakat durable conflict/retry modeli eksik
 
-Pillar: Offline/sync/error handling
-Severity: High
-Evidence: Sync merkezi var ve Mutex ile sirali calisiyor (`SyncManager.kt:83`, `SyncManager.kt:94`, `SyncManager.kt:104`). Delta pull baslamis (`SyncManager.kt:238`-`SyncManager.kt:255`). Dirty set kayitlari push ediliyor ve basarili upsert sonrasi lokal temizleniyor (`SyncManager.kt:307`-`SyncManager.kt:340`). Ancak workout push'ta batch upsert sonrasi her satir synced isaretleniyor (`SyncManager.kt:280`-`SyncManager.kt:300`), per-row sonuc/audit yok. `SetCompletionEntity` default'lari migration default'lariyla semantik olarak karisik: DB default `synced=1`, entity default `synced=false`; DB default `dirty=0`, entity default `dirty=true` (`AppDatabase.kt:227`-`AppDatabase.kt:230`, `SetCompletionEntity.kt:27`-`SetCompletionEntity.kt:30`).
-
-Violation: Sync queue state machine acik bir kontrat degil; conflict policy, retry/backoff ve remote tombstone protokolu tam tanimli degil.
-
-Why it Matters: Mobil offline kullanimda network kesintisi, cift cihaz, saat farki ve kismi remote basari durumlari veri kaybi veya sessiz overwrite uretebilir.
-
-Senior Fix:
+- **Pillar:** Offline/sync/error handling
+- **Severity:** Medium-High
+- **Kanıt:** `data/sync/SyncCoordinator.kt:30` in-flight dedupe, `SyncCoordinator.kt:119-120` TTL, `SyncManager.kt:236-255` delta `pullSetCompletions`, `SyncManager.kt:331-360` dirty push. Room `AppDatabase.kt:32-33` version 13, `exportSchema=false`.
+- **Violation:** Sync operasyonlari fonksiyonel olarak var ama kalici operation queue, retry budget, conflict resolution ve partial failure checkpoint modeli net degil.
+- **Why it matters:** Zayif baglanti, uygulama kill, ayni hesabin iki cihazda kullanimi ve billing/AI yan etkileri birlikte dusunuldugunde "son yazan kazanir" veya sessiz veri kaybi riski dogar.
+- **Senior Fix:** Dirty flag yanina operation log ve conflict contract ekle.
 
 ```kotlin
-enum class SyncState { Clean, Dirty, Syncing, Failed, Deleted }
-
-data class SyncEnvelope<T>(
-    val entity: T,
-    val mutationId: String,
-    val state: SyncState,
-    val lastErrorCode: String? = null,
-    val retryAfterMs: Long? = null
+@Entity(tableName = "sync_operations")
+data class SyncOperationEntity(
+    @PrimaryKey val id: String,
+    val aggregate: String,
+    val payloadJson: String,
+    val attemptCount: Int,
+    val nextRunAt: Long,
+    val idempotencyKey: String
 )
 ```
 
-SQL tarafinda:
+- **Refactor Effort:** L. Workout/set completion ile baslayip weight/program tarafina genisletilmeli.
 
-```sql
-alter table public.set_completions
-  add column if not exists client_mutation_id uuid,
-  add column if not exists deleted_at timestamptz;
+### 5. Room migration ve regression test kaniti yok
 
-create unique index if not exists set_completions_mutation_id_idx
-  on public.set_completions (user_id, client_mutation_id)
-  where client_mutation_id is not null;
-```
-
-Refactor Effort: High. En guvenli yol once set_completions icin queue protokolunu netlestirmek, sonra workout/weight tarafina yaymak.
-
-### 5. Room schema export ve migration test altyapisi yok
-
-Pillar: Test/observability/operasyonel olgunluk
-Severity: Medium
-Evidence: Room `version = 11`, `exportSchema = false` (`AppDatabase.kt:21`-`AppDatabase.kt:34`). Migration zinciri AppModule'de explicit eklenmis (`AppModule.kt:97`-`AppModule.kt:112`), bu iyi. Ancak test kaynak klasorlerinde test dosyasi bulunmadi; `:app:testDebugUnitTest` basarili ama `NO-SOURCE`.
-
-Violation: Migration'lar derleniyor ama eski DB snapshot'larindan guncel schema'ya dogrulama yok.
-
-Why it Matters: Offline-first urunde Room migration hatasi kullanicinin lokal verisini kaybettirebilir. `exportSchema=false` bu regresyonlari PR'da yakalamayi zorlastirir.
-
-Senior Fix:
+- **Pillar:** Test/observability/operasyonel olgunluk
+- **Severity:** High
+- **Kanıt:** `app/src/test`, `app/src/androidTest`, `baselineprofile/src/androidTest` bulunamadi. `./gradlew.bat :app:testDebugUnitTest --no-daemon` basarili ama `NO-SOURCE`. `AppDatabase.kt:33` `exportSchema=false`.
+- **Violation:** Room migration'lari manuel yaziliyor ama schema export ve migration testleri yok.
+- **Why it matters:** Fresh install ve eski cihaz upgrade yollari urun icin kritik. Bir Room migration hatasi uygulamayi acilista dusurebilir ve local-first veriyi riske atar.
+- **Senior Fix:** Schema export'u ac, CI'da migration testleri calistir.
 
 ```kotlin
 @RunWith(AndroidJUnit4::class)
 class AppDatabaseMigrationTest {
-    @get:Rule val helper = MigrationTestHelper(
-        InstrumentationRegistry.getInstrumentation(),
-        AppDatabase::class.java
-    )
-
-    @Test fun migrate10To11_preservesDirtySetCompletions() {
-        helper.createDatabase(AppDatabase.NAME, 10).apply {
-            execSQL("insert into set_completions (...) values (...)")
-            close()
-        }
+    @Test fun migrate12To13_preservesSetCompletions() {
+        helper.createDatabase(AppDatabase.NAME, 12).close()
         helper.runMigrationsAndValidate(
             AppDatabase.NAME,
-            11,
+            13,
             true,
-            AppDatabase.MIGRATION_10_11
+            AppDatabase.MIGRATION_12_13
         )
     }
 }
 ```
 
-Refactor Effort: Medium. Schema export acildiktan sonra 10->11 ve kritik offline tablolarla baslamak yeterli.
+- **Refactor Effort:** M. Ilk hedef: Room migration tests + sync coordinator unit tests + AI/billing repository fake tests.
 
-### 6. RPC execute yuzeyi gereksiz genis
+### 6. Supabase RPC/grant yuzeyi artik daha iyi, kalan yuzey explicit allowlist'e baglanmali
 
-Pillar: Supabase/Postgres guvenlik ve performans
-Severity: High
-Evidence: Canli metadata okumasinda 69 public function icinde 8 `anon` executable, 42 private function icinde 8 `anon` executable goruldu. Anon executable listesinde `create_event_challenge`, `invite_friends_to_challenge`, `list_visible_challenges`, `list_user_shared_programs` ve `list_user_created_challenges` gibi fonksiyon aileleri var. Migration'larda public wrapper modeli goruluyor (`20260508090000_sport_aware_activity_challenges.sql:463`, `20260508090000_sport_aware_activity_challenges.sql:508`, `20260508204000_challenge_invite_visibility.sql:130`). Birden cok security definer function private schema'da tutulmus ve search_path belirlenmis; bu iyi bir pratik (`20260508090000_sport_aware_activity_challenges.sql:101`, `20260508195000_social_challenge_invites.sql:56`, `20260508204000_challenge_invite_visibility.sql:4`).
-
-Violation: Public RPC'ler ve hatta private function'lar execute grant acisindan least-privilege seviyesinde degil. Private schema Data API'de exposed degilse risk azalir, ama grant hygiene yine de kurumsal standart degil.
-
-Why it Matters: Supabase/PostgREST'te function execute grant'leri saldiri yuzeyini belirler. `auth.uid()` null guard'lari iyi bir ikinci savunmadir; asil savunma gereksiz role'lerden execute'i kaldirmaktir.
-
-Senior Fix:
+- **Pillar:** Supabase/Postgres guvenlik
+- **Severity:** Medium
+- **Kanıt:** `20260517201854_revoke_anon_table_grants.sql:1-3`, `20260517204113_tighten_public_rpc_execute_grants.sql:1-21`, `20260517211800_tighten_private_function_execute_grants.sql:3-11`. Canli SQL kontrolde public anon executable function = 1: `public.check_email_registered(p_email text)`. Private anon executable = 0; private authenticated executable = 45.
+- **Violation:** Kritik risk buyuk olcude giderilmis; kalan risk, fonksiyon erisimlerinin genis default grant yerine dokumante edilmis allowlist'e baglanmamasi.
+- **Why it matters:** `security definer` fonksiyonlar RLS'i bilincli by-pass eder. Yanlis grant, auth kullanicisini beklenenden fazla yetkili hale getirebilir.
+- **Senior Fix:** Public wrapper'lari tek tek grant'le, body/helper fonksiyonlari private tut, anon fonksiyon icin rate-limit ve minimal response uygula.
 
 ```sql
-revoke execute on all functions in schema private from public, anon, authenticated;
-grant usage on schema private to authenticated;
-
-revoke execute on function public.create_event_challenge(...) from anon;
-grant execute on function public.create_event_challenge(...) to authenticated;
+revoke execute on all functions in schema public from public, anon, authenticated;
+grant execute on function public.list_my_challenges() to authenticated;
+grant execute on function public.check_email_registered(text) to anon, authenticated;
 ```
 
-Refactor Effort: Medium. Once function inventory is locked, migrations can revoke by exact signature and add regression SQL checks.
+- **Refactor Effort:** S-M. Mevcut hardening dogru yonde; sadece allowlist ve audit dokumantasyonu tamamlanmali.
 
-### 7. RLS kapsami genel olarak iyi, fakat policy/grant tutarliligi sertlestirilmeli
+### 7. Supabase advisor bulgulari kapatilmadan "enterprise ready" denmemeli
 
-Pillar: Supabase/Postgres guvenlik ve performans
-Severity: Medium
-Evidence: Canli `list_tables` sonucunda public tablolarda RLS enabled gorundu. Billing tablolarinda client write kapali, service role grant'leri ayrilmis (`20260430090000_billing_entitlements.sql:138`-`20260430090000_billing_entitlements.sql:160`). Set completion policy'leri owner check yapiyor (`20260513090000_optimize_set_completions_sync.sql:36`-`20260513090000_optimize_set_completions_sync.sql:59`). Buna karsin canli policy'lerde bazi eski tablolar `roles={public}` ile tanimli (`profiles`, `workout_logs`, `user_stats`, `chat_sessions` aileleri).
-
-Violation: Policy role secimi ve yeni/eskiden gelen policy stilleri karisik. `public` rolu genelde `anon` ve `authenticated` kapsadigi icin guard dogru olsa bile okunabilirlik ve least-privilege zayiflar.
-
-Why it Matters: Yeni migration yazan ekip uyeleri hangi yuzeyin gercekten public oldugunu anlamakta zorlanir. Advisor bulgulari kapatilsa bile audit izleri zayif kalir.
-
-Senior Fix:
+- **Pillar:** Supabase/Postgres guvenlik ve performans
+- **Severity:** Medium
+- **Kanıt:** Canli advisor bulgulari:
+  - Security: `rls_enabled_no_policy` -> `billing_webhook_events`, `usage_counters`; `function_search_path_mutable` -> `public.set_set_completions_updated_at`; leaked password protection disabled.
+  - Performance: unindexed FK'ler -> `billing_orders_sku_fkey`, `billing_orders_user_id_fkey`, `credit_ledger_user_id_fkey`, `group_challenges_event_exercise_id_fkey`, `set_completions_exercise_id_fkey`.
+  - Performance: RLS initplan uyarilari -> `group_challenges`, `group_participants`, `shared_program_recipients`, `user_follows`, `exercises`.
+  - Duplicate index: `public.exercises` icin `exercises_created_by_idx` ve `idx_exercises_created_by`.
+- **Violation:** Linter bulgulari dusuk veri hacminde sorun cikarmayabilir; fakat buyume ve kurumsal denetimde kabul kriteridir.
+- **Why it matters:** RLS initplan ve eksik FK indexleri veri buyudukce p95 latency'yi bozar. Search path mutable fonksiyonlar guvenlik standardinda kapatilmalidir.
+- **Senior Fix:**
 
 ```sql
-drop policy if exists "Users manage own workout logs" on public.workout_logs;
-create policy workout_logs_select_own
-on public.workout_logs
-for select to authenticated
-using ((select auth.uid()) = user_id);
+alter function public.set_set_completions_updated_at()
+set search_path = public, pg_temp;
+
+create index concurrently if not exists billing_orders_user_id_idx
+on public.billing_orders(user_id);
+
+drop index concurrently if exists public.idx_exercises_created_by;
 ```
 
-Refactor Effort: Medium. Policy'leri tablo basina select/insert/update/delete olarak ayirmak test edilebilirligi artirir.
+- **Refactor Effort:** S-M. Advisor remediation icin resmi referans: [Supabase Performance and Security Advisors](https://supabase.com/docs/guides/database/database-linter), RLS performans icin [Supabase RLS performance recommendations](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-### 8. Billing/AI Edge Function service role modeli kabul edilebilir, webhook dogrulamasi zayif
+### 8. Edge Function modeli guclenmis; billing latency ve webhook legacy fallback kalmis
 
-Pillar: Supabase/Postgres guvenlik ve performans
-Severity: Medium
-Evidence: Shared auth helper service role client'i sadece Edge Function icinde uretiyor (`supabase/functions/_shared/auth.ts:29`-`supabase/functions/_shared/auth.ts:34`). Client tarafinda edge cagrilari bearer token ve anon key ile gidiyor (`UserPlanRepositoryImpl.kt:126`-`UserPlanRepositoryImpl.kt:148`). AI function authenticated user dogruluyor, usage reservation yapiyor ve sonra provider'a cikiyor (`ai-generate/index.ts:147`-`ai-generate/index.ts:177`). Billing checkout/status/sandbox authenticatedUser ile korunuyor (`billing-checkout/index.ts:17`-`billing-checkout/index.ts:28`, `billing-status/index.ts:13`-`billing-status/index.ts:23`, `billing-sandbox-complete/index.ts:24`-`billing-sandbox-complete/index.ts:51`). Webhook ise tek shared secret header karsilastirmasi kullaniyor (`billing-webhook/index.ts:22`-`billing-webhook/index.ts:24`) ve timestamp/signature replay modeli yok.
-
-Violation: Service role client'in server tarafinda kalmasi dogru; webhook dogrulama ise production-grade provider signature standardinda degil.
-
-Why it Matters: Billing webhook'lari finansal state degistirir. Tek header secret sizar veya replay edilirse `apply_paid_billing_order` cagrisi kotuye kullanilabilir; idempotency tablo PK'si iyi ama imza/timestamp eksik.
-
-Senior Fix:
-
-```ts
-const signature = req.headers.get("provider-signature") ?? "";
-const timestamp = req.headers.get("provider-timestamp") ?? "";
-verifyProviderSignature(rawBody, signature, timestamp, webhookSecret);
-rejectIfTimestampSkew(timestamp, 5 * 60);
-```
-
-Refactor Effort: Medium. Provider secilince native signature library veya documented HMAC formatina gecilmeli.
-
-### 9. Redundant fetch/RPC paterni performans ve battery maliyeti uretiyor
-
-Pillar: Supabase/Postgres guvenlik ve performans
-Severity: Medium
-Evidence: API loglari son 24 saatte ayni ekran akisi icinde tekrar eden `programs`, `program_days`, `program_exercises`, `set_completions`, `exercises` ve RPC cagrilari gosteriyor; raporda kimlik/path detaylari redakte edildi. Kodda `refreshWorkout` sirasiyla exercises, programs, set push, set pull, workout logs ve dates cekiyor (`SyncCoordinator.kt:35`-`SyncCoordinator.kt:52`). `SyncManager.pullSetCompletions` delta kullanabiliyor (`SyncManager.kt:238`-`SyncManager.kt:255`), fakat diger pull'lar hala daha genis fetch paterni tasiyor.
-
-Violation: Mobile sync'te feature route basina network budget ve cache invalidation kontrati net degil.
-
-Why it Matters: Supabase REST cagrilari pil, data ve cold-start maliyetini artirir. Ayrica ayni auth/session refresh penceresinde fazla is tetiklenirse rate limit ve UI jank riski buyur.
-
-Senior Fix:
-
-```kotlin
-data class SyncBudget(
-    val route: RouteKey,
-    val maxRequests: Int,
-    val ttlMs: Long,
-    val allowStaleRoom: Boolean = true
-)
-```
-
-SQL/RPC alternatifi:
+- **Pillar:** Supabase/Postgres guvenlik ve operasyon
+- **Severity:** Medium
+- **Kanıt:** `_shared/auth.ts:27-33` service role admin client sadece Edge Function tarafinda; `_shared/auth.ts:35-53` bearer token ile user dogrulama. `ai-generate/index.ts:177-197` request size + authenticated user + reserve usage; `ai-generate/index.ts:268-273` complete/refund flow. `billing-webhook/index.ts:59-72` HMAC verification; `billing-webhook/index.ts:79-81` legacy secret fallback default acik. Canli Edge listesinde `billing-status`, `billing-checkout`, `billing-sandbox-complete`, `ai-generate`, `gemini-generate` JWT required; `billing-webhook` ve `email-assets` public.
+- **Violation:** Genel model dogru; ancak webhook HMAC rollout tamamlaninca legacy secret fallback kapatilmali. `billing-status` her cagri icin `ensure_billing_account` + 4 tablo read yapiyor.
+- **Why it matters:** Billing endpointleri urun guveni ve latency butcesi icin en kritik yuzey. Loglarda `billing-status` icin tekrarli POST'lar ve bazi multi-second execution sureleri goruldu.
+- **Senior Fix:** Billing snapshot'i tek RPC veya materialized read model ile topla; webhook fallback'i env ile kapat; Edge timeout/error metric ekle.
 
 ```sql
-create function public.get_workout_bootstrap(p_since timestamptz)
+create or replace function public.get_billing_snapshot()
 returns jsonb
 language sql
-security invoker
+security definer
+set search_path = public, pg_temp
 as $$
   select jsonb_build_object(
-    'programs', ...,
-    'set_completions', ...
-  );
+    'entitlement', e,
+    'credits', c.balance
+  )
+  from user_entitlements e
+  join user_credit_accounts c on c.user_id = e.user_id
+  where e.user_id = auth.uid();
 $$;
 ```
 
-Refactor Effort: Medium-High. Once metrics exist, only hot routes should be consolidated.
+- **Refactor Effort:** M.
+
+### 9. Profile photo ve external URL savunmalari iyi, public storage karari urun politikasi gerektirir
+
+- **Pillar:** Supabase/Postgres guvenlik
+- **Severity:** Low-Medium
+- **Kanıt:** `ProfilePhotoPickerSecurity.kt:8-44` 5 MB ve MIME kontrolu; `ProfileRepositoryImpl.kt:131-143` `profile-photos` public URL upload; canli Storage bucket `profile-photos` public, 5 MB, MIME allowlist `image/jpeg`, `image/png`, `image/webp`; `20260517211900_restrict_profile_avatar_urls.sql:1-12` external HTTP avatar URL kısıtı; `ChallengeUrlSecurity.kt:5-18` online event URL normalize/validate.
+- **Violation:** Teknik savunma iyi; public avatar bucket urun/gizlilik politikasi olarak acik secimdir.
+- **Why it matters:** Public bucket'ta yuklenen fotograf URL'si bilen herkes tarafindan erisilebilir. Kullanici silme, avatar visibility ve abuse/moderation davranisi net olmali.
+- **Senior Fix:** Public avatar kabul ediliyorsa privacy copy, delete flow ve cache invalidation policy yaz. Daha hassas profil icin signed URL + transform pipeline dusun.
+- **Refactor Effort:** S-M.
+
+### 10. Redundant fetch ve network butcesi hala urun riski
+
+- **Pillar:** Android mimari / Supabase performans
+- **Severity:** Medium
+- **Kanıt:** Canli API loglarinda Ktor/PostgREST tarafindan `workout_logs`, `exercise_logs`, `program_exercises`, `user_stats`, leaderboard RPC'leri ve billing status tekrarli cagri paternleri goruldu. `ProfileRepositoryImpl.kt:246-326` profil ekraninda farkli tablolar icin ardışik fetch'ler; `SyncCoordinator.kt:38-52` workout refresh birden fazla pull/push fonksiyonu calistiriyor.
+- **Violation:** Room-first tasarim var ama ekran bazli "hydrate everything" davranisi latency ve pil/network maliyetini buyutuyor.
+- **Why it matters:** Sosyal/challenge/feed/billing ozellikleri arttikca p95 ekran acilis suresi ve Supabase quota maliyeti artar.
+- **Senior Fix:** Ekran snapshot RPC'leri, local cache invalidation ve lifecycle-aware refresh budget kullan.
+- **Refactor Effort:** M.
 
 ## Database & Security Deep-Dive
 
-RLS:
+### RLS ve table grants
 
-- Canli public tablolarin tamaminda RLS enabled gorundu.
-- Billing/AI hassas tablolarinda client write kapali veya service role odakli gorunuyor: `user_entitlements`, `user_credit_accounts`, `credit_ledger`, `usage_counters`, `ai_usage_events`, `billing_orders`, `billing_webhook_events`.
-- `set_completions` icin owner-based select/insert/update/delete policy var; son migration `auth.uid()` per-row optimizasyonunu hedefliyor (`20260513090000_optimize_set_completions_sync.sql:1`, `20260513090000_optimize_set_completions_sync.sql:36`-`20260513090000_optimize_set_completions_sync.sql:59`). Canli policy metadatasinda hala `auth.uid() = user_id` formu gorundu; migration uygulanma sirasi veya canli state yeniden kontrol edilmeli.
+- Canli `list_tables` sonucunda public tablolarda RLS enabled goruldu.
+- Billing ve AI tablolarinda servis tarafli tasarim belirgin: `billing_webhook_events` ve `usage_counters` RLS enabled ama policy yok. Bu server-only ise kabul edilebilir; ancak advisor icin migration comment + explicit revoke + test query ile dokumante edilmeli.
+- `billing_products`, `challenge_invites`, `set_completions` anon grant'leri son migration'larla revoke edilmis.
 
-Public/private function ayrimi:
+### RPC ve function execution modeli
 
-- Iyi: privileged body'lerin bir kismi `private` schema + `security definer` + `search_path` ile ayrilmis.
-- Risk: canli grant'lerde `anon` executable public/private function'lar var. Uygulama auth'lu kullansa bile DB seviyesinde execute yuzeyi daraltilmali.
-- Kritik sayilmadi: service role key Android tarafinda bulunmadi; service role client Edge Function helper icinde.
+- Canli fonksiyon ozeti: public functions 74, public anon executable 1, private functions 45, private anon executable 0, private authenticated executable 45.
+- Kalan anon RPC: `check_email_registered(p_email text)`. Bu fonksiyon auth UX icin tutulabilir; response minimal olmali, rate-limit/abuse monitoring eklenmeli.
+- `security definer` fonksiyonlarda search path cogu yerde set edilmis; advisor yalniz `set_set_completions_updated_at` icin mutable search_path uyariyor.
+- `private` schema anon'a kapali; authenticated execute genis oldugu icin public wrapper/body ayrimi dokumante edilmeli.
 
-Index/FK/check:
+### Edge Functions
 
-- Iyi: `programs(user_id, is_active)`, `programs(user_id, created_at)`, challenge invite, participant, movement ve shared program index'leri var.
-- Iyi: billing tarafinda idempotency icin `ai_usage_events_user_idempotency_idx` ve webhook event PK modeli var.
-- Risk: `set_completions` canli index listesinde yalniz PK gorundu; repo migration'lari `set_completions_user_updated_at_idx`, `set_completions_user_exercise_date_idx`, `set_completions_user_day_date_idx` ekliyor. Canli schema ile migration state farki varsa delta pull performansi beklenenden dusuk kalir.
+| Function | JWT | Denetim yorumu |
+| --- | --- | --- |
+| `ai-generate` | true | Authenticated user + service role RPC ile entitlement reserve/complete/refund modeli iyi. |
+| `gemini-generate` | true | `ai-generate` ile benzer quota ve request-size kontrolleri var. |
+| `billing-status` | true | Dogru auth modeli; read fanout ve tekrarli cagri latency riski var. |
+| `billing-checkout` | true | Kullanici baslatmali flow icin dogru. |
+| `billing-sandbox-complete` | true | Sandbox flag ve order status kontrolu korunmali. |
+| `billing-webhook` | false | Public olmasi normal; HMAC var. Legacy secret fallback kapatilmali. |
+| `email-assets` | false | Public asset endpoint olarak kabul edilebilir. |
 
-Redundant fetch/RPC adaylari:
+### Index ve performance
 
-- Workout bootstrap: exercises + programs + days + program_exercises + set_completions + workout_logs cagrilari tek route icinde yineleniyor.
-- Discover/profile: feed, shared list, profile/stats ve avatar URL cache-busting akislari icin route-level TTL ve conditional refresh gerek.
-- Challenge dashboard: `list_my_events_for_date` ve `list_my_upcoming_events` icin public wrapper'lar auth'lu kullaniliyor; execute grant ve response payload budget birlikte ele alinmali.
+- Yeni index migration'lari var: set completions delta sync ve workout query indexleri eklenmis.
+- Kalan advisor FK indexleri uygulanmali: billing orders user/SKU, credit ledger user, challenge event exercise, set completion exercise.
+- RLS initplan uyarilari icin `auth.uid()` ve helper fonksiyonlar `(select auth.uid())` veya stable cached pattern ile revize edilmeli.
+- Duplicate `exercises.created_by` indexlerinden biri kaldirilmali.
+
+### Storage
+
+- `profile-photos` public bucket: 5 MB, JPEG/PNG/WebP allowlist.
+- App-side read guard var; DB avatar URL constraint external HTTP URL'leri engelliyor.
+- Public avatar karari privacy/abuse/delete lifecycle ile tamamlanmali.
+
+### Logs ve runtime sinyalleri
+
+- Son 24 saat Edge loglarinda yaygin 5xx paterni gorulmedi.
+- `billing-status` cagrilarinda tekrar ve yer yer multi-second execution goruldu; billing snapshot ve client refresh budget onceliklendirilmeli.
+- Bir `gemini-generate` 401 auth hatasi goruldu; JWT required model icin beklenen sinyal.
+- API loglari tekrarlanan PostgREST fetch paternlerini dogruluyor; kullanici/id detaylari redakte edildi.
 
 ## Roadmap to Enterprise Maturity
 
-### Stabilization (0-2 hafta)
+### Phase 1: Stabilization (1-2 hafta)
 
-1. Presentation katmanindan `SupabaseClient` cikisi icin `CurrentUserProvider` ve feature use-case arayuzlerini ekle.
-2. RPC grant inventory migration'i yaz: exact signature revoke/grant, ozellikle anon executable fonksiyonlari kapat.
-3. `exportSchema = true` yap, Room schema dizinini version control'a al, 10->11 migration testi ekle.
-4. `set_completions` sync state icin default semantigini netlestir; entity default ve DB default uyumunu sagla.
-5. Webhook icin provider signature/timestamp dogrulamasini tasarla; sandbox flag'in production ortamda kapali oldugunu deployment checklist'e al.
+1. Supabase advisor temizligi: search_path fix, FK indexleri, duplicate index, RLS initplan policy rewrite, leaked password protection.
+2. `check_email_registered` icin abuse guard: rate limit, captcha/turnstile dusunumu veya Edge wrapper.
+3. `BILLING_WEBHOOK_ALLOW_LEGACY_SECRET=false` rollout plani; HMAC zorunlu hale getir.
+4. Room schema export + migration test altyapisini ac.
+5. `WorkoutViewModel`, `AICoachViewModel`, `ProgramViewModel` icin `SupabaseClient` dependency'lerini use case/repository abstraction'a indir.
+6. Billing status icin tek snapshot RPC veya cached Edge response tasarla.
 
-### Modernization (2-6 hafta)
+### Phase 2: Modernization (2-5 hafta)
 
-1. `Result<T>` yerine tipli `AppFailure` modeli ve merkezi remote error mapper kullan.
-2. Buyuk ekranlari `Route`, stateless `Screen`, `Section`, `Sheet`, `Actions` parcalarina bol; ilk hedefler `ProgramBuilderScreen`, `WorkoutViewModel`, `ProfileScreen`.
-3. Sync queue'yu idempotent mutation id, tombstone ve retry/backoff ile genellestir.
-4. Hot route'larda request budget olc; gerekirse bootstrap RPC veya view kullan, ancak view'larda `security_invoker` veya private schema tercih et.
-5. Public policy'leri tablo basina role-specific select/insert/update/delete olarak normalize et.
+1. Buyuk ekranlari route/state/effect/components olarak bol: `ProgramBuilderScreen`, `ProfileScreen`, `ChallengeDetailOverlay`, `StoreScreen`.
+2. `DomainError` ve `DomainResult` modelini AI/billing/sync akislariyla baslat.
+3. Durable sync operation queue, retry/backoff ve idempotency key modeli ekle.
+4. Profile/challenge/dashboard icin Room-first snapshot cache ve ekran refresh budget uygula.
+5. Public/private RPC allowlist dokumani ve migration-level access testleri ekle.
 
-### Observability (6-10 hafta)
+### Phase 3: Observability & Operations (2-4 hafta)
 
-1. NoOp analytics yerine privacy-safe event sink ekle; sync failure, RPC failure, billing reservation, AI quota ve migration success/failure event'lerini izle.
-2. Crash reporting ve structured logs ekle; PII/secret redaction kurallari yaz.
-3. Supabase advisor/log kontrolunu CI veya release checklist'e bagla.
-4. Smoke test seti: auth, program CRUD, offline workout write, set completion sync, billing status, AI reservation.
-5. Baseline profile ve Compose metrics zaten var; bunlari regression gate olarak raporlayan CI job ekle.
+1. Edge Functions icin structured logs: request id, user id hash, status code, provider latency, DB latency.
+2. Android tarafinda crash + non-fatal + sync failure telemetry; hassas payload redaction zorunlu.
+3. CI quality gates: `testDebugUnitTest`, `lintDebug`, Room migration tests, Supabase local migration dry-run.
+4. p95 ekran acilis ve network request budget dashboard'u.
+5. Billing/AI entitlement invariants icin nightly smoke checks.
 
-## Dogrulama Notlari
+## Verification Notes
 
-- Canli Supabase metadata okundu: public tablolar RLS enabled; function grant, policy ve index ozetleri incelendi.
-- Supabase MCP oturumu yazma yetkisine sahip gorundu: `current_user=postgres`, public schema icin `CREATE/USAGE=true`, `supabase_migrations.schema_migrations` mevcut. Denetim kapsami "rapor-only" oldugu icin `apply_migration` veya DDL uygulanmadi.
-- Edge Function loglari son 24 saatte bos dondu; API/Postgres loglari okunabildi ve hassas kimlik/path detaylari rapora yazilmadi.
-- Supabase CLI lokal makinede bulunamadi; advisor CLI calistirilamadi.
-- `.\gradlew.bat test` ilk denemede Gradle/Kotlin output hashleme hatasi ile dustu.
-- `.\gradlew.bat --no-configuration-cache --no-build-cache :app:testDebugUnitTest` basarili calisti, ancak `NO-SOURCE`; repo-local unit test coverage yok.
-- `app/src/test`, `app/src/androidTest` ve `baselineprofile/src/androidTest` altinda test dosyasi bulunmadi.
+- Statik taramalar: `SupabaseClient`, `Dispatchers`, `runCatching`, `MutableStateFlow`, `Result<`, `security definer`, `grant/revoke`, `create policy`, `create index`, `service_role`, Edge env access.
+- Canli Supabase read-only kontroller: tables, migrations, advisors, Edge Functions, Storage bucket config, API/Edge logs, function grant summary. Mutation yapilmadi.
+- `./gradlew.bat :app:testDebugUnitTest --no-daemon`: BUILD SUCCESSFUL, ancak unit test source yok (`NO-SOURCE`).
+- `./gradlew.bat :app:lintDebug --no-daemon`: BUILD SUCCESSFUL; lint raporu `0 errors, 88 warnings, 10 hints`.
+- Uygulama kodu, migration'lar, Edge Function kodu veya proje ayarlarinda degisiklik uygulanmadi; yalniz bu rapor guncellendi.
