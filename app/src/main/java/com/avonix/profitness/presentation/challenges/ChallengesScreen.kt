@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -103,6 +104,11 @@ fun ChallengesTab(
     var mineStatusFilter by rememberSaveable { mutableStateOf(MyChallengeStatusFilter.All) }
 
     Box(Modifier.fillMaxSize()) {
+        val pendingInvites = remember(state.browseList) {
+            state.browseList
+                .filter { it.isInvited && !it.isJoined }
+                .sortedFor(DiscoverSort.NEWEST)
+        }
 
         Column(Modifier.fillMaxSize()) {
 
@@ -151,6 +157,16 @@ fun ChallengesTab(
                 }
             }
 
+            if (state.scope == ChallengesScope.Browse && pendingInvites.isNotEmpty()) {
+                ChallengeInvitesSection(
+                    invites = pendingInvites,
+                    accent = accent,
+                    inFlightIds = state.joinInFlight,
+                    onOpen = { vm.openDetail(it.id) },
+                    onAccept = { challenge -> vm.toggleJoin(challenge) }
+                )
+            }
+
             ChallengeFilterBar(
                 scope = state.scope,
                 kindFilter = kindFilter,
@@ -188,7 +204,12 @@ fun ChallengesTab(
                             mineStatusFilter
                         ) {
                             val base = if (state.scope == ChallengesScope.Browse) state.browseList else state.myList
-                            base
+                            val visibleBase = if (state.scope == ChallengesScope.Browse) {
+                                base.filterNot { it.isInvited && !it.isJoined }
+                            } else {
+                                base
+                            }
+                            visibleBase
                                 .filteredFor(state.scope, kindFilter, sportFilterRaw, targetFilterRaw, mineStatusFilter)
                                 .sortedFor(sort)
                         }
@@ -494,6 +515,147 @@ private enum class MyChallengeStatusFilter(val label: String) {
 }
 
 @Composable
+private fun ChallengeInvitesSection(
+    invites: List<ChallengeSummary>,
+    accent: Color,
+    inFlightIds: Set<String>,
+    onOpen: (ChallengeSummary) -> Unit,
+    onAccept: (ChallengeSummary) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(accent.copy(0.14f))
+                    .border(1.dp, accent.copy(0.36f), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "DAVETLER",
+                    color = accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.1.sp
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "${invites.size} bekleyen challenge",
+                color = theme.text2,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        invites.take(3).forEach { challenge ->
+            ChallengeInviteRow(
+                challenge = challenge,
+                accent = accent,
+                inFlight = challenge.id in inFlightIds,
+                onOpen = { onOpen(challenge) },
+                onAccept = { onAccept(challenge) }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ChallengeInviteRow(
+    challenge: ChallengeSummary,
+    accent: Color,
+    inFlight: Boolean,
+    onOpen: () -> Unit,
+    onAccept: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val status = statusOf(challenge.startDateIso, challenge.endDateIso)
+    val statusColor = challengeStatusAccent(
+        status = status,
+        completed = challenge.isCompleted,
+        accent = accent
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg1.copy(0.78f))
+            .border(1.dp, statusColor.copy(0.34f), RoundedCornerShape(18.dp))
+            .clickable(onClick = onOpen)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(statusColor.copy(0.16f))
+                .border(1.dp, statusColor.copy(0.28f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (challenge.kind == ChallengeKind.Event) Icons.Rounded.Event else Icons.Rounded.EmojiEvents,
+                null,
+                tint = statusColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                challenge.title,
+                color = theme.text0,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "${challenge.creatorName} davet etti · ${challenge.targetValue} ${challenge.targetType.unit}",
+                color = theme.text2,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .height(38.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(accent)
+                .clickable(enabled = !inFlight && status != CardStatus.Ended && !challenge.isCompleted) { onAccept() }
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (inFlight) {
+                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+            } else {
+                Text(
+                    "KATIL",
+                    color = Color.Black,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.9.sp
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
 private fun ChallengeFilterBar(
     scope: ChallengesScope,
     kindFilter: ChallengeKindFilter,
@@ -507,6 +669,22 @@ private fun ChallengeFilterBar(
     accent: Color
 ) {
     val theme = LocalAppTheme.current
+    var showKindPicker by remember { mutableStateOf(false) }
+    var showSportPicker by remember { mutableStateOf(false) }
+    var showTargetPicker by remember { mutableStateOf(false) }
+    val selectedKindLabel = kindFilter.label
+    val selectedSportLabel = SportType.challengeChoices
+        .firstOrNull { it.raw == sportFilterRaw }
+        ?.label
+        ?.uppercase()
+        ?: "TÜMÜ"
+    val selectedTargetLabel = ChallengeTargetType.entries
+        .firstOrNull { it.raw == targetFilterRaw }
+        ?.label
+        ?.uppercase()
+        ?: "TÜMÜ"
+    val hasSecondaryFilter = kindFilter != ChallengeKindFilter.All || sportFilterRaw != null || targetFilterRaw != null
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -516,68 +694,170 @@ private fun ChallengeFilterBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 20.dp)
         ) {
-            items(ChallengeKindFilter.entries.size) { idx ->
-                val filter = ChallengeKindFilter.entries[idx]
+            item {
                 FilterChip(
-                    label = filter.label,
-                    active = kindFilter == filter,
+                    label = "TÜR: $selectedKindLabel",
+                    active = kindFilter != ChallengeKindFilter.All,
                     accent = accent,
-                    onClick = { onKindFilter(filter) }
+                    onClick = { showKindPicker = true }
+                )
+            }
+            item {
+                FilterChip(
+                    label = "AKTİVİTE: $selectedSportLabel",
+                    active = sportFilterRaw != null,
+                    accent = accent,
+                    onClick = { showSportPicker = true }
+                )
+            }
+            item {
+                FilterChip(
+                    label = "METRİK: $selectedTargetLabel",
+                    active = targetFilterRaw != null,
+                    accent = accent,
+                    onClick = { showTargetPicker = true }
                 )
             }
             if (scope == ChallengesScope.Mine) {
-                items(MyChallengeStatusFilter.entries.size) { idx ->
-                    val filter = MyChallengeStatusFilter.entries[idx]
+                item {
                     FilterChip(
-                        label = filter.label,
-                        active = mineStatusFilter == filter,
+                        label = "DURUM: ${mineStatusFilter.label}",
+                        active = mineStatusFilter != MyChallengeStatusFilter.All,
                         accent = accent,
-                        onClick = { onMineStatusFilter(filter) }
+                        onClick = {
+                            val next = when (mineStatusFilter) {
+                                MyChallengeStatusFilter.All -> MyChallengeStatusFilter.Active
+                                MyChallengeStatusFilter.Active -> MyChallengeStatusFilter.Completed
+                                MyChallengeStatusFilter.Completed -> MyChallengeStatusFilter.Ended
+                                MyChallengeStatusFilter.Ended -> MyChallengeStatusFilter.All
+                            }
+                            onMineStatusFilter(next)
+                        }
                     )
                 }
             }
-            item {
-                FilterChip(
-                    label = "AKTİVİTE: TÜMÜ",
-                    active = sportFilterRaw == null,
-                    accent = accent,
-                    onClick = { onSportFilter(null) }
-                )
-            }
-            items(SportType.challengeChoices.size) { idx ->
-                val sport = SportType.challengeChoices[idx]
-                FilterChip(
-                    label = sport.label.uppercase(),
-                    active = sportFilterRaw == sport.raw,
-                    accent = accent,
-                    onClick = { onSportFilter(sport.raw) }
-                )
-            }
-            item {
-                FilterChip(
-                    label = "METRİK: TÜMÜ",
-                    active = targetFilterRaw == null,
-                    accent = accent,
-                    onClick = { onTargetFilter(null) }
-                )
-            }
-            items(ChallengeTargetType.entries.size) { idx ->
-                val target = ChallengeTargetType.entries[idx]
-                FilterChip(
-                    label = target.label.uppercase(),
-                    active = targetFilterRaw == target.raw,
-                    accent = accent,
-                    onClick = { onTargetFilter(target.raw) }
-                )
+            if (hasSecondaryFilter) {
+                item {
+                    FilterChip(
+                        label = "SIFIRLA",
+                        active = false,
+                        accent = accent,
+                        onClick = {
+                            onKindFilter(ChallengeKindFilter.All)
+                            onSportFilter(null)
+                            onTargetFilter(null)
+                        }
+                    )
+                }
             }
         }
+
         Box(
             modifier = Modifier
-                .padding(start = 20.dp, end = 20.dp, top = 8.dp)
+                .padding(top = 12.dp)
                 .fillMaxWidth()
                 .height(1.dp)
                 .background(theme.stroke.copy(0.22f))
         )
+    }
+
+    if (showKindPicker) {
+        FilterPickerDialog(
+            title = "TÜR",
+            options = ChallengeKindFilter.entries.map { it.name to it.label },
+            selectedRaw = kindFilter.name,
+            accent = accent,
+            onDismiss = { showKindPicker = false },
+            onSelect = { raw ->
+                onKindFilter(ChallengeKindFilter.entries.firstOrNull { it.name == raw } ?: ChallengeKindFilter.All)
+                showKindPicker = false
+            }
+        )
+    }
+
+    if (showSportPicker) {
+        FilterPickerDialog(
+            title = "AKTİVİTE",
+            options = listOf(null to "TÜMÜ") + SportType.challengeChoices.map { it.raw to it.label.uppercase() },
+            selectedRaw = sportFilterRaw,
+            accent = accent,
+            onDismiss = { showSportPicker = false },
+            onSelect = {
+                onSportFilter(it)
+                showSportPicker = false
+            }
+        )
+    }
+
+    if (showTargetPicker) {
+        FilterPickerDialog(
+            title = "METRİK",
+            options = listOf(null to "TÜMÜ") + ChallengeTargetType.entries.map { it.raw to it.label.uppercase() },
+            selectedRaw = targetFilterRaw,
+            accent = accent,
+            onDismiss = { showTargetPicker = false },
+            onSelect = {
+                onTargetFilter(it)
+                showTargetPicker = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FilterPickerDialog(
+    title: String,
+    options: List<Pair<String?, String>>,
+    selectedRaw: String?,
+    accent: Color,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 420.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(theme.bg1)
+                .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(22.dp))
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    color = theme.text0,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.4.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Rounded.Close,
+                    null,
+                    tint = theme.text2,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable(onClick = onDismiss)
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEach { (raw, label) ->
+                    FilterChip(
+                        label = label,
+                        active = raw == selectedRaw,
+                        accent = accent,
+                        onClick = { onSelect(raw) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -708,6 +988,17 @@ private fun statusOf(start: String, end: String): CardStatus {
     }
 }
 
+private fun challengeStatusAccent(
+    status: CardStatus,
+    completed: Boolean,
+    accent: Color
+): Color = when {
+    completed -> Color(0xFF38BDF8)
+    status == CardStatus.Ended -> Color(0xFF9CA3AF)
+    status == CardStatus.NotStarted -> Color(0xFFFFB74D)
+    else -> accent
+}
+
 private val TR_MONTHS = listOf("Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara")
 private fun humanDate(iso: String): String {
     val d = runCatching { java.time.LocalDate.parse(iso) }.getOrNull() ?: return iso
@@ -745,14 +1036,13 @@ private fun ChallengeCard(
     val today = java.time.LocalDate.now().toString()
     val daysLeft = daysBetween(today, c.endDateIso) ?: 0L
     val daysUntilStart = daysBetween(today, c.startDateIso) ?: 0L
-    val completedColor = Color(0xFF22C55E)
-    val cardAccent = if (c.isCompleted) completedColor else accent
     val isEnded = status == CardStatus.Ended && !c.isCompleted
+    val cardAccent = challengeStatusAccent(status, c.isCompleted, accent)
     val isFull = c.maxParticipants?.let { c.participantsCount >= it && !c.isJoined } == true
 
     val borderColor = when {
-        c.isCompleted -> completedColor.copy(0.8f)
-        isEnded -> theme.text2.copy(0.35f)
+        c.isCompleted -> cardAccent.copy(0.78f)
+        isEnded -> cardAccent.copy(0.45f)
         c.isJoined    -> accent.copy(0.55f)
         else -> theme.stroke.copy(0.5f)
     }
@@ -999,13 +1289,13 @@ private fun ChallengeCard(
                             Spacer(Modifier.width(10.dp))
                             // Countdown / status
                             val (cdIcon, cdText, cdColor) = when {
-                                c.isCompleted -> Triple(Icons.Rounded.Check, "TAMAMLANDI", completedColor)
+                                c.isCompleted -> Triple(Icons.Rounded.Check, "Tamamlandı", cardAccent)
                                 status == CardStatus.NotStarted ->
                                     Triple(Icons.Rounded.HourglassBottom,
                                         if (daysUntilStart == 0L) "Bugün başlıyor"
-                                        else "$daysUntilStart gün sonra", theme.text1)
+                                        else "$daysUntilStart gün sonra", cardAccent)
                                 status == CardStatus.Ended ->
-                                    Triple(Icons.Rounded.Schedule, "Sona erdi", theme.text2)
+                                    Triple(Icons.Rounded.Schedule, "Sona erdi", cardAccent)
                                 daysLeft == 0L ->
                                     Triple(Icons.Rounded.Schedule, "Son gün", Color(0xFFFF8A80))
                                 daysLeft <= 3L ->
@@ -1053,11 +1343,12 @@ private fun StatusPill(
     accent: Color,
     theme: com.avonix.profitness.core.theme.AppThemeState
 ) {
+    val endedColor = challengeStatusAccent(CardStatus.Ended, false, accent)
     val (label, fg, bg) = when {
         completed -> Triple("TAMAM", accent, accent.copy(0.22f))
         status == CardStatus.NotStarted -> Triple("YAKINDA", Color(0xFFFFB74D), Color(0xFFFFB74D).copy(0.18f))
         status == CardStatus.Live       -> Triple("DEVAM EDİYOR", accent, accent.copy(0.18f))
-        else                            -> Triple("SONA ERDİ", theme.text2, theme.bg2.copy(0.6f))
+        else                            -> Triple("SONA ERDİ", endedColor, endedColor.copy(0.12f))
     }
     Row(
         modifier = Modifier

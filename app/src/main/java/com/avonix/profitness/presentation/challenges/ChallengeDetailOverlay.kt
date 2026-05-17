@@ -81,6 +81,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.PageAccentBloom
+import com.avonix.profitness.core.theme.CardCoral
 import com.avonix.profitness.core.theme.strings
 import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
@@ -100,6 +101,7 @@ import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
+import com.avonix.profitness.domain.challenges.normalizeOnlineEventUrl
 import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.LocalDate
 import kotlinx.coroutines.delay
@@ -824,7 +826,8 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                 }
             }
             EventMode.Online -> {
-                if (!ev.onlineUrl.isNullOrBlank()) {
+                val safeOnlineUrl = normalizeOnlineEventUrl(ev.onlineUrl)
+                if (safeOnlineUrl != null) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -832,7 +835,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             .clip(RoundedCornerShape(10.dp))
                             .clickable {
                                 runCatching {
-                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, ev.onlineUrl.toUri()))
+                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, safeOnlineUrl.toUri()))
                                 }
                             }
                             .padding(vertical = 4.dp)
@@ -840,7 +843,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         Icon(Icons.Rounded.OpenInNew, null, tint = accent, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            ev.onlineUrl,
+                            safeOnlineUrl,
                             color = accent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -848,6 +851,14 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             maxLines = 1
                         )
                     }
+                } else if (!ev.onlineUrl.isNullOrBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Geçersiz online bağlantı",
+                        color = CardCoral,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
             EventMode.MovementList -> {

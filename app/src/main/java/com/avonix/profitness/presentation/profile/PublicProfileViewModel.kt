@@ -62,6 +62,11 @@ class PublicProfileViewModel @Inject constructor(
         }
     }
 
+    fun refreshActivity() {
+        val userId = loadedUserId ?: return
+        loadActivity(userId)
+    }
+
     /** Optimistic follow toggle — takip sayısını lokal güncelle, hata olursa rollback. */
     fun toggleFollow() {
         val current = _state.value.profile ?: return

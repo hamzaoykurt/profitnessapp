@@ -10,6 +10,7 @@ import com.avonix.profitness.domain.challenges.ChallengeTargetType
 import com.avonix.profitness.domain.challenges.ChallengeVisibility
 import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.EventMode
+import com.avonix.profitness.domain.challenges.isValidOnlineEventUrl
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.domain.social.FollowListKind
 import com.avonix.profitness.domain.social.UserSummary
@@ -209,6 +210,10 @@ class ChallengesViewModel @Inject constructor(
         }
         if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
             _state.update { it.copy(createError = "Online etkinlik için bağlantı gerekli") }
+            return
+        }
+        if (req.mode == EventMode.Online && !isValidOnlineEventUrl(req.onlineUrl)) {
+            _state.update { it.copy(createError = "Online bağlantı https:// veya http:// ile başlamalı") }
             return
         }
         if (req.mode == EventMode.MovementList && req.movements.isEmpty()) {

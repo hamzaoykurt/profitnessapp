@@ -13,13 +13,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -58,8 +62,10 @@ import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.challenges.ChallengeSummary
+import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.domain.social.PublicProfile
+import com.avonix.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.Instant
 import java.time.ZoneId
@@ -80,6 +86,7 @@ fun PublicProfileOverlay(
     val accent = MaterialTheme.colorScheme.primary
     val vm: PublicProfileViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    var openChallengeId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(userId) { vm.load(userId) }
 
@@ -119,9 +126,18 @@ fun PublicProfileOverlay(
                         sharedPrograms = state.sharedPrograms,
                         activityLoading = state.activityLoading,
                         onToggleFollow = { vm.toggleFollow() },
+                        onOpenChallenge = { openChallengeId = it },
                         timerExtraPad  = timerExtraPad
                     )
                 }
+            }
+
+            openChallengeId?.let { challengeId ->
+                ChallengeDetailOverlay(
+                    challengeId = challengeId,
+                    onBack = { openChallengeId = null },
+                    onChanged = { vm.refreshActivity() }
+                )
             }
 
             // Top bar
@@ -145,6 +161,7 @@ private fun ProfileContent(
     sharedPrograms: List<SharedProgram>,
     activityLoading: Boolean,
     onToggleFollow: () -> Unit,
+    onOpenChallenge: (String) -> Unit,
     timerExtraPad: Dp
 ) {
     val theme = LocalAppTheme.current
@@ -374,7 +391,8 @@ private fun ProfileContent(
         ActivitySection(
             challenges = challenges,
             sharedPrograms = sharedPrograms,
-            loading = activityLoading
+            loading = activityLoading,
+            onOpenChallenge = onOpenChallenge
         )
     }
 }
@@ -415,7 +433,8 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
 private fun ActivitySection(
     challenges: List<ChallengeSummary>,
     sharedPrograms: List<SharedProgram>,
-    loading: Boolean
+    loading: Boolean,
+    onOpenChallenge: (String) -> Unit
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -458,24 +477,131 @@ private fun ActivitySection(
             return@Column
         }
 
-        challenges.take(4).forEach { challenge ->
-            ActivityMiniCard(
-                icon = Icons.Rounded.Event,
-                title = challenge.title,
-                meta = "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.unit}",
-                accent = accent
+        challenges
+            .sortedWith(
+                compareBy<ChallengeSummary> { profileChallengeStatusRank(it) }
+                    .thenByDescending { it.startDateIso }
             )
-            Spacer(Modifier.height(8.dp))
-        }
+            .take(4)
+            .forEach { challenge ->
+                ChallengeActivityCard(
+                    challenge = challenge,
+                    accent = accent,
+                    onOpen = { onOpenChallenge(challenge.id) }
+                )
+                Spacer(Modifier.height(8.dp))
+            }
 
         sharedPrograms.take(4).forEach { program ->
             ActivityMiniCard(
                 icon = Icons.Rounded.Bookmark,
                 title = program.title,
                 meta = "${program.downloadsCount} uygulama · ${program.likesCount} beğeni",
-                accent = accent
+                accent = accent,
+                onClick = null
             )
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+private enum class ProfileChallengeStatus { Upcoming, Active, Completed, Ended }
+
+private fun profileChallengeStatus(challenge: ChallengeSummary): ProfileChallengeStatus {
+    val today = java.time.LocalDate.now()
+    val start = runCatching { java.time.LocalDate.parse(challenge.startDateIso) }.getOrNull()
+    val end = runCatching { java.time.LocalDate.parse(challenge.endDateIso) }.getOrNull()
+    return when {
+        challenge.isCompleted -> ProfileChallengeStatus.Completed
+        end != null && today.isAfter(end) -> ProfileChallengeStatus.Ended
+        start != null && today.isBefore(start) -> ProfileChallengeStatus.Upcoming
+        else -> ProfileChallengeStatus.Active
+    }
+}
+
+private fun profileChallengeStatusRank(challenge: ChallengeSummary): Int = when (profileChallengeStatus(challenge)) {
+    ProfileChallengeStatus.Active -> 0
+    ProfileChallengeStatus.Upcoming -> 1
+    ProfileChallengeStatus.Completed -> 2
+    ProfileChallengeStatus.Ended -> 3
+}
+
+@Composable
+private fun ChallengeActivityCard(
+    challenge: ChallengeSummary,
+    accent: Color,
+    onOpen: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val status = profileChallengeStatus(challenge)
+    val (label, color, icon) = when (status) {
+        ProfileChallengeStatus.Active -> Triple("AKTİF", accent, Icons.Rounded.Event)
+        ProfileChallengeStatus.Upcoming -> Triple("YAKINDA", Color(0xFFFFB74D), Icons.Rounded.HourglassBottom)
+        ProfileChallengeStatus.Completed -> Triple("TAMAM", Color(0xFF38BDF8), Icons.Rounded.Check)
+        ProfileChallengeStatus.Ended -> Triple("SONA ERDİ", Color(0xFF9CA3AF), Icons.Rounded.Schedule)
+    }
+    val canOpen = status == ProfileChallengeStatus.Active || status == ProfileChallengeStatus.Upcoming
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(theme.bg1)
+            .border(0.8.dp, color.copy(0.35f), RoundedCornerShape(16.dp))
+            .then(if (canOpen) Modifier.clickable(onClick = onOpen) else Modifier)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(color.copy(0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (challenge.kind == ChallengeKind.Event) icon else Icons.Rounded.EmojiEvents,
+                null,
+                tint = color,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    challenge.title,
+                    color = theme.text0,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    label,
+                    color = color,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(color.copy(0.12f))
+                        .border(1.dp, color.copy(0.3f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                )
+            }
+            Text(
+                "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.unit}",
+                color = theme.text2,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (canOpen) {
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Rounded.ChevronRight, null, tint = color, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -485,7 +611,8 @@ private fun ActivityMiniCard(
     icon: ImageVector,
     title: String,
     meta: String,
-    accent: Color
+    accent: Color,
+    onClick: (() -> Unit)? = null
 ) {
     val theme = LocalAppTheme.current
     Row(
@@ -494,6 +621,7 @@ private fun ActivityMiniCard(
             .clip(RoundedCornerShape(16.dp))
             .background(theme.bg1)
             .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(16.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

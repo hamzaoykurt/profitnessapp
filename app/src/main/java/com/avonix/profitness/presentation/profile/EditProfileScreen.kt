@@ -100,6 +100,7 @@ fun EditProfileScreen(
     var heightText       by remember(state.heightCm)    { mutableStateOf(if (state.heightCm > 0) state.heightCm.toInt().toString() else "") }
     var weightText       by remember(state.weightKg)    { mutableStateOf(if (state.weightKg > 0) state.weightKg.toInt().toString() else "") }
     var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "male" }) }
+    var avatarError      by remember { mutableStateOf<String?>(null) }
     // Sadece rakam tutulur, gösterimde VisualTransformation ile DD/MM/YYYY olur
     var birthDigits      by remember(state.birthDate)   {
         val digits = if (state.birthDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
@@ -115,8 +116,13 @@ fun EditProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
-            ?: return@rememberLauncherForActivityResult
+        val result = readSafeProfilePhotoBytes(context, uri)
+        val bytes = result.bytes
+        if (bytes == null) {
+            avatarError = result.errorMessage ?: theme.t("Profil fotoğrafı okunamadı.", "Profile photo could not be read.")
+            return@rememberLauncherForActivityResult
+        }
+        avatarError = null
         viewModel.uploadPhoto(bytes)
     }
 
@@ -211,6 +217,10 @@ fun EditProfileScreen(
                         Text("•", color = theme.text2, fontSize = 13.sp)
                         Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { photoPickerLauncher.launch("image/*") })
+                    }
+                    avatarError?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                     }
                 }
             }

@@ -11,6 +11,7 @@ import com.avonix.profitness.domain.challenges.CreateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
+import com.avonix.profitness.domain.challenges.normalizeOnlineEventUrl
 import com.avonix.profitness.domain.challenges.toDomain
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -99,6 +100,12 @@ class ChallengeRepositoryImpl @Inject constructor(
         if (req.mode == EventMode.Online && req.onlineUrl.isNullOrBlank()) {
             return Result.failure(IllegalArgumentException("online_url_required"))
         }
+        val safeOnlineUrl = if (req.mode == EventMode.Online) {
+            normalizeOnlineEventUrl(req.onlineUrl)
+                ?: return Result.failure(IllegalArgumentException("invalid_online_url"))
+        } else {
+            null
+        }
 
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -133,7 +140,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                             ?: put("p_event_location", JsonNull)
                         if (req.geoLat != null) put("p_geo_lat", req.geoLat) else put("p_geo_lat", JsonNull)
                         if (req.geoLng != null) put("p_geo_lng", req.geoLng) else put("p_geo_lng", JsonNull)
-                        req.onlineUrl?.trim()?.takeIf { it.isNotEmpty() }
+                        safeOnlineUrl?.takeIf { it.isNotEmpty() }
                             ?.let { put("p_online_url", it) }
                             ?: put("p_online_url", JsonNull)
                         if (req.targetType != null) put("p_target_type", req.targetType.raw) else put("p_target_type", JsonNull)
@@ -271,6 +278,7 @@ class ChallengeRepositoryImpl @Inject constructor(
     override suspend fun updateEventChallenge(req: UpdateEventChallengeRequest): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                val safeOnlineUrl = normalizeOnlineEventUrl(req.onlineUrl)
                 supabase.postgrest.rpc(
                     "update_event_challenge",
                     buildJsonObject {
@@ -286,7 +294,11 @@ class ChallengeRepositoryImpl @Inject constructor(
                         if (req.endGeoLng != null) put("p_end_geo_lng", req.endGeoLng) else put("p_end_geo_lng", JsonNull)
                         if (req.endLocation != null) put("p_end_location", req.endLocation) else put("p_end_location", JsonNull)
                         if (req.targetValue != null) put("p_target_value", req.targetValue) else put("p_target_value", JsonNull)
-                        if (req.onlineUrl != null) put("p_online_url", req.onlineUrl) else put("p_online_url", JsonNull)
+                        if (req.onlineUrl != null) {
+                            put("p_online_url", safeOnlineUrl ?: throw IllegalArgumentException("invalid_online_url"))
+                        } else {
+                            put("p_online_url", JsonNull)
+                        }
                     }
                 )
                 Unit

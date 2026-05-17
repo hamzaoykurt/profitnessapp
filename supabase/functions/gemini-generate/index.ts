@@ -26,12 +26,6 @@ type GeminiRequest = {
   };
 };
 
-type AiGenerateBody = {
-  tool?: string;
-  idempotencyKey?: string;
-  request?: GeminiRequest;
-};
-
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const DEFAULT_GEMINI_MODELS = [
   "gemini-2.5-flash-lite",
@@ -42,24 +36,12 @@ const DEFAULT_GEMINI_MODELS = [
 const MAX_REQUEST_BYTES = Number(Deno.env.get("AI_MAX_REQUEST_BYTES") ?? "1500000");
 const MAX_TEXT_CHARS = Number(Deno.env.get("AI_MAX_TEXT_CHARS") ?? "30000");
 const MAX_INLINE_BYTES = Number(Deno.env.get("AI_MAX_INLINE_BYTES") ?? "1200000");
-const MAX_IDEMPOTENCY_KEY_CHARS = 120;
 
 const ALLOWED_INLINE_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "application/pdf",
-]);
-
-const ALLOWED_TOOLS = new Set([
-  "ORACLE_CHAT",
-  "PROGRAM_GENERATE_TEXT",
-  "PROGRAM_GENERATE_MEDIA",
-  "PROGRAM_EDIT",
-  "WEIGHT_TREND_ANALYSIS",
-  "EXERCISE_PROGRESS_ANALYSIS",
-  "WORKOUT_PROGRESS_ANALYSIS",
-  "ORACLE_TO_PROGRAM",
 ]);
 
 function configuredModels(): string[] {
@@ -70,22 +52,6 @@ function configuredModels(): string[] {
 
   const models = configured?.length ? configured : DEFAULT_GEMINI_MODELS;
   return [...new Set(models)];
-}
-
-function cleanTool(value: unknown): string {
-  if (typeof value !== "string") throw new Error("invalid_tool");
-  const tool = value.trim();
-  if (!ALLOWED_TOOLS.has(tool)) throw new Error("invalid_tool");
-  return tool;
-}
-
-function cleanIdempotencyKey(value: unknown): string {
-  if (typeof value !== "string") return crypto.randomUUID();
-  const key = value.trim();
-  if (!key) return crypto.randomUUID();
-  if (key.length > MAX_IDEMPOTENCY_KEY_CHARS) throw new Error("invalid_idempotency_key");
-  if (!/^[A-Za-z0-9._:-]+$/.test(key)) throw new Error("invalid_idempotency_key");
-  return key;
 }
 
 function estimateBase64Bytes(base64: string): number {
@@ -183,17 +149,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { user } = await authenticatedUser(req);
-    const body = await req.json().catch(() => ({})) as AiGenerateBody;
-    const tool = cleanTool(body.tool);
-    const idempotencyKey = cleanIdempotencyKey(body.idempotencyKey);
-    if (!body.request) {
-      return jsonResponse(400, { code: "invalid_request", message: "AI isteği geçersiz." });
-    }
+    const sanitized = sanitizeRequest(await req.json().catch(() => ({})) as GeminiRequest);
+    const tool = requestHasInlineData(sanitized) ? "PROGRAM_GENERATE_MEDIA" : "ORACLE_CHAT";
+    const idempotencyKey = req.headers.get("x-idempotency-key")?.trim() || crypto.randomUUID();
 
-    const sanitized = sanitizeRequest(body.request);
-    if (requestHasInlineData(sanitized) && tool !== "PROGRAM_GENERATE_MEDIA") {
-      return jsonResponse(400, { code: "invalid_request", message: "AI isteği geçersiz." });
-    }
     const { data: reservation, error: reserveError } = await supabase.rpc("reserve_ai_usage", {
       p_user_id: user.id,
       p_tool: tool,
@@ -204,13 +163,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(503, { code: "entitlement_unavailable", message: "AI kullanım hakkı doğrulanamadı." });
     }
     if (reservation?.allowed !== true) {
-      if (typeof reservation?.reason === "string" && reservation.reason.startsWith("idempotency_")) {
-        return jsonResponse(409, {
-          code: reservation.reason,
-          message: reservation.message ?? "Bu idempotency anahtarı için istek zaten işlendi veya işleniyor.",
-        });
-      }
-      return jsonResponse(402, {
+      const idempotencyReason = typeof reservation?.reason === "string" &&
+        reservation.reason.startsWith("idempotency_");
+      return jsonResponse(idempotencyReason ? 409 : 402, {
         code: reservation?.reason ?? "insufficient_entitlement",
         message: reservation?.message ?? "Bu işlem için kredi veya abonelik gerekiyor.",
         requiredCredits: reservation?.required_credits ?? null,
@@ -245,8 +200,8 @@ Deno.serve(async (req: Request) => {
       lastProviderCode = typeof upstreamJson?.error === "object" &&
         upstreamJson.error !== null &&
         "status" in upstreamJson.error
-          ? String((upstreamJson.error as { status?: unknown }).status)
-          : "ai_provider_error";
+        ? String((upstreamJson.error as { status?: unknown }).status)
+        : "ai_provider_error";
 
       if (upstream.ok && !upstreamJson?.error) break;
       upstreamJson = null;

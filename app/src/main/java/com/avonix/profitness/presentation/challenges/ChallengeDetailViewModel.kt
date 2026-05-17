@@ -6,8 +6,10 @@ import com.avonix.profitness.data.challenges.ChallengePrefsRepository
 import com.avonix.profitness.data.challenges.ChallengeRepository
 import com.avonix.profitness.domain.challenges.ChallengeDetail
 import com.avonix.profitness.domain.challenges.ChallengeKind
+import com.avonix.profitness.domain.challenges.EventMode
 import com.avonix.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.avonix.profitness.domain.challenges.UpdateMetricChallengeRequest
+import com.avonix.profitness.domain.challenges.isValidOnlineEventUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -234,6 +236,11 @@ class ChallengeDetailViewModel @Inject constructor(
     fun updateChallenge(req: UpdateEventChallengeRequest) {
         val id = loadedId ?: return
         if (_state.value.ownerActionInFlight) return
+        val mode = _state.value.detail?.summary?.event?.mode
+        if (mode == EventMode.Online && !isValidOnlineEventUrl(req.onlineUrl)) {
+            _state.update { it.copy(error = "Online bağlantı https:// veya http:// ile başlamalı.") }
+            return
+        }
         _state.update { it.copy(ownerActionInFlight = true, error = null) }
         viewModelScope.launch {
             repo.updateEventChallenge(req).fold(

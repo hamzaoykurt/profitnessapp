@@ -34,6 +34,7 @@ import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.presentation.profile.readSafeProfilePhotoBytes
 
 private val SPORT_AVATAR_ROWS = listOf(
     listOf("🏋️", "🏃", "🚴", "🏊", "⚽", "🏀"),
@@ -361,8 +362,12 @@ private fun StepName(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri ?: return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: return@rememberLauncherForActivityResult
+        val result = readSafeProfilePhotoBytes(context, uri)
+        val bytes = result.bytes
+        if (bytes == null) {
+            vm.setAvatarError(result.errorMessage ?: "Profil fotoğrafı okunamadı.")
+            return@rememberLauncherForActivityResult
+        }
         vm.uploadPhoto(bytes)
     }
 

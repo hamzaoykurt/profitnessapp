@@ -83,6 +83,7 @@ class OnboardingViewModel @Inject constructor(
     fun setSportBranch(v: String) { updateState { it.copy(sportBranch = v) } }
     fun setExperienceLevel(v: String) { updateState { it.copy(experienceLevel = v) } }
     fun setWeeklyDays(v: String)  { updateState { it.copy(weeklyDays = v) } }
+    fun setAvatarError(message: String) { updateState { it.copy(avatarError = message, isUploadingAvatar = false) } }
 
     fun uploadPhoto(imageBytes: ByteArray) {
         val userId = supabase.auth.currentUserOrNull()?.id ?: run {

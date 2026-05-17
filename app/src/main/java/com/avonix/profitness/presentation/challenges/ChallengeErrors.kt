@@ -17,6 +17,7 @@ internal fun Throwable.toChallengeUiMessage(
         "invalid_visibility" in lower -> "Görünürlük seçimi geçersiz."
         "physical_location_required" in lower -> "Fiziksel etkinlik için başlangıç konumu gerekli."
         "online_url_required" in lower -> "Online etkinlik için bağlantı gerekli."
+        "invalid_online_url" in lower -> "Online bağlantı https:// veya http:// ile başlamalı."
         "group_challenges_event_mode_fields_chk" in lower -> "Fiziksel etkinlik için başlangıç konumu gerekli."
         "event_location" in lower && "physical" in lower -> "Fiziksel etkinlik için başlangıç konumu gerekli."
         containsSensitiveTransportDetails(lower) -> fallback

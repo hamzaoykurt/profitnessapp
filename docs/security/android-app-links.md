@@ -40,7 +40,5 @@ Use the release signing SHA-256 fingerprint from the GitHub Actions release work
 
 Supabase Auth URL Configuration must allow the exact `RESET_PASSWORD_REDIRECT_URL`.
 
-Verification on 2026-05-16: `https://cosmibit.com/.well-known/assetlinks.json`
-currently returns the Squarespace coming-soon HTML page, not this JSON. App Links
-will not verify until the domain serves this exact JSON with an
-`application/json` response.
+Verification on 2026-05-17: `https://cosmibit.com/.well-known/assetlinks.json`
+returns the expected Android App Links JSON with an `application/json` response.

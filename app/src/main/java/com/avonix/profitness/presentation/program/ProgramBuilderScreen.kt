@@ -61,6 +61,19 @@ import java.util.UUID
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
+private const val AI_MAX_UPLOAD_BYTES = 1_200_000
+private val AI_ALLOWED_UPLOAD_MIME = setOf(
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf"
+)
+
+private fun aiUploadLimitLabel(): String {
+    val mb = AI_MAX_UPLOAD_BYTES / 1_000_000.0
+    return "%.1f MB".format(mb)
+}
+
 enum class ProgramCategory(val trLabel: String, val color: Color, val icon: ImageVector) {
     ALL("TÜMÜ",          Snow,       Icons.Rounded.GridView),
     MUSCLE("KAS",        CardPurple, Icons.Rounded.FitnessCenter),
@@ -1624,18 +1637,40 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     var selectedFileName by remember { mutableStateOf<String?>(null) }
     var selectedBase64   by remember { mutableStateOf<String?>(null) }
     var selectedMimeType by remember { mutableStateOf<String?>(null) }
+    var selectedFileError by remember { mutableStateOf<String?>(null) }
 
     val fileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri ?: return@rememberLauncherForActivityResult
-        val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        if (bytes != null) {
-            selectedBase64   = Base64.encodeToString(bytes, Base64.NO_WRAP)
-            selectedMimeType = mime
-            selectedFileName = uri.lastPathSegment ?: "dosya"
+        val mime = (context.contentResolver.getType(uri) ?: "application/octet-stream").lowercase()
+        if (mime !in AI_ALLOWED_UPLOAD_MIME) {
+            selectedBase64 = null
+            selectedMimeType = null
+            selectedFileName = null
+            selectedFileError = "Sadece PDF, JPG, PNG veya WebP dosyası yükleyebilirsin."
+            return@rememberLauncherForActivityResult
         }
+
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull()
+        if (bytes == null) {
+            selectedFileError = "Dosya okunamadı. Başka bir dosya seçmeyi dene."
+            return@rememberLauncherForActivityResult
+        }
+        if (bytes.size > AI_MAX_UPLOAD_BYTES) {
+            selectedBase64 = null
+            selectedMimeType = null
+            selectedFileName = null
+            selectedFileError = "Dosya en fazla ${aiUploadLimitLabel()} olabilir."
+            return@rememberLauncherForActivityResult
+        }
+
+        selectedBase64   = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        selectedMimeType = mime
+        selectedFileName = uri.lastPathSegment ?: "dosya"
+        selectedFileError = null
     }
 
     val canAnalyze = (prompt.isNotBlank() || selectedBase64 != null) && !uiState.aiLoading
@@ -1727,7 +1762,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF / HTML Yükle",
+                        text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF Yükle",
                         color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
                         fontSize = 13.sp
                     )
@@ -1739,6 +1774,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             selectedBase64   = null
                             selectedMimeType = null
                             selectedFileName = null
+                            selectedFileError = null
                         }
                     ) {
                         Icon(Icons.Rounded.Close, contentDescription = "Kaldır", tint = CardCoral)
@@ -1757,6 +1793,16 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = aiTheme.text2, modifier = Modifier.size(14.dp))
                     Text(name, color = aiTheme.text2, fontSize = 12.sp, maxLines = 1)
                 }
+            }
+
+            selectedFileError?.let { message ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    message,
+                    color = CardCoral,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 28.dp)
+                )
             }
 
             // Error banner

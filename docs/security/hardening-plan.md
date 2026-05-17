@@ -1,6 +1,6 @@
 # Profitness Security Hardening Plan
 
-Last updated: 2026-05-16
+Last updated: 2026-05-17
 
 ## Guiding principle
 
@@ -41,6 +41,15 @@ This means:
 - Added webhook event replay/idempotency behavior via `billing_webhook_events`.
 - Added paid-order SKU and amount assertions before entitlement application.
 - Added strict AI idempotency behavior so one idempotency key cannot launch parallel Gemini calls.
+- Restricted accepted AI tools and inline media use at the Edge Function boundary.
+- Hardened the legacy `gemini-generate` Edge Function so old clients remain compatible but also pass through the same credit/idempotency reservation path.
+- Added Android-side AI upload size and MIME checks for JPEG, PNG, WebP, and PDF.
+- Added online event URL normalization so only safe `http`/`https` links can be stored/opened.
+- Removed remaining `anon` table grants found on app public tables.
+- Removed anonymous execute from public RPC wrappers that require an authenticated user.
+- Tightened private-schema function execute defaults so internal helpers are not callable through default PUBLIC grants.
+- Added profile photo upload MIME/size checks before reading the file into memory.
+- Added a database constraint that allows avatar emoji/text values or app-owned `profile-photos` Storage URLs, but rejects external HTTP avatar URLs.
 - Added a DB migration to harden `_challenge_my_progress`, `apply_paid_billing_order`, and `reserve_ai_usage`.
 - Applied the hardening migration to Supabase production and deployed updated `billing-webhook`, `billing-sandbox-complete`, and `ai-generate` Edge Functions.
 
@@ -51,15 +60,18 @@ This means:
 | Critical | Rotate the Supabase access token that was present in `.mcp.json` | Done | User revoked the old token in Supabase; local `.mcp.json` no longer stores token-like args. |
 | High | Add Android release signing secrets to GitHub Actions | Done | User added `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. |
 | High | Verify GitHub release signing workflow | Done | Release workflow succeeded on commit `f730544` and published `v14.0`. |
-| High | Publish Android App Links `assetlinks.json` | Blocked on domain hosting | Domain selected: `cosmibit.com`. `docs/security/assetlinks.json` contains the exact JSON to publish. Live check on 2026-05-16 returned Squarespace coming-soon HTML instead of JSON. |
-| High | Add HTTPS reset redirect to Supabase Auth URL Configuration | Pending | Add exact `https://cosmibit.com/reset-password`. Do not remove the legacy redirect until one release cycle passes. |
-| High | Set GitHub reset link host config | Done | `RESET_PASSWORD_LINK_HOST=cosmibit.com` was added; workflow accepts either repository variable or secret. Redirect still safely falls back to the legacy reset redirect until `RESET_PASSWORD_REDIRECT_URL` is set. |
+| High | Publish Android App Links `assetlinks.json` | Done | `https://cosmibit.com/.well-known/assetlinks.json` returns the expected JSON with `application/json`. |
+| High | Add HTTPS reset redirect to Supabase Auth URL Configuration | Done | `https://cosmibit.com/reset-password` is allowed. Do not remove the legacy redirect until one release cycle passes. |
+| High | Set GitHub reset link host config | Done | `RESET_PASSWORD_LINK_HOST=cosmibit.com` and `RESET_PASSWORD_REDIRECT_URL=https://cosmibit.com/reset-password` were added; workflow accepts either repository variable or secret. |
 | High | Configure provider webhook to sign `timestamp.rawBody` with HMAC-SHA256 | Pending provider integration | Headers expected: `x-webhook-timestamp`, `x-webhook-signature`, and stable event id via body or `x-webhook-id`; then set `BILLING_WEBHOOK_ALLOW_LEGACY_SECRET=false`. |
 | High | Add provider amount metadata to products if numeric amount checks are required | Pending provider integration | Existing label check is backward-compatible; `metadata.amount_minor` and `metadata.currency` make it stricter. |
 | Medium | Remove old public mapping release assets | Pending GitHub cleanup | Existing `v14.0`, `v14.1`, and `v14.2` releases still expose `Profitness_v14.x-mapping.txt`. Keep AAB assets; delete only mapping assets. Future releases no longer publish mapping files. |
 | High | Apply and verify `harden_security_controls` migration in Supabase | Done | Remote migration history shows `20260515212124_harden_security_controls`. Function grants were verified after apply. |
-| Medium | Deploy updated Edge Functions | Done | `billing-webhook` v1, `billing-sandbox-complete` v2, and `ai-generate` v3 are active. |
+| Medium | Deploy updated Edge Functions | Done | `billing-webhook` v1, `billing-sandbox-complete` v2, `ai-generate` v4, and `gemini-generate` v6 are active. |
+| Medium | Tighten private schema function grants | Done | Internal helpers remain callable for authenticated app flows; default PUBLIC/anon execute was removed. |
+| Medium | Restrict profile photo/avatar input | Done | Mobile upload preflight checks file type/size; DB rejects external HTTP avatar URLs. |
 | Medium | Remove legacy custom scheme reset filter | Deferred | Only after all active reset emails and deployed clients have moved to verified HTTPS links. |
+| Medium | Finalize privacy policy and terms | Deferred until final branding | A professional Turkish privacy policy base exists at `docs/legal/privacy-policy.md`; finalize app name, publisher name, contact email, privacy policy, and terms together before store release. |
 
 ## Safe rollout sequence
 
@@ -76,7 +88,8 @@ This means:
    - SKU mismatch fails
    - amount mismatch fails
    - same AI `idempotencyKey` in parallel yields one provider call and one conflict
-   - challenge detail/listing still shows progress for visible participants
+- challenge detail/listing still shows progress for visible participants
+   - profile photo upload accepts normal JPEG/PNG/WebP images and rejects oversized/unsupported files without crashing
 6. Publish production `assetlinks.json`.
 7. Add the HTTPS reset URL to Supabase Auth URL Configuration.
 8. Set GitHub release variables for reset link host and redirect URL.
@@ -85,6 +98,8 @@ This means:
 11. Build/release AAB through GitHub Actions.
 12. Monitor Supabase Auth, API, Postgres, and Edge Function logs for at least one release window.
 13. Remove legacy custom-scheme handling in a later release after confirming no active dependency remains.
+
+Steps 1, 6, 7, 8, 9, and 10 are complete for the current rollout.
 
 ## Flow contracts that must not regress
 
@@ -113,17 +128,19 @@ This means:
 - Remote Edge Function versions verified active:
   - `billing-webhook` v1 with JWT disabled intentionally for provider webhooks.
   - `billing-sandbox-complete` v2 with JWT enabled.
-  - `ai-generate` v3 with JWT enabled.
+  - `ai-generate` v4 with JWT enabled.
+  - `gemini-generate` v6 with JWT enabled and legacy compatibility through the current AI credit gate.
 - Endpoint smoke checks returned expected `401` responses for unauthenticated/unsigned requests to `billing-webhook` and `ai-generate`.
+- Local secret hygiene was rechecked without printing values: `local.properties` contains only expected mobile-public/API config keys, and `.mcp.json` has no token-like value.
+- Supabase metadata checks on 2026-05-17 confirmed all public/storage tables have RLS enabled and no public/private views are exposed.
 - GitHub Actions release workflow `25941770568` passed and built the release AAB in 7m 48s.
 - GitHub Actions workflow `25942884716` produced the release-signed phone-test APK artifact `profitness-internal-test-apk`.
 - GitHub Releases were checked on 2026-05-16: `v14.0`, `v14.1`, and `v14.2` still contain public `mapping.txt` assets from earlier runs.
-- `https://cosmibit.com/.well-known/assetlinks.json` was checked on 2026-05-16 and returned Squarespace coming-soon HTML, so Android App Links are not verifiable yet.
+- `https://cosmibit.com/.well-known/assetlinks.json` was checked on 2026-05-17 and returned the expected Android App Links JSON with `application/json`.
 
 ## Current verification blockers
 
 - Local Supabase database is not running on `127.0.0.1:54322`, so `npx supabase migration list --local` could not verify local migration state.
-- `cosmibit.com` does not yet serve the required `assetlinks.json`; publish `docs/security/assetlinks.json` at `/.well-known/assetlinks.json` before switching reset links to HTTPS.
 - Old public GitHub Release mapping assets should be deleted for `v14.0`, `v14.1`, and `v14.2`; the workflow has already been changed so future releases do not add new ones.
 - Supabase advisors still report existing non-blocking notices: RLS-enabled internal tables without public policies, one mutable search-path trigger helper, and Auth leaked-password protection disabled.
 
