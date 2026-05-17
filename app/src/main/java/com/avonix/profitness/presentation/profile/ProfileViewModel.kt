@@ -15,6 +15,7 @@ import io.github.jan.supabase.gotrue.auth
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -140,6 +141,11 @@ class ProfileViewModel @Inject constructor(
         lastLoadMs = 0L
         profileRepository.invalidateStatsCache()
         loadProfile()
+        viewModelScope.launch {
+            delay(1_500L)
+            profileRepository.invalidateStatsCache()
+            loadProfile()
+        }
     }
 
     fun loadProfile() {

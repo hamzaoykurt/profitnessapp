@@ -1285,14 +1285,7 @@ class WorkoutViewModel @Inject constructor(
                 )
                 syncMatchingMovementListEvents(exercise, dbExerciseId)
 
-                // Stats güncelle (Supabase, arka plan) + challenge progress refresh
-                viewModelScope.launch {
-                    workoutRepository.updateStreak(userId)
-                    profileRepository.invalidateStatsCache()
-                    // FAZ 7F: user_stats güncellendikten sonra challenge progress'ini
-                    // sunucuda yeniden hesaplat. Hata olsa bile workout akışını bozma.
-                    runCatching { challengeRepository.refreshMyProgress() }
-                }
+                refreshStatsAfterCompletion(userId)
 
                 // Başarım/XP kontrolü
                 viewModelScope.launch {
@@ -1320,11 +1313,7 @@ class WorkoutViewModel @Inject constructor(
                 // Stats rollback + challenge progress tazele (istismar önleme):
                 // yap→geri al döngüsü XP/total_exercises/streak/challenge ilerlemesini
                 // kalıcı hale getirmesin.
-                viewModelScope.launch {
-                    workoutRepository.rollbackStreak(userId)
-                    profileRepository.invalidateStatsCache()
-                    runCatching { challengeRepository.refreshMyProgress() }
-                }
+                refreshStatsAfterRollback(userId)
             }
         }
     }
@@ -1369,11 +1358,7 @@ class WorkoutViewModel @Inject constructor(
         )
         syncMatchingMovementListEvents(exercise, dbExerciseId)
 
-        viewModelScope.launch {
-            workoutRepository.updateStreak(userId)
-            profileRepository.invalidateStatsCache()
-            runCatching { challengeRepository.refreshMyProgress() }
-        }
+        refreshStatsAfterCompletion(userId)
         viewModelScope.launch {
             checkDayCompletion(dayIdx, userId)
             checkAndUnlockAchievements(userId)
@@ -1431,11 +1416,7 @@ class WorkoutViewModel @Inject constructor(
                 )
                 syncMatchingMovementListEvents(exercise, dbExerciseId)
 
-                viewModelScope.launch {
-                    workoutRepository.updateStreak(userId)
-                    profileRepository.invalidateStatsCache()
-                    runCatching { challengeRepository.refreshMyProgress() }
-                }
+                refreshStatsAfterCompletion(userId)
                 viewModelScope.launch {
                     checkDayCompletion(dayIdx, userId)
                     checkAndUnlockAchievements(userId)
@@ -1688,6 +1669,23 @@ class WorkoutViewModel @Inject constructor(
             dayState.day.exercises.all { it.id in dayState.completedIds }
         if (allDone) {
             workoutRepository.addXp(userId, 50)
+            profileRepository.invalidateStatsCache()
+        }
+    }
+
+    private fun refreshStatsAfterCompletion(userId: String) {
+        viewModelScope.launch {
+            workoutRepository.updateStreak(userId)
+            profileRepository.invalidateStatsCache()
+            runCatching { challengeRepository.refreshMyProgress() }
+        }
+    }
+
+    private fun refreshStatsAfterRollback(userId: String) {
+        viewModelScope.launch {
+            workoutRepository.rollbackStreak(userId)
+            profileRepository.invalidateStatsCache()
+            runCatching { challengeRepository.refreshMyProgress() }
         }
     }
 
@@ -1819,21 +1817,13 @@ class WorkoutViewModel @Inject constructor(
                     repsCompleted = 0,
                     durationSeconds = durationSeconds ?: 0
                 )
-                viewModelScope.launch {
-                    workoutRepository.updateStreak(userId)
-                    profileRepository.invalidateStatsCache()
-                    runCatching { challengeRepository.refreshMyProgress() }
-                }
+                refreshStatsAfterCompletion(userId)
             } else {
                 markExerciseIncompleteOptimistically(dayIdx, exercise.id)
                 markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
                 workoutRepository.uncompleteExercise(userId, programDayId, dbExerciseId)
                 workoutRepository.clearExerciseSetCompletions(userId, dbExerciseId, programDayId)
-                viewModelScope.launch {
-                    workoutRepository.rollbackStreak(userId)
-                    profileRepository.invalidateStatsCache()
-                    runCatching { challengeRepository.refreshMyProgress() }
-                }
+                refreshStatsAfterRollback(userId)
             }
         }
     }

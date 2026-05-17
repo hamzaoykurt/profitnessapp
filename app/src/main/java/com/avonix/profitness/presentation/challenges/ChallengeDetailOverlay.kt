@@ -776,8 +776,8 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         }
                     )
                 }
-                // Rota: yer adı varsa Google Maps onu çözer; eski kayıtlar için koordinat fallback'i kalır.
-                if (startQuery != null && endQuery != null) {
+                // Rota: bitiş yoksa mevcut konumdan başlangıca; bitiş varsa mevcut konum -> başlangıç -> bitiş.
+                if (startQuery != null) {
                     Spacer(Modifier.height(10.dp))
                     Text(
                         "ROTAYI AÇ",
@@ -797,7 +797,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             accent = accent,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                openRoute(ctx, startQuery, endQuery, "bicycling")
+                                openEventRoute(ctx, startQuery, endQuery, "bicycling")
                             }
                         )
                         TravelModeChip(
@@ -807,7 +807,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 // Google Maps "running" travelmode'u kabul etmediği için walking ile açıyoruz
-                                openRoute(ctx, startQuery, endQuery, "walking")
+                                openEventRoute(ctx, startQuery, endQuery, "walking")
                             }
                         )
                         TravelModeChip(
@@ -816,7 +816,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             accent = accent,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                openRoute(ctx, startQuery, endQuery, "walking")
+                                openEventRoute(ctx, startQuery, endQuery, "walking")
                             }
                         )
                     }
@@ -2275,16 +2275,19 @@ private fun TravelModeChip(
     }
 }
 
-private fun openRoute(
+private fun openEventRoute(
     ctx: android.content.Context,
-    origin: String,
-    destination: String,
+    start: String,
+    end: String?,
     travelmode: String
 ) {
-    val uri = ("https://www.google.com/maps/dir/?api=1" +
-        "&origin=${Uri.encode(origin)}" +
-        "&destination=${Uri.encode(destination)}" +
-        "&travelmode=$travelmode").toUri()
+    val destination = end ?: start
+    val uri = buildString {
+        append("https://www.google.com/maps/dir/?api=1")
+        append("&destination=${Uri.encode(destination)}")
+        if (end != null) append("&waypoints=${Uri.encode(start)}")
+        append("&travelmode=$travelmode")
+    }.toUri()
     openInMaps(ctx, uri)
 }
 
