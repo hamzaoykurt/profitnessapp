@@ -50,7 +50,7 @@ jobs:
           TAG="v$MAJOR.$MINOR"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "aab_name=Profitness_$TAG.aab" >> $GITHUB_OUTPUT
-          echo "apk_name=Profitness_${TAG}_internal-test.apk" >> $GITHUB_OUTPUT
+          echo "apk_name=Profitness_$TAG.apk" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -173,7 +173,7 @@ jobs:
       - name: Upload internal test APK
         uses: actions/upload-artifact@v4
         with:
-          name: profitness-internal-test-apk
+          name: profitness-apk
           path: release/${{ steps.version.outputs.apk_name }}
           if-no-files-found: error
           retention-days: 14
