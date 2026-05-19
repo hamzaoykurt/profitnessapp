@@ -29,6 +29,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -69,6 +71,44 @@ private val GENDER_OPTIONS = listOf(
     "Belirtme" to "other"
 )
 
+private val PROFILE_GOAL_OPTIONS = listOf(
+    "Kilo vermek",
+    "Kas kazanmak",
+    "Formda kalmak",
+    "Yağ yakarken kas yapmak",
+    "Kondisyon geliştirmek",
+    "Sağlıklı yaşam"
+)
+
+private val PROFILE_SPORT_OPTIONS = listOf(
+    "Fitness",
+    "Koşu",
+    "Bisiklet",
+    "Yüzme",
+    "Futbol",
+    "Basketbol",
+    "Tenis",
+    "Boks",
+    "Yoga",
+    "Yürüyüş"
+)
+
+private val PROFILE_EXPERIENCE_OPTIONS = listOf(
+    "Yeni başlıyorum",
+    "Başlangıç",
+    "Orta",
+    "İleri"
+)
+
+private val PROFILE_WEEKLY_DAY_OPTIONS = listOf("3", "4", "5", "6")
+
+private data class ProfileGoalParts(
+    val goal           : String = "",
+    val sportBranch    : String = "Fitness",
+    val experienceLevel: String = "Başlangıç",
+    val weeklyDays     : String = "4"
+)
+
 private fun AppThemeState.genderLabel(dbValue: String, fallback: String): String = when (dbValue) {
     "male" -> t("Erkek", "Male")
     "female" -> t("Kadın", "Female")
@@ -84,6 +124,111 @@ private fun AppThemeState.avatarCategoryLabel(label: String): String = when (lab
     else -> label
 }
 
+private fun AppThemeState.profileGoalLabel(value: String): String = when (value) {
+    "Kilo vermek" -> t("Kilo vermek", "Lose weight")
+    "Kas kazanmak" -> t("Kas kazanmak", "Build muscle")
+    "Formda kalmak" -> t("Formda kalmak", "Stay fit")
+    "Yağ yakarken kas yapmak" -> t("Yağ yakarken kas yapmak", "Recompose")
+    "Kondisyon geliştirmek" -> t("Kondisyon geliştirmek", "Improve conditioning")
+    "Sağlıklı yaşam" -> t("Sağlıklı yaşam", "Healthy lifestyle")
+    "Fit olmak" -> t("Fit olmak", "Get fit")
+    else -> value
+}
+
+private fun AppThemeState.profileSportLabel(value: String): String = when (value) {
+    "Koşu" -> t("Koşu", "Running")
+    "Bisiklet" -> t("Bisiklet", "Cycling")
+    "Yüzme" -> t("Yüzme", "Swimming")
+    "Futbol" -> t("Futbol", "Football")
+    "Basketbol" -> t("Basketbol", "Basketball")
+    "Tenis" -> t("Tenis", "Tennis")
+    "Boks" -> t("Boks", "Boxing")
+    "Yürüyüş" -> t("Yürüyüş", "Walking")
+    else -> value
+}
+
+private fun AppThemeState.profileExperienceLabel(value: String): String = when (value) {
+    "Yeni başlıyorum" -> t("Yeni başlıyorum", "Brand new")
+    "Başlangıç" -> t("Başlangıç", "Beginner")
+    "Orta" -> t("Orta", "Intermediate")
+    "İleri" -> t("İleri", "Advanced")
+    else -> value
+}
+
+private fun parseProfileGoalParts(rawGoal: String): ProfileGoalParts {
+    if (rawGoal.isBlank()) return ProfileGoalParts()
+
+    var goal = ""
+    var sportBranch = "Fitness"
+    var experienceLevel = "Başlangıç"
+    var weeklyDays = "4"
+
+    rawGoal.split("•")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .forEachIndexed { index, segment ->
+            when {
+                segmentValue(segment, "Spor:", "Sport:") != null -> {
+                    sportBranch = normalizeSportBranch(segmentValue(segment, "Spor:", "Sport:").orEmpty())
+                }
+                segmentValue(segment, "Seviye:", "Level:") != null -> {
+                    experienceLevel = normalizeExperienceLevel(segmentValue(segment, "Seviye:", "Level:").orEmpty())
+                }
+                segment.startsWith("Haftada", ignoreCase = true) || segment.contains("days", ignoreCase = true) -> {
+                    weeklyDays = segment.filter { it.isDigit() }
+                        .takeIf { it in PROFILE_WEEKLY_DAY_OPTIONS }
+                        ?: weeklyDays
+                }
+                index == 0 -> goal = segment
+            }
+        }
+
+    return ProfileGoalParts(
+        goal = goal,
+        sportBranch = sportBranch,
+        experienceLevel = experienceLevel,
+        weeklyDays = weeklyDays
+    )
+}
+
+private fun segmentValue(segment: String, vararg prefixes: String): String? {
+    val trimmed = segment.trim()
+    prefixes.forEach { prefix ->
+        if (trimmed.startsWith(prefix, ignoreCase = true)) {
+            return trimmed.drop(prefix.length).trim()
+        }
+    }
+    return null
+}
+
+private fun normalizeSportBranch(value: String): String = when (value.trim().lowercase()) {
+    "running" -> "Koşu"
+    "cycling" -> "Bisiklet"
+    "swimming" -> "Yüzme"
+    "football", "soccer" -> "Futbol"
+    "basketball" -> "Basketbol"
+    "tennis" -> "Tenis"
+    "boxing" -> "Boks"
+    "walking" -> "Yürüyüş"
+    else -> PROFILE_SPORT_OPTIONS.firstOrNull { it.equals(value.trim(), ignoreCase = true) } ?: "Fitness"
+}
+
+private fun normalizeExperienceLevel(value: String): String = when (value.trim().lowercase()) {
+    "brand new" -> "Yeni başlıyorum"
+    "beginner" -> "Başlangıç"
+    "intermediate" -> "Orta"
+    "advanced" -> "İleri"
+    else -> PROFILE_EXPERIENCE_OPTIONS.firstOrNull { it.equals(value.trim(), ignoreCase = true) } ?: "Başlangıç"
+}
+
+private fun buildProfileGoal(goal: String, sportBranch: String, experienceLevel: String, weeklyDays: String): String =
+    buildString {
+        append(goal.trim().ifEmpty { "Fit olmak" })
+        append(" • Spor: $sportBranch")
+        append(" • Seviye: $experienceLevel")
+        append(" • Haftada $weeklyDays gün")
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -93,10 +238,14 @@ fun EditProfileScreen(
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val state  by viewModel.uiState.collectAsStateWithLifecycle()
+    val goalParts = remember(state.fitnessGoal) { parseProfileGoalParts(state.fitnessGoal) }
 
     var name             by remember(state.displayName) { mutableStateOf(state.displayName) }
     var avatar           by remember(state.avatar)      { mutableStateOf(state.avatar) }
-    var goal             by remember(state.fitnessGoal) { mutableStateOf(state.fitnessGoal) }
+    var goal             by remember(goalParts.goal) { mutableStateOf(goalParts.goal) }
+    var sportBranch      by remember(goalParts.sportBranch) { mutableStateOf(goalParts.sportBranch) }
+    var experienceLevel  by remember(goalParts.experienceLevel) { mutableStateOf(goalParts.experienceLevel) }
+    var weeklyDays       by remember(goalParts.weeklyDays) { mutableStateOf(goalParts.weeklyDays) }
     var heightText       by remember(state.heightCm)    { mutableStateOf(if (state.heightCm > 0) state.heightCm.toInt().toString() else "") }
     var weightText       by remember(state.weightKg)    { mutableStateOf(if (state.weightKg > 0) state.weightKg.toInt().toString() else "") }
     var gender           by remember(state.gender)      { mutableStateOf(state.gender.ifBlank { "male" }) }
@@ -134,7 +283,7 @@ fun EditProfileScreen(
         viewModel.updateProfile(
             displayName = name.trim().ifEmpty { state.displayName },
             avatar      = avatar,
-            fitnessGoal = goal.trim(),
+            fitnessGoal = buildProfileGoal(goal, sportBranch, experienceLevel, weeklyDays),
             heightCm    = heightText.toDoubleOrNull() ?: state.heightCm,
             weightKg    = weightText.toDoubleOrNull() ?: state.weightKg,
             gender      = gender,
@@ -376,11 +525,57 @@ fun EditProfileScreen(
                     }
 
                     // Fitness Goal
+                    ProfileChoiceSection(
+                        title = theme.t("FİTNESS HEDEFİ", "FITNESS GOAL"),
+                        options = PROFILE_GOAL_OPTIONS,
+                        selected = goal,
+                        accent = accent,
+                        theme = theme,
+                        labelFor = { theme.profileGoalLabel(it) },
+                        onSelect = { goal = if (goal == it) "" else it }
+                    )
+
                     ProfileTextField(
-                        value = goal, onValue = { goal = it }, label = theme.t("FİTNESS HEDEFİ", "FITNESS GOAL"),
-                        placeholder = theme.t("Hedefiniz nedir? (ör. 10 kg vermek)", "What's your goal? (e.g. lose 10 kg)"),
-                        icon = Icons.Rounded.Flag, accent = accent, theme = theme,
-                        imeAction = ImeAction.Done
+                        value = goal,
+                        onValue = { goal = it },
+                        label = theme.t("VEYA KENDİN YAZ", "OR WRITE YOUR OWN"),
+                        placeholder = theme.t("Hedefinizi yazın...", "Write your goal..."),
+                        icon = Icons.Rounded.Flag,
+                        accent = accent,
+                        theme = theme,
+                        imeAction = ImeAction.Next,
+                        capitalization = KeyboardCapitalization.Sentences
+                    )
+
+                    ProfileChoiceSection(
+                        title = theme.t("SPOR DALI", "SPORT"),
+                        options = PROFILE_SPORT_OPTIONS,
+                        selected = sportBranch,
+                        accent = accent,
+                        theme = theme,
+                        labelFor = { theme.profileSportLabel(it) },
+                        onSelect = { sportBranch = it }
+                    )
+
+                    ProfileChoiceSection(
+                        title = theme.t("SEVİYE", "LEVEL"),
+                        options = PROFILE_EXPERIENCE_OPTIONS,
+                        selected = experienceLevel,
+                        accent = accent,
+                        theme = theme,
+                        itemHeight = 42.dp,
+                        labelFor = { theme.profileExperienceLabel(it) },
+                        onSelect = { experienceLevel = it }
+                    )
+
+                    ProfileChoiceSection(
+                        title = theme.t("HAFTALIK ANTRENMAN", "WEEKLY TRAINING"),
+                        options = PROFILE_WEEKLY_DAY_OPTIONS,
+                        selected = weeklyDays,
+                        accent = accent,
+                        theme = theme,
+                        labelFor = { theme.t("$it gün", "$it days") },
+                        onSelect = { weeklyDays = it }
                     )
                 }
             }
@@ -479,7 +674,8 @@ private fun ProfileTextField(
     accent     : Color,
     theme      : AppThemeState,
     imeAction  : ImeAction = ImeAction.Next,
-    maxLines   : Int = 1
+    maxLines   : Int = 1,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.Words
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
@@ -489,7 +685,7 @@ private fun ProfileTextField(
             leadingIcon = { Icon(icon, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth(),
             maxLines = maxLines,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = imeAction),
+            keyboardOptions = KeyboardOptions(capitalization = capitalization, imeAction = imeAction),
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
@@ -497,6 +693,62 @@ private fun ProfileTextField(
                 cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
             )
         )
+    }
+}
+
+@Composable
+private fun ProfileChoiceSection(
+    title     : String,
+    options   : List<String>,
+    selected  : String,
+    accent    : Color,
+    theme     : AppThemeState,
+    itemHeight: androidx.compose.ui.unit.Dp = 46.dp,
+    labelFor  : (String) -> String = { it },
+    onSelect  : (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        options.chunked(2).forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                row.forEach { option ->
+                    val isSelected = selected == option
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(itemHeight)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) accent else theme.stroke,
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .clickable { onSelect(option) }
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = labelFor(option),
+                            color = if (isSelected) accent else theme.text1,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+            if (index != options.chunked(2).lastIndex) {
+                Spacer(Modifier.height(2.dp))
+            }
+        }
     }
 }
 

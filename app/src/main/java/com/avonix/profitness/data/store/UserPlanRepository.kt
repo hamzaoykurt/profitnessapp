@@ -83,6 +83,6 @@ interface UserPlanRepository {
         const val INITIAL_CREDITS_PLACEHOLDER = 0
 
         /** Yeni FREE hesaplar bu kadar krediyle başlar. */
-        const val FREE_STARTER_CREDITS = 8
+        const val FREE_STARTER_CREDITS = 32
     }
 }
