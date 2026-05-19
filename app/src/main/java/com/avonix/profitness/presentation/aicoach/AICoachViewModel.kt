@@ -58,7 +58,8 @@ data class AICoachState(
     val sessionCreatedAt : Long              = System.currentTimeMillis(),
     val programStatus    : ProgramStatus     = ProgramStatus.Idle,
     val userPlan         : UserPlan          = UserPlan.FREE,
-    val aiCredits        : Int               = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
+    val aiCredits        : Int               = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
+    val isBillingLoaded  : Boolean           = false
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -79,9 +80,8 @@ class AICoachViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : BaseViewModel<AICoachState, AICoachEvent>(AICoachState()) {
 
-    private val prefsManager   by lazy { AICoachPrefsManager(context) }
-    private val sessionManager by lazy { ChatSessionManager(context) }
     private var currentPrefs   = AICoachPrefs()
+    private var activeUserId   : String? = null
 
     private val conversationHistory = mutableListOf<Pair<String, String>>()
 
@@ -89,20 +89,30 @@ class AICoachViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val loadedPrefs = prefsManager.getPrefs()
+            ChatSessionManager.clearLegacySessions(context)
+            AICoachPrefsManager.clearLegacyPrefs(context)
+
+            val userId = currentUserId()
+            val loadedPrefs = userId
+                ?.let { AICoachPrefsManager(context, it).getPrefs() }
+                ?: AICoachPrefs()
             withContext(Dispatchers.Main) {
+                activeUserId = userId
                 currentPrefs = loadedPrefs
                 updateState { it.copy(showOnboarding = !loadedPrefs.onboardingCompleted) }
             }
         }
         // Plan ve kredi değişikliklerini reaktif dinle
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(
-                planRepository.planFlow,
-                planRepository.creditsFlow
-            ) { plan, credits -> plan to credits }
-                .collect { (plan, credits) ->
-                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+            planRepository.billingSnapshotFlow
+                .collect { snapshot ->
+                    updateState {
+                        it.copy(
+                            userPlan = snapshot.plan,
+                            aiCredits = snapshot.credits.coerceAtLeast(0),
+                            isBillingLoaded = snapshot.isLoaded
+                        )
+                    }
                 }
         }
     }
@@ -112,10 +122,44 @@ class AICoachViewModel @Inject constructor(
         persistCurrentSession()
     }
 
+    private fun currentUserId(): String? =
+        supabase.auth.currentUserOrNull()?.id
+
+    private fun currentPrefsManager(): AICoachPrefsManager? =
+        currentUserId()?.let { AICoachPrefsManager(context, it) }
+
+    private fun currentSessionManager(): ChatSessionManager? =
+        currentUserId()?.let { ChatSessionManager(context, it) }
+
+    private fun ensureCurrentUserScope(): String? {
+        val userId = currentUserId()
+        if (userId != activeUserId) {
+            activeUserId = userId
+            currentPrefs = userId
+                ?.let { AICoachPrefsManager(context, it).getPrefs() }
+                ?: AICoachPrefs()
+            conversationHistory.clear()
+            updateState {
+                it.copy(
+                    messages         = emptyList(),
+                    sessions         = emptyList(),
+                    showHistory      = false,
+                    showOnboarding   = !currentPrefs.onboardingCompleted,
+                    currentSessionId = UUID.randomUUID().toString(),
+                    sessionCreatedAt = System.currentTimeMillis(),
+                    isLoading        = false,
+                    programStatus    = ProgramStatus.Idle
+                )
+            }
+        }
+        return userId
+    }
+
     // ── Onboarding / Prefs ────────────────────────────────────────────────────
 
     fun completeOnboarding(prefs: AICoachPrefs) {
-        prefsManager.savePrefs(prefs)
+        ensureCurrentUserScope()
+        currentPrefsManager()?.savePrefs(prefs)
         currentPrefs = prefs
         updateState { it.copy(showOnboarding = false) }
     }
@@ -133,6 +177,7 @@ class AICoachViewModel @Inject constructor(
     // ── Welcome ───────────────────────────────────────────────────────────────
 
     fun initWelcome(welcomeText: String) {
+        ensureCurrentUserScope()
         if (uiState.value.messages.isNotEmpty()) return
         updateState {
             it.copy(messages = listOf(ChatMessage(id = "welcome", text = welcomeText, isUser = false)))
@@ -142,6 +187,7 @@ class AICoachViewModel @Inject constructor(
     // ── Mesaj Gönder ──────────────────────────────────────────────────────────
 
     fun sendMessage(userText: String) {
+        if (ensureCurrentUserScope() == null) return
         if (userText.isBlank() || uiState.value.isLoading) return
         val userMessage = ChatMessage(
             id     = System.currentTimeMillis().toString(),
@@ -233,13 +279,18 @@ class AICoachViewModel @Inject constructor(
     // ── Sohbet Geçmişi ────────────────────────────────────────────────────────
 
     fun openHistory() {
-        val sessions = sessionManager.getAllSessions()
+        val sessions = if (ensureCurrentUserScope() == null) {
+            emptyList()
+        } else {
+            currentSessionManager()?.getAllSessions().orEmpty()
+        }
         updateState { it.copy(sessions = sessions, showHistory = true) }
     }
 
     fun closeHistory() { updateState { it.copy(showHistory = false) } }
 
     fun startNewSession() {
+        if (ensureCurrentUserScope() == null) return
         persistCurrentSession()
         conversationHistory.clear()
         val newId = UUID.randomUUID().toString()
@@ -256,6 +307,8 @@ class AICoachViewModel @Inject constructor(
     }
 
     fun loadSession(session: ChatSession) {
+        val userId = ensureCurrentUserScope() ?: return
+        if (session.userId != userId) return
         persistCurrentSession()
         conversationHistory.clear()
         conversationHistory.addAll(session.history.map { it.role to it.text })
@@ -274,8 +327,9 @@ class AICoachViewModel @Inject constructor(
     }
 
     fun deleteSession(id: String) {
-        sessionManager.delete(id)
-        val sessions = sessionManager.getAllSessions()
+        if (ensureCurrentUserScope() == null) return
+        currentSessionManager()?.delete(id)
+        val sessions = currentSessionManager()?.getAllSessions().orEmpty()
         updateState { it.copy(sessions = sessions) }
         if (uiState.value.currentSessionId == id) {
             conversationHistory.clear()
@@ -469,6 +523,7 @@ $exerciseList
     // ── Kaydetme ──────────────────────────────────────────────────────────────
 
     private fun persistCurrentSession() {
+        val userId = currentUserId() ?: return
         val state = uiState.value
         val msgs  = state.messages.filter { it.id != "welcome" && it.text.isNotBlank() }
         if (msgs.none { it.isUser }) return
@@ -479,13 +534,14 @@ $exerciseList
 
         val session = ChatSession(
             id        = state.currentSessionId,
+            userId    = userId,
             title     = title,
             history   = conversationHistory.map { HistoryEntry(it.first, it.second) },
             messages  = msgs.map { StoredMessage(it.id, it.text, it.isUser, it.timestamp) },
             createdAt = state.sessionCreatedAt,
             updatedAt = System.currentTimeMillis()
         )
-        runCatching { sessionManager.save(session) }
+        runCatching { ChatSessionManager(context, userId).save(session) }
     }
 
     // ── Sistem Promptu ────────────────────────────────────────────────────────

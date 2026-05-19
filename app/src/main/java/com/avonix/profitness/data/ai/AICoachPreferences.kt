@@ -60,10 +60,25 @@ data class AICoachPrefs(
     val onboardingCompleted    : Boolean            = false
 )
 
-class AICoachPrefsManager(context: Context) {
+class AICoachPrefsManager(context: Context, userId: String) {
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("ai_coach_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences(
+            UserScopedPreferences.name(PREFS_PREFIX, userId),
+            Context.MODE_PRIVATE
+        )
+
+    companion object {
+        private const val LEGACY_PREFS_NAME = "ai_coach_prefs"
+        private const val PREFS_PREFIX = "ai_coach_prefs_"
+
+        fun clearLegacyPrefs(context: Context) {
+            context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply()
+        }
+    }
 
     fun getPrefs(): AICoachPrefs = AICoachPrefs(
         responseLength = runCatching {

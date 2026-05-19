@@ -12,6 +12,11 @@ internal fun Throwable.toChallengeUiMessage(
         "invalid_title" in lower -> "Başlık 3-120 karakter arasında olmalı."
         "invalid_target_value" in lower -> "Hedef sıfırdan büyük olmalı."
         "invalid_max_participants" in lower -> "Katılım sınırı en az 2 kişi olmalı."
+        "max_participants" in lower && (
+            "could not find" in lower ||
+                "schema cache" in lower ||
+                "pgrst202" in lower
+            ) -> "Katılım sınırı bu sunucu sürümünde desteklenmiyor. Limit kapalıyken tekrar dene."
         "challenge_full" in lower -> "Bu challenge için katılım sınırı dolmuş."
         "invalid_event_mode" in lower -> "Etkinlik tipi geçersiz."
         "invalid_visibility" in lower -> "Görünürlük seçimi geçersiz."

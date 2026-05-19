@@ -5,6 +5,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -27,6 +29,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -50,6 +53,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 // ── Entry composable — routes between auth screens ────────────────────────────
 
 private enum class AuthMode {
@@ -278,6 +283,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
 
 // ── Register Screen ───────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
     val theme = LocalAppTheme.current
@@ -288,6 +294,8 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
     var showConfirmPass by remember { mutableStateOf(false) }
     val passFocus       = remember { FocusRequester() }
     val confirmFocus    = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    val confirmBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     AuthScaffold(
         mode         = AuthMode.Register,
@@ -349,7 +357,17 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onTogglePass  = { showConfirmPass = !showConfirmPass },
             imeAction     = ImeAction.Done,
             onImeAction   = { viewModel.onRegisterClick(email, password, confirmPassword) },
-            modifier      = Modifier.focusRequester(confirmFocus)
+            modifier      = Modifier
+                .bringIntoViewRequester(confirmBringIntoViewRequester)
+                .focusRequester(confirmFocus)
+                .onFocusEvent { focusState ->
+                    if (focusState.isFocused) {
+                        coroutineScope.launch {
+                            delay(250)
+                            confirmBringIntoViewRequester.bringIntoView()
+                        }
+                    }
+                }
         )
         Spacer(Modifier.height(28.dp))
 
@@ -729,6 +747,7 @@ private fun AuthScaffold(
                 .widthIn(max = responsive.formMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),

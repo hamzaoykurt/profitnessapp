@@ -181,6 +181,7 @@ class UserPlanRepositoryImpl @Inject constructor(
             plan = runCatching { UserPlan.valueOf(plan) }.getOrDefault(UserPlan.FREE),
             status = status,
             credits = credits,
+            isLoaded = true,
             sandboxAvailable = sandboxAvailable,
             products = products.map { it.toDomain() },
             recentUsage = recentUsage.map { it.toDomain() }

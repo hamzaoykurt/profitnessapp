@@ -250,13 +250,13 @@ class WorkoutRepositoryImpl @Inject constructor(
     // ═════════════════════════════════════════════════════════════════════════
 
     override suspend fun syncFromRemote(userId: String) {
-        syncManager.pullExercises()
-        syncManager.pullPrograms(userId)
-        syncManager.pushUnsyncedWorkouts().getOrThrow()
-        syncManager.pushSetCompletions(userId).getOrThrow()
-        syncManager.pullSetCompletions(userId).getOrThrow()
-        syncManager.pullWorkoutLogs(userId)
-        syncManager.pullWorkoutLogDates(userId)
+        runCatching { syncManager.pullExercises().getOrThrow() }
+        runCatching { syncManager.pullPrograms(userId).getOrThrow() }
+        runCatching { syncManager.pushUnsyncedWorkouts().getOrThrow() }
+        runCatching { syncManager.pushSetCompletions(userId).getOrThrow() }
+        runCatching { syncManager.pullSetCompletions(userId).getOrThrow() }
+        runCatching { syncManager.pullWorkoutLogs(userId).getOrThrow() }
+        runCatching { syncManager.pullWorkoutLogDates(userId).getOrThrow() }
     }
 
     override suspend fun syncToRemote() {

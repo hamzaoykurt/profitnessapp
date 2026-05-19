@@ -111,6 +111,7 @@ fun AICoachScreen(
     var programNameInput  by remember { mutableStateOf("") }
     val listState         = rememberLazyListState()
     val scope             = rememberCoroutineScope()
+    val showCreditInfo    = state.userPlan == UserPlan.FREE && state.isBillingLoaded
 
     LaunchedEffect(state.programStatus) {
         when (state.programStatus) {
@@ -128,9 +129,9 @@ fun AICoachScreen(
         viewModel.initWelcome(strings.oracleWelcome)
     }
 
-    LaunchedEffect(state.messages.size, state.isLoading, state.userPlan) {
+    LaunchedEffect(state.messages.size, state.isLoading, state.userPlan, state.isBillingLoaded) {
         if (state.messages.isNotEmpty()) {
-            val creditInfoOffset = if (state.userPlan == UserPlan.FREE) 1 else 0
+            val creditInfoOffset = if (showCreditInfo) 1 else 0
             val typingOffset = if (state.isLoading) 1 else 0
             listState.animateScrollToItem(
                 creditInfoOffset + state.messages.lastIndex + typingOffset
@@ -183,7 +184,7 @@ fun AICoachScreen(
             contentPadding  = PaddingValues(top = 116.dp, bottom = inputAreaHeight),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (state.userPlan == UserPlan.FREE) {
+            if (showCreditInfo) {
                 item(key = "credit_info") {
                     AiCreditInfoRow(
                         isFree    = true,
@@ -251,6 +252,7 @@ fun AICoachScreen(
                 onSend        = { sendMessage(inputText) },
                 isTyping      = state.isLoading,
                 isFree        = state.userPlan == UserPlan.FREE,
+                creditsLoaded = state.isBillingLoaded,
                 credits       = state.aiCredits
             )
         }
@@ -304,7 +306,7 @@ fun AICoachScreen(
                         )
                         Text(
                             if (hasPlan) state.userPlan.displayName.uppercase()
-                            else "${state.aiCredits}",
+                            else if (state.isBillingLoaded) "${state.aiCredits}" else "...",
                             color         = if (hasPlan) CardPurple else Forge500,
                             fontSize      = 10.sp,
                             fontWeight    = FontWeight.ExtraBold,
@@ -742,6 +744,7 @@ private fun SanctuaryInput(
     onSend: () -> Unit,
     isTyping: Boolean,
     isFree: Boolean = true,
+    creditsLoaded: Boolean = true,
     credits: Int = 0
 ) {
     val theme  = LocalAppTheme.current
@@ -757,7 +760,7 @@ private fun SanctuaryInput(
     )
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (isFree) {
+        if (isFree && creditsLoaded) {
             Row(
                 modifier = Modifier
                     .align(Alignment.End)

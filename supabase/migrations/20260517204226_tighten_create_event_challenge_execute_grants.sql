@@ -18,7 +18,8 @@ revoke execute on function public.create_event_challenge(
     double precision,
     text,
     text,
-    uuid
+    uuid,
+    integer
 ) from public;
 
 grant execute on function public.create_event_challenge(
@@ -41,5 +42,6 @@ grant execute on function public.create_event_challenge(
     double precision,
     text,
     text,
-    uuid
+    uuid,
+    integer
 ) to authenticated;

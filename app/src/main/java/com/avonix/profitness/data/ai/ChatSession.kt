@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ChatSession(
     val id        : String,
+    val userId    : String? = null,
     val title     : String,
     val history   : List<HistoryEntry>,     // Gemini API geçmişi ("user"/"model")
     val messages  : List<StoredMessage>,    // UI mesajları

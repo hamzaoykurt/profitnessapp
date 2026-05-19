@@ -39,6 +39,7 @@ data class BillingSnapshot(
     val plan: UserPlan = UserPlan.FREE,
     val status: String = "free",
     val credits: Int = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
+    val isLoaded: Boolean = false,
     val sandboxAvailable: Boolean = false,
     val products: List<BillingProduct> = emptyList(),
     val recentUsage: List<BillingUsage> = emptyList()
@@ -82,6 +83,6 @@ interface UserPlanRepository {
         const val INITIAL_CREDITS_PLACEHOLDER = 0
 
         /** Yeni FREE hesaplar bu kadar krediyle başlar. */
-        const val FREE_STARTER_CREDITS = 5
+        const val FREE_STARTER_CREDITS = 8
     }
 }

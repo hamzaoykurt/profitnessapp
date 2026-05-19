@@ -84,10 +84,10 @@ class ChallengeRepositoryImpl @Inject constructor(
                     put("p_start_date",   startDateIso)
                     put("p_end_date",     endDateIso)
                     put("p_visibility",   visibility.raw)
-                    if (maxParticipants != null) put("p_max_participants", maxParticipants) else put("p_max_participants", JsonNull)
                     val pw = password?.trim().orEmpty()
                     if (pw.isNotEmpty()) put("p_password", pw)
                     else put("p_password", JsonNull)
+                    if (maxParticipants != null) put("p_max_participants", maxParticipants)
                 }
             ).decodeAs<String>()
         }
@@ -148,13 +148,13 @@ class ChallengeRepositoryImpl @Inject constructor(
                         put("p_visibility", req.visibility.raw)
                         val pw = req.password?.trim().orEmpty()
                         if (pw.isNotEmpty()) put("p_password", pw) else put("p_password", JsonNull)
-                        if (req.maxParticipants != null) put("p_max_participants", req.maxParticipants) else put("p_max_participants", JsonNull)
                         put("p_movements", movementsJson)
                         if (req.endGeoLat != null) put("p_end_geo_lat", req.endGeoLat) else put("p_end_geo_lat", JsonNull)
                         if (req.endGeoLng != null) put("p_end_geo_lng", req.endGeoLng) else put("p_end_geo_lng", JsonNull)
                         req.endLocation?.trim()?.takeIf { it.isNotEmpty() }
                             ?.let { put("p_end_location", it) }
                             ?: put("p_end_location", JsonNull)
+                        if (req.maxParticipants != null) put("p_max_participants", req.maxParticipants)
                     }
                 ).decodeAs<String>()
             }

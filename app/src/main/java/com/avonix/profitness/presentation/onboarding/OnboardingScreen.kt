@@ -7,6 +7,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -35,6 +38,8 @@ import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.profile.readSafeProfilePhotoBytes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val SPORT_AVATAR_ROWS = listOf(
     listOf("🏋️", "🏃", "🚴", "🏊", "⚽", "🏀"),
@@ -350,6 +355,7 @@ private fun StepTheme(
 
 // ── Adım 0: İsim + Avatar ─────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StepName(
     state    : OnboardingState,
@@ -358,6 +364,9 @@ private fun StepName(
     theme    : AppThemeState
 ) {
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val nameBringIntoViewRequester = remember { BringIntoViewRequester() }
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -374,7 +383,8 @@ private fun StepName(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .verticalScroll(scrollState)
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -478,7 +488,12 @@ private fun StepName(
         Spacer(Modifier.height(24.dp))
 
         // İsim alanı
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(nameBringIntoViewRequester),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Text(theme.t("ADIN SOYADIN", "FULL NAME"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
             OutlinedTextField(
                 value          = state.name,
@@ -487,7 +502,16 @@ private fun StepName(
                 leadingIcon    = { Icon(Icons.Rounded.Person, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
                 isError        = state.nameError != null,
                 supportingText = state.nameError?.let { { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) } },
-                modifier       = Modifier.fillMaxWidth(),
+                modifier       = Modifier
+                    .fillMaxWidth()
+                    .onFocusEvent { focusState ->
+                        if (focusState.isFocused) {
+                            coroutineScope.launch {
+                                delay(250)
+                                nameBringIntoViewRequester.bringIntoView()
+                            }
+                        }
+                    },
                 singleLine     = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,

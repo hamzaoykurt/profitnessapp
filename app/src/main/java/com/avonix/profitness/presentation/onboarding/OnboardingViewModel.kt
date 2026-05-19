@@ -2,6 +2,7 @@ package com.avonix.profitness.presentation.onboarding
 
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.ai.AiAccessException
 import com.avonix.profitness.data.ai.AiToolType
 import com.avonix.profitness.data.ai.GeminiRepository
 import com.avonix.profitness.data.profile.ProfileRepository
@@ -149,11 +150,17 @@ JSON FORMAT:
             val result = geminiRepository.chat(emptyList(), prompt, systemPrompt, AiToolType.PROGRAM_GENERATE_TEXT)
             val rawJson = result.getOrNull()
             if (rawJson == null) {
+                val failure = result.exceptionOrNull()
                 updateState {
                     it.copy(
                         isSaving = false,
                         isGeneratingProgram = false,
-                        programError = "AI program oluşturamadı. Plan ekranından tekrar deneyebilirsin."
+                        programError = when (failure) {
+                            is AiAccessException -> failure.message.ifBlank {
+                                "Bu işlem için AI kredisi veya abonelik gerekiyor."
+                            }
+                            else -> "AI program oluşturamadı. Plan ekranından tekrar deneyebilirsin."
+                        }
                     )
                 }
                 return@launch

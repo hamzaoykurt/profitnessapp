@@ -52,6 +52,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -81,8 +82,9 @@ class ExerciseProgressionViewModel @Inject constructor(
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ExerciseProgressionState, ExerciseProgressionEvent>(ExerciseProgressionState()) {
 
+    private var loadJob: Job? = null
+
     init {
-        load()
         viewModelScope.launch {
             combine(planRepository.planFlow, planRepository.creditsFlow) { plan, credits -> plan to credits }
                 .collect { (plan, credits) -> updateState { it.copy(userPlan = plan, aiCredits = credits) } }
@@ -90,13 +92,14 @@ class ExerciseProgressionViewModel @Inject constructor(
     }
 
     fun load() {
-        viewModelScope.launch {
+        if (loadJob?.isActive == true) return
+        loadJob = viewModelScope.launch {
             updateState { it.copy(isLoading = true) }
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: run {
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
-            workoutRepository.syncFromRemote(userId)
+            runCatching { workoutRepository.syncFromRemote(userId) }
             val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
             updateState { it.copy(summaries = summaries, isLoading = false) }
 
