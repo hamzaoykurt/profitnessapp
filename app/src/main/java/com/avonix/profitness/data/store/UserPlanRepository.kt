@@ -51,10 +51,10 @@ interface UserPlanRepository {
     /** Aktif plan değişikliklerini reaktif olarak yayar. */
     val planFlow: Flow<UserPlan>
 
-    /** Kalan AI kredi değişikliklerini reaktif olarak yayar. */
+    /** Kalan AI Enerji değişikliklerini reaktif olarak yayar. */
     val creditsFlow: Flow<Int>
 
-    /** Server'dan aktif plan/kredi özetini yeniler. */
+    /** Server'dan aktif plan/Enerji özetini yeniler. */
     suspend fun refresh()
 
     /** Plan checkout kaydı oluşturur; ödeme doğrulanmadan planı hesaba yazmaz. */
@@ -63,7 +63,7 @@ interface UserPlanRepository {
     /** Ödeme sağlayıcısı bağlanana kadar client tarafında iptal mutasyonu yapılmaz. */
     suspend fun downgradeFree()
 
-    /** Kredi checkout kaydı oluşturur; ödeme doğrulanmadan kredi eklemez. */
+    /** Enerji checkout kaydı oluşturur; ödeme doğrulanmadan bakiye eklemez. */
     suspend fun addCredits(amount: Int): CheckoutResult
 
     /** Test ortamında pending siparişi sandbox ödeme gibi tamamlar. */
@@ -79,10 +79,10 @@ interface UserPlanRepository {
     suspend fun refundCredit()
 
     companion object {
-        /** Server bakiyesi gelene kadar yanıltıcı starter kredi göstermeyelim. */
+        /** Server bakiyesi gelene kadar yanıltıcı starter Enerji göstermeyelim. */
         const val INITIAL_CREDITS_PLACEHOLDER = 0
 
-        /** Yeni FREE hesaplar bu kadar krediyle başlar. */
+        /** Yeni FREE hesaplar bu kadar Enerjiyle başlar. */
         const val FREE_STARTER_CREDITS = 32
     }
 }

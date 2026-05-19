@@ -46,6 +46,21 @@ class DiscoverRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun listMySaved(
+        sort: DiscoverSort, limit: Int, offset: Int
+    ): Result<List<SharedProgram>> = withContext(Dispatchers.IO) {
+        runCatching {
+            supabase.postgrest.rpc(
+                "list_my_saved_programs",
+                buildJsonObject {
+                    put("p_sort", sort.raw)
+                    put("p_limit", limit)
+                    put("p_offset", offset)
+                }
+            ).decodeList<DiscoverFeedRowDto>().map { it.toDomain() }
+        }
+    }
+
     override suspend fun toggleLike(programId: String): Result<Boolean> =
         withContext(Dispatchers.IO) {
             runCatching {

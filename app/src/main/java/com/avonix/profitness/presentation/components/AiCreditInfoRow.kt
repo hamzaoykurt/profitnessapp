@@ -29,7 +29,7 @@ import com.avonix.profitness.core.theme.*
 fun AiCreditInfoRow(
     isFree    : Boolean,
     credits   : Int,
-    costLabel : String = "1 kredi",
+    costLabel : String = "1 Enerji",
     theme     : AppThemeState,
     modifier  : Modifier = Modifier
 ) {
@@ -59,14 +59,14 @@ fun AiCreditInfoRow(
         Spacer(Modifier.width(10.dp))
         Column {
             Text(
-                if (outOfCredits) theme.ui("Kredi bitti!") else theme.ui(costLabel),
+                if (outOfCredits) theme.ui("Enerjin bitti!") else theme.ui(costLabel),
                 color = badgeColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (outOfCredits) theme.ui("Kredi satın al veya plana yükselt")
-                else theme.ui("Kalan bakiye: %d kredi", "Remaining balance: %d credits").format(credits),
+                if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
+                else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
                 color = theme.text2,
                 fontSize = 11.sp
             )
@@ -81,7 +81,7 @@ fun AiCreditInfoRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                if (outOfCredits) theme.ui("0 kredi") else theme.ui("%d kredi", "%d credits").format(credits),
+                if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits),
                 color = badgeColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold

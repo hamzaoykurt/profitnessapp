@@ -9,6 +9,9 @@ interface DiscoverRepository {
     /** Public feed — paged. */
     suspend fun getFeed(sort: DiscoverSort, limit: Int, offset: Int): Result<List<SharedProgram>>
 
+    /** Kullanıcının kaydettiği programlar — public feed'den bağımsız, paged. */
+    suspend fun listMySaved(sort: DiscoverSort, limit: Int, offset: Int): Result<List<SharedProgram>>
+
     /** Atomic like toggle — döner: yeni "liked" durumu. */
     suspend fun toggleLike(programId: String): Result<Boolean>
 
@@ -47,6 +50,6 @@ interface DiscoverRepository {
         resyncSnapshot: Boolean = true
     ): Result<Unit>
 
-    /** Kullanıcının paylaşımını siler. */
+    /** Kullanıcının paylaşımını topluluk akışından yayından kaldırır. */
     suspend fun deleteShared(sharedId: String): Result<Unit>
 }

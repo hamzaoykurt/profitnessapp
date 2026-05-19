@@ -658,8 +658,9 @@ private fun BuilderChooseScreen(
         )
     }
 
-    val filtered = remember(activeSport, activeCategory) {
-        READY_PROGRAMS.filter { program ->
+    val randomizedPrograms = remember { READY_PROGRAMS.shuffled() }
+    val filtered = remember(randomizedPrograms, activeSport, activeCategory) {
+        randomizedPrograms.filter { program ->
             activeSport.matches(program) &&
                 (activeCategory == ProgramCategory.ALL || program.category == activeCategory)
         }
@@ -1691,11 +1692,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
             Spacer(Modifier.height(16.dp))
 
-            // Kredi bilgisi
+            // Enerji bilgisi
             AiCreditInfoRow(
                 isFree  = uiState.userPlan == UserPlan.FREE,
                 credits = uiState.aiCredits,
-                costLabel = "8 kredi / metin · 12 kredi / dosya",
+                costLabel = "6 Enerji / metin · 10 Enerji / dosya",
                 theme   = aiTheme,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -1854,9 +1855,9 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(3.dp))
-                        Text("8-12 kredi", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text("6-10 Enerji", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(6.dp))
-                        Text("Kalan: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
+                        Text("Enerji: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
                     }
                 }
             }
@@ -2098,7 +2099,7 @@ private fun EditProgramScreen(
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    "${uiState.aiCredits} kredi",
+                                    "${uiState.aiCredits} Enerji",
                                     color = editAccent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold
@@ -2242,7 +2243,7 @@ private fun EditProgramScreen(
                                     ) {
                                         Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(9.dp))
                                         Spacer(Modifier.width(2.dp))
-                                        Text("6 kredi", color = editOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        Text("4 Enerji", color = editOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

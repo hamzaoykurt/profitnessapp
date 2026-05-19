@@ -421,13 +421,13 @@ private fun ProfileHeroBanner(
                     )
                 }
 
-                // Kredi / Plan chip — sağ üst köşe, tıklanınca store'a gider
+                // Enerji / Plan chip — sağ üst köşe, tıklanınca store'a gider
                 val isPaid     = userPlan != UserPlan.FREE
                 val chipColor  = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.15f) else accent.copy(alpha = 0.12f)
                 val chipBorder = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.5f)  else accent.copy(alpha = 0.4f)
                 val chipTint   = if (isPaid) Color(0xFFFFD700) else accent
-                // Plan varsa: "Elite · 5"  |  Sadece free: "5 Kredi"
-                val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else "$aiCredits Kredi"
+                // Plan varsa: "Elite · 5"  |  Sadece free: "5 Enerji"
+                val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else "$aiCredits Enerji"
 
                 Row(
                     modifier = Modifier

@@ -65,7 +65,7 @@ data class AICoachState(
 // ── Events ────────────────────────────────────────────────────────────────────
 
 sealed class AICoachEvent {
-    /** Kredi bitti / plan yetersiz → Paywall göster. */
+    /** Enerji bitti / plan yetersiz → Paywall göster. */
     data object ShowPaywall : AICoachEvent()
 }
 
@@ -102,7 +102,7 @@ class AICoachViewModel @Inject constructor(
                 updateState { it.copy(showOnboarding = !loadedPrefs.onboardingCompleted) }
             }
         }
-        // Plan ve kredi değişikliklerini reaktif dinle
+        // Plan ve Enerji değişikliklerini reaktif dinle
         viewModelScope.launch {
             planRepository.billingSnapshotFlow
                 .collect { snapshot ->
@@ -206,7 +206,7 @@ class AICoachViewModel @Inject constructor(
         viewModelScope.launch {
             var creditReserved = false
             runCatching {
-                // Kredi kontrolü — FREE plan + 0 kredi → paywall, devam etme
+                // Enerji kontrolü — FREE plan + 0 Enerji → paywall, devam etme
                 if (!planRepository.consumeCredit()) {
                     updateState {
                         it.copy(

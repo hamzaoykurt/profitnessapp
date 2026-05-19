@@ -271,7 +271,7 @@ fun ExerciseProgressionScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = "3 kredi / egzersiz analizi",
+                            costLabel = "2 Enerji / egzersiz analizi",
                             theme     = theme
                         )
                     }
@@ -754,9 +754,9 @@ private fun AiInsightCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("3 kredi", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("2 Enerji", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
-                    Text("$credits kalan", color = theme.text2, fontSize = 9.sp)
+                    Text("$credits kaldı", color = theme.text2, fontSize = 9.sp)
                 }
                 Spacer(Modifier.width(6.dp))
             }

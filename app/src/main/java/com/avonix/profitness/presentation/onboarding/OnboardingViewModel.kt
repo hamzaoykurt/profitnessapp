@@ -157,7 +157,7 @@ JSON FORMAT:
                         isGeneratingProgram = false,
                         programError = when (failure) {
                             is AiAccessException -> failure.message.ifBlank {
-                                "Bu işlem için AI kredisi veya abonelik gerekiyor."
+                                "Bu işlem için AI Enerji veya abonelik gerekiyor."
                             }
                             else -> "AI program oluşturamadı. Plan ekranından tekrar deneyebilirsin."
                         }

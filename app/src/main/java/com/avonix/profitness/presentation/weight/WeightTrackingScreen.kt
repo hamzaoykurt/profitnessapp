@@ -184,7 +184,7 @@ fun WeightTrackingScreen(
                         AiCreditInfoRow(
                             isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
                             credits   = state.aiCredits,
-                            costLabel = theme.t("3 kredi / AI analiz", "3 credits / AI analysis"),
+                            costLabel = theme.t("2 Enerji / AI analiz", "2 Energy / AI analysis"),
                             theme     = theme,
                             modifier  = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                         )
@@ -519,9 +519,9 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(3.dp))
-                    Text(theme.t("3 kredi", "3 credits"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(theme.t("2 Enerji", "2 Energy"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(5.dp))
-                    Text(theme.t("$credits kalan", "$credits left"), color = theme.text2, fontSize = 9.sp)
+                    Text(theme.t("$credits kaldı", "$credits left"), color = theme.text2, fontSize = 9.sp)
                 }
                 Spacer(Modifier.width(8.dp))
             }

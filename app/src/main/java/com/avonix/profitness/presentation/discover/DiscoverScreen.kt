@@ -1097,16 +1097,16 @@ private fun MySharedCard(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             containerColor   = theme.bg1,
-            title = { Text("Paylaşımı sil?", color = theme.text0, fontWeight = FontWeight.Bold) },
+            title = { Text("Yayından kaldır?", color = theme.text0, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "\"${item.title}\" topluluk akışından kalıcı olarak kaldırılacak. Kendi programın silinmez.",
+                    "\"${item.title}\" topluluk akışından kaldırılacak. Daha önce kaydedenler program snapshot'ına erişmeye devam eder.",
                     color = theme.text2, fontSize = 13.sp
                 )
             },
             confirmButton = {
                 TextButton(onClick = { showDeleteDialog = false; onDelete() }) {
-                    Text("Sil", color = danger, fontWeight = FontWeight.Bold)
+                    Text("Yayından kaldır", color = danger, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1160,7 +1160,7 @@ private fun MySharedCard(
             !item.sourceExists -> StatusBanner(
                 icon = Icons.Rounded.Warning,
                 color = danger,
-                text  = "Kaynak program silinmiş. Sadece silebilirsin."
+                text  = "Kaynak program silinmiş. Paylaşım snapshot olarak korunuyor."
             )
             item.isOutOfSync -> StatusBanner(
                 icon = Icons.Rounded.FitnessCenter,
@@ -1176,7 +1176,7 @@ private fun MySharedCard(
 
         Spacer(Modifier.height(12.dp))
 
-        // Aksiyon: yalnız Sil (paylaşımlar artık snapshot — senkron yok)
+        // Aksiyon: yayından kaldırma (paylaşımlar artık snapshot — senkron yok)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1194,7 +1194,7 @@ private fun MySharedCard(
                 Icon(Icons.Rounded.DeleteOutline, null, tint = danger, modifier = Modifier.size(15.dp))
             }
             Spacer(Modifier.width(6.dp))
-            Text("SİL", color = danger,
+            Text("YAYINDAN KALDIR", color = danger,
                 fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
         }
     }

@@ -79,12 +79,9 @@ class DiscoverViewModel @Inject constructor(
 
     companion object {
         private const val PAGE_SIZE = 20
-        private const val SAVED_SCAN_PAGE_SIZE = 50
-        private const val SAVED_TARGET_PAGE_SIZE = 20
-        private const val SAVED_MAX_SCAN_PAGES = 10
     }
 
-    private var savedFeedOffset = 0
+    private var savedOffset = 0
     private var isInitialized = false
 
     fun initLoad() {
@@ -205,7 +202,7 @@ class DiscoverViewModel @Inject constructor(
                     when {
                         updated == null -> list
                         updated.isSavedByMe && list.none { it.id == updated.id } ->
-                            (list + updated).distinctBy { it.id }.sortedFor(s.sort)
+                            (listOf(updated) + list).distinctBy { it.id }
                         !updated.isSavedByMe -> list.filter { it.id != updated.id }
                         else -> list
                     }
@@ -221,7 +218,7 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private fun loadSavedFirstPage(isRefresh: Boolean = false) {
-        savedFeedOffset = 0
+        savedOffset = 0
         if (!isRefresh) {
             _state.update {
                 it.copy(
@@ -240,42 +237,32 @@ class DiscoverViewModel @Inject constructor(
             _state.update { it.copy(savedLoading = true, savedError = null) }
 
             val existing = if (reset) persistentListOf() else _state.value.savedItems
-            var offset = if (reset) 0 else savedFeedOffset
-            var canScanMore = true
-            var scannedPages = 0
-            val collected = mutableListOf<SharedProgram>()
-            var failureMessage: String? = null
+            val offset = if (reset) 0 else savedOffset
 
-            while (
-                collected.size < SAVED_TARGET_PAGE_SIZE &&
-                canScanMore &&
-                scannedPages < SAVED_MAX_SCAN_PAGES
-            ) {
-                val result = discoverRepo.getFeed(_state.value.sort, SAVED_SCAN_PAGE_SIZE, offset)
-                val page = result.getOrElse { err ->
-                    failureMessage = err.message ?: "Kaydedilenler yüklenemedi"
-                    emptyList()
+            discoverRepo.listMySaved(_state.value.sort, PAGE_SIZE, offset)
+                .onSuccess { page ->
+                    savedOffset = offset + page.size
+                    _state.update {
+                        it.copy(
+                            savedItems = (existing + page)
+                                .distinctBy { item -> item.id }
+                                .toImmutableList(),
+                            savedLoading = false,
+                            isRefreshing = false,
+                            savedCanLoadMore = page.size >= PAGE_SIZE,
+                            savedError = null
+                        )
+                    }
                 }
-                if (failureMessage != null) break
-
-                offset += page.size
-                canScanMore = page.size >= SAVED_SCAN_PAGE_SIZE
-                collected += page.filter { it.isSavedByMe }
-                scannedPages++
-            }
-
-            savedFeedOffset = offset
-            _state.update {
-                it.copy(
-                    savedItems = (existing + collected)
-                        .distinctBy { item -> item.id }
-                        .sortedFor(it.sort),
-                    savedLoading = false,
-                    isRefreshing = false,
-                    savedCanLoadMore = canScanMore,
-                    savedError = failureMessage
-                )
-            }
+                .onFailure { err ->
+                    _state.update {
+                        it.copy(
+                            savedLoading = false,
+                            isRefreshing = false,
+                            savedError = err.message ?: "Kaydedilenler yüklenemedi"
+                        )
+                    }
+                }
         }
     }
 
@@ -400,7 +387,7 @@ class DiscoverViewModel @Inject constructor(
                         it.copy(
                             items            = it.items.filter { p -> p.id != sharedId }.toImmutableList(),
                             myDeleteInFlight = (it.myDeleteInFlight - sharedId).toImmutableSet(),
-                            myActionMsg      = "Paylaşım silindi"
+                            myActionMsg      = "Paylaşım yayından kaldırıldı"
                         )
                     }
                 }

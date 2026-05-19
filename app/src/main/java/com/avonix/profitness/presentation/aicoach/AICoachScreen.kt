@@ -189,7 +189,7 @@ fun AICoachScreen(
                     AiCreditInfoRow(
                         isFree    = true,
                         credits   = state.aiCredits,
-                        costLabel = theme.t("1 kredi / mesaj", "1 credit / message"),
+                        costLabel = theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"),
                         theme     = theme,
                         modifier  = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
@@ -267,7 +267,7 @@ fun AICoachScreen(
         ) {
             val hasPlan = state.userPlan != UserPlan.FREE
 
-            // Sol: Geçmiş + kredi / plan rozeti
+            // Sol: Geçmiş + Enerji / plan rozeti
             Row(
                 modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
@@ -773,9 +773,9 @@ private fun SanctuaryInput(
             ) {
                 Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(3.dp))
-                Text(theme.t("1 kredi / mesaj", "1 credit / message"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text(theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(6.dp))
-                Text(theme.t("Kalan: $credits", "$credits left"), color = theme.text2, fontSize = 10.sp)
+                Text(theme.t("Enerji: $credits", "Energy: $credits"), color = theme.text2, fontSize = 10.sp)
             }
         }
     Row(

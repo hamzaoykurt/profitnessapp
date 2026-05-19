@@ -88,9 +88,12 @@ class UserPlanRepositoryImpl @Inject constructor(
     override suspend fun addCredits(amount: Int): CheckoutResult {
         val sku = when (amount) {
             10 -> "credits_10"
+            25 -> "credits_25"
             50 -> "credits_50"
+            100 -> "credits_100"
             200 -> "credits_200"
-            else -> error("Desteklenmeyen kredi paketi.")
+            500 -> "credits_500"
+            else -> error("Desteklenmeyen Enerji paketi.")
         }
         return startCheckout(sku)
     }

@@ -43,6 +43,7 @@ const MAX_REQUEST_BYTES = Number(Deno.env.get("AI_MAX_REQUEST_BYTES") ?? "150000
 const MAX_TEXT_CHARS = Number(Deno.env.get("AI_MAX_TEXT_CHARS") ?? "30000");
 const MAX_INLINE_BYTES = Number(Deno.env.get("AI_MAX_INLINE_BYTES") ?? "1200000");
 const MAX_IDEMPOTENCY_KEY_CHARS = 120;
+const DEFAULT_ENERGY_ENTITLEMENT_MESSAGE = "Bu işlem için Enerji veya abonelik gerekiyor.";
 
 const ALLOWED_INLINE_MIME = new Set([
   "image/jpeg",
@@ -70,6 +71,15 @@ function configuredModels(): string[] {
 
   const models = configured?.length ? configured : DEFAULT_GEMINI_MODELS;
   return [...new Set(models)];
+}
+
+function energyEntitlementMessage(message?: string | null): string {
+  if (!message) return DEFAULT_ENERGY_ENTITLEMENT_MESSAGE;
+  return message
+    .replaceAll("kredi veya abonelik hakkı", "Enerji veya abonelik")
+    .replaceAll("kredi veya abonelik", "Enerji veya abonelik")
+    .replaceAll("kredi", "Enerji")
+    .replaceAll("Kredi", "Enerji");
 }
 
 function cleanTool(value: unknown): string {
@@ -212,7 +222,7 @@ Deno.serve(async (req: Request) => {
       }
       return jsonResponse(402, {
         code: reservation?.reason ?? "insufficient_entitlement",
-        message: reservation?.message ?? "Bu işlem için kredi veya abonelik gerekiyor.",
+        message: energyEntitlementMessage(reservation?.message),
         requiredCredits: reservation?.required_credits ?? null,
         remainingCredits: reservation?.remaining_credits ?? null,
       });

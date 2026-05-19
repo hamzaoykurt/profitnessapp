@@ -67,7 +67,7 @@ data class ProgramUiState(
 sealed class ProgramEvent {
     data class ShowSnackbar(val message: String) : ProgramEvent()
     object NavigateBack : ProgramEvent()
-    /** AI Builder'a erişim için kredi/plan yetersiz. */
+    /** AI Builder'a erişim için Enerji/plan yetersiz. */
     object ShowPaywall : ProgramEvent()
 }
 
