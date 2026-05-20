@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 enum class AccentPreset(
     val color      : Color,   // dark mode accent (neon)
@@ -34,7 +35,7 @@ enum class AccentPreset(
 enum class SurfaceStyle { CLASSIC, OLED, GRAPHITE }
 
 /** Accent renginin doygunluk/parlaklık tercihi. */
-enum class AccentIntensity { NEON, PASTEL }
+enum class AccentIntensity { NEON, PASTEL, VIVID, SOFT }
 
 enum class AppLanguage { TURKISH, ENGLISH }
 
@@ -42,10 +43,11 @@ enum class AppLanguage { TURKISH, ENGLISH }
 data class AppThemeState(
     val isDark              : Boolean         = true,
     val accent              : AccentPreset    = AccentPreset.LIME,
-    val surfaceStyle        : SurfaceStyle    = SurfaceStyle.CLASSIC,
+    val surfaceStyle        : SurfaceStyle    = SurfaceStyle.OLED,
     val intensity           : AccentIntensity = AccentIntensity.NEON,
     val language            : AppLanguage     = AppLanguage.TURKISH,
-    val notificationsEnabled: Boolean         = true
+    val notificationsEnabled: Boolean         = true,
+    val customAccentArgb    : Int?            = null
 )
 
 // Surface helpers — dark (3 stil) / warm-earthy light
@@ -101,12 +103,77 @@ private fun Color.toPastel(): Color {
 }
 
 // Effective accent — uses light variant when not in dark mode, pastel uygulanabilir
+private fun Color.toVivid(): Color {
+    val boost = 0.18f
+    return Color(
+        red   = red   + (if (red > 0.5f) 1f - red else -red) * boost,
+        green = green + (if (green > 0.5f) 1f - green else -green) * boost,
+        blue  = blue  + (if (blue > 0.5f) 1f - blue else -blue) * boost,
+        alpha = alpha
+    )
+}
+
+private fun Color.toSoft(): Color {
+    val blend = 0.22f
+    return Color(
+        red   = red   + (0.86f - red)   * blend,
+        green = green + (0.86f - green) * blend,
+        blue  = blue  + (0.86f - blue)  * blend,
+        alpha = alpha
+    )
+}
+
+private fun Color.blendToward(target: Color, amount: Float): Color =
+    Color(
+        red   = red   + (target.red - red)     * amount,
+        green = green + (target.green - green) * amount,
+        blue  = blue  + (target.blue - blue)   * amount,
+        alpha = 1f
+    )
+
+private fun channelToLinear(value: Float): Double =
+    if (value <= 0.03928f) value / 12.92 else Math.pow(((value + 0.055) / 1.055).toDouble(), 2.4)
+
+private fun Color.relativeLuminance(): Double =
+    0.2126 * channelToLinear(red) + 0.7152 * channelToLinear(green) + 0.0722 * channelToLinear(blue)
+
+private fun Color.contrastRatio(other: Color): Double {
+    val a = relativeLuminance()
+    val b = other.relativeLuminance()
+    val lighter = maxOf(a, b)
+    val darker = minOf(a, b)
+    return (lighter + 0.05) / (darker + 0.05)
+}
+
+fun Color.toSafeAccentColor(): Color {
+    var adjusted = copy(alpha = 1f)
+    repeat(18) {
+        if (adjusted.contrastRatio(Color.Black) >= 3.0) return adjusted
+        adjusted = adjusted.blendToward(Color.White, 0.10f)
+    }
+    return adjusted
+}
+
+fun Color.readableOnAccentColor(): Color =
+    if (contrastRatio(Color.Black) >= contrastRatio(Color.White)) Color.Black else Color.White
+
+fun Int.toSafeAccentArgb(): Int = Color(this).toSafeAccentColor().toArgb()
+
 val AppThemeState.effectiveAccentColor: Color get() {
-    val base = if (isDark) accent.color else accent.lightColor
-    return if (intensity == AccentIntensity.PASTEL) base.toPastel() else base
+    val base = customAccentArgb?.let { Color(it) } ?: if (isDark) accent.color else accent.lightColor
+    val styled = when (intensity) {
+        AccentIntensity.NEON   -> base
+        AccentIntensity.PASTEL -> base.toPastel()
+        AccentIntensity.VIVID  -> base.toVivid()
+        AccentIntensity.SOFT   -> base.toSoft()
+    }
+    return styled.toSafeAccentColor()
 }
 val AppThemeState.effectiveOnAccentColor: Color get() =
-    if (isDark) accent.onColor else accent.onLightColor
+    effectiveAccentColor.readableOnAccentColor()
+
+val AppThemeState.accentDisplayLabel: String get() =
+    if (customAccentArgb != null) t("OZEL", "CUSTOM") else accent.label
 
 val LocalAppTheme = compositionLocalOf { AppThemeState() }
 
@@ -118,25 +185,26 @@ val LocalAppTheme = compositionLocalOf { AppThemeState() }
 //   bit 8      : notificationsEnabled
 //   bits 9–10  : surfaceStyle ordinal (2 bit → 4 stil)
 //   bit 11     : intensity ordinal (1 bit)
-val AppThemeStateSaver = Saver<AppThemeState, Long>(
+val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
     save = { s ->
-        var v = 0L
-        if (s.isDark) v = v or 1L
-        v = v or (s.accent.ordinal.toLong() shl 1)
-        v = v or (s.language.ordinal.toLong() shl 5)
-        if (s.notificationsEnabled) v = v or (1L shl 8)
-        v = v or (s.surfaceStyle.ordinal.toLong() shl 9)
-        v = v or (s.intensity.ordinal.toLong() shl 11)
-        v
+        listOf(
+            s.isDark,
+            s.accent.ordinal,
+            s.language.ordinal,
+            s.notificationsEnabled,
+            s.intensity.ordinal,
+            s.customAccentArgb
+        )
     },
-    restore = { v ->
+    restore = { values ->
         AppThemeState(
-            isDark               = (v and 1L) != 0L,
-            accent               = AccentPreset.entries[((v shr 1) and 0xF).toInt()],
-            language             = AppLanguage.entries[((v shr 5) and 0x7).toInt()],
-            notificationsEnabled = (v and (1L shl 8)) != 0L,
-            surfaceStyle         = SurfaceStyle.entries[((v shr 9) and 0x3).toInt()],
-            intensity            = AccentIntensity.entries[((v shr 11) and 0x1).toInt()]
+            isDark               = values.getOrNull(0) as? Boolean ?: true,
+            accent               = AccentPreset.entries.getOrElse(values.getOrNull(1) as? Int ?: 0) { AccentPreset.LIME },
+            language             = AppLanguage.entries.getOrElse(values.getOrNull(2) as? Int ?: 0) { AppLanguage.TURKISH },
+            notificationsEnabled = values.getOrNull(3) as? Boolean ?: true,
+            surfaceStyle         = SurfaceStyle.OLED,
+            intensity            = AccentIntensity.entries.getOrElse(values.getOrNull(4) as? Int ?: 0) { AccentIntensity.NEON },
+            customAccentArgb     = (values.getOrNull(5) as? Int)?.toSafeAccentArgb()
         )
     }
 )

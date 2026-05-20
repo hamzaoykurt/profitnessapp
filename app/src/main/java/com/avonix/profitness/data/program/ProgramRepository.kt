@@ -55,7 +55,9 @@ interface ProgramRepository {
         targetMuscle: String,
         category: String,
         setsDefault: Int,
-        repsDefault: Int
+        repsDefault: Int,
+        sportType: String = "",
+        trackingMode: String = ""
     ): Result<ExerciseItem>
 
     /** Listede olmayan bir hareket için talep gönderir. */

@@ -63,12 +63,14 @@ fun CinematicExerciseCard(
     activityDistance: String = "",
     activityElevation: String = "",
     activityIncline: String = "",
+    activityReps: String = "",
     onSetWeightChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
     onSetDurationChanged: (setIndex: Int, value: String) -> Unit = { _, _ -> },
     onActivityDurationChanged: (String) -> Unit = {},
     onActivityDistanceChanged: (String) -> Unit = {},
     onActivityElevationChanged: (String) -> Unit = {},
     onActivityInclineChanged: (String) -> Unit = {},
+    onActivityRepsChanged: (String) -> Unit = {},
     // Timer — ViewModel'den gelir, lokal state yok
     timerSeconds: Int = 0,
     timerRunning: Boolean = false,
@@ -326,15 +328,18 @@ fun CinematicExerciseCard(
                                 distanceValue = activityDistance,
                                 elevationValue = activityElevation,
                                 inclineValue = activityIncline,
+                                repsValue = activityReps,
                                 specLabel = trackingSpec.sportType.label,
                                 supportsDistance = trackingSpec.supportsDistance,
                                 supportsElevation = trackingSpec.supportsElevation,
                                 supportsIncline = trackingSpec.supportsIncline,
+                                supportsReps = trackingSpec.supportsReps,
                                 isDone = isCompleted,
                                 onDurationChanged = onActivityDurationChanged,
                                 onDistanceChanged = onActivityDistanceChanged,
                                 onElevationChanged = onActivityElevationChanged,
-                                onInclineChanged = onActivityInclineChanged
+                                onInclineChanged = onActivityInclineChanged,
+                                onRepsChanged = onActivityRepsChanged
                             )
                         } else if (durationSetBased) {
                             repeat(exercise.sets) { i ->
@@ -466,15 +471,18 @@ private fun ActivityMetricsPanel(
     distanceValue: String,
     elevationValue: String,
     inclineValue: String,
+    repsValue: String,
     specLabel: String,
     supportsDistance: Boolean,
     supportsElevation: Boolean,
     supportsIncline: Boolean,
+    supportsReps: Boolean,
     isDone: Boolean,
     onDurationChanged: (String) -> Unit,
     onDistanceChanged: (String) -> Unit,
     onElevationChanged: (String) -> Unit,
-    onInclineChanged: (String) -> Unit
+    onInclineChanged: (String) -> Unit,
+    onRepsChanged: (String) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val backgroundBrush = remember(isDone, accent) {
@@ -498,7 +506,11 @@ private fun ActivityMetricsPanel(
             .padding(14.dp)
     ) {
         Text(
-            text = if (supportsDistance) "$specLabel · süre ve mesafe" else "$specLabel · süre",
+            text = when {
+                supportsDistance -> "$specLabel · süre ve mesafe"
+                supportsReps -> "$specLabel · süre ve sayı"
+                else -> "$specLabel · süre"
+            },
             color = if (isDone) accent else TextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black,
@@ -527,6 +539,19 @@ private fun ActivityMetricsPanel(
                     accent = accent,
                     suffix = "m",
                     keyboardType = KeyboardType.Decimal,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (supportsReps) {
+                WeightInputField(
+                    value = repsValue,
+                    onValueChange = onRepsChanged,
+                    placeholder = "0",
+                    label = "Sayı",
+                    isDone = isDone,
+                    accent = accent,
+                    suffix = "adet",
+                    keyboardType = KeyboardType.Number,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -809,7 +834,6 @@ private fun TimedSetRow(
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val haptic = LocalHapticFeedback.current
     val durationSeconds = durationValue.toDurationSetSecondsLabel()
     val durationDisplay = durationSeconds.ifBlank { "0" }
     val bgAlpha by animateFloatAsState(
@@ -835,32 +859,6 @@ private fun TimedSetRow(
             .padding(12.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
-                    .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape)
-                    .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onToggle()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (isDone) accent else TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.widthIn(min = 92.dp).weight(0.92f)) {
-                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(2.dp))
-                Text("$durationDisplay sn", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(10.dp))
             WeightInputField(
                 value = durationSeconds,
                 onValueChange = onDurationChanged,
@@ -870,7 +868,50 @@ private fun TimedSetRow(
                 accent = accent,
                 suffix = "sn",
                 keyboardType = KeyboardType.Number,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1.05f)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.widthIn(min = 80.dp).weight(0.75f)) {
+                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(2.dp))
+                Text("$durationDisplay sn", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(12.dp))
+            SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
+        }
+    }
+}
+
+@Composable
+private fun SetToggleButton(
+    isDone: Boolean,
+    accent: Color,
+    onToggle: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onToggle()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
+                .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (isDone) accent else TextMuted,
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -889,7 +930,6 @@ private fun SetRow(
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val haptic = LocalHapticFeedback.current
     val bgAlpha by animateFloatAsState(
         if (isDone) 0.20f else 0.08f,
         tween(250),
@@ -916,34 +956,26 @@ private fun SetRow(
             )
             .padding(12.dp)
     ) {
-        // Üst satır: checkbox + set no + program tekrarı + ağırlık input
+        // Üst satır: ağırlık input + set no + program tekrarı + checkbox
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Checkbox
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
-                    .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape)
-                    .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onToggle()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (isDone) accent else TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            // Ağırlık input
+            WeightInputField(
+                value = weightValue,
+                onValueChange = onWeightChanged,
+                placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "0",
+                label = "Ağırlık",
+                isDone = isDone,
+                accent = accent,
+                suffix = "kg",
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1.05f)
+            )
             Spacer(Modifier.width(12.dp))
 
-            Column(Modifier.widthIn(min = 92.dp).weight(0.92f)) {
+            Column(Modifier.widthIn(min = 80.dp).weight(0.75f)) {
                 Text(
                     text = "Set $setNumber",
                     color = if (isDone) accent else TextPrimary,
@@ -959,20 +991,9 @@ private fun SetRow(
                 )
             }
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
 
-            // Ağırlık input
-            WeightInputField(
-                value = weightValue,
-                onValueChange = onWeightChanged,
-                placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "0",
-                label = "Ağırlık",
-                isDone = isDone,
-                accent = accent,
-                suffix = "kg",
-                keyboardType = KeyboardType.Decimal,
-                modifier = Modifier.weight(1f)
-            )
+            SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
         }
 
         // Alt satır: önceki antrenman bilgisi
@@ -989,7 +1010,7 @@ private fun SetRow(
                 color = TextMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 42.dp)
+                modifier = Modifier.padding(start = 12.dp)
             )
         }
     }

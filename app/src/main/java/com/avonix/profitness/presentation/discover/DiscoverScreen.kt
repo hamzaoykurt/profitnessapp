@@ -94,6 +94,12 @@ fun DiscoverScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
     val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toImmutableSet() }
+    val sharedProgramIds = remember(state.myShared) {
+        state.myShared.mapNotNull { it.originalProgramId }.toImmutableSet()
+    }
+    val sharedProgramHashes = remember(state.myShared) {
+        state.myShared.mapNotNull { it.sharedContentHash }.toImmutableSet()
+    }
     /**
      * Hash'leri Room'dan derle — Discover feed'i UYGULA/UYGULANDI çentiğini sunucu flag'i
      * yanında bu yerel set ile de teyit etsin ki kullanıcı bir programı düzenlediğinde
@@ -247,6 +253,8 @@ fun DiscoverScreen(
     if (showShareSheet) {
         ShareProgramSheet(
             programs  = myPrograms,
+            alreadySharedProgramIds = sharedProgramIds,
+            alreadySharedProgramHashes = sharedProgramHashes,
             preselectedProgramId = null,
             onDismiss = { showShareSheet = false },
             onConfirm = { programId, title, desc, tags, difficulty, weeks, days ->

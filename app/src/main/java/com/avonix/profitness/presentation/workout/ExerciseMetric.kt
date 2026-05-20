@@ -48,6 +48,7 @@ data class ActivityTrackingSpec(
     val supportsDistance: Boolean = false,
     val supportsIncline: Boolean = false,
     val supportsElevation: Boolean = false,
+    val supportsReps: Boolean = false,
     val primaryUnit: String = ""
 ) {
     val isActivityBased: Boolean get() = metric != ExerciseMetric.Strength
@@ -83,11 +84,12 @@ fun activityTrackingSpec(
     val repsLooksTimed = repsLooksTimed(normalizedReps)
     val isTimedHold = timedHoldKeywords.any { it in haystack }
     val explicitMetric = when (trackingModeRaw) {
-        "duration", "duration_distance", "duration_distance_elevation" -> if (repBasedStrengthMovement && !repsLooksTimed && !isTimedHold) {
+        "duration", "duration_reps", "duration_distance", "duration_distance_elevation" -> if (repBasedStrengthMovement && !repsLooksTimed && !isTimedHold) {
             ExerciseMetric.Strength
         } else {
             when (trackingModeRaw) {
                 "duration" -> ExerciseMetric.Duration
+                "duration_reps" -> ExerciseMetric.Duration
                 else -> ExerciseMetric.DurationDistance
             }
         }
@@ -114,9 +116,11 @@ fun activityTrackingSpec(
         supportsDistance = metric == ExerciseMetric.DurationDistance,
         supportsIncline = sportType == SportType.Cycling || sportType == SportType.Running || sportType == SportType.WalkingHiking,
         supportsElevation = sportType == SportType.Running || sportType == SportType.Cycling || sportType == SportType.WalkingHiking,
+        supportsReps = trackingModeRaw == "duration_reps" ||
+            listOf("jump rope", "ip atlama", "double under").any { it in haystack },
         primaryUnit = when (metric) {
             ExerciseMetric.Strength -> "set"
-            ExerciseMetric.Duration -> "dk"
+            ExerciseMetric.Duration -> if (trackingModeRaw == "duration_reps") "adet" else "dk"
             ExerciseMetric.DurationDistance -> "m"
         }
     )
@@ -134,6 +138,7 @@ fun isDurationSetExercise(
     if (sets <= 1) return false
     val metric = classifyExerciseMetric(category, name, target, reps, sportTypeRaw, trackingModeRaw)
     if (metric != ExerciseMetric.Duration) return false
+    if (trackingModeRaw == "duration_reps") return false
     val haystack = listOf(category, name, target, reps)
         .joinToString(" ")
         .lowercase()
@@ -155,6 +160,7 @@ fun defaultDurationSecondsForExercise(
         .lowercase()
         .normalizeTurkishAscii()
     return when {
+        trackingModeRaw == "duration_reps" || listOf("jump rope", "ip atlama", "double under").any { it in haystack } -> 10 * 60
         timedSetKeywords.any { it in haystack } -> reps.takeIf { it in 5..600 } ?: 60
         distanceSetLikeKeywords.any { it in haystack } -> 60
         reps in 5..180 -> reps * 60

@@ -292,6 +292,26 @@ class DiscoverViewModel @Inject constructor(
                 }
                 active.id
             }
+
+            val sourceHash = myPrograms.value
+                .firstOrNull { it.id == originalId }
+                ?.contentHash
+            var alreadyShared = _state.value.myShared.hasLiveShareFor(originalId, sourceHash)
+            if (!alreadyShared) {
+                discoverRepo.listMyShared().onSuccess { latestShares ->
+                    _state.update {
+                        it.copy(myShared = latestShares.toImmutableList(), myLoading = false)
+                    }
+                    alreadyShared = latestShares.hasLiveShareFor(originalId, sourceHash)
+                }
+            }
+            if (alreadyShared) {
+                _state.update {
+                    it.copy(shareResult = ShareResult.Error("Bu program zaten yayında"))
+                }
+                return@launch
+            }
+
             discoverRepo.shareMyProgram(
                 originalProgramId = originalId,
                 title             = title,
@@ -307,7 +327,7 @@ class DiscoverViewModel @Inject constructor(
                     loadMyShared()
                 }
                 .onFailure { err ->
-                    _state.update { it.copy(shareResult = ShareResult.Error(err.message ?: "Paylaşım başarısız")) }
+                    _state.update { it.copy(shareResult = ShareResult.Error(err.toShareProgramMessage())) }
                 }
         }
     }
@@ -438,4 +458,26 @@ class DiscoverViewModel @Inject constructor(
                     .thenByDescending { it.createdAtIso }
             )
         }.toImmutableList()
+}
+
+private fun Iterable<MySharedProgram>.hasLiveShareFor(
+    originalProgramId: String,
+    contentHash: String?
+): Boolean = any { shared ->
+    shared.originalProgramId == originalProgramId ||
+        (contentHash != null && shared.sharedContentHash == contentHash)
+}
+
+private fun Throwable.toShareProgramMessage(): String {
+    val text = message.orEmpty().lowercase()
+    val isDuplicateShare = "program_already_shared" in text ||
+        "shared_programs_one_live_per_owner_source_idx" in text ||
+        "shared_programs_one_live_per_owner_content_idx" in text ||
+        ("duplicate key" in text && "shared_programs" in text)
+
+    return if (isDuplicateShare) {
+        "Bu program zaten yayında"
+    } else {
+        message ?: "Paylaşım başarısız"
+    }
 }

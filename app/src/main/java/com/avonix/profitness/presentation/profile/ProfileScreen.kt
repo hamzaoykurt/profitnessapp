@@ -37,6 +37,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AccentColorSwatch
+import com.avonix.profitness.presentation.components.CustomAccentColorDialog
+import com.avonix.profitness.presentation.components.CustomAccentSwatch
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
@@ -1338,15 +1341,32 @@ private fun ThemeSettingsSheet(
 ) {
     val isDark          = current.isDark
     var accent          by remember { mutableStateOf(current.accent) }
-    var surfaceStyle    by remember { mutableStateOf(current.surfaceStyle) }
     var intensity       by remember { mutableStateOf(current.intensity) }
+    var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
+    var showColorPicker by remember { mutableStateOf(false) }
     val theme           = LocalAppTheme.current
+    val presetRows = remember {
+        listOf(
+            AccentPreset.LIME,
+            AccentPreset.PURPLE,
+            AccentPreset.CYAN,
+            AccentPreset.ORANGE,
+            AccentPreset.PINK,
+            AccentPreset.BLUE,
+            AccentPreset.RED,
+            AccentPreset.YELLOW,
+            AccentPreset.GREEN,
+            AccentPreset.TEAL,
+            AccentPreset.AMBER
+        )
+    }
 
     // Live preview state — her değişimde anında güncellenir
     val preview = current.copy(
-        accent       = accent,
-        surfaceStyle = surfaceStyle,
-        intensity    = intensity
+        accent           = accent,
+        surfaceStyle     = SurfaceStyle.OLED,
+        intensity        = intensity,
+        customAccentArgb = customAccentArgb
     )
     val previewAccent    = preview.effectiveAccentColor
     val previewOnAccent  = preview.effectiveOnAccentColor
@@ -1376,41 +1396,35 @@ private fun ThemeSettingsSheet(
         SectionLabel(strings.accentColorLabel, theme)
         FlowRow(
             modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement   = Arrangement.spacedBy(10.dp)
         ) {
-            AccentPreset.entries.forEach { preset ->
-                ColorSwatch(
-                    preset     = preset,
-                    isSelected = accent == preset,
-                    onClick    = { accent = preset }
+            presetRows.forEach { preset ->
+                AccentColorSwatch(
+                    color      = preset.color,
+                    isSelected = customAccentArgb == null && accent == preset,
+                    onClick    = {
+                        accent = preset
+                        customAccentArgb = null
+                    }
                 )
             }
-        }
-
-        // ── Background Tone (sadece dark) ────────────────────────────────────
-        if (isDark) {
-            SectionLabel(strings.backgroundToneLabel, theme)
-            SegmentedSelector(
-                options = listOf(
-                    SurfaceStyle.CLASSIC  to strings.surfaceClassicLabel,
-                    SurfaceStyle.OLED     to strings.surfaceOledLabel,
-                    SurfaceStyle.GRAPHITE to strings.surfaceGraphiteLabel
-                ),
-                selected  = surfaceStyle,
-                accent    = previewAccent,
-                onAccent  = previewOnAccent,
-                theme     = theme,
-                onSelect  = { surfaceStyle = it }
+            CustomAccentSwatch(
+                color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
+                isSelected = customAccentArgb != null,
+                onClick    = { showColorPicker = true }
             )
         }
 
+        // ── Background Tone (sadece dark) ────────────────────────────────────
         // ── Accent Intensity ──────────────────────────────────────────────────
         SectionLabel(strings.intensityLabel, theme)
         SegmentedSelector(
             options = listOf(
                 AccentIntensity.NEON   to strings.intensityNeonLabel,
-                AccentIntensity.PASTEL to strings.intensityPastelLabel
+                AccentIntensity.PASTEL to strings.intensityPastelLabel,
+                AccentIntensity.VIVID  to current.t("CANLI", "VIVID"),
+                AccentIntensity.SOFT   to current.t("SOFT", "SOFT")
             ),
             selected  = intensity,
             accent    = previewAccent,
@@ -1425,8 +1439,9 @@ private fun ThemeSettingsSheet(
                     current.copy(
                         isDark       = isDark,
                         accent       = accent,
-                        surfaceStyle = surfaceStyle,
-                        intensity    = intensity
+                        surfaceStyle = SurfaceStyle.OLED,
+                        intensity    = intensity,
+                        customAccentArgb = customAccentArgb
                     )
                 )
             },
@@ -1439,6 +1454,17 @@ private fun ThemeSettingsSheet(
         ) {
             Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
         }
+    }
+
+    if (showColorPicker) {
+        CustomAccentColorDialog(
+            initialColor = customAccentArgb?.let { Color(it) } ?: previewAccent,
+            theme = preview,
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { selected ->
+                customAccentArgb = selected
+            }
+        )
     }
 }
 
@@ -1475,7 +1501,7 @@ private fun PreviewCard(preview: AppThemeState) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                preview.accent.label,
+                preview.accentDisplayLabel,
                 color         = acc,
                 fontSize      = 12.sp,
                 fontWeight    = FontWeight.Black,

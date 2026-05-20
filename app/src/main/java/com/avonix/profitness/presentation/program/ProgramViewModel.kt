@@ -13,6 +13,9 @@ import com.avonix.profitness.data.store.UserPlanRepository
 import com.avonix.profitness.domain.model.ExerciseItem
 import com.avonix.profitness.domain.model.ExerciseNameRules
 import com.avonix.profitness.domain.model.Program
+import com.avonix.profitness.presentation.workout.ExerciseMetric
+import com.avonix.profitness.presentation.workout.activityTrackingSpec
+import com.avonix.profitness.presentation.workout.defaultDurationSecondsForExercise
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -34,7 +37,9 @@ data class AiEditExerciseResult(
     val targetMuscle: String,
     val sets        : Int,
     val reps        : Int,
-    val restSeconds : Int
+    val restSeconds : Int,
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null
 )
 
 data class AiEditDayResult(
@@ -166,6 +171,113 @@ class ProgramViewModel @Inject constructor(
             .filter { it.second >= threshold }
             .maxByOrNull { it.second }
             ?.first
+    }
+
+    private data class ExerciseTrackingDefaults(
+        val sportType: String,
+        val trackingMode: String
+    )
+
+    private fun exerciseCatalogPrompt(exercises: List<ExerciseItem>): String =
+        exercises
+            .sortedWith(compareBy<ExerciseItem> { it.category }.thenBy { it.name })
+            .take(180)
+            .joinToString("\n") { ex ->
+                val alias = ex.nameEn.takeIf { it.isNotBlank() && !it.equals(ex.name, ignoreCase = true) }
+                    ?.let { " / $it" }
+                    .orEmpty()
+                "- ${ex.name}$alias [${ex.category}, ${ex.targetMuscle}, ${ex.trackingMode.ifBlank { "strength" }}]"
+            }
+
+    private fun inferredTrackingForExercise(
+        name: String,
+        targetMuscle: String,
+        category: String,
+        reps: Int
+    ): ExerciseTrackingDefaults {
+        val normalized = normalizeExerciseText(name)
+        if ("jump rope" in normalized || "ip atlama" in normalized || "double under" in normalized) {
+            return ExerciseTrackingDefaults("jump_rope_hiit", "duration_reps")
+        }
+        val spec = activityTrackingSpec(
+            category = category,
+            name = name,
+            target = targetMuscle,
+            reps = reps.toString()
+        )
+        return ExerciseTrackingDefaults(
+            sportType = spec.sportType.raw,
+            trackingMode = when (spec.metric) {
+                ExerciseMetric.Strength -> "strength"
+                ExerciseMetric.Duration -> "duration"
+                ExerciseMetric.DurationDistance -> "duration_distance"
+            }
+        )
+    }
+
+    private fun defaultAiDurationSeconds(
+        exercise: ExerciseItem,
+        reps: Int,
+        explicit: Int?
+    ): Int? {
+        explicit?.takeIf { it > 0 }?.let { return it }
+        val spec = activityTrackingSpec(
+            category = exercise.category,
+            name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+            target = exercise.targetMuscle,
+            reps = reps.toString(),
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        )
+        if (spec.metric == ExerciseMetric.Strength) return null
+        return defaultDurationSecondsForExercise(
+            category = exercise.category,
+            name = listOf(exercise.name, exercise.nameEn).joinToString(" "),
+            target = exercise.targetMuscle,
+            reps = reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        )
+    }
+
+    private fun normalizeExerciseText(value: String): String =
+        value.lowercase()
+            .replace('\u0131', 'i')
+            .replace('\u011f', 'g')
+            .replace('\u00fc', 'u')
+            .replace('\u015f', 's')
+            .replace('\u00f6', 'o')
+            .replace('\u00e7', 'c')
+
+    private fun isStrengthRowRequested(instruction: String): Boolean {
+        val normalized = normalizeExerciseText(instruction)
+        return Regex("""\brow\b""").containsMatchIn(normalized) &&
+            !listOf("rowing machine", "rower", "ergometer", "kurek makinesi").any { it in normalized }
+    }
+
+    private fun isPulldownName(name: String): Boolean =
+        normalizeExerciseText(name).let { "pulldown" in it || "lat pull" in it || "lat cek" in it }
+
+    private fun preferredRowName(exercises: List<ExerciseItem>): String {
+        exercises.firstOrNull { it.name.equals("Row", ignoreCase = true) }?.let { return it.name }
+        return exercises.firstOrNull { ex ->
+            val haystack = normalizeExerciseText("${ex.name} ${ex.nameEn} ${ex.category}")
+            "row" in haystack && "pulldown" !in haystack && "rowing" !in haystack && "rower" !in haystack
+        }?.name ?: "Row"
+    }
+
+    private fun correctedAiExerciseName(
+        rawName: String,
+        userInstruction: String,
+        baseExercises: List<ExerciseItem>,
+        currentDayNames: Set<String>
+    ): String {
+        if (!isStrengthRowRequested(userInstruction)) return rawName
+        val normalized = ExerciseNameRules.normalizedKey(rawName)
+        if (isPulldownName(rawName) && normalized !in currentDayNames) {
+            return preferredRowName(baseExercises)
+        }
+        return rawName
     }
 
     private fun currentUserId(): String? =
@@ -303,6 +415,7 @@ class ProgramViewModel @Inject constructor(
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
+            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
 
             // 2. Metin tabanlı dosyalar (HTML, TXT vb.) inline_data yerine text olarak gönderilmeli
             val isTextFile = mimeType?.startsWith("text/") == true
@@ -345,12 +458,16 @@ $mediaAnalysisBlock
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
 Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
+Mümkünse aşağıdaki katalogdaki adlardan birini birebir kullan. Kullanıcı "row" isterse row veya row varyasyonu kullan; pulldown/lat pulldown ile değiştirme. Katalogda yoksa istenen hareketin kendi adını döndür, ben ekleyeceğim.
+Egzersiz kataloğu:
+$exerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
+Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
-{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
             val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
@@ -421,15 +538,28 @@ FORMAT:
                     val exArray = dayObj["exercises"] as? JsonArray
                     val matched = exArray?.mapIndexedNotNull { exIdx, exEl ->
                         val exObj  = exEl.jsonObject
-                        val exName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexedNotNull null
+                        val rawExName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexedNotNull null
+                        val exName = correctedAiExerciseName(rawExName, userPrompt, baseExercises, emptySet())
                         val sets   = flexInt(exObj, "sets", 3)
                         val reps   = flexInt(exObj, "reps", 10)
                         val rest   = flexInt(exObj, "restSeconds", 90)
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
+                        val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")
+                        val explicitDistance = flexFloatOrNull(exObj, "targetDistanceMeters")
+                        val trackingDefaults = inferredTrackingForExercise(exName, targetMuscle, category, reps)
 
                         val exercise = findExerciseByName(exName, currentMap, currentMapEn)
-                            ?: programRepository.addExercise(exName, exName, targetMuscle, category, sets, reps)
+                            ?: programRepository.addExercise(
+                                name = exName,
+                                nameEn = exName,
+                                targetMuscle = targetMuscle,
+                                category = category,
+                                setsDefault = sets,
+                                repsDefault = reps,
+                                sportType = trackingDefaults.sportType,
+                                trackingMode = trackingDefaults.trackingMode
+                            )
                                 .getOrNull()
                                 ?.also {
                                     currentMap[ExerciseNameRules.normalizedKey(it.name)] = it
@@ -442,7 +572,17 @@ FORMAT:
                             skippedExercises += exName
                         }
 
-                        exercise?.let { ManualExerciseInput(it.id, sets, reps, rest, exIdx) }
+                        exercise?.let {
+                            ManualExerciseInput(
+                                exerciseId = it.id,
+                                sets = sets,
+                                reps = reps,
+                                restSeconds = rest,
+                                orderIndex = exIdx,
+                                targetDurationSeconds = defaultAiDurationSeconds(it, reps, explicitDuration),
+                                targetDistanceMeters = explicitDistance
+                            )
+                        }
                     } ?: emptyList()
                     ManualDayInput(title = title, isRestDay = false, exercises = matched)
                 }
@@ -507,6 +647,7 @@ FORMAT:
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
+            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
             // Güncel Composable state'ini JSON olarak serileştir (egzersiz adını DB'den al)
             val exerciseNameMap = baseExercises.associateBy { it.id }
             val currentProgramJson = buildString {
@@ -519,7 +660,7 @@ FORMAT:
                         day.selectedExercises.forEachIndexed { j, ex ->
                             if (j > 0) append(",")
                             val exName = exerciseNameMap[ex.exerciseId]?.name ?: ex.exerciseId
-                            append("{\"exerciseName\":\"${exName.replace("\"", "\\\"")}\",\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds}}")
+                            append("{\"exerciseName\":\"${exName.replace("\"", "\\\"")}\",\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds},\"targetDurationSeconds\":${ex.targetDurationSeconds ?: "null"},\"targetDistanceMeters\":${ex.targetDistanceMeters ?: "null"}}")
                         }
                         append("]")
                     }
@@ -536,13 +677,17 @@ Kullanıcının düzenleme isteği: $userInstruction
 
 Her egzersiz için standart Türkçe veya İngilizce adını kullan.
 Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
+Mümkünse aşağıdaki katalogdaki adlardan birini birebir kullan. Kullanıcı "row" isterse row veya row varyasyonu kullan; pulldown/lat pulldown ile değiştirme. Katalogda yoksa istenen hareketin kendi adını döndür, ben ekleyeceğim.
+Egzersiz kataloğu:
+$exerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
+Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
 Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
-{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık"}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
             val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
@@ -589,8 +734,13 @@ FORMAT:
             val editMap   = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
             val editMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
                 .associateBy { ExerciseNameRules.normalizedKey(it.nameEn) }.toMutableMap()
+            val currentDayExerciseNames = currentDays.map { day ->
+                day.selectedExercises
+                    .mapNotNull { exerciseNameMap[it.exerciseId]?.name?.let(ExerciseNameRules::normalizedKey) }
+                    .toSet()
+            }
 
-            val editedDays = daysArray.map { dayEl ->
+            val editedDays = daysArray.mapIndexed { dayIndex, dayEl ->
                 val dayObj = dayEl.jsonObject
                 val title  = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
                 val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
@@ -601,15 +751,33 @@ FORMAT:
                     val exArray = dayObj["exercises"] as? JsonArray
                     val matched = exArray?.mapNotNull { exEl ->
                         val exObj        = exEl.jsonObject
-                        val exName       = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                        val rawExName    = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                        val exName       = correctedAiExerciseName(
+                            rawName = rawExName,
+                            userInstruction = userInstruction,
+                            baseExercises = baseExercises,
+                            currentDayNames = currentDayExerciseNames.getOrNull(dayIndex).orEmpty()
+                        )
                         val sets         = flexInt(exObj, "sets", 3)
                         val reps         = flexInt(exObj, "reps", 10)
                         val rest         = flexInt(exObj, "restSeconds", 90)
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
+                        val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")
+                        val explicitDistance = flexFloatOrNull(exObj, "targetDistanceMeters")
+                        val trackingDefaults = inferredTrackingForExercise(exName, targetMuscle, category, reps)
 
                         val exercise = findExerciseByName(exName, editMap, editMapEn)
-                            ?: programRepository.addExercise(exName, exName, targetMuscle, category, sets, reps)
+                            ?: programRepository.addExercise(
+                                name = exName,
+                                nameEn = exName,
+                                targetMuscle = targetMuscle,
+                                category = category,
+                                setsDefault = sets,
+                                repsDefault = reps,
+                                sportType = trackingDefaults.sportType,
+                                trackingMode = trackingDefaults.trackingMode
+                            )
                                 .getOrNull()
                                 ?.also {
                                     editMap[ExerciseNameRules.normalizedKey(it.name)] = it
@@ -629,7 +797,9 @@ FORMAT:
                                 targetMuscle = targetMuscle,
                                 sets         = sets,
                                 reps         = reps,
-                                restSeconds  = rest
+                                restSeconds  = rest,
+                                targetDurationSeconds = defaultAiDurationSeconds(it, reps, explicitDuration),
+                                targetDistanceMeters = explicitDistance
                             )
                         }
                     } ?: emptyList()
@@ -674,6 +844,17 @@ FORMAT:
     }
 
     // ── Create From Template ──────────────────────────────────────────────────
+
+    private fun flexIntOrNull(obj: kotlinx.serialization.json.JsonObject, key: String): Int? {
+        val el = obj[key]?.jsonPrimitive ?: return null
+        return el.intOrNull
+            ?: el.contentOrNull?.split("-", "/", "–")?.firstOrNull()?.trim()?.toIntOrNull()
+    }
+
+    private fun flexFloatOrNull(obj: kotlinx.serialization.json.JsonObject, key: String): Float? =
+        obj[key]?.jsonPrimitive?.contentOrNull
+            ?.replace(',', '.')
+            ?.toFloatOrNull()
 
     fun selectTemplate(templateKey: String) {
         if (templateApplyInFlight || uiState.value.applyingTemplateKey != null) return

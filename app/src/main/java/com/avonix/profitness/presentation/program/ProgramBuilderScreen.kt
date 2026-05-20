@@ -52,6 +52,9 @@ import com.avonix.profitness.domain.model.Program
 import com.avonix.profitness.domain.model.ProgramType
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.presentation.components.AppToast
+import com.avonix.profitness.presentation.components.AppToastData
+import com.avonix.profitness.presentation.components.AppToastType
 import com.avonix.profitness.presentation.components.glassCard
 import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.activityTrackingSpec
@@ -447,22 +450,23 @@ fun ProgramBuilderScreen(
         ?.collectAsStateWithLifecycle()
         ?.value
         ?: ProgramShareUiState()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    var currentToast by remember { mutableStateOf<AppToastData?>(null) }
 
     LaunchedEffect(shareState.result, shareViewModel) {
         shareState.result?.let { r ->
-            val msg = when (r) {
-                ProgramShareResult.Success -> "Program topluluk akışına eklendi ✓"
-                is ProgramShareResult.Error -> "Paylaşım başarısız: ${r.message}"
-            }
-            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+            currentToast = AppToastData(
+                message = when (r) {
+                    ProgramShareResult.Success -> "Program topluluk akışına eklendi"
+                    is ProgramShareResult.Error -> "Paylaşım başarısız: ${r.message}"
+                },
+                type = if (r is ProgramShareResult.Success) AppToastType.Success else AppToastType.Error
+            )
             shareViewModel?.consumeResult()
         }
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf<BuilderMode>(initialMode) }
-    var snackbarMsg by remember { mutableStateOf<String?>(null) }
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
@@ -486,7 +490,10 @@ fun ProgramBuilderScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is ProgramEvent.ShowSnackbar -> snackbarMsg = event.message
+                is ProgramEvent.ShowSnackbar -> currentToast = AppToastData(
+                    message = event.message,
+                    type = AppToastType.Info
+                )
                 ProgramEvent.NavigateBack    -> mode = BuilderMode.Choose
                 ProgramEvent.ShowPaywall     -> showPaywall = true
             }
@@ -548,23 +555,11 @@ fun ProgramBuilderScreen(
             }
         }
 
-        snackbarMsg?.let { msg ->
-            LaunchedEffect(msg) {
-                delay(2500)
-                snackbarMsg = null
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 110.dp)
-                    .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 20.dp, vertical = 14.dp)
-            ) {
-                Text(msg, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-        }
+        AppToast(
+            toast = currentToast,
+            onDismiss = { currentToast = null },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
 
         // Paywall dialog
         if (showPaywall) {
@@ -2009,7 +2004,18 @@ private fun EditProgramScreen(
                 m.title    = dayResult.title
                 m.isRestDay = dayResult.isRestDay
                 dayResult.exercises.forEach { ex ->
-                    m.exercises.add(DraftExercise(ex.exerciseId, ex.name, ex.targetMuscle, ex.sets, ex.reps, ex.restSeconds))
+                    m.exercises.add(
+                        DraftExercise(
+                            exerciseId = ex.exerciseId,
+                            name = ex.name,
+                            targetMuscle = ex.targetMuscle,
+                            sets = ex.sets,
+                            reps = ex.reps,
+                            restSeconds = ex.restSeconds,
+                            targetDurationSeconds = ex.targetDurationSeconds,
+                            targetDistanceMeters = ex.targetDistanceMeters
+                        )
+                    )
                 }
                 days.add(m)
             }

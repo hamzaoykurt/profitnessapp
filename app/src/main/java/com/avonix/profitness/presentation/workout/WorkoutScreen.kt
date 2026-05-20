@@ -785,12 +785,18 @@ private fun WorkoutContent(
                     activityIncline   = state.activityInclines[exercise.id]
                         ?: exercise.targetInclinePercent?.trimmedUi()
                         ?: "",
+                    activityReps      = state.activityReps[exercise.id]
+                        ?: exercise.reps.takeIf {
+                            exercise.trackingMode == "duration_reps" || exercise.sportType == "jump_rope_hiit"
+                        }
+                        ?: "",
                     onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
                     onSetDurationChanged = { si, v -> viewModel.updateSetDuration(exercise.id, si, v) },
                     onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
                     onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
                     onActivityElevationChanged = { v -> viewModel.updateActivityElevation(exercise.id, v) },
                     onActivityInclineChanged = { v -> viewModel.updateActivityIncline(exercise.id, v) },
+                    onActivityRepsChanged = { v -> viewModel.updateActivityReps(exercise.id, v) },
                     timerSeconds      = if (isThisExTimer) timer.displaySeconds else exercise.restSeconds,
                     timerRunning      = isThisExTimer && timer.isRunning,
                     timerDone         = isThisExTimer && timer.isDone,

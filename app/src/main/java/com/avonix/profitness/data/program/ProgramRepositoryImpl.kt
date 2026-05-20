@@ -412,7 +412,9 @@ class ProgramRepositoryImpl @Inject constructor(
         targetMuscle: String,
         category: String,
         setsDefault: Int,
-        repsDefault: Int
+        repsDefault: Int,
+        sportType: String,
+        trackingMode: String
     ): Result<ExerciseItem> = withContext(Dispatchers.IO) {
         runCatching {
             val userId = requireAuthenticatedUser()
@@ -431,6 +433,8 @@ class ProgramRepositoryImpl @Inject constructor(
                     put("sets_default", setsDefault)
                     put("reps_default", repsDefault)
                     put("description", "")
+                    put("sport_type", sportType)
+                    put("tracking_mode", trackingMode)
                     put("created_by", userId)
                 })
 

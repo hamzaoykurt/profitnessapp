@@ -35,8 +35,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.presentation.components.AccentColorSwatch
 import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.presentation.components.CustomAccentColorDialog
+import com.avonix.profitness.presentation.components.CustomAccentSwatch
 import com.avonix.profitness.presentation.profile.readSafeProfilePhotoBytes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -257,12 +260,29 @@ private fun StepTheme(
     vm           : OnboardingViewModel
 ) {
     var accent       by remember { mutableStateOf(current.accent) }
-    var surfaceStyle by remember { mutableStateOf(current.surfaceStyle) }
     var intensity    by remember { mutableStateOf(current.intensity) }
+    var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
+    var showColorPicker by remember { mutableStateOf(false) }
+    val presetRows = remember {
+        listOf(
+            AccentPreset.LIME,
+            AccentPreset.PURPLE,
+            AccentPreset.CYAN,
+            AccentPreset.ORANGE,
+            AccentPreset.PINK,
+            AccentPreset.BLUE,
+            AccentPreset.RED,
+            AccentPreset.YELLOW,
+            AccentPreset.GREEN,
+            AccentPreset.TEAL,
+            AccentPreset.AMBER
+        )
+    }
     val preview = current.copy(
-        accent       = accent,
-        surfaceStyle = surfaceStyle,
-        intensity    = intensity
+        accent           = accent,
+        surfaceStyle     = SurfaceStyle.OLED,
+        intensity        = intensity,
+        customAccentArgb = customAccentArgb
     )
     val previewAccent   = preview.effectiveAccentColor
     val previewOnAccent = preview.effectiveOnAccentColor
@@ -291,34 +311,25 @@ private fun StepTheme(
         Spacer(Modifier.height(10.dp))
         FlowRow(
             modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement   = Arrangement.spacedBy(10.dp)
         ) {
-            AccentPreset.entries.forEach { preset ->
-                ThemeColorSwatch(
-                    preset     = preset,
-                    isSelected = accent == preset,
-                    onClick    = { accent = preset }
+            presetRows.forEach { preset ->
+                AccentColorSwatch(
+                    color      = preset.color,
+                    isSelected = customAccentArgb == null && accent == preset,
+                    onClick    = {
+                        accent = preset
+                        customAccentArgb = null
+                    }
                 )
             }
+            CustomAccentSwatch(
+                color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
+                isSelected = customAccentArgb != null,
+                onClick    = { showColorPicker = true }
+            )
         }
-
-        Spacer(Modifier.height(22.dp))
-
-        Text(current.t("ARKA PLAN TONU", "SURFACE STYLE"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(8.dp))
-        ThemeSegmentedSelector(
-            options = listOf(
-                SurfaceStyle.CLASSIC to current.t("KLASİK", "CLASSIC"),
-                SurfaceStyle.OLED to "OLED",
-                SurfaceStyle.GRAPHITE to current.t("GRAFİT", "GRAPHITE")
-            ),
-            selected = surfaceStyle,
-            accent = previewAccent,
-            onAccent = previewOnAccent,
-            theme = current,
-            onSelect = { surfaceStyle = it }
-        )
 
         Spacer(Modifier.height(18.dp))
 
@@ -327,7 +338,9 @@ private fun StepTheme(
         ThemeSegmentedSelector(
             options = listOf(
                 AccentIntensity.NEON to "NEON",
-                AccentIntensity.PASTEL to "PASTEL"
+                AccentIntensity.PASTEL to "PASTEL",
+                AccentIntensity.VIVID to current.t("CANLI", "VIVID"),
+                AccentIntensity.SOFT to current.t("SOFT", "SOFT")
             ),
             selected = intensity,
             accent = previewAccent,
@@ -350,6 +363,17 @@ private fun StepTheme(
         )
 
         Spacer(Modifier.height(48.dp))
+    }
+
+    if (showColorPicker) {
+        CustomAccentColorDialog(
+            initialColor = customAccentArgb?.let { Color(it) } ?: previewAccent,
+            theme = preview,
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { selected ->
+                customAccentArgb = selected
+            }
+        )
     }
 }
 
@@ -1277,7 +1301,7 @@ private fun ThemePreviewCard(preview: AppThemeState) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                preview.accent.label,
+                preview.accentDisplayLabel,
                 color         = accent,
                 fontSize      = 12.sp,
                 fontWeight    = FontWeight.Black,

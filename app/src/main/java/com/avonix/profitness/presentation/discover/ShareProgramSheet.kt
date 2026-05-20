@@ -58,6 +58,8 @@ import com.avonix.profitness.presentation.components.glassCard
 @Composable
 fun ShareProgramSheet(
     programs: List<Program>,
+    alreadySharedProgramIds: Set<String> = emptySet(),
+    alreadySharedProgramHashes: Set<String> = emptySet(),
     preselectedProgramId: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (
@@ -90,7 +92,9 @@ fun ShareProgramSheet(
     }
     var difficulty: Difficulty? by remember(selectedProgramId) { mutableStateOf(null) }
 
-    val canSubmit = selectedProgram != null && title.isNotBlank()
+    val selectedAlreadyShared = selectedProgram
+        ?.isAlreadyShared(alreadySharedProgramIds, alreadySharedProgramHashes) == true
+    val canSubmit = selectedProgram != null && !selectedAlreadyShared && title.isNotBlank()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -126,6 +130,10 @@ fun ShareProgramSheet(
                     programs.forEach { p ->
                         ProgramPickerRow(
                             program = p,
+                            alreadyShared = p.isAlreadyShared(
+                                alreadySharedProgramIds,
+                                alreadySharedProgramHashes
+                            ),
                             onClick = { selectedProgramId = p.id }
                         )
                         Spacer(Modifier.height(8.dp))
@@ -183,6 +191,15 @@ fun ShareProgramSheet(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
+                }
+                if (selectedAlreadyShared) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Bu program zaten toplulukta yayında.",
+                        color = accent.copy(0.82f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 Spacer(Modifier.height(16.dp))
 
@@ -264,8 +281,17 @@ fun ShareProgramSheet(
     }
 }
 
+private fun Program.isAlreadyShared(
+    sharedProgramIds: Set<String>,
+    sharedProgramHashes: Set<String>
+): Boolean = id in sharedProgramIds || contentHash?.let { it in sharedProgramHashes } == true
+
 @Composable
-private fun ProgramPickerRow(program: Program, onClick: () -> Unit) {
+private fun ProgramPickerRow(
+    program: Program,
+    alreadyShared: Boolean,
+    onClick: () -> Unit
+) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(14.dp)
@@ -276,13 +302,17 @@ private fun ProgramPickerRow(program: Program, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(theme.bg2.copy(0.45f))
+            .background(theme.bg2.copy(if (alreadyShared) 0.25f else 0.45f))
             .border(
                 1.dp,
-                if (program.isActive) accent.copy(0.45f) else theme.stroke.copy(0.4f),
+                when {
+                    alreadyShared -> accent.copy(0.28f)
+                    program.isActive -> accent.copy(0.45f)
+                    else -> theme.stroke.copy(0.4f)
+                },
                 shape
             )
-            .clickable { onClick() }
+            .clickable(enabled = !alreadyShared) { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -300,22 +330,18 @@ private fun ProgramPickerRow(program: Program, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = program.name,
-                    color = theme.text0,
+                    color = if (alreadyShared) theme.text2.copy(0.58f) else theme.text0,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1
                 )
                 if (program.isActive) {
                     Spacer(Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(accent.copy(0.18f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text("AKTİF", color = accent, fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
-                    }
+                    ProgramStatusBadge("AKTİF", accent)
+                }
+                if (alreadyShared) {
+                    Spacer(Modifier.width(6.dp))
+                    ProgramStatusBadge("YAYINDA", accent)
                 }
             }
             Spacer(Modifier.height(2.dp))
@@ -326,7 +352,30 @@ private fun ProgramPickerRow(program: Program, onClick: () -> Unit) {
             )
         }
         Spacer(Modifier.width(8.dp))
-        Icon(Icons.Rounded.CheckCircle, null, tint = accent.copy(0.8f), modifier = Modifier.size(18.dp))
+        Icon(
+            Icons.Rounded.CheckCircle,
+            null,
+            tint = if (alreadyShared) theme.text2.copy(0.28f) else accent.copy(0.8f),
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun ProgramStatusBadge(label: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(0.18f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            label,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.8.sp
+        )
     }
 }
 

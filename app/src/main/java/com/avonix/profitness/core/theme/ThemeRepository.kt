@@ -29,6 +29,7 @@ class ThemeRepository @Inject constructor(
         val INTENSITY_ORD = intPreferencesKey("intensity_ordinal")
         val LANGUAGE_ORD  = intPreferencesKey("language_ordinal")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
+        val CUSTOM_ACCENT = intPreferencesKey("custom_accent_argb")
     }
 
     /** Emits the persisted [AppThemeState]. */
@@ -43,21 +44,21 @@ class ThemeRepository @Inject constructor(
         .map { prefs ->
             val isDark        = prefs[Keys.IS_DARK]       ?: true
             val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: 0
-            val surfaceOrd    = prefs[Keys.SURFACE_ORD]   ?: 0
             val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: 0
             val languageOrd   = prefs[Keys.LANGUAGE_ORD]  ?: 0
             val notifications = prefs[Keys.NOTIFICATIONS] ?: true
+            val customAccent  = prefs[Keys.CUSTOM_ACCENT]?.toSafeAccentArgb()
             val accent        = AccentPreset.entries.getOrElse(accentOrd)    { AccentPreset.LIME }
-            val surfaceStyle  = SurfaceStyle.entries.getOrElse(surfaceOrd)   { SurfaceStyle.CLASSIC }
             val intensity     = AccentIntensity.entries.getOrElse(intensityOrd) { AccentIntensity.NEON }
             val language      = AppLanguage.entries.getOrElse(languageOrd) { AppLanguage.TURKISH }
             AppThemeState(
                 isDark               = isDark,
                 accent               = accent,
-                surfaceStyle         = surfaceStyle,
+                surfaceStyle         = SurfaceStyle.OLED,
                 intensity            = intensity,
                 language             = language,
-                notificationsEnabled = notifications
+                notificationsEnabled = notifications,
+                customAccentArgb     = customAccent
             )
         }
 
@@ -65,10 +66,16 @@ class ThemeRepository @Inject constructor(
         context.themeDataStore.edit { prefs ->
             prefs[Keys.IS_DARK]       = state.isDark
             prefs[Keys.ACCENT_ORD]    = state.accent.ordinal
-            prefs[Keys.SURFACE_ORD]   = state.surfaceStyle.ordinal
+            prefs[Keys.SURFACE_ORD]   = SurfaceStyle.OLED.ordinal
             prefs[Keys.INTENSITY_ORD] = state.intensity.ordinal
             prefs[Keys.LANGUAGE_ORD]  = state.language.ordinal
             prefs[Keys.NOTIFICATIONS] = state.notificationsEnabled
+            val customAccent = state.customAccentArgb
+            if (customAccent == null) {
+                prefs.remove(Keys.CUSTOM_ACCENT)
+            } else {
+                prefs[Keys.CUSTOM_ACCENT] = customAccent.toSafeAccentArgb()
+            }
         }
     }
 }

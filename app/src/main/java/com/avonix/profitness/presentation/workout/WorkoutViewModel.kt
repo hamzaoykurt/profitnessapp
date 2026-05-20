@@ -99,6 +99,7 @@ data class WorkoutScreenState(
     val activityDistances: Map<String, String> = emptyMap(),
     val activityElevations: Map<String, String> = emptyMap(),
     val activityInclines: Map<String, String> = emptyMap(),
+    val activityReps: Map<String, String> = emptyMap(),
     val challengeSyncVersion: Int = 0,
     val profileWeightKg: Float = 0f,
     // ExerciseDetailSheet — progresyon
@@ -858,6 +859,14 @@ class WorkoutViewModel @Inject constructor(
         scheduleActivityDraftPersist(exerciseId)
     }
 
+    fun updateActivityReps(exerciseId: String, value: String) {
+        val clean = value.filter { it.isDigit() }.take(6)
+        updateState { state ->
+            state.copy(activityReps = state.activityReps + (exerciseId to clean))
+        }
+        scheduleActivityDraftPersist(exerciseId)
+    }
+
     fun updateSetReps(exerciseId: String, setIndex: Int, value: String) {
         val key = draftInputKey(exerciseId, setIndex)
         _draftInputs.update { drafts ->
@@ -877,8 +886,8 @@ class WorkoutViewModel @Inject constructor(
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
-        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
         val key = "$exerciseId:$setIndex:${if (weight) "w" else "r"}"
         draftPersistJobs[key]?.cancel()
@@ -927,8 +936,8 @@ class WorkoutViewModel @Inject constructor(
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
-        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
         val key = "$exerciseId:$setIndex:dur"
         draftPersistJobs[key]?.cancel()
@@ -1233,6 +1242,7 @@ class WorkoutViewModel @Inject constructor(
                 val distanceMeters = currentState.activityDistances[exerciseId]?.toFloatInputOrNull()
                 val elevationMeters = currentState.activityElevations[exerciseId]?.toFloatInputOrNull()
                 val inclinePercent = currentState.activityInclines[exerciseId]?.toFloatInputOrNull()
+                val activityRepsActual = activityRepsActualFor(exercise, currentState, exerciseId)
 
                 markExerciseCompletedOptimistically(dayIdx, exerciseId)
                 if (activityBased) {
@@ -1252,7 +1262,7 @@ class WorkoutViewModel @Inject constructor(
                         exerciseId = dbExerciseId,
                         programDayId = programDayId,
                         setIndex = ACTIVITY_SET_INDEX,
-                        repsActual = 1
+                        repsActual = activityRepsActual
                     )
                 } else {
                     markExerciseSetsCompletedOptimistically(dbExerciseId, exercise.sets)
@@ -1280,7 +1290,13 @@ class WorkoutViewModel @Inject constructor(
                     programDayId = programDayId,
                     exerciseId = dbExerciseId,
                     setsCompleted = if (activityBased) 1 else exercise.sets,
-                    repsCompleted = if (activityBased) 0 else exercise.reps.toIntOrNull() ?: 0,
+                    repsCompleted = if (activityBased && supportsActivityReps(exercise)) {
+                        activityRepsActual
+                    } else if (activityBased) {
+                        0
+                    } else {
+                        exercise.reps.toIntOrNull() ?: 0
+                    },
                     durationSeconds = durationSeconds ?: 0
                 )
                 syncMatchingMovementListEvents(exercise, dbExerciseId)
@@ -1379,6 +1395,7 @@ class WorkoutViewModel @Inject constructor(
         val distanceMeters = currentState.activityDistances[exerciseId]?.toFloatInputOrNull()
         val elevationMeters = currentState.activityElevations[exerciseId]?.toFloatInputOrNull()
         val inclinePercent = currentState.activityInclines[exerciseId]?.toFloatInputOrNull()
+        val activityRepsActual = activityRepsActualFor(exercise, currentState, exerciseId)
         val wasCompleted = exerciseId in dayState.completedIds
         val key = "$exerciseId:activity"
         draftPersistJobs[key]?.cancel()
@@ -1402,7 +1419,7 @@ class WorkoutViewModel @Inject constructor(
                 exerciseId = dbExerciseId,
                 programDayId = programDayId,
                 setIndex = ACTIVITY_SET_INDEX,
-                repsActual = 1
+                repsActual = activityRepsActual
             )
 
             if (!wasCompleted) {
@@ -1411,7 +1428,7 @@ class WorkoutViewModel @Inject constructor(
                     programDayId = programDayId,
                     exerciseId = dbExerciseId,
                     setsCompleted = 1,
-                    repsCompleted = 0,
+                    repsCompleted = if (supportsActivityReps(exercise)) activityRepsActual else 0,
                     durationSeconds = durationSeconds
                 )
                 syncMatchingMovementListEvents(exercise, dbExerciseId)
@@ -1746,6 +1763,9 @@ class WorkoutViewModel @Inject constructor(
             val incline = activity.inclinePercent
                 ?.takeIf { it > 0f }
                 ?.trimmedString()
+            val reps = activity.repsActual
+                ?.takeIf { it > 1 }
+                ?.toString()
             state.copy(
                 activityDurations = duration
                     ?.let { state.activityDurations + (exerciseId to it) }
@@ -1758,7 +1778,10 @@ class WorkoutViewModel @Inject constructor(
                     ?: state.activityElevations,
                 activityInclines = incline
                     ?.let { state.activityInclines + (exerciseId to it) }
-                    ?: state.activityInclines
+                    ?: state.activityInclines,
+                activityReps = reps
+                    ?.let { state.activityReps + (exerciseId to it) }
+                    ?: state.activityReps
             )
         }
     }
@@ -1789,6 +1812,7 @@ class WorkoutViewModel @Inject constructor(
                 val distanceMeters = currentState.activityDistances[exercise.id]?.toFloatInputOrNull()
                 val elevationMeters = currentState.activityElevations[exercise.id]?.toFloatInputOrNull()
                 val inclinePercent = currentState.activityInclines[exercise.id]?.toFloatInputOrNull()
+                val activityRepsActual = activityRepsActualFor(exercise, currentState, exercise.id)
 
                 markExerciseCompletedOptimistically(dayIdx, exercise.id)
                 markSetCompletionOptimistically(dbExerciseId, ACTIVITY_SET_INDEX, true)
@@ -1807,14 +1831,14 @@ class WorkoutViewModel @Inject constructor(
                     exerciseId = dbExerciseId,
                     programDayId = programDayId,
                     setIndex = ACTIVITY_SET_INDEX,
-                    repsActual = 1
+                    repsActual = activityRepsActual
                 )
                 workoutRepository.completeExercise(
                     userId = userId,
                     programDayId = programDayId,
                     exerciseId = dbExerciseId,
                     setsCompleted = 1,
-                    repsCompleted = 0,
+                    repsCompleted = if (supportsActivityReps(exercise)) activityRepsActual else 0,
                     durationSeconds = durationSeconds ?: 0
                 )
                 refreshStatsAfterCompletion(userId)
@@ -1904,6 +1928,27 @@ class WorkoutViewModel @Inject constructor(
         ) != ExerciseMetric.Strength && !isDurationSetBased(exercise)
     }
 
+    private fun supportsActivityReps(exercise: Exercise): Boolean =
+        isActivityBased(exercise) && activityTrackingSpec(
+            category = exercise.category,
+            name = exercise.name,
+            target = exercise.target,
+            reps = exercise.reps,
+            sportTypeRaw = exercise.sportType,
+            trackingModeRaw = exercise.trackingMode
+        ).supportsReps
+
+    private fun activityRepsActualFor(exercise: Exercise, state: WorkoutScreenState, exerciseId: String): Int =
+        if (supportsActivityReps(exercise)) {
+            state.activityReps[exerciseId]
+                ?.toIntOrNull()
+                ?.takeIf { it > 0 }
+                ?: exercise.reps.toIntOrNull()?.takeIf { it > 0 }
+                ?: 1
+        } else {
+            1
+        }
+
     private fun isDurationSetBased(exercise: Exercise): Boolean {
         return isDurationSetExercise(
             category = exercise.category,
@@ -1960,8 +2005,8 @@ class WorkoutViewModel @Inject constructor(
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
-        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
         viewModelScope.launch {
             val latest = uiState.value
@@ -1976,6 +2021,18 @@ class WorkoutViewModel @Inject constructor(
                 elevationMeters = latest.activityElevations[exerciseId]?.toFloatInputOrNull(),
                 inclinePercent = latest.activityInclines[exerciseId]?.toFloatInputOrNull()
             )
+            if (
+                supportsActivityReps(exercise) &&
+                ACTIVITY_SET_INDEX in latest.setCompletions[dbExerciseId].orEmpty()
+            ) {
+                workoutRepository.upsertSetRepsActual(
+                    userId = userId,
+                    exerciseId = dbExerciseId,
+                    programDayId = programDayId,
+                    setIndex = ACTIVITY_SET_INDEX,
+                    repsActual = activityRepsActualFor(exercise, latest, exerciseId)
+                )
+            }
         }
     }
 
@@ -1985,8 +2042,8 @@ class WorkoutViewModel @Inject constructor(
         val dayState = state.dayStates.getOrNull(state.selectedDayIdx) ?: return
         val programDayId = dayState.day.programDayId
         if (programDayId.isBlank()) return
-        val dbExerciseId = dayState.day.exercises.find { it.id == exerciseId }
-            ?.exerciseTableId?.ifBlank { exerciseId } ?: exerciseId
+        val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
+        val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
         val key = "$exerciseId:activity"
         draftPersistJobs[key]?.cancel()
@@ -2003,6 +2060,18 @@ class WorkoutViewModel @Inject constructor(
                 elevationMeters = latest.activityElevations[exerciseId]?.toFloatInputOrNull(),
                 inclinePercent = latest.activityInclines[exerciseId]?.toFloatInputOrNull()
             )
+            if (
+                supportsActivityReps(exercise) &&
+                ACTIVITY_SET_INDEX in latest.setCompletions[dbExerciseId].orEmpty()
+            ) {
+                workoutRepository.upsertSetRepsActual(
+                    userId = userId,
+                    exerciseId = dbExerciseId,
+                    programDayId = programDayId,
+                    setIndex = ACTIVITY_SET_INDEX,
+                    repsActual = activityRepsActualFor(exercise, latest, exerciseId)
+                )
+            }
         }
     }
 
