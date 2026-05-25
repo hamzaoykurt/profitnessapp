@@ -65,6 +65,7 @@ import java.util.UUID
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 private const val AI_MAX_UPLOAD_BYTES = 1_200_000
+private const val AI_EDIT_ENERGY_COST = 4
 private val AI_ALLOWED_UPLOAD_MIME = setOf(
     "image/jpeg",
     "image/png",
@@ -2221,6 +2222,7 @@ private fun EditProgramScreen(
                             enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape    = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             colors   = ButtonDefaults.buttonColors(
                                 containerColor = editAccent,
                                 contentColor = editOnAccent,
@@ -2237,20 +2239,19 @@ private fun EditProgramScreen(
                             } else {
                                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Uygula", fontWeight = FontWeight.Black)
+                                Text(
+                                    if (uiState.userPlan == UserPlan.FREE) {
+                                        "Uygula - $AI_EDIT_ENERGY_COST Enerji"
+                                    } else {
+                                        "Uygula"
+                                    },
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = if (uiState.userPlan == UserPlan.FREE) 12.sp else 14.sp,
+                                    maxLines = 1
+                                )
                                 if (uiState.userPlan == UserPlan.FREE) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(editOnAccent.copy(alpha = 0.14f))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(9.dp))
-                                        Spacer(Modifier.width(2.dp))
-                                        Text("4 Enerji", color = editOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(12.dp))
                                 }
                             }
                         }

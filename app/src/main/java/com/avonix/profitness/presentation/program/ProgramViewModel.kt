@@ -178,16 +178,67 @@ class ProgramViewModel @Inject constructor(
         val trackingMode: String
     )
 
-    private fun exerciseCatalogPrompt(exercises: List<ExerciseItem>): String =
+    private fun exerciseCatalogPrompt(exercises: List<ExerciseItem>, limit: Int = 180): String =
         exercises
             .sortedWith(compareBy<ExerciseItem> { it.category }.thenBy { it.name })
-            .take(180)
+            .take(limit)
             .joinToString("\n") { ex ->
                 val alias = ex.nameEn.takeIf { it.isNotBlank() && !it.equals(ex.name, ignoreCase = true) }
                     ?.let { " / $it" }
                     .orEmpty()
                 "- ${ex.name}$alias [${ex.category}, ${ex.targetMuscle}, ${ex.trackingMode.ifBlank { "strength" }}]"
             }
+
+    private fun focusedExerciseCatalogPrompt(
+        exercises: List<ExerciseItem>,
+        userInstruction: String,
+        currentDays: List<ManualDayDraft>,
+        exerciseNameMap: Map<String, ExerciseItem>
+    ): String {
+        val currentExerciseIds = currentDays
+            .flatMap { day -> day.selectedExercises.map { it.exerciseId } }
+            .toSet()
+        val normalizedInstruction = normalizeExerciseText(userInstruction)
+        val instructionTerms = Regex("[a-z0-9]{3,}")
+            .findAll(normalizedInstruction)
+            .map { it.value }
+            .toSet()
+
+        val requestedCardioOrBodyweight = listOf(
+            "kardiyo", "cardio", "sinav", "push", "mekik", "sit", "burpee",
+            "jump", "rope", "ip", "plank", "mountain", "kosu", "run"
+        ).any { it in normalizedInstruction }
+
+        val priorityNames = setOf(
+            "Push-Up",
+            "Diamond Push-Up",
+            "Burpee",
+            "Mountain Climber",
+            "Jump Rope",
+            "Plank",
+            "Side Plank",
+            "Jump Squat",
+            "Box Jump"
+        )
+
+        val currentExercises = currentExerciseIds.mapNotNull(exerciseNameMap::get)
+        val matchingExercises = exercises.filter { ex ->
+            val haystack = normalizeExerciseText("${ex.name} ${ex.nameEn} ${ex.category} ${ex.targetMuscle}")
+            instructionTerms.any { term -> term in haystack } ||
+                (requestedCardioOrBodyweight && (
+                    ex.category.contains("Kardiyo", ignoreCase = true) ||
+                        ex.category.contains("Vücut", ignoreCase = true) ||
+                        ex.name in priorityNames ||
+                        ex.nameEn in priorityNames
+                    ))
+        }
+        val stapleExercises = exercises.filter { it.name in priorityNames || it.nameEn in priorityNames }
+
+        return (currentExercises + matchingExercises + stapleExercises + exercises)
+            .distinctBy { it.id }
+            .take(72)
+            .let { exerciseCatalogPrompt(it, limit = 72) }
+    }
 
     private fun inferredTrackingForExercise(
         name: String,
@@ -415,9 +466,11 @@ class ProgramViewModel @Inject constructor(
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
 
             // 2. Metin tabanlı dosyalar (HTML, TXT vb.) inline_data yerine text olarak gönderilmeli
+            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
+            val focusedExerciseCatalog = exerciseCatalog
+
             val isTextFile = mimeType?.startsWith("text/") == true
             var textFileContent: String? = null
             var effectiveBase64 = imageBase64
@@ -460,7 +513,7 @@ Her egzersiz için standart Türkçe veya İngilizce adını kullan.
 Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 Mümkünse aşağıdaki katalogdaki adlardan birini birebir kullan. Kullanıcı "row" isterse row veya row varyasyonu kullan; pulldown/lat pulldown ile değiştirme. Katalogda yoksa istenen hareketin kendi adını döndür, ben ekleyeceğim.
 Egzersiz kataloğu:
-$exerciseCatalog
+$focusedExerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
@@ -647,9 +700,14 @@ FORMAT:
             val baseExercises = uiState.value.exercises.ifEmpty {
                 programRepository.getAllExercises().getOrNull() ?: emptyList()
             }
-            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
             // Güncel Composable state'ini JSON olarak serileştir (egzersiz adını DB'den al)
             val exerciseNameMap = baseExercises.associateBy { it.id }
+            val focusedExerciseCatalog = focusedExerciseCatalogPrompt(
+                exercises = baseExercises,
+                userInstruction = userInstruction,
+                currentDays = currentDays,
+                exerciseNameMap = exerciseNameMap
+            )
             val currentProgramJson = buildString {
                 append("{\"name\":\"${currentName.replace("\"", "\\\"")}\",\"days\":[")
                 currentDays.forEachIndexed { i, day ->
@@ -679,7 +737,7 @@ Her egzersiz için standart Türkçe veya İngilizce adını kullan.
 Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
 Mümkünse aşağıdaki katalogdaki adlardan birini birebir kullan. Kullanıcı "row" isterse row veya row varyasyonu kullan; pulldown/lat pulldown ile değiştirme. Katalogda yoksa istenen hareketin kendi adını döndür, ben ekleyeceğim.
 Egzersiz kataloğu:
-$exerciseCatalog
+$focusedExerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
