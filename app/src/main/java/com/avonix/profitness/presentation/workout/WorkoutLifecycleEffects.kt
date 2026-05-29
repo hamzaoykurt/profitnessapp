@@ -16,10 +16,12 @@ import kotlinx.coroutines.launch
 internal fun WorkoutRefreshOnResumeEffect(
     minBackgroundMillis: Long = 30_000L,
     resumeDelayMillis: Long = 1_500L,
+    onStop: () -> Unit = {},
     onResume: () -> Unit
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
+    val latestOnStop by rememberUpdatedState(onStop)
     val latestOnResume by rememberUpdatedState(onResume)
 
     DisposableEffect(lifecycle, minBackgroundMillis, resumeDelayMillis) {
@@ -30,6 +32,7 @@ internal fun WorkoutRefreshOnResumeEffect(
                 Lifecycle.Event.ON_STOP -> {
                     stoppedAtMs = System.currentTimeMillis()
                     pendingJob?.cancel()
+                    latestOnStop()
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     val backgroundMs = if (stoppedAtMs > 0L) {

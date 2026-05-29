@@ -70,9 +70,17 @@ class WorkoutNotificationManager @Inject constructor(
      * UI timer'ı saniyede bir akar; bildirim ise daha seyrek güncellenir.
      * Servis başlamamışsa otomatik başlatır.
      */
-    fun updateRestTimer(exerciseName: String, secondsLeft: Int, totalSeconds: Int) {
+    fun updateRestTimer(
+        exerciseName: String,
+        secondsLeft: Int,
+        totalSeconds: Int,
+        isPaused: Boolean = false,
+        force: Boolean = false
+    ) {
         val now = android.os.SystemClock.elapsedRealtime()
-        val shouldUpdate = secondsLeft == totalSeconds ||
+        val shouldUpdate = force ||
+            isPaused ||
+            secondsLeft == totalSeconds ||
             secondsLeft <= 5 ||
             secondsLeft == 0 ||
             secondsLeft % 5 == 0 ||
@@ -88,6 +96,7 @@ class WorkoutNotificationManager @Inject constructor(
             putExtra(WorkoutForegroundService.EXTRA_EXERCISE_NAME, exerciseName)
             putExtra(WorkoutForegroundService.EXTRA_SECONDS_LEFT,  secondsLeft)
             putExtra(WorkoutForegroundService.EXTRA_TOTAL_SECONDS, totalSeconds)
+            putExtra(WorkoutForegroundService.EXTRA_IS_PAUSED, isPaused)
         }
         startService(intent)
     }
@@ -97,11 +106,13 @@ class WorkoutNotificationManager @Inject constructor(
         elapsedSeconds: Int,
         totalSeconds: Int,
         isStopwatch: Boolean,
-        isPaused: Boolean = false
+        isPaused: Boolean = false,
+        force: Boolean = false
     ) {
         val now = android.os.SystemClock.elapsedRealtime()
         val displaySeconds = if (isStopwatch) elapsedSeconds else (totalSeconds - elapsedSeconds).coerceAtLeast(0)
-        val shouldUpdate = isPaused ||
+        val shouldUpdate = force ||
+            isPaused ||
             elapsedSeconds == 0 ||
             displaySeconds <= 5 ||
             displaySeconds % 5 == 0 ||

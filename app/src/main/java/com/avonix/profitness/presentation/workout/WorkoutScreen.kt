@@ -249,8 +249,11 @@ fun WorkoutScreen(
         )
     }
 
-    // ON_RESUME: arka planda stale-aware Supabase sync tetikle.
-    WorkoutRefreshOnResumeEffect { viewModel.refresh() }
+    // ON_STOP bildirimi hemen tazeler; ON_RESUME arka planda stale-aware Supabase sync tetikler.
+    WorkoutRefreshOnResumeEffect(
+        onStop = { viewModel.syncVisibleTimerNotification(force = true) },
+        onResume = { viewModel.refresh() }
+    )
 
     // Timer değişkenleri — hem overlay hem içerik için kullanılır
     val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

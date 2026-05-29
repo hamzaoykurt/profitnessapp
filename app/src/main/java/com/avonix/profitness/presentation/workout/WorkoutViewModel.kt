@@ -2,6 +2,8 @@ package com.avonix.profitness.presentation.workout
 
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
+import com.avonix.profitness.core.notification.WorkoutNotificationAction
+import com.avonix.profitness.core.notification.WorkoutNotificationActionBus
 import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.notification.WorkoutNotificationManager
 import com.avonix.profitness.data.ai.AiAccessException
@@ -123,6 +125,7 @@ class WorkoutViewModel @Inject constructor(
     private val geminiRepository   : GeminiRepository,
     private val planRepository     : com.avonix.profitness.data.store.UserPlanRepository,
     private val notificationManager: WorkoutNotificationManager,
+    private val notificationActionBus: WorkoutNotificationActionBus,
     private val syncCoordinator    : SyncCoordinator,
     private val challengeRepository: ChallengeRepository,
     private val supabase           : SupabaseClient
@@ -143,6 +146,11 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             combine(planRepository.planFlow, planRepository.creditsFlow) { plan, credits -> plan to credits }
                 .collect { (plan, credits) -> updateState { it.copy(userPlan = plan, aiCredits = credits) } }
+        }
+        viewModelScope.launch {
+            notificationActionBus.actions.collect { action ->
+                handleNotificationAction(action)
+            }
         }
     }
 
@@ -413,7 +421,13 @@ class WorkoutViewModel @Inject constructor(
                 isPaused = true
             )
         } else {
-            notificationManager.stopWorkoutSession()
+            notificationManager.updateRestTimer(
+                exerciseName = timer.exerciseName,
+                secondsLeft = timer.secondsLeft,
+                totalSeconds = timer.totalSeconds,
+                isPaused = true,
+                force = true
+            )
         }
         _restTimer.update { it.copy(isRunning = false, isPaused = true, isDone = false) }
     }
@@ -448,6 +462,50 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    fun syncVisibleTimerNotification(force: Boolean = false) {
+        val timer = _restTimer.value
+        if (!timer.isRunning && !timer.isPaused) return
+        when (timer.purpose) {
+            TimerPurpose.Rest -> {
+                notificationManager.updateRestTimer(
+                    exerciseName = timer.exerciseName,
+                    secondsLeft = timer.secondsLeft,
+                    totalSeconds = timer.totalSeconds,
+                    isPaused = timer.isPaused,
+                    force = force
+                )
+            }
+            TimerPurpose.Activity, TimerPurpose.TimedSet -> {
+                notificationManager.updateActivityTimer(
+                    exerciseName = timer.notificationName(),
+                    elapsedSeconds = timer.elapsedForNotification(),
+                    totalSeconds = timer.totalSeconds,
+                    isStopwatch = timer.mode == TimerMode.Stopwatch,
+                    isPaused = timer.isPaused,
+                    force = force
+                )
+            }
+        }
+    }
+
+    private fun handleNotificationAction(action: WorkoutNotificationAction) {
+        when (action) {
+            WorkoutNotificationAction.Pause -> pauseVisibleTimer()
+            WorkoutNotificationAction.Resume -> resumeVisibleTimer()
+            WorkoutNotificationAction.Stop -> stopVisibleTimer()
+            WorkoutNotificationAction.Dismiss -> dismissVisibleTimer()
+        }
+    }
+
+    private fun RestTimerState.notificationName(): String =
+        if (purpose == TimerPurpose.TimedSet) "$exerciseName Set ${setIndex + 1}" else exerciseName
+
+    private fun RestTimerState.elapsedForNotification(): Int =
+        when (mode) {
+            TimerMode.Stopwatch -> elapsedSeconds
+            TimerMode.Countdown -> (totalSeconds - secondsLeft).coerceAtLeast(0)
+        }
+
     private fun resumeRestCountdown(timer: RestTimerState) {
         val total = timer.totalSeconds.coerceAtLeast(timer.secondsLeft)
         var remaining = timer.secondsLeft.coerceAtLeast(0)
@@ -476,7 +534,8 @@ class WorkoutViewModel @Inject constructor(
             exerciseName = timer.exerciseName,
             elapsedSeconds = total - remaining,
             totalSeconds = total,
-            isStopwatch = false
+            isStopwatch = false,
+            force = true
         )
         timerJob = viewModelScope.launch {
             while (remaining > 0) {
@@ -509,7 +568,8 @@ class WorkoutViewModel @Inject constructor(
             exerciseName = timer.exerciseName,
             elapsedSeconds = elapsed,
             totalSeconds = 0,
-            isStopwatch = true
+            isStopwatch = true,
+            force = true
         )
         timerJob = viewModelScope.launch {
             while (true) {
@@ -534,7 +594,8 @@ class WorkoutViewModel @Inject constructor(
             exerciseName = notificationName,
             elapsedSeconds = total - remaining,
             totalSeconds = total,
-            isStopwatch = false
+            isStopwatch = false,
+            force = true
         )
         timerJob = viewModelScope.launch {
             while (remaining > 0) {
@@ -568,7 +629,8 @@ class WorkoutViewModel @Inject constructor(
             exerciseName = notificationName,
             elapsedSeconds = elapsed,
             totalSeconds = 0,
-            isStopwatch = true
+            isStopwatch = true,
+            force = true
         )
         timerJob = viewModelScope.launch {
             while (true) {

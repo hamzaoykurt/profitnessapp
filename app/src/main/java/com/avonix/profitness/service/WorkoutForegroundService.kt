@@ -6,8 +6,12 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.avonix.profitness.core.notification.WorkoutNotificationAction
+import com.avonix.profitness.core.notification.WorkoutNotificationActionBus
 import com.avonix.profitness.R
 import com.avonix.profitness.MainActivity
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Antrenman süresince çalışan ön plan servisi.
@@ -15,6 +19,7 @@ import com.avonix.profitness.MainActivity
  * - Timer bitince titreşim + yüksek öncelikli "Hazırsın!" bildirimi
  * - Uygulama arka plandayken bile çalışır
  */
+@AndroidEntryPoint
 class WorkoutForegroundService : Service() {
 
     companion object {
@@ -30,6 +35,10 @@ class WorkoutForegroundService : Service() {
         const val ACTION_ACTIVITY_TIMER_UPDATE = "com.avonix.profitness.ACTIVITY_TIMER_UPDATE"
         const val ACTION_ACTIVITY_TIMER_SAVED  = "com.avonix.profitness.ACTIVITY_TIMER_SAVED"
         const val ACTION_STOP         = "com.avonix.profitness.STOP_WORKOUT"
+        const val ACTION_PAUSE_TIMER  = "com.avonix.profitness.PAUSE_TIMER"
+        const val ACTION_RESUME_TIMER = "com.avonix.profitness.RESUME_TIMER"
+        const val ACTION_STOP_TIMER   = "com.avonix.profitness.STOP_TIMER"
+        const val ACTION_DISMISS_TIMER = "com.avonix.profitness.DISMISS_TIMER"
 
         const val EXTRA_DAY_TITLE     = "day_title"
         const val EXTRA_EXERCISE_NAME = "exercise_name"
@@ -38,7 +47,14 @@ class WorkoutForegroundService : Service() {
         const val EXTRA_ELAPSED_SECONDS = "elapsed_seconds"
         const val EXTRA_IS_STOPWATCH = "is_stopwatch"
         const val EXTRA_IS_PAUSED = "is_paused"
+
+        const val REQUEST_TIMER_TOGGLE = 2001
+        const val REQUEST_TIMER_STOP = 2002
+        const val REQUEST_TIMER_DISMISS = 2003
     }
+
+    @Inject
+    lateinit var actionBus: WorkoutNotificationActionBus
 
     private lateinit var notifManager: NotificationManager
     private var isForeground = false
@@ -66,15 +82,22 @@ class WorkoutForegroundService : Service() {
                     val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
                     val secondsLeft  = intent.getIntExtra(EXTRA_SECONDS_LEFT, 0)
                     val totalSeconds = intent.getIntExtra(EXTRA_TOTAL_SECONDS, 0)
+                    val isPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false)
                     val min = secondsLeft / 60
                     val sec = secondsLeft % 60
                     val timeStr = if (min > 0) "${min}d ${sec.toString().padStart(2,'0')}s"
                                   else "${secondsLeft}s"
                     val notif = buildStatusNotification(
-                        title       = "⏱️  $timeStr  —  Dinlenme süresi",
-                        content     = exerciseName,
+                        title       = if (isPaused) "Dinlenme duraklatıldı" else "⏱️  $timeStr  —  Dinlenme süresi",
+                        content     = if (isPaused) "$exerciseName • $timeStr kaldı" else exerciseName,
                         progress    = totalSeconds - secondsLeft,
-                        maxProgress = totalSeconds
+                        maxProgress = totalSeconds,
+                        controls = NotificationControls(
+                            canPauseResume = true,
+                            isPaused = isPaused,
+                            stopLabel = "Durdur"
+                        ),
+                        color = if (isPaused) 0xFFFFB020.toInt() else 0xFFFF444B.toInt()
                     )
                     promoteOrNotify(notif)
                 }
@@ -87,12 +110,12 @@ class WorkoutForegroundService : Service() {
                     val isPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false)
                     val secondsToShow = if (isStopwatch) elapsedSeconds else (totalSeconds - elapsedSeconds).coerceAtLeast(0)
                     val timeStr = formatDuration(secondsToShow)
-                val title = exerciseName.ifBlank { "Sayaç" }
-                val content = when {
-                    isPaused -> "Duraklatıldı • $timeStr"
-                    isStopwatch -> "Kronometre çalışıyor"
-                    else -> "Geri sayım • $timeStr kaldı"
-                }
+                    val title = exerciseName.ifBlank { "Sayaç" }
+                    val content = when {
+                        isPaused -> "Duraklatıldı • $timeStr"
+                        isStopwatch -> "Kronometre çalışıyor"
+                        else -> "Geri sayım • $timeStr kaldı"
+                    }
                     val notif = buildStatusNotification(
                         title = title,
                         content = content,
@@ -101,7 +124,13 @@ class WorkoutForegroundService : Service() {
                         chronometerBaseMillis = if (isStopwatch && !isPaused)
                             System.currentTimeMillis() - elapsedSeconds * 1000L else null,
                         showChronometer = isStopwatch && !isPaused,
-                        color = if (isPaused) 0xFFFFB020.toInt() else 0xFFFF444B.toInt()
+                        color = if (isPaused) 0xFFFFB020.toInt() else 0xFFFF444B.toInt(),
+                        controls = NotificationControls(
+                            canPauseResume = true,
+                            isPaused = isPaused,
+                            stopLabel = "Kaydet",
+                            canDismiss = true
+                        )
                     )
                     promoteOrNotify(notif)
                 }
@@ -110,8 +139,8 @@ class WorkoutForegroundService : Service() {
                     val exerciseName = intent.getStringExtra(EXTRA_EXERCISE_NAME) ?: ""
                     val elapsedSeconds = intent.getIntExtra(EXTRA_ELAPSED_SECONDS, 0)
                     val notif = buildStatusNotification(
-                    title = exerciseName.ifBlank { "Sayaç" },
-                    content = "Süre kaydedildi • ${formatDuration(elapsedSeconds)}",
+                        title = exerciseName.ifBlank { "Sayaç" },
+                        content = "Süre kaydedildi • ${formatDuration(elapsedSeconds)}",
                         progress = 0,
                         maxProgress = 0,
                         color = 0xFFFF444B.toInt()
@@ -140,6 +169,11 @@ class WorkoutForegroundService : Service() {
                     isForeground = false
                     stopSelf()
                 }
+
+                ACTION_PAUSE_TIMER -> actionBus.dispatch(WorkoutNotificationAction.Pause)
+                ACTION_RESUME_TIMER -> actionBus.dispatch(WorkoutNotificationAction.Resume)
+                ACTION_STOP_TIMER -> actionBus.dispatch(WorkoutNotificationAction.Stop)
+                ACTION_DISMISS_TIMER -> actionBus.dispatch(WorkoutNotificationAction.Dismiss)
             }
         }.onFailure { error ->
             Log.e(TAG, "Workout foreground service failed", error)
@@ -180,7 +214,8 @@ class WorkoutForegroundService : Service() {
         maxProgress: Int,
         chronometerBaseMillis: Long? = null,
         showChronometer: Boolean = false,
-        color: Int = 0xFFFF444B.toInt()
+        color: Int = 0xFFFF444B.toInt(),
+        controls: NotificationControls = NotificationControls()
     ): Notification {
         val tapIntent = PendingIntent.getActivity(
             this, 0,
@@ -201,6 +236,8 @@ class WorkoutForegroundService : Service() {
             .setSubText("Forge Sayaç")
             .setColor(color)
 
+        addTimerActions(builder, controls)
+
         if (maxProgress > 0) {
             builder.setProgress(maxProgress, progress, false)
         }
@@ -214,6 +251,40 @@ class WorkoutForegroundService : Service() {
         }
         return builder.build()
     }
+
+    private fun addTimerActions(
+        builder: NotificationCompat.Builder,
+        controls: NotificationControls
+    ) {
+        if (controls.canPauseResume) {
+            val action = if (controls.isPaused) ACTION_RESUME_TIMER else ACTION_PAUSE_TIMER
+            val icon = if (controls.isPaused) R.drawable.ic_notification_play else R.drawable.ic_notification_pause
+            val label = if (controls.isPaused) "Sürdür" else "Duraklat"
+            builder.addAction(icon, label, servicePendingIntent(action, REQUEST_TIMER_TOGGLE))
+        }
+        controls.stopLabel?.let { label ->
+            builder.addAction(
+                R.drawable.ic_notification_done,
+                label,
+                servicePendingIntent(ACTION_STOP_TIMER, REQUEST_TIMER_STOP)
+            )
+        }
+        if (controls.canDismiss) {
+            builder.addAction(
+                R.drawable.ic_notification_stop,
+                "Kapat",
+                servicePendingIntent(ACTION_DISMISS_TIMER, REQUEST_TIMER_DISMISS)
+            )
+        }
+    }
+
+    private fun servicePendingIntent(action: String, requestCode: Int): PendingIntent =
+        PendingIntent.getService(
+            this,
+            requestCode,
+            Intent(this, WorkoutForegroundService::class.java).apply { this.action = action },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
     private fun buildAlertNotification(exerciseName: String): Notification {
         val tapIntent = PendingIntent.getActivity(
@@ -290,4 +361,11 @@ class WorkoutForegroundService : Service() {
             "%d:%02d".format(minutes, seconds)
         }
     }
+
+    private data class NotificationControls(
+        val canPauseResume: Boolean = false,
+        val isPaused: Boolean = false,
+        val stopLabel: String? = null,
+        val canDismiss: Boolean = false
+    )
 }
