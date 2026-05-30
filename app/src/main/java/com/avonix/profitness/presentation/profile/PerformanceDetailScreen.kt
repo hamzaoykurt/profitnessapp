@@ -340,7 +340,7 @@ private fun CalculationsSheet(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, top = 26.dp, end = 20.dp, bottom = 8.dp)
+            .padding(start = 20.dp, top = 54.dp, end = 20.dp, bottom = 0.dp)
     ) {
         Text(
             "HESAPLAMALAR",
@@ -372,7 +372,6 @@ private fun CalculationsSheet(
             CalculatorMode.Vo2Max -> Vo2MaxCalculator(accent = accent, theme = theme)
         }
 
-        Spacer(Modifier.height(48.dp))
     }
 }
 
