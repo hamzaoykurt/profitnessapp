@@ -312,16 +312,18 @@ private fun CalculatorLauncherButton(
 ) {
     Row(
         modifier = Modifier
+            .widthIn(min = 136.dp)
             .height(42.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(accent.copy(0.13f))
             .border(1.dp, accent.copy(0.28f), RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(Icons.Rounded.Calculate, null, tint = accent, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text("Hesapla", color = theme.text0, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -338,7 +340,7 @@ private fun CalculationsSheet(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(start = 20.dp, top = 26.dp, end = 20.dp, bottom = 8.dp)
     ) {
         Text(
             "HESAPLAMALAR",
@@ -370,7 +372,7 @@ private fun CalculationsSheet(
             CalculatorMode.Vo2Max -> Vo2MaxCalculator(accent = accent, theme = theme)
         }
 
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(48.dp))
     }
 }
 
