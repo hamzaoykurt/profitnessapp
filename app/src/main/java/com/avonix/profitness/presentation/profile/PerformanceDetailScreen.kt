@@ -188,6 +188,7 @@ fun PerformanceDetailScreen(
                 theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .imePadding()
                     .navigationBarsPadding()
             )
@@ -339,6 +340,7 @@ private fun CalculationsSheet(
 
     Column(
         modifier = modifier
+            .background(theme.bg1)
             .verticalScroll(rememberScrollState())
             .padding(start = 20.dp, top = 54.dp, end = 20.dp, bottom = 0.dp)
     ) {
