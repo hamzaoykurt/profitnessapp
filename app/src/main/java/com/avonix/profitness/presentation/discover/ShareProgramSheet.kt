@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.LocalAppTheme
@@ -101,14 +102,13 @@ fun ShareProgramSheet(
         sheetState       = sheetState,
         containerColor   = theme.bg1
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            if (selectedProgram == null) {
+        if (selectedProgram == null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 24.dp)
+            ) {
                 // ── 1. Adım: Program seç ─────────────────────────────────────
                 Text("PAYLAŞILACAK PROGRAMI SEÇ",
                     color = theme.text0, fontSize = 18.sp,
@@ -125,9 +125,13 @@ fun ShareProgramSheet(
                 if (programs.isEmpty()) {
                     EmptyProgramsNotice()
                 } else {
-                    // Birden fazla olabilir — LazyColumn yerine hafif yinelenen Column
-                    // (sheet zaten scroll'lu; iç içe scroll sorun yaratmasın diye)
-                    programs.forEach { p ->
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 250.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(programs, key = { it.id }) { p ->
                         ProgramPickerRow(
                             program = p,
                             alreadyShared = p.isAlreadyShared(
@@ -136,11 +140,11 @@ fun ShareProgramSheet(
                             ),
                             onClick = { selectedProgramId = p.id }
                         )
-                        Spacer(Modifier.height(8.dp))
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(14.dp))
                 Row {
                     Box(
                         modifier = Modifier
@@ -153,7 +157,15 @@ fun ShareProgramSheet(
                         contentAlignment = Alignment.Center
                     ) { Text("VAZGEÇ", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 24.dp)
+            ) {
                 // ── 2. Adım: Meta form ───────────────────────────────────────
                 Text("PROGRAMI PAYLAŞ",
                     color = theme.text0, fontSize = 18.sp,
@@ -301,6 +313,7 @@ private fun ProgramPickerRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(78.dp)
             .clip(shape)
             .background(theme.bg2.copy(if (alreadyShared) 0.25f else 0.45f))
             .border(
@@ -313,7 +326,7 @@ private fun ProgramPickerRow(
                 shape
             )
             .clickable(enabled = !alreadyShared) { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -327,13 +340,18 @@ private fun ProgramPickerRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = program.name,
                     color = if (alreadyShared) theme.text2.copy(0.58f) else theme.text0,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
                 if (program.isActive) {
                     Spacer(Modifier.width(6.dp))
@@ -348,7 +366,9 @@ private fun ProgramPickerRow(
             Text(
                 text = "$workoutDays antrenman günü · $totalEx egzersiz",
                 color = theme.text2.copy(0.7f),
-                fontSize = 11.sp
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         Spacer(Modifier.width(8.dp))

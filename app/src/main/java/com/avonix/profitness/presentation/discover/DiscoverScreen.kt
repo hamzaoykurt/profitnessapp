@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Bookmark
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.AlertDialog
@@ -75,6 +78,14 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.floatOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import java.util.Locale
 
 enum class DiscoverTab { Programs, Friends, Challenges }
 
@@ -89,6 +100,7 @@ fun DiscoverScreen(
     var selected by rememberSaveable { mutableStateOf(DiscoverTab.Programs) }
     var programsSub by rememberSaveable { mutableStateOf(ProgramsSubTab.Community) }
     var showShareSheet by rememberSaveable { mutableStateOf(false) }
+    var selectedProgram by remember { mutableStateOf<SharedProgram?>(null) }
 
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -148,9 +160,14 @@ fun DiscoverScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
+        selectedProgram?.let { program ->
+            SharedProgramDetailScreen(
+                program = program,
+                bottomPadding = bottomPadding,
+                onBack = { selectedProgram = null }
+            )
+        } ?: Column(
+            modifier = Modifier.fillMaxSize()
         ) {
             DiscoverHeader(
                 isTrending = state.sort == DiscoverSort.TRENDING,
@@ -192,6 +209,7 @@ fun DiscoverScreen(
                                      onLike          = viewModel::toggleLike,
                                      onSave          = viewModel::toggleSave,
                                      onApply         = viewModel::applyProgram,
+                                     onOpenDetails   = { selectedProgram = it },
                                      onLoadMore      = viewModel::loadMore,
                                      onRefresh       = viewModel::refresh
                                 )
@@ -203,6 +221,7 @@ fun DiscoverScreen(
                                     onLike          = viewModel::toggleLike,
                                     onSave          = viewModel::toggleSave,
                                     onApply         = viewModel::applyProgram,
+                                    onOpenDetails   = { selectedProgram = it },
                                     onLoadMore      = viewModel::loadMoreSaved,
                                     onRefresh       = viewModel::refresh
                                 )
@@ -233,7 +252,7 @@ fun DiscoverScreen(
         }
 
         // ── Share FAB — sadece Programs tab'ında görünür ───────────────────
-        if (selected == DiscoverTab.Programs) {
+        if (selected == DiscoverTab.Programs && selectedProgram == null) {
             ShareFab(
                 onClick = { showShareSheet = true },
                 modifier = Modifier
@@ -426,6 +445,7 @@ private fun ProgramsList(
     onLike          : (String) -> Unit,
     onSave          : (String) -> Unit,
     onApply         : (String) -> Unit,
+    onOpenDetails   : (SharedProgram) -> Unit,
     onLoadMore      : () -> Unit,
     onRefresh       : () -> Unit
 ) {
@@ -485,7 +505,8 @@ private fun ProgramsList(
                             isApplied  = isApplied,
                             onLike     = { onLike(program.id) },
                             onSave     = { onSave(program.id) },
-                            onApply    = { onApply(program.id) }
+                            onApply    = { onApply(program.id) },
+                            onOpenDetails = { onOpenDetails(program) }
                         )
                     }
                     if (state.isLoading && state.items.isNotEmpty()) {
@@ -511,6 +532,7 @@ private fun SavedProgramsList(
     onLike          : (String) -> Unit,
     onSave          : (String) -> Unit,
     onApply         : (String) -> Unit,
+    onOpenDetails   : (SharedProgram) -> Unit,
     onLoadMore      : () -> Unit,
     onRefresh       : () -> Unit
 ) {
@@ -561,7 +583,8 @@ private fun SavedProgramsList(
                             isApplied  = isApplied,
                             onLike     = { onLike(program.id) },
                             onSave     = { onSave(program.id) },
-                            onApply    = { onApply(program.id) }
+                            onApply    = { onApply(program.id) },
+                            onOpenDetails = { onOpenDetails(program) }
                         )
                     }
                     if (state.savedLoading && state.savedItems.isNotEmpty()) {
@@ -585,7 +608,8 @@ private fun SharedProgramCard(
     isApplied : Boolean,
     onLike    : () -> Unit,
     onSave    : () -> Unit,
-    onApply   : () -> Unit
+    onApply   : () -> Unit,
+    onOpenDetails: () -> Unit
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
@@ -596,6 +620,7 @@ private fun SharedProgramCard(
             .fillMaxWidth()
             .heightIn(min = 184.dp)
             .glassCard(accent, theme, shape)
+            .clickable { onOpenDetails() }
             .padding(16.dp)
     ) {
         // Author row
@@ -704,6 +729,396 @@ private fun SharedProgramCard(
         }
     }
 }
+
+@Composable
+private fun SharedProgramDetailScreen(
+    program: SharedProgram,
+    bottomPadding: Dp,
+    onBack: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val detail = remember(program.id, program.programData) { program.toDetailPlan() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(theme.bg1, Color.Black)))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 22.dp)
+                .padding(top = 18.dp, bottom = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(theme.bg2.copy(0.45f))
+                    .border(1.dp, theme.stroke.copy(0.35f), CircleShape)
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "Program içeriği",
+                    color = accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = program.title,
+                    color = theme.text0,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    lineHeight = 28.sp
+                )
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 22.dp,
+                end = 22.dp,
+                top = 4.dp,
+                bottom = bottomPadding + 84.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                SharedProgramDetailHeader(program = program, dayCount = detail.days.size)
+            }
+
+            if (detail.days.isEmpty()) {
+                item { EmptyProgramDetailCard() }
+            } else {
+                items(detail.days, key = { it.index }) { day ->
+                    SharedProgramDayCard(day = day)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(18.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.55f), theme.bg1.copy(0.72f))))
+            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = accent, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(program.creatorName, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = buildList {
+                        if (dayCount > 0) add("$dayCount gün")
+                        program.daysPerWeek?.let { add("$it gün/hafta") }
+                        program.durationWeeks?.let { add("$it hafta") }
+                    }.ifEmpty { listOf("Paylaşılan program") }.joinToString(" · "),
+                    color = theme.text2.copy(0.7f),
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
+        }
+
+        if (!program.description.isNullOrBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = program.description,
+                color = theme.text2.copy(0.82f),
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(18.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.70f), theme.bg1.copy(0.60f))))
+            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = day.index.toString(),
+                    color = accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = day.title,
+                color = theme.text0,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.weight(1f),
+                maxLines = 2
+            )
+            if (day.isRestDay) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Schedule, null, tint = theme.text2.copy(0.7f), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Dinlenme", color = theme.text2.copy(0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(theme.stroke.copy(0.25f))
+        )
+
+        if (day.exercises.isEmpty()) {
+            Text(
+                text = if (day.isRestDay) "Bu gün dinlenme için ayrılmış." else "Bu gün için hareket bulunamadı.",
+                color = theme.text2.copy(0.75f),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 14.dp)
+            )
+        } else {
+            Spacer(Modifier.height(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                day.exercises.forEach { exercise ->
+                    SharedProgramExerciseRow(exercise = exercise)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(14.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.62f), theme.bg1.copy(0.44f))))
+            .border(1.dp, theme.stroke.copy(0.25f), shape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(accent)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = exercise.name,
+                color = theme.text0,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                lineHeight = 18.sp
+            )
+            val badges = exercise.badges()
+            if (badges.isNotEmpty()) {
+                Spacer(Modifier.height(7.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    badges.forEachIndexed { index, badge ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(accent.copy(if (index == 0) 0.16f else 0.10f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = badge,
+                                color = accent.copy(if (index == 0) 1f else 0.82f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyProgramDetailCard() {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.bg2.copy(0.50f))
+            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(18.dp))
+            .padding(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Program içeriği bulunamadı", color = theme.text0, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Bu paylaşımda görüntülenecek gün ve hareket snapshot'ı yok.",
+            color = theme.text2.copy(0.72f),
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+private data class SharedProgramDetailPlan(
+    val days: List<SharedProgramDetailDay>
+)
+
+private data class SharedProgramDetailDay(
+    val index: Int,
+    val title: String,
+    val isRestDay: Boolean,
+    val exercises: List<SharedProgramDetailExercise>
+)
+
+private data class SharedProgramDetailExercise(
+    val name: String,
+    val sets: Int?,
+    val reps: Int?,
+    val restSeconds: Int?,
+    val targetDurationSeconds: Int?,
+    val targetDistanceMeters: Float?,
+    val orderIndex: Int
+) {
+    fun badges(): List<String> = buildList {
+        targetDurationSeconds?.takeIf { it > 0 }?.let { add(formatDurationBadge(it)) }
+        targetDistanceMeters?.takeIf { it > 0f }?.let { add(formatDistanceBadge(it)) }
+        if (isEmpty()) {
+            sets?.takeIf { it > 0 }?.let { add("$it SET") }
+            reps?.takeIf { it > 0 }?.let { add("$it TEK") }
+        }
+    }
+}
+
+private fun SharedProgram.toDetailPlan(): SharedProgramDetailPlan {
+    val root = programData.asObjectOrNull()
+    val dayElements = root?.array("days") ?: programData.asArrayOrNull() ?: emptyList()
+    val days = dayElements.mapIndexedNotNull { index, element ->
+        val day = element.asObjectOrNull() ?: return@mapIndexedNotNull null
+        val dayIndex = day.int("day_index")
+            ?: day.int("dayIndex")
+            ?: day.int("index")
+            ?: index + 1
+        val exercises = (day.array("exercises") ?: emptyList())
+            .mapIndexedNotNull { exerciseIndex, exerciseElement ->
+                val ex = exerciseElement.asObjectOrNull() ?: return@mapIndexedNotNull null
+                SharedProgramDetailExercise(
+                    name = ex.string("exercise_name")
+                        ?: ex.string("exerciseName")
+                        ?: ex.string("name")
+                        ?: ex.obj("exercise")?.string("name")
+                        ?: "Hareket",
+                    sets = ex.int("sets"),
+                    reps = ex.int("reps"),
+                    restSeconds = ex.int("rest_seconds") ?: ex.int("restSeconds"),
+                    targetDurationSeconds = ex.int("target_duration_seconds")
+                        ?: ex.int("targetDurationSeconds"),
+                    targetDistanceMeters = ex.float("target_distance_meters")
+                        ?: ex.float("targetDistanceMeters"),
+                    orderIndex = ex.int("order_index")
+                        ?: ex.int("orderIndex")
+                        ?: exerciseIndex
+                )
+            }
+            .sortedBy { it.orderIndex }
+        SharedProgramDetailDay(
+            index = dayIndex,
+            title = day.string("title")
+                ?: day.string("name")
+                ?: "Gün $dayIndex",
+            isRestDay = day.bool("is_rest_day")
+                ?: day.bool("isRestDay")
+                ?: false,
+            exercises = exercises
+        )
+    }.sortedBy { it.index }
+    return SharedProgramDetailPlan(days = days)
+}
+
+private fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
+
+private fun JsonElement?.asArrayOrNull(): JsonArray? = this as? JsonArray
+
+private fun JsonObject.obj(key: String): JsonObject? = get(key).asObjectOrNull()
+
+private fun JsonObject.array(key: String): JsonArray? = get(key).asArrayOrNull()
+
+private fun JsonObject.string(key: String): String? =
+    get(key)?.runCatchingPrimitive { content.takeIf { it.isNotBlank() } }
+
+private fun JsonObject.int(key: String): Int? =
+    get(key)?.runCatchingPrimitive { intOrNull }
+
+private fun JsonObject.float(key: String): Float? =
+    get(key)?.runCatchingPrimitive { floatOrNull }
+
+private fun JsonObject.bool(key: String): Boolean? =
+    get(key)?.runCatchingPrimitive { booleanOrNull }
+
+private inline fun <T> JsonElement.runCatchingPrimitive(block: kotlinx.serialization.json.JsonPrimitive.() -> T?): T? =
+    runCatching { jsonPrimitive.block() }.getOrNull()
+
+private fun formatDurationBadge(seconds: Int): String =
+    if (seconds >= 60 && seconds % 60 == 0) "${seconds / 60} DK" else "$seconds SN"
+
+private fun formatDistanceBadge(meters: Float): String =
+    if (meters >= 1000f) "${trimMetric(meters / 1000f)} KM" else "${trimMetric(meters)} M"
+
+private fun trimMetric(value: Float): String =
+    String.format(Locale.US, "%.1f", value).removeSuffix(".0")
 
 @Composable
 private fun ActionChip(
