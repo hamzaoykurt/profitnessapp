@@ -34,16 +34,13 @@ class DiskCache @Inject constructor(
 
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    @Volatile
-    private var initializerStarted = false
-
     companion object {
         private const val CACHE_VERSION = 2
         private const val KEY_VERSION   = "cache_version"
     }
 
     init {
-        // Cache metadata and filesystem setup are initialized lazily on Dispatchers.IO.
+        // Cache metadata and filesystem setup are initialized lazily on first use.
     }
 
     /** Versiyon uyuşmuyorsa tüm cache dosyalarını sil (tek seferlik migrasyon). */
@@ -57,20 +54,12 @@ class DiskCache @Inject constructor(
 
     @PublishedApi
     internal fun readyDir(): File? {
-        startInitializer()
-        return dir
-    }
-
-    private fun startInitializer() {
-        if (initializerStarted) return
         synchronized(this) {
-            if (initializerStarted) return
-            initializerStarted = true
-            ioScope.launch {
-                val cacheDir = File(context.filesDir, "data_cache").also { it.mkdirs() }
-                migrateIfNeeded(cacheDir)
-                dir = cacheDir
-            }
+            dir?.let { return it }
+            val cacheDir = File(context.filesDir, "data_cache").also { it.mkdirs() }
+            migrateIfNeeded(cacheDir)
+            dir = cacheDir
+            return cacheDir
         }
     }
 

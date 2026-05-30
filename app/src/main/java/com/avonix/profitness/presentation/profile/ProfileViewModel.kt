@@ -3,6 +3,7 @@ package com.avonix.profitness.presentation.profile
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.avonix.profitness.core.BaseViewModel
+import com.avonix.profitness.data.cache.DiskCache
 import com.avonix.profitness.data.leaderboard.LeaderboardRepository
 import com.avonix.profitness.data.profile.ProfileRepository
 import com.avonix.profitness.data.profile.dto.AchievementDto
@@ -17,6 +18,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.Period
@@ -106,6 +108,7 @@ class ProfileViewModel @Inject constructor(
     private val leaderboardRepository: LeaderboardRepository,
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
+    private val disk              : DiskCache,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
 
@@ -127,7 +130,10 @@ class ProfileViewModel @Inject constructor(
     fun initLoad() {
         if (isInitialized) return
         isInitialized = true
-        loadProfile()
+        viewModelScope.launch {
+            restoreCachedSnapshot()
+            loadProfile()
+        }
     }
 
     /** Tab geçişleri ve ON_RESUME için — 5 dakika geçmediyse ve veri varsa atla */
@@ -240,35 +246,35 @@ class ProfileViewModel @Inject constructor(
             }
 
             lastLoadMs = System.currentTimeMillis()
-            updateState {
-                it.copy(
-                    displayName         = profile?.display_name.orEmpty(),
-                    avatar              = buildAvatarDisplayUrl(profile?.avatar_url, profile?.avatar_updated_at),
-                    rank                = computedRank,
-                    level               = lvl,
-                    xp                  = currentXp,
-                    xpPerLevel          = xpForNext,
-                    currentStreak       = currentStreak,
-                    longestStreak       = longestStreak,
-                    streakRankPosition  = streakRank?.rank_position ?: 0L,
-                    streakRankTotalUsers= streakRank?.total_users ?: 0L,
-                    totalWorkouts       = totalWorkouts,
-                    totalExercises      = totalExercises,
-                    totalDurationSeconds= totalDurationSeconds,
-                    totalDistanceMeters = totalDistanceMeters,
-                    fitnessGoal         = profile?.fitness_goal.orEmpty(),
-                    heightCm            = profile?.height_cm ?: 0.0,
-                    weightKg            = profile?.weight_kg ?: 0.0,
-                    gender              = profile?.gender.orEmpty(),
-                    bmi                 = bmi,
-                    bodyFatPct          = bodyFat,
-                    birthDate           = birthDate,
-                    weeklyActivity      = weeklyActivity,
-                    weeklyWorkoutCounts = weeklyWorkoutCounts,
-                    achievements        = achievements,
-                    isLoading           = false
-                )
-            }
+            val loadedState = uiState.value.copy(
+                displayName         = profile?.display_name.orEmpty(),
+                avatar              = buildAvatarDisplayUrl(profile?.avatar_url, profile?.avatar_updated_at),
+                rank                = computedRank,
+                level               = lvl,
+                xp                  = currentXp,
+                xpPerLevel          = xpForNext,
+                currentStreak       = currentStreak,
+                longestStreak       = longestStreak,
+                streakRankPosition  = streakRank?.rank_position ?: 0L,
+                streakRankTotalUsers= streakRank?.total_users ?: 0L,
+                totalWorkouts       = totalWorkouts,
+                totalExercises      = totalExercises,
+                totalDurationSeconds= totalDurationSeconds,
+                totalDistanceMeters = totalDistanceMeters,
+                fitnessGoal         = profile?.fitness_goal.orEmpty(),
+                heightCm            = profile?.height_cm ?: 0.0,
+                weightKg            = profile?.weight_kg ?: 0.0,
+                gender              = profile?.gender.orEmpty(),
+                bmi                 = bmi,
+                bodyFatPct          = bodyFat,
+                birthDate           = birthDate,
+                weeklyActivity      = weeklyActivity,
+                weeklyWorkoutCounts = weeklyWorkoutCounts,
+                achievements        = achievements,
+                isLoading           = false
+            )
+            updateState { loadedState }
+            saveSnapshot(userId, loadedState)
 
             // Achievement kontrolü
             checkAchievements(userId, currentXp, lvl, totalWorkouts, totalExercises, currentStreak, unlockedKeys, allAch)
@@ -298,7 +304,9 @@ class ProfileViewModel @Inject constructor(
                 val newBodyFat = if (newBmi > 0) {
                     (1.2 * newBmi + 0.23 * age + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0
-                updateState { it.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false) }
+                val updatedState = uiState.value.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false)
+                updateState { updatedState }
+                saveSnapshot(userId, updatedState)
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
             } else {
                 updateState { it.copy(isSaving = false) }
@@ -315,7 +323,9 @@ class ProfileViewModel @Inject constructor(
             val result = profileRepository.uploadProfilePhoto(userId, imageBytes)
             if (result.isSuccess) {
                 val url = result.getOrThrow()
-                updateState { it.copy(avatar = url, isSaving = false) }
+                val updatedState = uiState.value.copy(avatar = url, isSaving = false)
+                updateState { updatedState }
+                saveSnapshot(userId, updatedState)
                 sendEvent(ProfileEvent.ShowSnackbar("Fotoğraf yüklendi"))
             } else {
                 updateState { it.copy(isSaving = false) }
@@ -345,6 +355,19 @@ class ProfileViewModel @Inject constructor(
             }
         }
         return counts.toImmutableList()
+    }
+
+    private suspend fun restoreCachedSnapshot() {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
+        val snapshot = disk.getOnIo<ProfileSnapshot>("profile_state_$userId") ?: return
+        lastLoadMs = snapshot.savedAtMs
+        updateState { current ->
+            snapshot.toState(current).copy(isLoading = false, isSaving = current.isSaving)
+        }
+    }
+
+    private suspend fun saveSnapshot(userId: String, state: ProfileState) {
+        disk.putOnIo("profile_state_$userId", state.toSnapshot())
     }
 
     // ── FAZ 5C: Achievement Kontrol ───────────────────────────────────────────
@@ -391,3 +414,123 @@ class ProfileViewModel @Inject constructor(
         }
     }
 }
+
+@Serializable
+private data class ProfileSnapshot(
+    val displayName: String,
+    val avatar: String,
+    val rank: String,
+    val level: Int,
+    val xp: Int,
+    val xpPerLevel: Int,
+    val currentStreak: Int,
+    val longestStreak: Int,
+    val streakRankPosition: Long,
+    val streakRankTotalUsers: Long,
+    val totalWorkouts: Int,
+    val totalExercises: Int,
+    val totalDurationSeconds: Int,
+    val totalDistanceMeters: Float,
+    val weeklyActivity: List<Float>,
+    val weeklyWorkoutCounts: List<Int>,
+    val achievements: List<AchievementSnapshot>,
+    val fitnessGoal: String,
+    val heightCm: Double,
+    val weightKg: Double,
+    val gender: String,
+    val bmi: Double,
+    val bodyFatPct: Double,
+    val birthDate: String,
+    val totalCalories: Int,
+    val savedAtMs: Long
+)
+
+@Serializable
+private data class AchievementSnapshot(
+    val key: String,
+    val name: String,
+    val description: String,
+    val icon: String,
+    val category: String,
+    val threshold: Int,
+    val isUnlocked: Boolean
+)
+
+private fun ProfileState.toSnapshot(): ProfileSnapshot =
+    ProfileSnapshot(
+        displayName = displayName,
+        avatar = avatar,
+        rank = rank,
+        level = level,
+        xp = xp,
+        xpPerLevel = xpPerLevel,
+        currentStreak = currentStreak,
+        longestStreak = longestStreak,
+        streakRankPosition = streakRankPosition,
+        streakRankTotalUsers = streakRankTotalUsers,
+        totalWorkouts = totalWorkouts,
+        totalExercises = totalExercises,
+        totalDurationSeconds = totalDurationSeconds,
+        totalDistanceMeters = totalDistanceMeters,
+        weeklyActivity = weeklyActivity,
+        weeklyWorkoutCounts = weeklyWorkoutCounts,
+        achievements = achievements.map {
+            AchievementSnapshot(
+                key = it.key,
+                name = it.name,
+                description = it.description,
+                icon = it.icon,
+                category = it.category,
+                threshold = it.threshold,
+                isUnlocked = it.isUnlocked
+            )
+        },
+        fitnessGoal = fitnessGoal,
+        heightCm = heightCm,
+        weightKg = weightKg,
+        gender = gender,
+        bmi = bmi,
+        bodyFatPct = bodyFatPct,
+        birthDate = birthDate,
+        totalCalories = totalCalories,
+        savedAtMs = System.currentTimeMillis()
+    )
+
+private fun ProfileSnapshot.toState(current: ProfileState): ProfileState =
+    current.copy(
+        displayName = displayName,
+        avatar = avatar,
+        rank = rank,
+        level = level,
+        xp = xp,
+        xpPerLevel = xpPerLevel,
+        currentStreak = currentStreak,
+        longestStreak = longestStreak,
+        streakRankPosition = streakRankPosition,
+        streakRankTotalUsers = streakRankTotalUsers,
+        totalWorkouts = totalWorkouts,
+        totalExercises = totalExercises,
+        totalDurationSeconds = totalDurationSeconds,
+        totalDistanceMeters = totalDistanceMeters,
+        weeklyActivity = weeklyActivity.toImmutableList(),
+        weeklyWorkoutCounts = weeklyWorkoutCounts.toImmutableList(),
+        achievements = achievements.map {
+            AchievementUiModel(
+                key = it.key,
+                name = it.name,
+                description = it.description,
+                icon = it.icon,
+                category = it.category,
+                threshold = it.threshold,
+                isUnlocked = it.isUnlocked
+            )
+        }.toImmutableList(),
+        fitnessGoal = fitnessGoal,
+        heightCm = heightCm,
+        weightKg = weightKg,
+        gender = gender,
+        bmi = bmi,
+        bodyFatPct = bodyFatPct,
+        birthDate = birthDate,
+        totalCalories = totalCalories
+    )

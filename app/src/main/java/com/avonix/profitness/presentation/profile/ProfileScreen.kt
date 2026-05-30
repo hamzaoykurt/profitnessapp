@@ -81,14 +81,14 @@ fun ProfileScreen(
     // Tab geçiş animasyonu bittikten sonra ilk profil yükünü başlat.
     LaunchedEffect(Unit) {
         delay(16)
-        viewModel.refreshNow()
+        viewModel.initLoad()
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshNow()
+                viewModel.reloadIfStale()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

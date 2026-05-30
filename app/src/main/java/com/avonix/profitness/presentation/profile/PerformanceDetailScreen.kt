@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -33,8 +36,11 @@ import com.avonix.profitness.presentation.components.glassCard
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +83,16 @@ fun PerformanceDetailScreen(
                         )
                         Text("Trendler, metrikler ve hesaplamalar", color = theme.text2, fontSize = 11.sp)
                     }
+                }
+            }
+
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     CalculatorLauncherButton(
                         accent = accent,
                         theme = theme,
@@ -149,8 +165,11 @@ fun PerformanceDetailScreen(
     }
 
     if (showCalculators) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { showCalculators = false },
+            sheetState = sheetState,
+            modifier = Modifier.fillMaxHeight(0.94f),
             containerColor = theme.bg1,
             contentColor = theme.text0,
             dragHandle = {
@@ -169,6 +188,7 @@ fun PerformanceDetailScreen(
                 theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
                     .navigationBarsPadding()
             )
         }
@@ -267,9 +287,10 @@ private fun PerformanceShortcutCard(
     }
 }
 
-private enum class CalculatorMode { OneRm, Bmi, BodyFat, Bmr }
+private enum class CalculatorMode { OneRm, Bmi, BodyFat, Bmr, HeartRate, Protein, Vo2Max }
 private enum class OneRmFormula { Epley, Brzycki, Lombardi }
 private enum class CalcGender { Male, Female }
+private enum class ProteinGoal { General, MuscleGain, FatLoss }
 
 private data class ActivityFactor(
     val label: String,
@@ -326,7 +347,7 @@ private fun CalculationsSheet(
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
-        Text("1RM, BMI, yağ oranı ve kalori tahminleri", color = theme.text2, fontSize = 11.sp)
+        Text("1RM, BMI, yağ oranı, kalori, nabız, protein ve VO2 max", color = theme.text2, fontSize = 11.sp)
 
         Spacer(Modifier.height(16.dp))
 
@@ -344,9 +365,12 @@ private fun CalculationsSheet(
             CalculatorMode.Bmi -> BmiCalculator(state = state, accent = accent, theme = theme)
             CalculatorMode.BodyFat -> BodyFatCalculator(state = state, accent = accent, theme = theme)
             CalculatorMode.Bmr -> BmrCalculator(state = state, accent = accent, theme = theme)
+            CalculatorMode.HeartRate -> HeartRateCalculator(state = state, accent = accent, theme = theme)
+            CalculatorMode.Protein -> ProteinCalculator(state = state, accent = accent, theme = theme)
+            CalculatorMode.Vo2Max -> Vo2MaxCalculator(accent = accent, theme = theme)
         }
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(96.dp))
     }
 }
 
@@ -357,7 +381,15 @@ private fun CalculatorModeGrid(
     accent: Color,
     theme: AppThemeState
 ) {
-    val modes = listOf(CalculatorMode.OneRm, CalculatorMode.Bmi, CalculatorMode.BodyFat, CalculatorMode.Bmr)
+    val modes = listOf(
+        CalculatorMode.OneRm,
+        CalculatorMode.Bmi,
+        CalculatorMode.BodyFat,
+        CalculatorMode.Bmr,
+        CalculatorMode.HeartRate,
+        CalculatorMode.Protein,
+        CalculatorMode.Vo2Max
+    )
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         modes.chunked(2).forEach { row ->
             Row(
@@ -763,6 +795,165 @@ private fun BmrCalculator(
 }
 
 @Composable
+private fun HeartRateCalculator(
+    state: ProfileState,
+    accent: Color,
+    theme: AppThemeState
+) {
+    var age by remember(state.birthDate) { mutableStateOf(profileAgeInput(state)) }
+    var restingHr by remember { mutableStateOf("60") }
+
+    val ageYears = age.trim().toIntOrNull()?.takeIf { it in 8..100 }
+    val resting = restingHr.trim().toIntOrNull()?.takeIf { it in 30..120 }
+    val maxHr = ageYears?.let(::calculateMaxHeartRate)
+    val zones = if (maxHr != null && resting != null && resting < maxHr) {
+        heartRateZones(maxHr, resting)
+    } else emptyList()
+
+    CalculatorPanel(
+        title = "Nabız Bölgeleri",
+        subtitle = "Tanaka max nabız + Karvonen HRR",
+        icon = Icons.Rounded.Favorite,
+        accent = Color(0xFF64D2FF),
+        theme = theme
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CalculationInput(
+                label = "Yaş",
+                value = age,
+                onValueChange = { age = it },
+                modifier = Modifier.weight(1f),
+                keyboardType = KeyboardType.Number
+            )
+            CalculationInput(
+                label = "Dinlenik nabız",
+                value = restingHr,
+                onValueChange = { restingHr = it },
+                modifier = Modifier.weight(1f),
+                keyboardType = KeyboardType.Number
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        if (maxHr != null && zones.isNotEmpty()) {
+            CalculationResultCard(
+                title = "Tahmini max nabız",
+                value = "${maxHr.roundToInt()} bpm",
+                subtitle = "208 - 0.7 x yaş",
+                accent = Color(0xFF64D2FF),
+                theme = theme
+            )
+            Spacer(Modifier.height(12.dp))
+            zones.forEach { zone ->
+                CalculationRow(
+                    label = zone.label,
+                    value = "${zone.low}-${zone.high} bpm",
+                    theme = theme
+                )
+            }
+        } else {
+            EmptyCalculationHint("Yaş ve 30-120 arası dinlenik nabız gir.")
+        }
+    }
+}
+
+@Composable
+private fun ProteinCalculator(
+    state: ProfileState,
+    accent: Color,
+    theme: AppThemeState
+) {
+    var weight by remember(state.weightKg) { mutableStateOf(profileNumberInput(state.weightKg)) }
+    var goal by remember { mutableStateOf(ProteinGoal.MuscleGain) }
+    val weightKg = weight.toPositiveDoubleOrNull()
+    val range = weightKg?.let { proteinRange(it, goal) }
+
+    CalculatorPanel(
+        title = "Protein Hedefi",
+        subtitle = "Sporcu g/kg aralıkları",
+        icon = Icons.Rounded.Restaurant,
+        accent = CardGreen,
+        theme = theme
+    ) {
+        CalculationInput(
+            label = "Kilo kg",
+            value = weight,
+            onValueChange = { weight = it },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        ProteinGoalSelector(
+            selectedGoal = goal,
+            onGoalSelected = { goal = it },
+            accent = accent,
+            theme = theme
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        if (range != null) {
+            CalculationResultCard(
+                title = "Günlük protein",
+                value = "${formatWhole(range.first)}-${formatWhole(range.second)} g",
+                subtitle = proteinGoalLabel(goal),
+                accent = CardGreen,
+                theme = theme
+            )
+            Spacer(Modifier.height(12.dp))
+            CalculationRow("Alt sınır", "${formatOneDecimal(proteinGramPerKg(goal).first)} g/kg", theme)
+            CalculationRow("Üst sınır", "${formatOneDecimal(proteinGramPerKg(goal).second)} g/kg", theme)
+        } else {
+            EmptyCalculationHint("Kilo değerini gir.")
+        }
+    }
+}
+
+@Composable
+private fun Vo2MaxCalculator(
+    accent: Color,
+    theme: AppThemeState
+) {
+    var distance by remember { mutableStateOf("2400") }
+    val distanceMeters = distance.toPositiveDoubleOrNull()
+    val vo2Max = distanceMeters?.let(::cooperVo2Max)
+
+    CalculatorPanel(
+        title = "VO2 Max",
+        subtitle = "Cooper 12 dakika koşu tahmini",
+        icon = Icons.Rounded.DirectionsRun,
+        accent = CardPurple,
+        theme = theme
+    ) {
+        CalculationInput(
+            label = "12 dk mesafe m",
+            value = distance,
+            onValueChange = { distance = it },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardType = KeyboardType.Number
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        if (vo2Max != null) {
+            CalculationResultCard(
+                title = "Tahmini VO2 max",
+                value = formatOneDecimal(vo2Max),
+                subtitle = "ml/kg/dk",
+                accent = CardPurple,
+                theme = theme
+            )
+            Spacer(Modifier.height(12.dp))
+            CalculationRow("Formül", "(mesafe - 504.9) / 44.73", theme)
+        } else {
+            EmptyCalculationHint("12 dakikada koşulan mesafeyi metre olarak gir.")
+        }
+    }
+}
+
+@Composable
 private fun FormulaSelector(
     selectedFormula: OneRmFormula,
     onFormulaSelected: (OneRmFormula) -> Unit,
@@ -850,6 +1041,37 @@ private fun ActivitySelector(
 }
 
 @Composable
+private fun ProteinGoalSelector(
+    selectedGoal: ProteinGoal,
+    onGoalSelected: (ProteinGoal) -> Unit,
+    accent: Color,
+    theme: AppThemeState
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(ProteinGoal.General, ProteinGoal.MuscleGain, ProteinGoal.FatLoss).forEach { goal ->
+            val selected = selectedGoal == goal
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected) accent.copy(0.14f) else theme.bg0.copy(0.55f))
+                    .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke, RoundedCornerShape(12.dp))
+                    .clickable { onGoalSelected(goal) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    proteinGoalLabel(goal),
+                    color = if (selected) theme.text0 else theme.text2,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CalculatorPanel(
     title: String,
     subtitle: String,
@@ -888,6 +1110,7 @@ private fun CalculatorPanel(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun CalculationInput(
     label: String,
     value: String,
@@ -896,10 +1119,21 @@ private fun CalculationInput(
     keyboardType: KeyboardType = KeyboardType.Decimal
 ) {
     val theme = LocalAppTheme.current
+    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier,
+        modifier = modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusEvent { focusState ->
+                if (focusState.isFocused) {
+                    coroutineScope.launch {
+                        delay(250)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
         label = { Text(label) },
         singleLine = true,
         textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
@@ -982,6 +1216,9 @@ private fun calculatorModeTitle(mode: CalculatorMode): String = when (mode) {
     CalculatorMode.Bmi -> "BMI"
     CalculatorMode.BodyFat -> "Yağ Oranı"
     CalculatorMode.Bmr -> "Kalori"
+    CalculatorMode.HeartRate -> "Nabız"
+    CalculatorMode.Protein -> "Protein"
+    CalculatorMode.Vo2Max -> "VO2 Max"
 }
 
 private fun calculatorModeIcon(mode: CalculatorMode): ImageVector = when (mode) {
@@ -989,6 +1226,9 @@ private fun calculatorModeIcon(mode: CalculatorMode): ImageVector = when (mode) 
     CalculatorMode.Bmi -> Icons.Rounded.Analytics
     CalculatorMode.BodyFat -> Icons.Rounded.Person
     CalculatorMode.Bmr -> Icons.Rounded.LocalFireDepartment
+    CalculatorMode.HeartRate -> Icons.Rounded.Favorite
+    CalculatorMode.Protein -> Icons.Rounded.Restaurant
+    CalculatorMode.Vo2Max -> Icons.Rounded.DirectionsRun
 }
 
 private fun calculatorModeColor(mode: CalculatorMode, accent: Color): Color = when (mode) {
@@ -996,6 +1236,9 @@ private fun calculatorModeColor(mode: CalculatorMode, accent: Color): Color = wh
     CalculatorMode.Bmi -> CardGreen
     CalculatorMode.BodyFat -> CardPurple
     CalculatorMode.Bmr -> accent
+    CalculatorMode.HeartRate -> Color(0xFF64D2FF)
+    CalculatorMode.Protein -> CardGreen
+    CalculatorMode.Vo2Max -> CardPurple
 }
 
 private val CalcGender.label: String
@@ -1104,6 +1347,58 @@ private fun calculateBmr(
     val offset = if (gender == CalcGender.Male) 5.0 else -161.0
     return (10.0 * weightKg + 6.25 * heightCm - 5.0 * age + offset).takeIf { it.isFinite() && it > 0.0 }
 }
+
+private data class HeartRateZone(
+    val label: String,
+    val low: Int,
+    val high: Int
+)
+
+private fun calculateMaxHeartRate(age: Int): Double = 208.0 - 0.7 * age
+
+private fun heartRateZones(maxHr: Double, restingHr: Int): List<HeartRateZone> {
+    val reserve = maxHr - restingHr
+    return listOf(
+        heartRateZone("Z1 Toparlanma", reserve, restingHr, 0.50, 0.60),
+        heartRateZone("Z2 Aerobik", reserve, restingHr, 0.60, 0.70),
+        heartRateZone("Z3 Tempo", reserve, restingHr, 0.70, 0.80),
+        heartRateZone("Z4 Eşik", reserve, restingHr, 0.80, 0.90),
+        heartRateZone("Z5 Maksimum", reserve, restingHr, 0.90, 1.00)
+    )
+}
+
+private fun heartRateZone(
+    label: String,
+    reserve: Double,
+    restingHr: Int,
+    lowPct: Double,
+    highPct: Double
+): HeartRateZone =
+    HeartRateZone(
+        label = label,
+        low = (restingHr + reserve * lowPct).roundToInt(),
+        high = (restingHr + reserve * highPct).roundToInt()
+    )
+
+private fun proteinGoalLabel(goal: ProteinGoal): String = when (goal) {
+    ProteinGoal.General -> "Genel fitness"
+    ProteinGoal.MuscleGain -> "Kas kazanımı"
+    ProteinGoal.FatLoss -> "Yağ kaybı / definasyon"
+}
+
+private fun proteinGramPerKg(goal: ProteinGoal): Pair<Double, Double> = when (goal) {
+    ProteinGoal.General -> 1.2 to 1.6
+    ProteinGoal.MuscleGain -> 1.6 to 2.2
+    ProteinGoal.FatLoss -> 1.8 to 2.7
+}
+
+private fun proteinRange(weightKg: Double, goal: ProteinGoal): Pair<Double, Double> {
+    val grams = proteinGramPerKg(goal)
+    return weightKg * grams.first to weightKg * grams.second
+}
+
+private fun cooperVo2Max(distanceMeters: Double): Double? =
+    ((distanceMeters - 504.9) / 44.73).takeIf { distanceMeters >= 800.0 && it.isFinite() && it > 0.0 }
 
 private fun profileGender(rawGender: String): CalcGender =
     if (rawGender.lowercase() in listOf("female", "kadın", "kadin", "woman")) CalcGender.Female else CalcGender.Male
