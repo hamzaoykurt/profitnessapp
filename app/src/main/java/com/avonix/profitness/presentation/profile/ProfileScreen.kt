@@ -131,7 +131,6 @@ fun ProfileScreen(
                     strings            = strings,
                     currentStreak      = state.currentStreak,
                     longestStreak      = state.longestStreak,
-                    totalWorkouts      = state.totalWorkouts,
                     totalExercises     = state.totalExercises,
                     totalDurationSeconds = state.totalDurationSeconds,
                     totalDistanceMeters  = state.totalDistanceMeters,
@@ -774,14 +773,12 @@ private fun PerformanceMetricsSection(
     strings           : AppStrings,
     currentStreak     : Int,
     longestStreak     : Int,
-    totalWorkouts     : Int,
     totalExercises    : Int,
     totalDurationSeconds: Int,
     totalDistanceMeters : Float,
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = buildList {
-        add(PerformanceMetric(totalWorkouts.toString(),  strings.unitDays,   strings.activeDaysLabel,  Icons.Rounded.CalendarToday, CardPurple))
         add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral))
         add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents,   CardGreen))
         add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.FitnessCenter, CardCyan))

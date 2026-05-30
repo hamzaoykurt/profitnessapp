@@ -182,6 +182,7 @@ class ProfileViewModel @Inject constructor(
             val unlockedKeys     = unlockedAchDef.await().getOrNull().orEmpty()
             val localStreak      = localStreakDef.await().getOrElse { stats?.current_streak ?: 0 }
             val currentStreak    = maxOf(localStreak, stats?.current_streak ?: 0)
+            val longestStreak    = maxOf(stats?.longest_streak ?: 0, currentStreak)
             val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
             val streakRank       = leaderboardRepository.getMyStreakRank().getOrNull()
 
@@ -248,7 +249,7 @@ class ProfileViewModel @Inject constructor(
                     xp                  = currentXp,
                     xpPerLevel          = xpForNext,
                     currentStreak       = currentStreak,
-                    longestStreak       = stats?.longest_streak ?: 0,
+                    longestStreak       = longestStreak,
                     streakRankPosition  = streakRank?.rank_position ?: 0L,
                     streakRankTotalUsers= streakRank?.total_users ?: 0L,
                     totalWorkouts       = totalWorkouts,

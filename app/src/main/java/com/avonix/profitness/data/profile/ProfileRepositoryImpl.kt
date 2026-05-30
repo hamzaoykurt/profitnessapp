@@ -27,6 +27,9 @@ private data class ProgramExerciseCountDto(
 private data class RatioEntry(val date: String, val ratio: Float)
 
 @Serializable
+private data class SetCompletionDateDto(val date: String, val reps_actual: Int? = null)
+
+@Serializable
 private data class UserAchievementUpsert(
     val user_id: String,
     val achievement_id: String
@@ -208,8 +211,8 @@ class ProfileRepositoryImpl @Inject constructor(
                     }
                 }
 
-                // longest_streak: saklanmış değer ile hesaplananın büyüğü
-                val longestStreak = maxOf(base.longest_streak, streak)
+                // longest_streak hiçbir zaman mevcut seriden küçük görünmemeli.
+                val longestStreak = maxOf(base.longest_streak, base.current_streak, streak)
                 if (
                     base.total_workouts != totalWorkouts ||
                     base.current_streak != streak ||
@@ -437,13 +440,23 @@ class ProfileRepositoryImpl @Inject constructor(
 
     private suspend fun getAllWorkoutDates(userId: String): List<java.time.LocalDate> {
         _allWorkoutDates?.takeIf { _allWorkoutDatesUid == userId }?.let { return it }
-        return supabase.postgrest["workout_logs"]
+        val workoutDates = supabase.postgrest["workout_logs"]
             .select {
                 filter { eq("user_id", userId) }
                 order("date", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
             }
             .decodeList<WorkoutLogDto>()
             .mapNotNull { runCatching { java.time.LocalDate.parse(it.date.take(10)) }.getOrNull() }
+
+        val completedSetDates = supabase.postgrest["set_completions"]
+            .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("date,reps_actual")) {
+                filter { eq("user_id", userId) }
+            }
+            .decodeList<SetCompletionDateDto>()
+            .filter { it.reps_actual != null }
+            .mapNotNull { runCatching { java.time.LocalDate.parse(it.date.take(10)) }.getOrNull() }
+
+        return (workoutDates + completedSetDates)
             .distinct()
             .sortedDescending()
             .also {
