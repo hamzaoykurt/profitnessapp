@@ -50,8 +50,6 @@ fun ProfileScreen(
     onThemeChange              : (AppThemeState) -> Unit,
     onNavigateToPerformance    : () -> Unit = {},
     onNavigateToAchievements   : () -> Unit = {},
-    onNavigateToWeightTracking       : () -> Unit = {},
-    onNavigateToExerciseProgression  : () -> Unit = {},
     onNavigateToLeaderboard          : (com.avonix.profitness.presentation.leaderboard.LeaderboardTab) -> Unit = {},
     onLogout                         : () -> Unit = {},
     onEditProfile              : () -> Unit = {},
@@ -135,33 +133,6 @@ fun ProfileScreen(
                     totalDurationSeconds = state.totalDurationSeconds,
                     totalDistanceMeters  = state.totalDistanceMeters,
                     onNavigateToDetail = onNavigateToPerformance
-                )
-            }
-            item {
-                PerformanceShortcutsSection(
-                    accent    = accent,
-                    theme     = theme,
-                    weightKg  = state.weightKg,
-                    onWeightClick = onNavigateToWeightTracking,
-                    onExerciseClick = onNavigateToExerciseProgression
-                )
-            }
-            item {
-                BodyMetricsCard(
-                    heightCm   = state.heightCm,
-                    weightKg   = state.weightKg,
-                    bmi        = state.bmi,
-                    bodyFatPct = state.bodyFatPct,
-                    accent     = accent,
-                    theme      = theme
-                )
-            }
-            item {
-                WeeklyActivitySection(
-                    accent         = accent,
-                    theme          = theme,
-                    strings        = strings,
-                    weeklyActivity = state.weeklyActivity
                 )
             }
             item {

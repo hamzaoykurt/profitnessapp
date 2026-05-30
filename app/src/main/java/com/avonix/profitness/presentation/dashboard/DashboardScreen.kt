@@ -300,8 +300,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onThemeChange                   = onThemeChange,
                     onNavigateToPerformance         = { showPerformanceDetail = true },
                     onNavigateToAchievements        = { showAchievementsDetail = true },
-                    onNavigateToWeightTracking      = { showWeightTracking = true },
-                    onNavigateToExerciseProgression = { showExerciseProgression = true },
                     onNavigateToLeaderboard         = { tab ->
                         leaderboardInitialTab = tab
                         showLeaderboard = true
