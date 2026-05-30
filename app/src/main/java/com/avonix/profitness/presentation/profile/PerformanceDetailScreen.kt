@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -85,11 +86,22 @@ fun PerformanceDetailScreen(
             }
 
             item {
+                PerformanceRecordsSection(
+                    weightKg = state.weightKg,
+                    accent = accent,
+                    theme = theme,
+                    topPadding = 14.dp,
+                    onNavigateToWeightTracking = onNavigateToWeightTracking,
+                    onNavigateToExerciseProgression = onNavigateToExerciseProgression
+                )
+            }
+
+            item {
                 WorkoutBarChart(
                     counts  = state.weeklyWorkoutCounts,
                     accent  = accent,
                     theme   = theme,
-                    modifier= Modifier.padding(20.dp, 8.dp, 20.dp, 0.dp)
+                    modifier= Modifier.padding(20.dp, 18.dp, 20.dp, 0.dp)
                 )
             }
 
@@ -133,15 +145,6 @@ fun PerformanceDetailScreen(
                 )
             }
 
-            item {
-                PerformanceRecordsSection(
-                    weightKg = state.weightKg,
-                    accent = accent,
-                    theme = theme,
-                    onNavigateToWeightTracking = onNavigateToWeightTracking,
-                    onNavigateToExerciseProgression = onNavigateToExerciseProgression
-                )
-            }
         }
     }
 
@@ -179,33 +182,88 @@ private fun PerformanceShortcutCard(
     icon: ImageVector,
     accent: Color,
     theme: AppThemeState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
+    val shape = RoundedCornerShape(20.dp)
+
+    Box(
+        modifier = modifier
+            .height(146.dp)
+            .shadow(
+                elevation = 18.dp,
+                shape = shape,
+                spotColor = accent.copy(if (theme.isDark) 0.26f else 0.16f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.42f else 0.10f)
+            )
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        accent.copy(if (theme.isDark) 0.18f else 0.11f),
+                        theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f),
+                        theme.bg0.copy(if (theme.isDark) 0.95f else 0.96f)
+                    )
+                )
+            )
+            .border(1.dp, accent.copy(if (theme.isDark) 0.42f else 0.34f), shape)
             .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(16.dp)
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(0.12f)),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(accent.copy(0.13f))
+                        .border(1.dp, accent.copy(0.18f), RoundedCornerShape(13.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+                }
+                Icon(
+                    Icons.Rounded.ArrowForwardIos,
+                    null,
+                    tint = accent.copy(0.70f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    title,
+                    color = theme.text0,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 17.sp
+                )
+                Text(
+                    subtitle,
+                    color = theme.text2,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp
+                )
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(accent, accent.copy(0.16f))
+                            )
+                        )
+                )
+            }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = theme.text2, fontSize = 11.sp)
-        }
-        Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent.copy(0.65f), modifier = Modifier.size(14.dp))
     }
 }
 
@@ -1311,10 +1369,11 @@ private fun PerformanceRecordsSection(
     weightKg: Double,
     accent: Color,
     theme: AppThemeState,
+    topPadding: Dp = 32.dp,
     onNavigateToWeightTracking: () -> Unit,
     onNavigateToExerciseProgression: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(20.dp, 32.dp, 20.dp, 0.dp)) {
+    Column(modifier = Modifier.padding(20.dp, topPadding, 20.dp, 0.dp)) {
         Text(
             "PERFORMANS KAYITLARI",
             style         = MaterialTheme.typography.labelSmall,
@@ -1322,24 +1381,30 @@ private fun PerformanceRecordsSection(
             letterSpacing = 2.sp
         )
         Spacer(Modifier.height(14.dp))
-        PerformanceShortcutCard(
-            title = "Vücut Kilosu",
-            subtitle = if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Kilo trendi ve AI analiz"
-                       else "Kilo trendi ve AI analiz",
-            icon = Icons.Rounded.ShowChart,
-            accent = accent,
-            theme = theme,
-            onClick = onNavigateToWeightTracking
-        )
-        Spacer(Modifier.height(10.dp))
-        PerformanceShortcutCard(
-            title = "Hareket Performansı",
-            subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
-            icon = Icons.Rounded.TrendingUp,
-            accent = accent,
-            theme = theme,
-            onClick = onNavigateToExerciseProgression
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PerformanceShortcutCard(
+                title = "Vücut Kilosu",
+                subtitle = if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Kilo trendi ve AI analiz"
+                           else "Kilo trendi ve AI analiz",
+                icon = Icons.Rounded.ShowChart,
+                accent = CardPurple,
+                theme = theme,
+                onClick = onNavigateToWeightTracking,
+                modifier = Modifier.weight(1f)
+            )
+            PerformanceShortcutCard(
+                title = "Hareket Performansı",
+                subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+                icon = Icons.Rounded.TrendingUp,
+                accent = CardCyan,
+                theme = theme,
+                onClick = onNavigateToExerciseProgression,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 

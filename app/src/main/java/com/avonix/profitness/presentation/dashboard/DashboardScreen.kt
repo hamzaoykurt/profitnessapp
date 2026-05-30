@@ -363,11 +363,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             PerformanceDetailScreen(
                 onBack = { showPerformanceDetail = false },
                 onNavigateToWeightTracking = {
-                    showPerformanceDetail = false
                     showWeightTracking = true
                 },
                 onNavigateToExerciseProgression = {
-                    showPerformanceDetail = false
                     showExerciseProgression = true
                 }
             )
