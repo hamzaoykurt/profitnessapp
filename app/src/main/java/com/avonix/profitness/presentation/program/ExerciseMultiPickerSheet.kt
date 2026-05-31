@@ -83,10 +83,12 @@ fun ExerciseMultiPickerSheet(
     val categories = remember(exercises) {
         exercises.map { it.category }.distinct().sorted()
     }
-    val filtered = remember(exercises, searchQuery, selectedCategory) {
+    val filtered = remember(exercises, searchQuery, selectedCategory, theme.language) {
         exercises.filter { ex ->
             val matchSearch = searchQuery.isEmpty() ||
-                ex.name.contains(searchQuery, ignoreCase = true)
+                ex.name.contains(searchQuery, ignoreCase = true) ||
+                ex.nameEn.contains(searchQuery, ignoreCase = true) ||
+                theme.exerciseDisplayName(ex.name, ex.nameEn).contains(searchQuery, ignoreCase = true)
             val matchCat = selectedCategory == null || ex.category == selectedCategory
             matchSearch && matchCat
         }
@@ -126,14 +128,17 @@ fun ExerciseMultiPickerSheet(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "HAREKETLERİ SEÇ",
+                        theme.t("HAREKETLERİ SEÇ", "SELECT EXERCISES"),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        "${selected.size} hareket seçildi · ${exercises.size} mevcut",
+                        theme.t(
+                            "${selected.size} hareket seçildi · ${exercises.size} mevcut",
+                            "${selected.size} selected · ${exercises.size} available"
+                        ),
                         color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light
                     )
                 }
@@ -168,7 +173,7 @@ fun ExerciseMultiPickerSheet(
                         decorationBox = { inner ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    "Hareket ara...",
+                                    theme.t("Hareket ara...", "Search exercise..."),
                                     color = theme.text2,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Light
@@ -199,7 +204,7 @@ fun ExerciseMultiPickerSheet(
             ) {
                 item {
                     MultiPickerCategoryChip(
-                        label = "TÜMÜ",
+                        label = theme.t("TÜMÜ", "ALL"),
                         color = Snow,
                         selected = selectedCategory == null,
                         onClick = { selectedCategory = null }
@@ -207,7 +212,7 @@ fun ExerciseMultiPickerSheet(
                 }
                 items(categories) { cat ->
                     MultiPickerCategoryChip(
-                        label    = cat.uppercase(),
+                        label    = theme.fitnessTermDisplayName(cat).uppercase(),
                         color    = multiCategoryColor(cat),
                         selected = selectedCategory == cat,
                         onClick  = { selectedCategory = if (selectedCategory == cat) null else cat }
@@ -277,13 +282,13 @@ fun ExerciseMultiPickerSheet(
 
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    exercise.name,
+                                    theme.exerciseDisplayName(exercise.name, exercise.nameEn),
                                     color = theme.text0,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    exercise.targetMuscle,
+                                    theme.fitnessTermDisplayName(exercise.targetMuscle),
                                     color = accent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -358,7 +363,7 @@ fun ExerciseMultiPickerSheet(
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text("İptal", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Button(
                     onClick = {
@@ -375,7 +380,7 @@ fun ExerciseMultiPickerSheet(
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "EKLE (${selected.size})",
+                        theme.t("EKLE (${selected.size})", "ADD (${selected.size})"),
                         fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
                         letterSpacing = 0.5.sp
@@ -415,7 +420,7 @@ private fun MovementConfigPanel(
         ) {
             if (activityBased) {
                 MultiCounterField(
-                    label = "SÜRE",
+                    label = theme.t("SÜRE", "DURATION"),
                     value = durSec,
                     step = 60,
                     onDecrement = { onChange(0, 0, (durSec - 60).coerceAtLeast(0)) },
@@ -433,7 +438,7 @@ private fun MovementConfigPanel(
                 )
                 HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
                 MultiCounterField(
-                    label = "TEKRAR",
+                    label = theme.t("TEKRAR", "REPS"),
                     value = reps,
                     onDecrement = { onChange(sets, (reps - 1).coerceAtLeast(0), 0) },
                     onIncrement = { onChange(sets, (reps + 1).coerceAtMost(100), 0) },
@@ -444,7 +449,11 @@ private fun MovementConfigPanel(
 
         Spacer(Modifier.height(10.dp))
         Text(
-            if (activityBased) "Süre önerisi isteğe bağlıdır" else "0 = öneri yok (isteğe bağlı)",
+            if (activityBased) {
+                theme.t("Süre önerisi isteğe bağlıdır", "Duration suggestion is optional")
+            } else {
+                theme.t("0 = öneri yok (isteğe bağlı)", "0 = no suggestion (optional)")
+            },
             color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Light
         )
         Spacer(Modifier.height(10.dp))
@@ -456,7 +465,7 @@ private fun MovementConfigPanel(
             Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                "Listeden Çıkar",
+                theme.t("Listeden Çıkar", "Remove from List"),
                 color = CardCoral,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,

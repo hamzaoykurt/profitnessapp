@@ -233,7 +233,7 @@ class WorkoutForegroundService : Service() {
             .setSilent(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
-            .setSubText("Forge Sayaç")
+            .setSubText("Profitness Timer")
             .setColor(color)
 
         addTimerActions(builder, controls)
@@ -296,7 +296,7 @@ class WorkoutForegroundService : Service() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ALERTS)
             .setContentTitle("Hazırsın! Set zamanı!")
-            .setContentText("$exerciseName — Sonraki seti başlat")
+            .setContentText("$exerciseName - Start next set")
             .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentIntent(tapIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

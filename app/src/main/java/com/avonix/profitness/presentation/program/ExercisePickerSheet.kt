@@ -72,10 +72,12 @@ fun ExercisePickerSheet(
         exercises.map { it.category }.distinct().sorted()
     }
 
-    val filtered = remember(exercises, searchQuery, selectedCategory) {
+    val filtered = remember(exercises, searchQuery, selectedCategory, theme.language) {
         exercises.filter { ex ->
             val matchSearch = searchQuery.isEmpty() ||
-                ex.name.contains(searchQuery, ignoreCase = true)
+                ex.name.contains(searchQuery, ignoreCase = true) ||
+                ex.nameEn.contains(searchQuery, ignoreCase = true) ||
+                theme.exerciseDisplayName(ex.name, ex.nameEn).contains(searchQuery, ignoreCase = true)
             val matchCat = selectedCategory == null || ex.category == selectedCategory
             matchSearch && matchCat
         }
@@ -195,7 +197,7 @@ fun ExercisePickerSheet(
                 }
                 items(categories) { cat ->
                     PickerCategoryChip(
-                        label = cat.uppercase(),
+                        label = theme.fitnessTermDisplayName(cat).uppercase(),
                         color = categoryColor(cat),
                         selected = selectedCategory == cat,
                         onClick = { selectedCategory = if (selectedCategory == cat) null else cat }
@@ -266,13 +268,13 @@ fun ExercisePickerSheet(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    exercise.name,
+                                    theme.exerciseDisplayName(exercise.name, exercise.nameEn),
                                     color = theme.text0,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    exercise.targetMuscle,
+                                    theme.fitnessTermDisplayName(exercise.targetMuscle),
                                     color = accent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,

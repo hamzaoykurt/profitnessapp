@@ -69,6 +69,7 @@ import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text1
 import com.avonix.profitness.core.theme.text2
@@ -123,7 +124,7 @@ fun ChallengesTab(
                     .padding(3.dp)
             ) {
                 ScopeChip(
-                    label    = "KEŞFET",
+                    label    = theme.t("KEŞFET", "DISCOVER"),
                     icon     = Icons.Rounded.Public,
                     isActive = state.scope == ChallengesScope.Browse,
                     accent   = accent,
@@ -132,7 +133,7 @@ fun ChallengesTab(
                 )
                 Spacer(Modifier.width(3.dp))
                 ScopeChip(
-                    label    = "KATILDIKLARIM (${state.myList.size})",
+                    label    = theme.t("KATILDIKLARIM (${state.myList.size})", "JOINED (${state.myList.size})"),
                     icon     = Icons.Rounded.EmojiEvents,
                     isActive = state.scope == ChallengesScope.Mine,
                     accent   = accent,
@@ -216,8 +217,14 @@ fun ChallengesTab(
                         if (list.isEmpty()) {
                             EmptyBlock(
                                 text = if (state.scope == ChallengesScope.Browse)
-                                    "Bu filtrelere uygun aktif challenge yok."
-                                else "Bu filtrelere uygun katıldığın challenge yok.",
+                                    theme.t(
+                                        "Bu filtrelere uygun aktif challenge yok.",
+                                        "No active challenges match these filters."
+                                    )
+                                else theme.t(
+                                    "Bu filtrelere uygun katıldığın challenge yok.",
+                                    "No joined challenges match these filters."
+                                ),
                                 theme = theme
                             )
                         } else {
@@ -265,7 +272,7 @@ fun ChallengesTab(
                 .clickable { vm.openCreate() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Add, "Yeni challenge", tint = Color.Black, modifier = Modifier.size(26.dp))
+            Icon(Icons.Rounded.Add, theme.t("Yeni challenge", "New challenge"), tint = Color.Black, modifier = Modifier.size(26.dp))
         }
 
         // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
@@ -356,8 +363,8 @@ private fun InviteFriendsDialog(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("ARKADAŞLARINI DAVET ET", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-                        Text(title.ifBlank { "Yeni challenge" }, color = theme.text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(theme.t("ARKADAŞLARINI DAVET ET", "INVITE FRIENDS"), color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                        Text(title.ifBlank { theme.t("Yeni challenge", "New challenge") }, color = theme.text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Icon(
                         Icons.Rounded.Close,
@@ -382,7 +389,10 @@ private fun InviteFriendsDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "Davet göndermek için karşılıklı takip ettiğin arkadaşların olmalı.",
+                            theme.t(
+                                "Davet göndermek için karşılıklı takip ettiğin arkadaşların olmalı.",
+                                "You need mutual friends to send invites."
+                            ),
                             color = theme.text2,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
@@ -423,7 +433,7 @@ private fun InviteFriendsDialog(
                             .clickable(enabled = !inFlight) { onSkip() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("GEÇ", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(theme.t("GEÇ", "SKIP"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                     Box(
                         modifier = Modifier
@@ -441,7 +451,11 @@ private fun InviteFriendsDialog(
                                 Icon(Icons.Rounded.Send, null, tint = Color.Black, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    if (selected.isEmpty()) "DAVET GÖNDER" else "${selected.size} DAVET GÖNDER",
+                                    if (selected.isEmpty()) {
+                                        theme.t("DAVET GÖNDER", "SEND INVITE")
+                                    } else {
+                                        theme.t("${selected.size} DAVET GÖNDER", "SEND ${selected.size} INVITES")
+                                    },
                                     color = Color.Black,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
@@ -500,19 +514,25 @@ private fun InviteFriendRow(
     }
 }
 
-private enum class ChallengeKindFilter(val label: String) {
-    All("TÜMÜ"),
-    Metric("METRİK"),
-    Event("ETKİNLİK"),
-    Movement("HAREKET")
+private enum class ChallengeKindFilter(val trLabel: String, val enLabel: String) {
+    All("TÜMÜ", "ALL"),
+    Metric("METRİK", "METRIC"),
+    Event("ETKİNLİK", "EVENT"),
+    Movement("HAREKET", "MOVEMENT")
 }
 
-private enum class MyChallengeStatusFilter(val label: String) {
-    All("TÜMÜ"),
-    Active("DEVAM"),
-    Completed("TAMAM"),
-    Ended("BİTEN")
+private enum class MyChallengeStatusFilter(val trLabel: String, val enLabel: String) {
+    All("TÜMÜ", "ALL"),
+    Active("DEVAM", "ACTIVE"),
+    Completed("TAMAM", "DONE"),
+    Ended("BİTEN", "ENDED")
 }
+
+private fun ChallengeKindFilter.label(theme: com.avonix.profitness.core.theme.AppThemeState): String =
+    theme.t(trLabel, enLabel)
+
+private fun MyChallengeStatusFilter.label(theme: com.avonix.profitness.core.theme.AppThemeState): String =
+    theme.t(trLabel, enLabel)
 
 @Composable
 private fun ChallengeInvitesSection(
@@ -540,7 +560,7 @@ private fun ChallengeInvitesSection(
                 Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "DAVETLER",
+                    theme.t("DAVETLER", "INVITES"),
                     color = accent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -549,7 +569,7 @@ private fun ChallengeInvitesSection(
             }
             Spacer(Modifier.width(10.dp))
             Text(
-                "${invites.size} bekleyen challenge",
+                theme.t("${invites.size} bekleyen challenge", "${invites.size} pending challenges"),
                 color = theme.text2,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
@@ -622,7 +642,10 @@ private fun ChallengeInviteRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "${challenge.creatorName} davet etti · ${challenge.targetValue} ${challenge.targetType.unit}",
+                theme.t(
+                    "${challenge.creatorName} davet etti · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}",
+                    "${challenge.creatorName} invited you · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}"
+                ),
                 color = theme.text2,
                 fontSize = 11.sp,
                 maxLines = 1,
@@ -643,7 +666,7 @@ private fun ChallengeInviteRow(
                 CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
             } else {
                 Text(
-                    "KATIL",
+                    theme.t("KATIL", "JOIN"),
                     color = Color.Black,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
@@ -672,17 +695,17 @@ private fun ChallengeFilterBar(
     var showKindPicker by remember { mutableStateOf(false) }
     var showSportPicker by remember { mutableStateOf(false) }
     var showTargetPicker by remember { mutableStateOf(false) }
-    val selectedKindLabel = kindFilter.label
+    val selectedKindLabel = kindFilter.label(theme)
     val selectedSportLabel = SportType.challengeChoices
         .firstOrNull { it.raw == sportFilterRaw }
-        ?.label
+        ?.displayLabel(theme)
         ?.uppercase()
-        ?: "TÜMÜ"
+        ?: theme.t("TÜMÜ", "ALL")
     val selectedTargetLabel = ChallengeTargetType.entries
         .firstOrNull { it.raw == targetFilterRaw }
-        ?.label
+        ?.displayLabel(theme)
         ?.uppercase()
-        ?: "TÜMÜ"
+        ?: theme.t("TÜMÜ", "ALL")
     val hasSecondaryFilter = kindFilter != ChallengeKindFilter.All || sportFilterRaw != null || targetFilterRaw != null
 
     Column(
@@ -696,7 +719,7 @@ private fun ChallengeFilterBar(
         ) {
             item {
                 FilterChip(
-                    label = "TÜR: $selectedKindLabel",
+                    label = theme.t("TÜR: $selectedKindLabel", "TYPE: $selectedKindLabel"),
                     active = kindFilter != ChallengeKindFilter.All,
                     accent = accent,
                     onClick = { showKindPicker = true }
@@ -704,7 +727,7 @@ private fun ChallengeFilterBar(
             }
             item {
                 FilterChip(
-                    label = "AKTİVİTE: $selectedSportLabel",
+                    label = theme.t("AKTİVİTE: $selectedSportLabel", "ACTIVITY: $selectedSportLabel"),
                     active = sportFilterRaw != null,
                     accent = accent,
                     onClick = { showSportPicker = true }
@@ -712,7 +735,7 @@ private fun ChallengeFilterBar(
             }
             item {
                 FilterChip(
-                    label = "METRİK: $selectedTargetLabel",
+                    label = theme.t("METRİK: $selectedTargetLabel", "METRIC: $selectedTargetLabel"),
                     active = targetFilterRaw != null,
                     accent = accent,
                     onClick = { showTargetPicker = true }
@@ -721,7 +744,10 @@ private fun ChallengeFilterBar(
             if (scope == ChallengesScope.Mine) {
                 item {
                     FilterChip(
-                        label = "DURUM: ${mineStatusFilter.label}",
+                        label = theme.t(
+                            "DURUM: ${mineStatusFilter.label(theme)}",
+                            "STATUS: ${mineStatusFilter.label(theme)}"
+                        ),
                         active = mineStatusFilter != MyChallengeStatusFilter.All,
                         accent = accent,
                         onClick = {
@@ -739,7 +765,7 @@ private fun ChallengeFilterBar(
             if (hasSecondaryFilter) {
                 item {
                     FilterChip(
-                        label = "SIFIRLA",
+                        label = theme.t("SIFIRLA", "RESET"),
                         active = false,
                         accent = accent,
                         onClick = {
@@ -763,8 +789,8 @@ private fun ChallengeFilterBar(
 
     if (showKindPicker) {
         FilterPickerDialog(
-            title = "TÜR",
-            options = ChallengeKindFilter.entries.map { it.name to it.label },
+            title = theme.t("TÜR", "TYPE"),
+            options = ChallengeKindFilter.entries.map { it.name to it.label(theme) },
             selectedRaw = kindFilter.name,
             accent = accent,
             onDismiss = { showKindPicker = false },
@@ -777,8 +803,8 @@ private fun ChallengeFilterBar(
 
     if (showSportPicker) {
         FilterPickerDialog(
-            title = "AKTİVİTE",
-            options = listOf(null to "TÜMÜ") + SportType.challengeChoices.map { it.raw to it.label.uppercase() },
+            title = theme.t("AKTİVİTE", "ACTIVITY"),
+            options = listOf(null to theme.t("TÜMÜ", "ALL")) + SportType.challengeChoices.map { it.raw to it.displayLabel(theme).uppercase() },
             selectedRaw = sportFilterRaw,
             accent = accent,
             onDismiss = { showSportPicker = false },
@@ -791,8 +817,8 @@ private fun ChallengeFilterBar(
 
     if (showTargetPicker) {
         FilterPickerDialog(
-            title = "METRİK",
-            options = listOf(null to "TÜMÜ") + ChallengeTargetType.entries.map { it.raw to it.label.uppercase() },
+            title = theme.t("METRİK", "METRIC"),
+            options = listOf(null to theme.t("TÜMÜ", "ALL")) + ChallengeTargetType.entries.map { it.raw to it.displayLabel(theme).uppercase() },
             selectedRaw = targetFilterRaw,
             accent = accent,
             onDismiss = { showTargetPicker = false },
@@ -1173,7 +1199,7 @@ private fun ChallengeCard(
                         )
                         Spacer(Modifier.width(5.dp))
                         Text(
-                            c.targetType.unit,
+                            c.targetType.displayUnit(theme),
                             color = cardAccent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black,
@@ -1183,14 +1209,14 @@ private fun ChallengeCard(
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "HEDEF",
+                            theme.t("HEDEF", "TARGET"),
                             color = theme.text2,
                             fontSize = 9.5.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp
                         )
                         Text(
-                            c.targetType.label,
+                            c.targetType.displayLabel(theme),
                             color = theme.text1,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -1254,7 +1280,7 @@ private fun ChallengeCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
+                            "${c.myProgress} / ${c.targetValue} ${c.targetType.displayUnit(theme)}",
                             color    = theme.text1,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -1416,11 +1442,11 @@ private fun JoinPill(
                 else     -> Icons.Rounded.Bolt
             }
             val label = when {
-                isFull    -> "DOLU"
-                !canAct  -> "KAPALI"
-                isJoined -> "KATILDIN"
-                isInvited -> "DAVET"
-                else     -> "KATIL"
+                isFull    -> theme.t("DOLU", "FULL")
+                !canAct  -> theme.t("KAPALI", "CLOSED")
+                isJoined -> theme.t("KATILDIN", "JOINED")
+                isInvited -> theme.t("DAVET", "INVITE")
+                else     -> theme.t("KATIL", "JOIN")
             }
             val fg = when {
                 !canAct  -> theme.text2
@@ -1470,9 +1496,9 @@ private fun KindBadge(
     theme: com.avonix.profitness.core.theme.AppThemeState
 ) {
     val (icon, label, tint) = if (isEvent)
-        Triple(Icons.Rounded.Event, "ETKİNLİK", accent)
+        Triple(Icons.Rounded.Event, theme.t("ETKİNLİK", "EVENT"), accent)
     else
-        Triple(Icons.Rounded.EmojiEvents, "METRİK", theme.text1)
+        Triple(Icons.Rounded.EmojiEvents, theme.t("METRİK", "METRIC"), theme.text1)
 
     Row(
         modifier = Modifier
@@ -1514,7 +1540,7 @@ private fun InviteBadge(
         Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(12.dp))
         Spacer(Modifier.width(5.dp))
         Text(
-            "DAVET",
+            theme.t("DAVET", "INVITE"),
             color = theme.text0,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
@@ -1529,9 +1555,9 @@ private fun EventModeBadge(
     theme: com.avonix.profitness.core.theme.AppThemeState
 ) {
     val (icon, label) = when (mode) {
-        EventMode.Physical     -> Icons.Rounded.LocationOn to "FİZİKSEL"
+        EventMode.Physical     -> Icons.Rounded.LocationOn to theme.t("FİZİKSEL", "PHYSICAL")
         EventMode.Online       -> Icons.Rounded.Link to "ONLINE"
-        EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to "HAREKET"
+        EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to theme.t("HAREKET", "MOVEMENT")
     }
     Row(
         modifier = Modifier

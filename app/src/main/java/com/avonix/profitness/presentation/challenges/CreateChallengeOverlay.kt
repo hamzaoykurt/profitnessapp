@@ -74,7 +74,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.avonix.profitness.BuildConfig
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.PageAccentBloom
+import com.avonix.profitness.core.theme.exerciseDisplayName
 import com.avonix.profitness.core.theme.strings
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
@@ -246,9 +248,9 @@ fun CreateChallengeOverlay(
             val headerIcon = if (isMetric) Icons.Rounded.EmojiEvents else Icons.Rounded.CalendarMonth
             val headerTitle = if (isMetric) strings.newChallengeTitle else strings.newEventTitle
             val headerSubtitle = if (isMetric)
-                "Hedefini koy, takip et, başar"
+                theme.t("Hedefini koy, takip et, başar", "Set a goal, track it, finish strong")
             else
-                "Etkinlik planla, dostlarını davet et"
+                theme.t("Etkinlik planla, dostlarını davet et", "Plan an event and invite friends")
 
             Box(
                 modifier = Modifier
@@ -370,7 +372,7 @@ fun CreateChallengeOverlay(
             TextInputBox(
                 value = description,
                 onValueChange = { description = it },
-                placeholder = "Kısa açıklama (opsiyonel)",
+                placeholder = theme.t("Kısa açıklama (opsiyonel)", "Short description (optional)"),
                 imeAction = ImeAction.Default,
                 minLines = 2
             )
@@ -475,17 +477,20 @@ fun CreateChallengeOverlay(
             }
 
             if (visibility == ChallengeVisibility.Private) {
-                FieldLabel("ŞİFRE (arkadaşlarına paylaş)")
+                FieldLabel(theme.t("ŞİFRE (arkadaşlarına paylaş)", "PASSWORD (share with friends)"))
                 TextInputBox(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = "Opsiyonel — boş bırakılırsa herkes girebilir",
+                    placeholder = theme.t(
+                        "Opsiyonel - boş bırakılırsa herkes girebilir",
+                        "Optional - leave empty to let anyone join"
+                    ),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardType = KeyboardType.Password
                 )
             }
 
-            FieldLabel("KATILIM SINIRI")
+            FieldLabel(theme.t("KATILIM SINIRI", "PARTICIPANT LIMIT"))
             ParticipantLimitSection(
                 enabled = participantLimitEnabled,
                 onEnabled = { participantLimitEnabled = it },
@@ -601,10 +606,10 @@ fun CreateChallengeOverlay(
                         eventDateIso = d.toString()
                     }
                     showDatePicker = false
-                }) { Text("Tamam") }
+                }) { Text(theme.t("Tamam", "OK")) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("İptal") }
+                TextButton(onClick = { showDatePicker = false }) { Text(theme.t("İptal", "Cancel")) }
             }
         ) {
             DatePicker(state = state)
@@ -632,12 +637,12 @@ fun CreateChallengeOverlay(
                 TimePicker(state = state)
                 Spacer(Modifier.height(12.dp))
                 Row {
-                    TextButton(onClick = { showTimePicker = false }) { Text("İptal") }
+                    TextButton(onClick = { showTimePicker = false }) { Text(theme.t("İptal", "Cancel")) }
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = {
                         eventTimeIso = "%02d:%02d:00".format(state.hour, state.minute)
                         showTimePicker = false
-                    }) { Text("Tamam") }
+                    }) { Text(theme.t("Tamam", "OK")) }
                 }
             }
         }
@@ -680,7 +685,7 @@ private fun MetricForm(
     fmt: DateTimeFormatter
 ) {
     val theme = LocalAppTheme.current
-    FieldLabel("HEDEF TİPİ")
+    FieldLabel(theme.t("HEDEF TİPİ", "TARGET TYPE"))
     Column(Modifier.padding(horizontal = 16.dp)) {
         ChallengeTargetType.selectableForMetric.forEach { t ->
             TargetTypeOption(
@@ -699,16 +704,16 @@ private fun MetricForm(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            FieldLabel("HEDEF (${targetType.unit})", padded = false)
+            FieldLabel(theme.t("HEDEF", "TARGET") + " (${targetType.displayUnit(theme)})", padded = false)
             NumberInputInline(value = targetValue, onValueChange = onTargetValue)
         }
         Column(Modifier.weight(1f)) {
-            FieldLabel("SÜRE (gün)", padded = false)
+            FieldLabel(theme.t("SÜRE (gün)", "DURATION (days)"), padded = false)
             NumberInputInline(value = days, onValueChange = onDays)
         }
     }
     Text(
-        "Bitiş: ${endDate.format(fmt)}",
+        theme.t("Bitiş: ${endDate.format(fmt)}", "Ends: ${endDate.format(fmt)}"),
         color = theme.text2,
         fontSize = 11.sp,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
@@ -753,7 +758,7 @@ private fun EventForm(
 ) {
     val theme = LocalAppTheme.current
     val strings = theme.strings
-    val exerciseNameById = remember(exercises) { exercises.associate { it.id to it.name } }
+    val exerciseById = remember(exercises) { exercises.associateBy { it.id } }
 
     // ── Mode selector ────────────────────────────────────────────────────
     FieldLabel(strings.challengeKindEvent)
@@ -795,7 +800,7 @@ private fun EventForm(
     }
 
     if (mode != EventMode.MovementList) {
-        FieldLabel("SPOR TÜRÜ")
+        FieldLabel(theme.t("SPOR TÜRÜ", "SPORT TYPE"))
         LazySportTypeRow(
             selected = sportType,
             accent = accent,
@@ -809,7 +814,7 @@ private fun EventForm(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            FieldLabel("TARİH", padded = false)
+            FieldLabel(theme.t("TARİH", "DATE"), padded = false)
             PickerField(
                 text = dateIso,
                 icon = Icons.Rounded.CalendarMonth,
@@ -818,7 +823,7 @@ private fun EventForm(
             )
         }
         Column(Modifier.weight(1f)) {
-            FieldLabel("SAAT (ops)", padded = false)
+            FieldLabel(theme.t("SAAT (ops)", "TIME (opt)"), padded = false)
             PickerField(
                 text = timeIso ?: "—",
                 icon = Icons.Rounded.Schedule,
@@ -838,26 +843,29 @@ private fun EventForm(
     // ── Mode-specific fields ─────────────────────────────────────────────
     when (mode) {
         EventMode.Physical -> {
-            FieldLabel("BAŞLANGIÇ KONUMU")
+            FieldLabel(theme.t("BAŞLANGIÇ KONUMU", "START LOCATION"))
             PlaceSearchField(
                 value = location,
                 onValueChange = onLocation,
-                placeholder = "ör. Maçka Parkı, İstanbul",
+                placeholder = theme.t("ör. Maçka Parkı, İstanbul", "e.g. Central Park, New York"),
                 isResolved = locationResolved,
                 required = true,
                 onPlaceSelected = onLocationSelected
             )
-            FieldLabel("BİTİŞ KONUMU (opsiyonel)")
+            FieldLabel(theme.t("BİTİŞ KONUMU (opsiyonel)", "END LOCATION (optional)"))
             PlaceSearchField(
                 value = endLocation,
                 onValueChange = onEndLocation,
-                placeholder = "ör. Caddebostan Sahil, İstanbul",
+                placeholder = theme.t("ör. Caddebostan Sahil, İstanbul", "e.g. Brooklyn Bridge, New York"),
                 isResolved = endLocationResolved,
                 required = false,
                 onPlaceSelected = onEndLocationSelected
             )
             Text(
-                "Konumu listeden seç; aynı isimli yerlerde il/ilçe bilgisiyle doğru adayı kaydederiz.",
+                theme.t(
+                    "Konumu listeden seç; aynı isimli yerlerde il/ilçe bilgisiyle doğru adayı kaydederiz.",
+                    "Pick a location from the list so similarly named places are saved correctly."
+                ),
                 color = LocalAppTheme.current.text2,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
@@ -874,7 +882,7 @@ private fun EventForm(
             )
         }
         EventMode.Online -> {
-            FieldLabel("ONLINE LİNK")
+            FieldLabel(theme.t("ONLINE LİNK", "ONLINE LINK"))
             TextInputBox(
                 value = onlineUrl,
                 onValueChange = onOnlineUrl,
@@ -894,7 +902,7 @@ private fun EventForm(
             )
         }
         EventMode.MovementList -> {
-            FieldLabel("HAREKETLER (${movements.size})")
+            FieldLabel(theme.t("HAREKETLER", "MOVEMENTS") + " (${movements.size})")
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -905,7 +913,7 @@ private fun EventForm(
             ) {
                 if (movements.isEmpty()) {
                     Text(
-                        "Henüz hareket seçilmedi",
+                        theme.t("Henüz hareket seçilmedi", "No movements selected yet"),
                         color = theme.text2,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(14.dp)
@@ -924,13 +932,14 @@ private fun EventForm(
                                 modifier = Modifier.width(22.dp)
                             )
                             Text(
-                                exerciseNameById[mv.exerciseId] ?: mv.exerciseId.take(8) + "…",
+                                exerciseById[mv.exerciseId]?.let { theme.exerciseDisplayName(it.name, it.nameEn) }
+                                    ?: mv.exerciseId.take(8) + "...",
                                 color = theme.text0,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
-                            val suffix = movementSpecLabel(mv)
+                            val suffix = movementSpecLabel(mv, theme)
                             if (suffix.isNotEmpty()) {
                                 Text(suffix, color = theme.text2, fontSize = 11.sp)
                             }
@@ -958,7 +967,8 @@ private fun EventForm(
                     Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (movements.isEmpty()) "HAREKET SEÇ" else "HAREKETLERİ DÜZENLE",
+                        if (movements.isEmpty()) theme.t("HAREKET SEÇ", "SELECT MOVEMENTS")
+                        else theme.t("HAREKETLERİ DÜZENLE", "EDIT MOVEMENTS"),
                         color = accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
@@ -967,7 +977,10 @@ private fun EventForm(
                 }
             }
             Text(
-                "Hedef otomatik: ${movements.size} hareket",
+                theme.t(
+                    "Hedef otomatik: ${movements.size} hareket",
+                    "Automatic target: ${movements.size} movements"
+                ),
                 color = theme.text2,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
@@ -999,7 +1012,7 @@ private fun LazySportTypeRow(
                     .padding(horizontal = 14.dp, vertical = 9.dp)
             ) {
                 Text(
-                    sport.label.uppercase(),
+                    sport.displayLabel(theme).uppercase(),
                     color = if (active) Color.Black else theme.text1,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -1044,14 +1057,17 @@ private fun OptionalMetricTargetSection(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                "MESAFE / SÜRE HEDEFİ",
+                theme.t("MESAFE / SÜRE HEDEFİ", "DISTANCE / DURATION TARGET"),
                 color = theme.text0,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
             Text(
-                "Katılımcılar hedefi tamamladığında challenge biter",
+                theme.t(
+                    "Katılımcılar hedefi tamamladığında challenge biter",
+                    "The challenge ends when participants complete the target"
+                ),
                 color = theme.text2,
                 fontSize = 10.sp
             )
@@ -1059,7 +1075,7 @@ private fun OptionalMetricTargetSection(
     }
 
     if (enabled) {
-        FieldLabel("HEDEF TİPİ")
+        FieldLabel(theme.t("HEDEF TİPİ", "TARGET TYPE"))
         Column(Modifier.padding(horizontal = 16.dp)) {
             targetOptions.forEach { t ->
                 TargetTypeOption(
@@ -1074,7 +1090,7 @@ private fun OptionalMetricTargetSection(
         Spacer(Modifier.height(10.dp))
 
         Column(Modifier.padding(horizontal = 16.dp)) {
-            FieldLabel("HEDEF (${targetType.unit})", padded = false)
+            FieldLabel(theme.t("HEDEF", "TARGET") + " (${targetType.displayUnit(theme)})", padded = false)
             NumberInputInline(value = targetValue, onValueChange = onTargetValue)
         }
     }
@@ -1117,14 +1133,14 @@ private fun ParticipantLimitSection(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "KİŞİ SAYISINI SINIRLA",
+                    theme.t("KİŞİ SAYISINI SINIRLA", "LIMIT PARTICIPANTS"),
                     color = theme.text0,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    "Limit dolunca yeni katılım kapanır",
+                    theme.t("Limit dolunca yeni katılım kapanır", "Joining closes when the limit is reached"),
                     color = theme.text2,
                     fontSize = 10.sp
                 )
@@ -1132,7 +1148,7 @@ private fun ParticipantLimitSection(
         }
         if (enabled) {
             Spacer(Modifier.height(12.dp))
-            FieldLabel("MAKSİMUM KATILIMCI", padded = false)
+            FieldLabel(theme.t("MAKSİMUM KATILIMCI", "MAX PARTICIPANTS"), padded = false)
             NumberInputInline(value = value, onValueChange = onValue)
         }
     }
@@ -1186,7 +1202,10 @@ private fun PlaceSearchField(
         loading = false
         if (hasResolvedValue || query.length < 3) return@LaunchedEffect
         if (placesClient == null) {
-            message = "Google Places API key eksik; local.properties içine MAPS_API_KEY ekle."
+            message = theme.t(
+                "Google Places API key eksik; local.properties içine MAPS_API_KEY ekle.",
+                "Google Places API key is missing; add MAPS_API_KEY to local.properties."
+            )
             return@LaunchedEffect
         }
 
@@ -1198,7 +1217,10 @@ private fun PlaceSearchField(
             is PlaceSearchResult.Success -> {
                 candidates = result.candidates
                 message = when {
-                    result.candidates.isEmpty() -> "Sonuç bulunamadı; il/ilçe ekleyerek tekrar dene."
+                    result.candidates.isEmpty() -> theme.t(
+                        "Sonuç bulunamadı; il/ilçe ekleyerek tekrar dene.",
+                        "No results found; try adding city or district."
+                    )
                     else -> null
                 }
             }
@@ -1264,14 +1286,17 @@ private fun PlaceSearchField(
 
         if (hasResolvedValue) {
             Text(
-                "Seçili konum kaydedilecek.",
+                theme.t("Seçili konum kaydedilecek.", "Selected location will be saved."),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 5.dp)
             )
         } else if (value.isNotBlank() && required) {
             Text(
-                "Devam etmek için aşağıdaki sonuçlardan bir konum seç.",
+                theme.t(
+                    "Devam etmek için aşağıdaki sonuçlardan bir konum seç.",
+                    "Select a location from the results below to continue."
+                ),
                 color = theme.text2,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 5.dp)
@@ -1301,7 +1326,10 @@ private fun PlaceSearchField(
                                     if (resolved?.lat != null && resolved.lng != null) {
                                         onPlaceSelected(resolved)
                                     } else {
-                                        message = "Konum koordinatı alınamadı; başka bir sonuç seç."
+                                        message = theme.t(
+                                            "Konum koordinatı alınamadı; başka bir sonuç seç.",
+                                            "Location coordinates could not be loaded; choose another result."
+                                        )
                                     }
                                 }
                             }
@@ -1723,7 +1751,7 @@ private fun TargetTypeOption(
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            type.label,
+            type.displayLabel(theme),
             color = if (isActive) theme.text0 else theme.text1,
             fontSize = 13.5.sp,
             fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
@@ -1739,7 +1767,7 @@ private fun TargetTypeOption(
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
-                type.unit,
+                type.displayUnit(theme),
                 color = if (isActive) accent else theme.text2,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
@@ -1749,13 +1777,13 @@ private fun TargetTypeOption(
     }
 }
 
-private fun movementSpecLabel(movement: MovementInput): String = buildString {
+private fun movementSpecLabel(movement: MovementInput, theme: com.avonix.profitness.core.theme.AppThemeState): String = buildString {
     val hasStrength = movement.suggestedSets != null || movement.suggestedReps != null
     if (hasStrength) {
         movement.suggestedSets?.let { append("${it} set") }
         movement.suggestedReps?.let {
             if (isNotEmpty()) append(" · ")
-            append("${it} tekrar")
+            append("${it} ${theme.t("tekrar", "reps")}")
         }
         return@buildString
     }

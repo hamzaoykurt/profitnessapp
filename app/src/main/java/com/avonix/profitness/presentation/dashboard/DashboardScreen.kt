@@ -75,12 +75,19 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 
 @Immutable
-sealed class DashboardTab(val route: String, val icon: ImageVector, val label: String) {
-    object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "FORGE")
-    object Program  : DashboardTab("program",  Icons.Rounded.CalendarMonth, "PLAN")
-    object AICoach  : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "ORACLE")
-    object Discover : DashboardTab("discover", Icons.Rounded.Explore,       "KEŞFET")
-    object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "USER")
+sealed class DashboardTab(
+    val route: String,
+    val icon: ImageVector,
+    private val trLabel: String,
+    private val enLabel: String
+) {
+    object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "Programım", "My Plan")
+    object Program  : DashboardTab("program",  Icons.Rounded.CalendarMonth, "Program", "Plan")
+    object AICoach  : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "AI Koç", "AI Coach")
+    object Discover : DashboardTab("discover", Icons.Rounded.Explore,       "Keşfet", "Discover")
+    object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "Profil", "Profile")
+
+    fun label(theme: AppThemeState): String = theme.t(trLabel, enLabel)
 }
 
 private val NavIndicatorEaseOut = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -574,6 +581,7 @@ private fun AppNavRail(
             tabs.forEach { tab ->
                 val isSelected = tab == selectedTab
                 val itemShape = RoundedCornerShape(24.dp)
+                val tabLabel = tab.label(theme)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -608,12 +616,12 @@ private fun AppNavRail(
                 ) {
                     Icon(
                         imageVector        = tab.icon,
-                        contentDescription = tab.label,
+                        contentDescription = tabLabel,
                         tint               = if (isSelected) accent else theme.text2.copy(0.45f),
                         modifier           = Modifier.size(23.dp)
                     )
                     Text(
-                        text          = tab.label.take(4),
+                        text          = tabLabel.take(4),
                         color         = if (isSelected) accent else theme.text2.copy(0.55f),
                         fontSize      = 8.sp,
                         fontWeight    = FontWeight.Bold,
@@ -829,6 +837,7 @@ private fun NavCapsuleItem(
         label         = "item_glow"
     )
     val itemShape = RoundedCornerShape(32.dp)
+    val tabLabel = tab.label(theme)
 
     Row(
         modifier = modifier
@@ -889,7 +898,7 @@ private fun NavCapsuleItem(
     ) {
         Icon(
             imageVector        = tab.icon,
-            contentDescription = tab.label,
+            contentDescription = tabLabel,
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
             modifier           = Modifier.size(24.dp)
         )
@@ -905,7 +914,7 @@ private fun NavCapsuleItem(
             ) + fadeOut(tween(90))
         ) {
             Text(
-                text          = tab.label,
+                text          = tabLabel,
                 color         = accent,
                 fontSize      = 12.sp,
                 fontWeight    = FontWeight.Bold,

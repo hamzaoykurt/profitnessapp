@@ -82,7 +82,9 @@ import coil.compose.AsyncImage
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.PageAccentBloom
 import com.avonix.profitness.core.theme.CardCoral
+import com.avonix.profitness.core.theme.exerciseDisplayName
 import com.avonix.profitness.core.theme.strings
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.bg0
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
@@ -239,11 +241,11 @@ fun ChallengeDetailOverlay(
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            val unit = c.targetType.unit
+                            val unit = c.targetType.displayUnit(theme)
                             val participantText = c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}"
-                            StatChip("Hedef", "${c.targetValue} $unit", Icons.Rounded.Flag, accent, Modifier.weight(1f))
-                            StatChip("İlerleme", "${c.myProgress} $unit", Icons.Rounded.EmojiEvents, accent, Modifier.weight(1f))
-                            StatChip("Katılımcı", participantText, Icons.Rounded.People, accent, Modifier.weight(1f))
+                            StatChip(theme.t("Hedef", "Target"), "${c.targetValue} $unit", Icons.Rounded.Flag, accent, Modifier.weight(1f))
+                            StatChip(theme.t("İlerleme", "Progress"), "${c.myProgress} $unit", Icons.Rounded.EmojiEvents, accent, Modifier.weight(1f))
+                            StatChip(theme.t("Katılımcı", "Participants"), participantText, Icons.Rounded.People, accent, Modifier.weight(1f))
                         }
                     }
 
@@ -268,7 +270,7 @@ fun ChallengeDetailOverlay(
                             if (c.visibility == ChallengeVisibility.Private) {
                                 Icon(Icons.Rounded.Lock, null, tint = theme.text2, modifier = Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Özel", color = theme.text2, fontSize = 11.sp)
+                                Text(theme.t("Özel", "Private"), color = theme.text2, fontSize = 11.sp)
                                 Spacer(Modifier.width(10.dp))
                             }
                             Text(
@@ -351,7 +353,7 @@ fun ChallengeDetailOverlay(
                                         Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(
-                                            "İLERLEME EKLE",
+                                            theme.t("İLERLEME EKLE", "ADD PROGRESS"),
                                             color = accent,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Black,
@@ -380,7 +382,7 @@ fun ChallengeDetailOverlay(
                     ) {
                         item {
                             Text(
-                                "HAREKETLER",
+                                theme.t("HAREKETLER", "MOVEMENTS"),
                                 color = theme.text0,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Black,
@@ -409,7 +411,7 @@ fun ChallengeDetailOverlay(
                     // ── Participants header ─────────────────────────
                     item {
                         Text(
-                            "KATILIMCILAR",
+                            theme.t("KATILIMCILAR", "PARTICIPANTS"),
                             color      = theme.text0,
                             fontSize   = 12.sp,
                             fontWeight = FontWeight.Black,
@@ -425,7 +427,7 @@ fun ChallengeDetailOverlay(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "Henüz katılımcı yok",
+                                    theme.t("Henüz katılımcı yok", "No participants yet"),
                                     color    = theme.text2,
                                     fontSize = 12.sp
                                 )
@@ -436,7 +438,7 @@ fun ChallengeDetailOverlay(
                             participantRows,
                             key = { _, e -> "lb_${e.userId}" }
                         ) { index, entry ->
-                            LeaderboardEntryRow(rank = index + 1, entry = entry, unit = c.targetType.unit)
+                            LeaderboardEntryRow(rank = index + 1, entry = entry, unit = c.targetType.displayUnit(theme))
                         }
                     }
                 }
@@ -462,8 +464,8 @@ fun ChallengeDetailOverlay(
             if (c != null) {
                 AddProgressDialog(
                     accent = accent,
-                    unit = c.targetType.unit,
-                    targetLabel = c.targetType.label,
+                    unit = c.targetType.displayUnit(theme),
+                    targetLabel = c.targetType.displayLabel(theme),
                     onCancel = { showProgressDialog = false },
                     onSubmit = { amount ->
                         showProgressDialog = false
@@ -682,9 +684,9 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         // ── Mode header pill ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             val (icon, label) = when (ev.mode) {
-                EventMode.Physical     -> Icons.Rounded.LocationOn to "FİZİKSEL"
-                EventMode.Online       -> Icons.Rounded.Link to "ONLINE"
-                EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to "HAREKET LİSTESİ"
+                EventMode.Physical -> Icons.Rounded.LocationOn to ev.mode.displayLabel(theme)
+                EventMode.Online -> Icons.Rounded.Link to ev.mode.displayLabel(theme)
+                EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to ev.mode.displayLabel(theme)
             }
             Box(
                 modifier = Modifier
@@ -720,7 +722,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         ) {
             EventMetaChip(
                 icon  = Icons.Rounded.CalendarMonth,
-                label = "TARİH",
+                label = theme.t("TARİH", "DATE"),
                 value = ev.dateIso,
                 accent = accent,
                 modifier = Modifier.weight(1f)
@@ -728,7 +730,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
             if (!ev.timeIso.isNullOrBlank()) {
                 EventMetaChip(
                     icon  = Icons.Rounded.Schedule,
-                    label = "SAAT",
+                    label = theme.t("SAAT", "TIME"),
                     value = ev.timeIso.take(5),
                     accent = accent,
                     modifier = Modifier.weight(1f)
@@ -756,10 +758,10 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                     Spacer(Modifier.height(10.dp))
                     LocationRow(
                         icon = Icons.Rounded.LocationOn,
-                        title = "BAŞLANGIÇ",
+                        title = theme.t("BAŞLANGIÇ", "START"),
                         value = ev.location,
                         accent = accent,
-                        actionLabel = if (startQuery != null) "HARİTA" else null,
+                        actionLabel = if (startQuery != null) theme.t("HARİTA", "MAP") else null,
                         onAction = {
                             startQuery?.let { openMapSearch(ctx, it) }
                         }
@@ -770,10 +772,10 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                     Spacer(Modifier.height(8.dp))
                     LocationRow(
                         icon = Icons.Rounded.Flag,
-                        title = "BİTİŞ",
+                        title = theme.t("BİTİŞ", "FINISH"),
                         value = ev.endLocation ?: endQuery.orEmpty(),
                         accent = accent,
-                        actionLabel = if (endQuery != null) "HARİTA" else null,
+                        actionLabel = if (endQuery != null) theme.t("HARİTA", "MAP") else null,
                         onAction = {
                             endQuery?.let { openMapSearch(ctx, it) }
                         }
@@ -783,7 +785,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                 if (startQuery != null) {
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "ROTAYI AÇ",
+                        theme.t("ROTAYI AÇ", "OPEN ROUTE"),
                         color = theme.text2,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
@@ -795,7 +797,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         TravelModeChip(
-                            label = "BİSİKLET",
+                            label = theme.t("BİSİKLET", "CYCLING"),
                             icon = Icons.Rounded.DirectionsBike,
                             accent = accent,
                             modifier = Modifier.weight(1f),
@@ -804,7 +806,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             }
                         )
                         TravelModeChip(
-                            label = "KOŞU",
+                            label = theme.t("KOŞU", "RUN"),
                             icon = Icons.Rounded.DirectionsRun,
                             accent = accent,
                             modifier = Modifier.weight(1f),
@@ -814,7 +816,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                             }
                         )
                         TravelModeChip(
-                            label = "YÜRÜYÜŞ",
+                            label = theme.t("YÜRÜYÜŞ", "WALK"),
                             icon = Icons.Rounded.DirectionsWalk,
                             accent = accent,
                             modifier = Modifier.weight(1f),
@@ -854,7 +856,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                 } else if (!ev.onlineUrl.isNullOrBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Geçersiz online bağlantı",
+                        theme.t("Geçersiz online bağlantı", "Invalid online link"),
                         color = CardCoral,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -864,7 +866,10 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
             EventMode.MovementList -> {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "${ev.myCompletedCount} / ${ev.movementsCount} hareket tamamlandı",
+                    theme.t(
+                        "${ev.myCompletedCount} / ${ev.movementsCount} hareket tamamlandı",
+                        "${ev.myCompletedCount} / ${ev.movementsCount} movements completed"
+                    ),
                     color = theme.text1,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -1025,14 +1030,17 @@ private fun SkipProgramToggle(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                "BUGÜN PROGRAMI ATLA",
+                theme.t("BUGÜN PROGRAMI ATLA", "SKIP TODAY'S PLAN"),
                 color = theme.text0,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
             Text(
-                "Bu etkinliği yapacağın için anasayfadaki günlük program gizlenir",
+                theme.t(
+                    "Bu etkinliği yapacağın için anasayfadaki günlük program gizlenir",
+                    "Your daily plan on the home screen is hidden because you are doing this event"
+                ),
                 color = theme.text2,
                 fontSize = 10.sp
             )
@@ -1091,13 +1099,13 @@ private fun MovementRow(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                movement.exerciseName,
+                theme.exerciseDisplayName(movement.exerciseName),
                 color = theme.text0,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
             )
-            val sub = movementSpecLabel(movement)
+            val sub = movementSpecLabel(movement, theme)
             if (sub.isNotEmpty()) {
                 Text(sub, color = theme.text2, fontSize = 11.sp)
             }
@@ -1161,6 +1169,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
     val highlight = entry.isMe
     val isMedal = rank in 1..3
     val medalColor = MEDAL_COLORS.getOrNull(rank - 1)
+    val displayName = if (entry.isMe) theme.t("Sen", "You") else entry.displayName
 
     Row(
         modifier = Modifier
@@ -1213,7 +1222,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    entry.displayName,
+                    displayName,
                     color      = theme.text0,
                     fontSize   = 13.sp,
                     fontWeight = if (highlight) FontWeight.Black else FontWeight.Bold,
@@ -1227,12 +1236,12 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
                             .background(accent.copy(0.25f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("SEN", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        Text(theme.t("SEN", "YOU"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             if (entry.isCompleted) {
-                Text("Tamamladı ✓", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("Tamamladı ✓", "Completed ✓"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
         Text(
@@ -1256,11 +1265,11 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
         java.time.temporal.ChronoUnit.DAYS.between(today, startDate) else 0L
 
     val (statusLabel, statusColor) = when {
-        c.isCompleted -> "TAMAMLANDI" to accent
-        startDate != null && today.isBefore(startDate) -> "YAKINDA" to Color(0xFFFFB74D)
-        endDate != null && today.isAfter(endDate) -> "SONA ERDİ" to theme.text2
-        daysLeft == 0L -> "SON GÜN" to Color(0xFFFF8A80)
-        else -> "DEVAM EDİYOR" to accent
+        c.isCompleted -> theme.t("TAMAMLANDI", "COMPLETED") to accent
+        startDate != null && today.isBefore(startDate) -> theme.t("YAKINDA", "UPCOMING") to Color(0xFFFFB74D)
+        endDate != null && today.isAfter(endDate) -> theme.t("SONA ERDİ", "ENDED") to theme.text2
+        daysLeft == 0L -> theme.t("SON GÜN", "LAST DAY") to Color(0xFFFF8A80)
+        else -> theme.t("DEVAM EDİYOR", "ACTIVE") to accent
     }
 
     Box(
@@ -1291,8 +1300,8 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
             // Üst row: kategori + status pill
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (isEvent) "ETKİNLİK · ${c.targetType.label.uppercase()}"
-                    else c.targetType.label.uppercase(),
+                    if (isEvent) "${theme.strings.eventLabel} · ${c.targetType.displayLabel(theme).uppercase()}"
+                    else c.targetType.displayLabel(theme).uppercase(),
                     color = accent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -1339,11 +1348,11 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
             val countdownText = when {
                 c.isCompleted -> null
                 startDate != null && today.isBefore(startDate) ->
-                    if (daysToStart == 0L) "Bugün başlıyor"
-                    else "$daysToStart gün sonra başlıyor"
-                endDate != null && today.isAfter(endDate) -> "Bitti"
-                daysLeft == 0L -> "Bugün son gün"
-                else -> "$daysLeft gün kaldı"
+                    if (daysToStart == 0L) theme.t("Bugün başlıyor", "Starts today")
+                    else theme.t("$daysToStart gün sonra başlıyor", "Starts in $daysToStart days")
+                endDate != null && today.isAfter(endDate) -> theme.t("Bitti", "Ended")
+                daysLeft == 0L -> theme.t("Bugün son gün", "Last day today")
+                else -> theme.t("$daysLeft gün kaldı", "$daysLeft days left")
             }
             if (countdownText != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1365,7 +1374,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "${c.myProgress} / ${c.targetValue} ${c.targetType.unit}",
+                    "${c.myProgress} / ${c.targetValue} ${c.targetType.displayUnit(theme)}",
                     color    = theme.text1,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -1457,7 +1466,7 @@ private fun OwnerActionMenu(
             DropdownMenuItem(
                 text = {
                     Text(
-                        "Düzenle",
+                        theme.t("Düzenle", "Edit"),
                         color = theme.text0,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -1474,7 +1483,7 @@ private fun OwnerActionMenu(
         DropdownMenuItem(
             text = {
                 Text(
-                    "Sil",
+                    theme.t("Sil", "Delete"),
                     color = Color(0xFFFF8A80),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -1521,7 +1530,7 @@ private fun DeleteConfirmDialog(
                 Icon(Icons.Rounded.Delete, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "ETKİNLİĞİ SİL",
+                    theme.t("ETKİNLİĞİ SİL", "DELETE EVENT"),
                     color = theme.text0,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
@@ -1530,7 +1539,10 @@ private fun DeleteConfirmDialog(
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Bu etkinliği sildiğinde tüm katılımcı ilerlemesi de silinecek. Bu işlem geri alınamaz.",
+                theme.t(
+                    "Bu etkinliği sildiğinde tüm katılımcı ilerlemesi de silinecek. Bu işlem geri alınamaz.",
+                    "Deleting this event also removes all participant progress. This action cannot be undone."
+                ),
                 color = theme.text1,
                 fontSize = 13.sp,
                 lineHeight = 18.sp
@@ -1550,7 +1562,7 @@ private fun DeleteConfirmDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("VAZGEÇ", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
                 Box(
                     modifier = Modifier
@@ -1564,7 +1576,7 @@ private fun DeleteConfirmDialog(
                     if (inFlight) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                     } else {
-                        Text("SİL", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(theme.t("SİL", "DELETE"), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                 }
             }
@@ -1622,7 +1634,7 @@ private fun AddProgressDialog(
                 Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "İLERLEMENİ GİR",
+                    theme.t("İLERLEMENİ GİR", "ENTER PROGRESS"),
                     color = theme.text0,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
@@ -1631,7 +1643,7 @@ private fun AddProgressDialog(
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Kaç $unit $targetLabel?",
+                theme.t("Kaç $unit $targetLabel?", "How many $unit of $targetLabel?"),
                 color = theme.text1,
                 fontSize = 13.sp
             )
@@ -1684,7 +1696,7 @@ private fun AddProgressDialog(
                         Icon(Icons.Rounded.Timer, null, tint = accent, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "KRONOMETRE",
+                            theme.t("KRONOMETRE", "STOPWATCH"),
                             color = accent,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
@@ -1732,7 +1744,7 @@ private fun AddProgressDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                if (swRunning) "DURDUR" else "BAŞLAT",
+                                if (swRunning) theme.t("DURDUR", "STOP") else theme.t("BAŞLAT", "START"),
                                 color = if (swRunning) Color(0xFFFF8A80) else accent,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
@@ -1755,7 +1767,7 @@ private fun AddProgressDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "SIFIRLA",
+                                theme.t("SIFIRLA", "RESET"),
                                 color = if (!swRunning && swElapsedMs > 0L) theme.text0 else theme.text2.copy(0.5f),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
@@ -1776,7 +1788,7 @@ private fun AddProgressDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "AKTAR",
+                                theme.t("AKTAR", "APPLY"),
                                 color = Color.Black,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
@@ -1786,7 +1798,10 @@ private fun AddProgressDialog(
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Kronometre durduğunda 'Aktar' tuşuyla geçen dakikayı yukarıdaki alana yazabilirsin.",
+                        theme.t(
+                            "Kronometre durduğunda 'Aktar' tuşuyla geçen dakikayı yukarıdaki alana yazabilirsin.",
+                            "When the stopwatch is stopped, use Apply to copy elapsed minutes into the field above."
+                        ),
                         color = theme.text2,
                         fontSize = 10.sp
                     )
@@ -1808,7 +1823,7 @@ private fun AddProgressDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("İPTAL", color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("İPTAL", "CANCEL"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
                 Box(
                     modifier = Modifier
@@ -1819,7 +1834,7 @@ private fun AddProgressDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("KAYDET", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -1883,7 +1898,7 @@ private fun EditMetricChallengeOverlay(
                         AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "CHALLENGE'I DÜZENLE",
+                            theme.t("CHALLENGE'I DÜZENLE", "EDIT CHALLENGE"),
                             color = theme.text0,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
@@ -1891,12 +1906,12 @@ private fun EditMetricChallengeOverlay(
                         )
                     }
                 }
-                item { EditField("Başlık", title, { title = it }, accent) }
-                item { EditField("Açıklama", description, { description = it }, accent, lines = 3) }
+                item { EditField(theme.t("Başlık", "Title"), title, { title = it }, accent) }
+                item { EditField(theme.t("Açıklama", "Description"), description, { description = it }, accent, lines = 3) }
                 item { MetricTargetTypeSection(targetType, { targetType = it }, accent) }
-                item { EditField("Hedef değer (${targetType.unit})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
-                item { EditField("Başlangıç tarihi (YYYY-MM-DD)", startDateIso, { startDateIso = it }, accent) }
-                item { EditField("Bitiş tarihi (YYYY-MM-DD)", endDateIso, { endDateIso = it }, accent) }
+                item { EditField(theme.t("Hedef değer", "Target value") + " (${targetType.displayUnit(theme)})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
+                item { EditField(theme.t("Başlangıç tarihi (YYYY-MM-DD)", "Start date (YYYY-MM-DD)"), startDateIso, { startDateIso = it }, accent) }
+                item { EditField(theme.t("Bitiş tarihi (YYYY-MM-DD)", "End date (YYYY-MM-DD)"), endDateIso, { endDateIso = it }, accent) }
 
                 item {
                     Box(
@@ -1924,7 +1939,7 @@ private fun EditMetricChallengeOverlay(
                         if (inFlight) {
                             CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
-                            Text("KAYDET", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                            Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                         }
                     }
                 }
@@ -1942,7 +1957,7 @@ private fun MetricTargetTypeSection(
     val theme = LocalAppTheme.current
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
         Text(
-            "HEDEF TİPİ",
+            theme.t("HEDEF TİPİ", "TARGET TYPE"),
             color = theme.text2,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
@@ -2007,7 +2022,7 @@ private fun MetricTargetTypeOption(
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            type.label,
+            type.displayLabel(theme),
             color = if (isActive) theme.text0 else theme.text1,
             fontSize = 13.5.sp,
             fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
@@ -2020,7 +2035,7 @@ private fun MetricTargetTypeOption(
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
-                type.unit,
+                type.displayUnit(theme),
                 color = if (isActive) accent else theme.text2,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
@@ -2040,13 +2055,16 @@ private fun metricTargetIcon(type: ChallengeTargetType): ImageVector = when (typ
     ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
 }
 
-private fun movementSpecLabel(movement: ChallengeMovement): String = buildString {
+private fun movementSpecLabel(
+    movement: ChallengeMovement,
+    theme: com.avonix.profitness.core.theme.AppThemeState
+): String = buildString {
     val hasStrength = movement.suggestedSets != null || movement.suggestedReps != null
     if (hasStrength) {
         movement.suggestedSets?.let { append("${it} set") }
         movement.suggestedReps?.let {
             if (isNotEmpty()) append(" · ")
-            append("${it} tekrar")
+            append("${it} ${theme.t("tekrar", "reps")}")
         }
         return@buildString
     }
@@ -2109,7 +2127,7 @@ private fun EditEventChallengeOverlay(
                         AppBackButton(onClick = onClose, accent = accent, size = 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "ETKİNLİĞİ DÜZENLE",
+                            theme.t("ETKİNLİĞİ DÜZENLE", "EDIT EVENT"),
                             color = theme.text0,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
@@ -2117,18 +2135,18 @@ private fun EditEventChallengeOverlay(
                         )
                     }
                 }
-                item { EditField("Başlık", title, { title = it }, accent) }
-                item { EditField("Açıklama", description, { description = it }, accent, lines = 3) }
-                item { EditField("Tarih (YYYY-MM-DD)", dateIso, { dateIso = it }, accent) }
-                item { EditField("Saat (HH:MM, opsiyonel)", timeIso, { timeIso = it }, accent) }
+                item { EditField(theme.t("Başlık", "Title"), title, { title = it }, accent) }
+                item { EditField(theme.t("Açıklama", "Description"), description, { description = it }, accent, lines = 3) }
+                item { EditField(theme.t("Tarih (YYYY-MM-DD)", "Date (YYYY-MM-DD)"), dateIso, { dateIso = it }, accent) }
+                item { EditField(theme.t("Saat (HH:MM, opsiyonel)", "Time (HH:MM, optional)"), timeIso, { timeIso = it }, accent) }
                 if (isPhysical) {
-                    item { EditField("Başlangıç konumu", location, { location = it }, accent) }
-                    item { EditField("Bitiş konumu (opsiyonel)", endLocation, { endLocation = it }, accent) }
+                    item { EditField(theme.t("Başlangıç konumu", "Start location"), location, { location = it }, accent) }
+                    item { EditField(theme.t("Bitiş konumu (opsiyonel)", "End location (optional)"), endLocation, { endLocation = it }, accent) }
                 }
                 if (isOnline) {
                     item { EditField("Online URL", onlineUrl, { onlineUrl = it }, accent) }
                 }
-                item { EditField("Hedef değer (${summary.targetType.unit})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
+                item { EditField(theme.t("Hedef değer", "Target value") + " (${summary.targetType.displayUnit(theme)})", targetValue, { targetValue = it.filter { ch -> ch.isDigit() } }, accent, numeric = true) }
 
                 item {
                     Box(
@@ -2162,7 +2180,7 @@ private fun EditEventChallengeOverlay(
                         if (inFlight) {
                             CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
-                            Text("KAYDET", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                            Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                         }
                     }
                 }

@@ -64,7 +64,9 @@ import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
+import com.avonix.profitness.core.theme.exerciseDisplayName
 import com.avonix.profitness.core.theme.stroke
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.DiscoverSort
@@ -316,7 +318,7 @@ private fun DiscoverHeader(
                 .widthIn(max = 92.dp)
         ) {
             Text(
-                text       = "KEŞFET",
+                text       = theme.t("KEŞFET", "DISCOVER"),
                 color      = theme.text0,
                 fontSize   = 22.sp,
                 fontWeight = FontWeight.Black,
@@ -324,7 +326,7 @@ private fun DiscoverHeader(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text     = "Topluluk programları & challenge'lar",
+                text     = theme.t("Topluluk programları ve challenge'lar", "Community programs and challenges"),
                 color    = theme.text2.copy(alpha = 0.7f),
                 fontSize = 9.sp,
                 maxLines = 1
@@ -333,7 +335,7 @@ private fun DiscoverHeader(
         // Sort toggle
         SmallIconChip(
             icon     = Icons.Rounded.Whatshot,
-            label    = if (isTrending) "TREND" else "YENİ",
+            label    = if (isTrending) theme.t("TREND", "TRENDING") else theme.t("YENİ", "NEW"),
             selected = isTrending,
             onClick  = onToggleSort
         )
@@ -373,12 +375,13 @@ private fun DiscoverTabBar(
     onSelect: (DiscoverTab) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         DiscoverTabPill(
-            label    = "PROGRAMLAR",
+            label    = theme.t("PROGRAMLAR", "PROGRAMS"),
             icon     = Icons.Rounded.FitnessCenter,
             selected = selected == DiscoverTab.Programs,
             accent   = accent,
@@ -386,7 +389,7 @@ private fun DiscoverTabBar(
             onClick  = { onSelect(DiscoverTab.Programs) }
         )
         DiscoverTabPill(
-            label    = "ARKADAŞLAR",
+            label    = theme.t("ARKADAŞLAR", "FRIENDS"),
             icon     = Icons.Rounded.Person,
             selected = selected == DiscoverTab.Friends,
             accent   = accent,
@@ -394,7 +397,7 @@ private fun DiscoverTabBar(
             onClick  = { onSelect(DiscoverTab.Friends) }
         )
         DiscoverTabPill(
-            label    = "CHALLENGE",
+            label    = theme.t("CHALLENGE", "CHALLENGES"),
             icon     = Icons.Rounded.EmojiEvents,
             selected = selected == DiscoverTab.Challenges,
             accent   = accent,
@@ -725,9 +728,9 @@ private fun SharedProgramCard(
             ApplyButton(
                 onClick = onApply,
                 text = when {
-                    isApplied -> "UYGULANDI"
-                    isApplying -> "UYGULANIYOR"
-                    else -> "UYGULA"
+                    isApplied -> theme.t("UYGULANDI", "APPLIED")
+                    isApplying -> theme.t("UYGULANIYOR", "APPLYING")
+                    else -> theme.t("UYGULA", "APPLY")
                 },
                 enabled = !isApplying && !isApplied,
                 isLoading = isApplying,
@@ -774,7 +777,7 @@ private fun SharedProgramDetailScreen(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "Program içeriği",
+                    text = theme.t("Program içeriği", "Program content"),
                     color = accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
@@ -845,10 +848,10 @@ private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
                 Text(program.creatorName, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
                     text = buildList {
-                        if (dayCount > 0) add("$dayCount gün")
-                        program.daysPerWeek?.let { add("$it gün/hafta") }
-                        program.durationWeeks?.let { add("$it hafta") }
-                    }.ifEmpty { listOf("Paylaşılan program") }.joinToString(" · "),
+                        if (dayCount > 0) add(theme.t("$dayCount gün", "$dayCount days"))
+                        program.daysPerWeek?.let { add(theme.t("$it gün/hafta", "$it days/week")) }
+                        program.durationWeeks?.let { add(theme.t("$it hafta", "$it weeks")) }
+                    }.ifEmpty { listOf(theme.t("Paylaşılan program", "Shared program")) }.joinToString(" · "),
                     color = theme.text2.copy(0.7f),
                     fontSize = 12.sp,
                     maxLines = 1
@@ -910,7 +913,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Schedule, null, tint = theme.text2.copy(0.7f), modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Dinlenme", color = theme.text2.copy(0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(theme.t("Dinlenme", "Rest"), color = theme.text2.copy(0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -925,7 +928,11 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
 
         if (day.exercises.isEmpty()) {
             Text(
-                text = if (day.isRestDay) "Bu gün dinlenme için ayrılmış." else "Bu gün için hareket bulunamadı.",
+                text = if (day.isRestDay) {
+                    theme.t("Bu gün dinlenme için ayrılmış.", "This day is reserved for rest.")
+                } else {
+                    theme.t("Bu gün için hareket bulunamadı.", "No exercises found for this day.")
+                },
                 color = theme.text2.copy(0.75f),
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = 14.dp)
@@ -965,14 +972,14 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                text = exercise.name,
+                text = theme.exerciseDisplayName(exercise.name),
                 color = theme.text0,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 lineHeight = 18.sp
             )
-            val badges = exercise.badges()
+            val badges = exercise.badges(theme)
             if (badges.isNotEmpty()) {
                 Spacer(Modifier.height(7.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1009,10 +1016,13 @@ private fun EmptyProgramDetailCard() {
             .padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Program içeriği bulunamadı", color = theme.text0, fontWeight = FontWeight.Bold)
+        Text(theme.t("Program içeriği bulunamadı", "Program content not found"), color = theme.text0, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Bu paylaşımda görüntülenecek gün ve hareket snapshot'ı yok.",
+            text = theme.t(
+                "Bu paylaşımda görüntülenecek gün ve hareket snapshot'ı yok.",
+                "This share does not include a day and exercise snapshot to display."
+            ),
             color = theme.text2.copy(0.72f),
             fontSize = 12.sp,
             textAlign = TextAlign.Center
@@ -1040,12 +1050,12 @@ private data class SharedProgramDetailExercise(
     val targetDistanceMeters: Float?,
     val orderIndex: Int
 ) {
-    fun badges(): List<String> = buildList {
+    fun badges(theme: com.avonix.profitness.core.theme.AppThemeState): List<String> = buildList {
         targetDurationSeconds?.takeIf { it > 0 }?.let { add(formatDurationBadge(it)) }
         targetDistanceMeters?.takeIf { it > 0f }?.let { add(formatDistanceBadge(it)) }
         if (isEmpty()) {
             sets?.takeIf { it > 0 }?.let { add("$it SET") }
-            reps?.takeIf { it > 0 }?.let { add("$it TEK") }
+            reps?.takeIf { it > 0 }?.let { add(theme.t("$it TEK", "$it REP")) }
         }
     }
 }
@@ -1067,7 +1077,7 @@ private fun SharedProgram.toDetailPlan(): SharedProgramDetailPlan {
                         ?: ex.string("exerciseName")
                         ?: ex.string("name")
                         ?: ex.obj("exercise")?.string("name")
-                        ?: "Hareket",
+                        ?: "Exercise",
                     sets = ex.int("sets"),
                     reps = ex.int("reps"),
                     restSeconds = ex.int("rest_seconds") ?: ex.int("restSeconds"),
@@ -1085,7 +1095,7 @@ private fun SharedProgram.toDetailPlan(): SharedProgramDetailPlan {
             index = dayIndex,
             title = day.string("title")
                 ?: day.string("name")
-                ?: "Gün $dayIndex",
+                ?: "Day $dayIndex",
             isRestDay = day.bool("is_rest_day")
                 ?: day.bool("isRestDay")
                 ?: false,
@@ -1168,7 +1178,7 @@ private fun ActionChip(
 @Composable
 private fun ApplyButton(
     onClick: () -> Unit,
-    text: String = "UYGULA",
+    text: String,
     enabled: Boolean = true,
     isLoading: Boolean = false,
     applied: Boolean = false
@@ -1263,13 +1273,13 @@ private fun ErrorState(msg: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Yüklenemedi", color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(theme.t("Yüklenemedi", "Could not load"), color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Text(msg, color = theme.text2.copy(0.7f), fontSize = 13.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(14.dp))
         ApplyButton(
             onClick = onRetry,
-            text = "TEKRAR DENE"
+            text = theme.t("TEKRAR DENE", "TRY AGAIN")
         )
     }
 }
@@ -1282,11 +1292,14 @@ private fun EmptyFeedState() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Henüz paylaşılan program yok",
+        Text(theme.t("Henüz paylaşılan program yok", "No shared programs yet"),
             color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "İlk paylaşan sen ol — sağ alttaki + butonuna dokun.",
+            text = theme.t(
+                "İlk paylaşan sen ol. Sağ alttaki + butonuna dokun.",
+                "Be the first to share. Tap the + button at the bottom right."
+            ),
             color = theme.text2.copy(0.7f),
             fontSize = 13.sp,
             textAlign = TextAlign.Center
@@ -1302,11 +1315,14 @@ private fun EmptySavedState() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Henüz kaydedilmiş program yok",
+        Text(theme.t("Henüz kaydedilmiş program yok", "No saved programs yet"),
             color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Toplulukta beğendiğin programların yer imine dokununca burada görünür.",
+            text = theme.t(
+                "Toplulukta beğendiğin programların yer imine dokununca burada görünür.",
+                "Programs you bookmark in the community will appear here."
+            ),
             color = theme.text2.copy(0.7f),
             fontSize = 13.sp,
             textAlign = TextAlign.Center
@@ -1322,10 +1338,13 @@ private fun ChallengesPlaceholder(bottomPadding: Dp) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Grup Challenge'ları", color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(theme.t("Grup Challenge'ları", "Group Challenges"), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
         Text(
-            text = "Arkadaşlarınla ya da toplulukla meydan okumaya katıl, ilerleme takip et, ödül kazan.",
+            text = theme.t(
+                "Arkadaşlarınla ya da toplulukla meydan okumaya katıl, ilerleme takip et, ödül kazan.",
+                "Join challenges with friends or the community, track progress, and earn rewards."
+            ),
             color = theme.text2.copy(0.7f), fontSize = 14.sp,
             textAlign = TextAlign.Center, lineHeight = 20.sp
         )
@@ -1337,7 +1356,7 @@ private fun ChallengesPlaceholder(bottomPadding: Dp) {
                 .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.35f), RoundedCornerShape(20.dp))
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            Text("ÇOK YAKINDA", color = MaterialTheme.colorScheme.primary,
+            Text(theme.t("ÇOK YAKINDA", "COMING SOON"), color = MaterialTheme.colorScheme.primary,
                 fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
@@ -1350,6 +1369,7 @@ private fun ChallengesPlaceholder(bottomPadding: Dp) {
 @Composable
 private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     Box(
         modifier = modifier
             .size(54.dp)
@@ -1358,7 +1378,7 @@ private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Rounded.Share, "Programı paylaş",
+        Icon(Icons.Rounded.Share, theme.t("Programı paylaş", "Share program"),
             tint = Color.Black, modifier = Modifier.size(24.dp))
     }
 }
@@ -1374,6 +1394,7 @@ private fun ProgramsSubTabBar(
     mineCount: Int,
     onSelect: (ProgramsSubTab) -> Unit
 ) {
+    val theme = LocalAppTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1382,19 +1403,27 @@ private fun ProgramsSubTabBar(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SubTabChip(
-            label = "TOPLULUK",
+            label = theme.t("TOPLULUK", "COMMUNITY"),
             selected = selected == ProgramsSubTab.Community,
             onClick = { onSelect(ProgramsSubTab.Community) },
             modifier = Modifier.weight(1f)
         )
         SubTabChip(
-            label = if (savedCount > 0) "KAYDEDİLENLER · $savedCount" else "KAYDEDİLENLER",
+            label = if (savedCount > 0) {
+                theme.t("KAYDEDİLENLER · $savedCount", "SAVED · $savedCount")
+            } else {
+                theme.t("KAYDEDİLENLER", "SAVED")
+            },
             selected = selected == ProgramsSubTab.Saved,
             onClick = { onSelect(ProgramsSubTab.Saved) },
             modifier = Modifier.weight(1f)
         )
         SubTabChip(
-            label = if (mineCount > 0) "PAYLAŞIMLARIM · $mineCount" else "PAYLAŞIMLARIM",
+            label = if (mineCount > 0) {
+                theme.t("PAYLAŞIMLARIM · $mineCount", "MY SHARES · $mineCount")
+            } else {
+                theme.t("PAYLAŞIMLARIM", "MY SHARES")
+            },
             selected = selected == ProgramsSubTab.Mine,
             onClick = { onSelect(ProgramsSubTab.Mine) },
             modifier = Modifier.weight(1f)
@@ -1465,11 +1494,14 @@ private fun MySharedProgramsList(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Henüz bir program paylaşmadın",
+                Text(theme.t("Henüz bir program paylaşmadın", "You have not shared a program yet"),
                     color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Programlarından birini topluluğa paylaşmak için dokun.",
+                    text = theme.t(
+                        "Programlarından birini topluluğa paylaşmak için dokun.",
+                        "Tap to share one of your programs with the community."
+                    ),
                     color = theme.text2.copy(0.7f),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center
@@ -1486,7 +1518,7 @@ private fun MySharedProgramsList(
                 ) {
                     Icon(Icons.Rounded.Share, null, tint = Color.Black, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("PROGRAM PAYLAŞ", color = Color.Black,
+                    Text(theme.t("PROGRAM PAYLAŞ", "SHARE PROGRAM"), color = Color.Black,
                         fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                 }
             }
@@ -1527,21 +1559,24 @@ private fun MySharedCard(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             containerColor   = theme.bg1,
-            title = { Text("Yayından kaldır?", color = theme.text0, fontWeight = FontWeight.Bold) },
+            title = { Text(theme.t("Yayından kaldır?", "Unpublish?"), color = theme.text0, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "\"${item.title}\" topluluk akışından kaldırılacak. Daha önce kaydedenler program snapshot'ına erişmeye devam eder.",
+                    theme.t(
+                        "\"${item.title}\" topluluk akışından kaldırılacak. Daha önce kaydedenler program snapshot'ına erişmeye devam eder.",
+                        "\"${item.title}\" will be removed from the community feed. People who saved it earlier can still access the program snapshot."
+                    ),
                     color = theme.text2, fontSize = 13.sp
                 )
             },
             confirmButton = {
                 TextButton(onClick = { showDeleteDialog = false; onDelete() }) {
-                    Text("Yayından kaldır", color = danger, fontWeight = FontWeight.Bold)
+                    Text(theme.t("Yayından kaldır", "Unpublish"), color = danger, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("İptal", color = theme.text2)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2)
                 }
             }
         )
@@ -1590,17 +1625,26 @@ private fun MySharedCard(
             !item.sourceExists -> StatusBanner(
                 icon = Icons.Rounded.Warning,
                 color = danger,
-                text  = "Kaynak program silinmiş. Paylaşım snapshot olarak korunuyor."
+                text  = theme.t(
+                    "Kaynak program silinmiş. Paylaşım snapshot olarak korunuyor.",
+                    "The source program was deleted. The share is preserved as a snapshot."
+                )
             )
             item.isOutOfSync -> StatusBanner(
                 icon = Icons.Rounded.FitnessCenter,
                 color = accent,
-                text  = "Kaynak programın değişmiş. Bu paylaşım eski sürüm olarak kalıyor."
+                text  = theme.t(
+                    "Kaynak programın değişmiş. Bu paylaşım eski sürüm olarak kalıyor.",
+                    "The source program changed. This share stays as the old version."
+                )
             )
             else -> StatusBanner(
                 icon = Icons.Rounded.FitnessCenter,
                 color = accent,
-                text  = "Paylaşım sabit bir snapshot olarak korunuyor."
+                text  = theme.t(
+                    "Paylaşım sabit bir snapshot olarak korunuyor.",
+                    "The share is preserved as a fixed snapshot."
+                )
             )
         }
 
@@ -1624,7 +1668,7 @@ private fun MySharedCard(
                 Icon(Icons.Rounded.DeleteOutline, null, tint = danger, modifier = Modifier.size(15.dp))
             }
             Spacer(Modifier.width(6.dp))
-            Text("YAYINDAN KALDIR", color = danger,
+            Text(theme.t("YAYINDAN KALDIR", "UNPUBLISH"), color = danger,
                 fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
         }
     }

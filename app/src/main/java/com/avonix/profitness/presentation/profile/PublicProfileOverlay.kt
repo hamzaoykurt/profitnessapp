@@ -53,6 +53,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.avonix.profitness.core.theme.AppLanguage
 import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.PageAccentBloom
 import com.avonix.profitness.core.theme.bg0
@@ -61,11 +62,13 @@ import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.domain.challenges.ChallengeSummary
 import com.avonix.profitness.domain.challenges.ChallengeKind
 import com.avonix.profitness.domain.discover.SharedProgram
 import com.avonix.profitness.domain.social.PublicProfile
 import com.avonix.profitness.presentation.challenges.ChallengeDetailOverlay
+import com.avonix.profitness.presentation.challenges.displayUnit
 import com.avonix.profitness.presentation.components.AppBackButton
 import java.time.Instant
 import java.time.ZoneId
@@ -114,7 +117,7 @@ fun PublicProfileOverlay(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Profil yüklenemedi", color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(theme.t("Profil yüklenemedi", "Profile could not be loaded"), color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         Text(state.error ?: "", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
                     }
@@ -183,7 +186,8 @@ private fun ProfileContent(
     // Üyelik tarihi
     val joinDate = runCatching {
         val instant = Instant.parse(profile.createdAtIso)
-        DateTimeFormatter.ofPattern("MMM yyyy", Locale("tr"))
+        val locale = if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")
+        DateTimeFormatter.ofPattern("MMM yyyy", locale)
             .withZone(ZoneId.systemDefault())
             .format(instant)
     }.getOrElse { "—" }
@@ -235,7 +239,7 @@ private fun ProfileContent(
         ) {
             Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(12.dp))
             Text(
-                "SEVİYE ${profile.level}",
+                theme.t("SEVİYE ${profile.level}", "LEVEL ${profile.level}"),
                 color = accent,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
@@ -254,7 +258,7 @@ private fun ProfileContent(
         if (profile.isMutual) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "KARŞILIKLI TAKİP",
+                theme.t("KARŞILIKLI TAKİP", "MUTUAL FOLLOW"),
                 color = accent,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
@@ -295,7 +299,7 @@ private fun ProfileContent(
                     )
                 }
                 Text(
-                    "Sıradaki: ${xpForNextLevel} XP",
+                    theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
                     color = theme.text2,
                     fontSize = 10.sp
                 )
@@ -320,9 +324,9 @@ private fun ProfileContent(
             modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatTile(profile.achievementsCount.toString(), "BAŞARIM", Icons.Rounded.EmojiEvents)
+            StatTile(profile.achievementsCount.toString(), theme.t("BAŞARIM", "ACHIEVEMENTS"), Icons.Rounded.EmojiEvents)
             StatTile(profile.currentRank.uppercase().take(6), "RANK", Icons.Rounded.MilitaryTech)
-            StatTile(profile.totalWorkouts.toString(), "ANTRENMAN", Icons.Rounded.FitnessCenter)
+            StatTile(profile.totalWorkouts.toString(), theme.t("ANTRENMAN", "WORKOUTS"), Icons.Rounded.FitnessCenter)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -344,12 +348,12 @@ private fun ProfileContent(
                 Icon(Icons.Rounded.LocalFireDepartment, null, tint = Color(0xFFFF6B35), modifier = Modifier.size(18.dp))
                 Column(horizontalAlignment = Alignment.Start) {
                     Text(
-                        "${profile.currentStreak} GÜN",
+                        theme.t("${profile.currentStreak} GÜN", "${profile.currentStreak} DAYS"),
                         color = theme.text0,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
                     )
-                    Text("GÜNCEL SERİ", color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                    Text(theme.t("GÜNCEL SERİ", "CURRENT STREAK"), color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
                 }
             }
 
@@ -360,12 +364,12 @@ private fun ProfileContent(
                 Icon(Icons.Rounded.CalendarMonth, null, tint = accent.copy(0.8f), modifier = Modifier.size(18.dp))
                 Column(horizontalAlignment = Alignment.Start) {
                     Text(
-                        joinDate.uppercase(Locale("tr")),
+                        joinDate.uppercase(if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")),
                         color = theme.text0,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
                     )
-                    Text("ÜYELİK", color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                    Text(theme.t("ÜYELİK", "MEMBER SINCE"), color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
                 }
             }
         }
@@ -382,9 +386,9 @@ private fun ProfileContent(
                 .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(20.dp))
                 .padding(vertical = 14.dp)
         ) {
-            FollowCountBlock(profile.followersCount, "TAKİPÇİ", Modifier.weight(1f))
+            FollowCountBlock(profile.followersCount, theme.t("TAKİPÇİ", "FOLLOWERS"), Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(32.dp).background(theme.stroke.copy(0.3f)))
-            FollowCountBlock(profile.followingCount, "TAKİP", Modifier.weight(1f))
+            FollowCountBlock(profile.followingCount, theme.t("TAKİP", "FOLLOWING"), Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(18.dp))
@@ -420,7 +424,7 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
     ) {
         if (!isFollowing) Icon(Icons.Rounded.PersonAdd, null, tint = fg, modifier = Modifier.size(15.dp))
         Text(
-            if (isFollowing) "TAKİPTE" else "TAKİP ET",
+            if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
             color = fg,
             fontSize = 11.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -445,7 +449,7 @@ private fun ActivitySection(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "AKTİVİTE",
+                theme.t("AKTİVİTE", "ACTIVITY"),
                 color = theme.text0,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
@@ -472,7 +476,15 @@ private fun ActivitySection(
                     .padding(18.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Henüz görünür challenge veya program paylaşımı yok.", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
+                Text(
+                    theme.t(
+                        "Henüz görünür challenge veya program paylaşımı yok.",
+                        "No visible challenges or program shares yet."
+                    ),
+                    color = theme.text2,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
             }
             return@Column
         }
@@ -496,7 +508,10 @@ private fun ActivitySection(
             ActivityMiniCard(
                 icon = Icons.Rounded.Bookmark,
                 title = program.title,
-                meta = "${program.downloadsCount} uygulama · ${program.likesCount} beğeni",
+                meta = theme.t(
+                    "${program.downloadsCount} uygulama · ${program.likesCount} beğeni",
+                    "${program.downloadsCount} applies · ${program.likesCount} likes"
+                ),
                 accent = accent,
                 onClick = null
             )
@@ -535,10 +550,10 @@ private fun ChallengeActivityCard(
     val theme = LocalAppTheme.current
     val status = profileChallengeStatus(challenge)
     val (label, color, icon) = when (status) {
-        ProfileChallengeStatus.Active -> Triple("AKTİF", accent, Icons.Rounded.Event)
-        ProfileChallengeStatus.Upcoming -> Triple("YAKINDA", Color(0xFFFFB74D), Icons.Rounded.HourglassBottom)
-        ProfileChallengeStatus.Completed -> Triple("TAMAM", Color(0xFF38BDF8), Icons.Rounded.Check)
-        ProfileChallengeStatus.Ended -> Triple("SONA ERDİ", Color(0xFF9CA3AF), Icons.Rounded.Schedule)
+        ProfileChallengeStatus.Active -> Triple(theme.t("AKTİF", "ACTIVE"), accent, Icons.Rounded.Event)
+        ProfileChallengeStatus.Upcoming -> Triple(theme.t("YAKINDA", "UPCOMING"), Color(0xFFFFB74D), Icons.Rounded.HourglassBottom)
+        ProfileChallengeStatus.Completed -> Triple(theme.t("TAMAM", "DONE"), Color(0xFF38BDF8), Icons.Rounded.Check)
+        ProfileChallengeStatus.Ended -> Triple(theme.t("SONA ERDİ", "ENDED"), Color(0xFF9CA3AF), Icons.Rounded.Schedule)
     }
     val canOpen = status == ProfileChallengeStatus.Active || status == ProfileChallengeStatus.Upcoming
     Row(
@@ -592,7 +607,10 @@ private fun ChallengeActivityCard(
                 )
             }
             Text(
-                "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.unit}",
+                theme.t(
+                    "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}",
+                    "${challenge.participantsCount} participants · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}"
+                ),
                 color = theme.text2,
                 fontSize = 11.sp,
                 maxLines = 1,

@@ -85,6 +85,7 @@ fun CinematicExerciseCard(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
     val context  = LocalContext.current
+    val theme    = LocalAppTheme.current
     var isExpanded by remember { mutableStateOf(false) }
     var showActivityTimerSetup by remember { mutableStateOf(false) }
     var showTimedSetTimerSetup by remember { mutableStateOf(false) }
@@ -269,7 +270,7 @@ fun CinematicExerciseCard(
                                         .padding(8.dp, 3.dp)
                                 ) {
                                     Text(
-                                        text = exercise.category.uppercase(),
+                                        text = theme.fitnessTermDisplayName(exercise.category).uppercase(),
                                         color = catColor,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.ExtraBold,
@@ -279,7 +280,7 @@ fun CinematicExerciseCard(
                                 Spacer(Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = exercise.name.uppercase(),
+                                        text = theme.exerciseDisplayName(exercise.name).uppercase(),
                                         color = Snow,
                                         style = MaterialTheme.typography.headlineMedium,
                                         fontWeight = FontWeight.Black,
@@ -294,7 +295,11 @@ fun CinematicExerciseCard(
                                         )
                                     }
                                 }
-                                Text(text = exercise.target, color = Mist, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    text = theme.fitnessTermDisplayName(exercise.target),
+                                    color = Mist,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                             val doneCount = doneSetIndices.size
                             StatBadge(
@@ -484,6 +489,7 @@ private fun ActivityMetricsPanel(
     onInclineChanged: (String) -> Unit,
     onRepsChanged: (String) -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val backgroundBrush = remember(isDone, accent) {
         Brush.verticalGradient(
@@ -507,9 +513,9 @@ private fun ActivityMetricsPanel(
     ) {
         Text(
             text = when {
-                supportsDistance -> "$specLabel · süre ve mesafe"
-                supportsReps -> "$specLabel · süre ve sayı"
-                else -> "$specLabel · süre"
+                supportsDistance -> theme.t("$specLabel · süre ve mesafe", "$specLabel · duration and distance")
+                supportsReps -> theme.t("$specLabel · süre ve sayı", "$specLabel · duration and reps")
+                else -> theme.t("$specLabel · süre", "$specLabel · duration")
             },
             color = if (isDone) accent else TextPrimary,
             fontSize = 13.sp,
@@ -522,10 +528,10 @@ private fun ActivityMetricsPanel(
                 value = durationValue,
                 onValueChange = onDurationChanged,
                 placeholder = "0",
-                label = "Süre",
+                label = theme.t("Süre", "Duration"),
                 isDone = isDone,
                 accent = accent,
-                suffix = "dk",
+                suffix = theme.t("dk", "min"),
                 keyboardType = KeyboardType.Decimal,
                 modifier = Modifier.weight(1f)
             )
@@ -534,7 +540,7 @@ private fun ActivityMetricsPanel(
                     value = distanceValue,
                     onValueChange = onDistanceChanged,
                     placeholder = "0",
-                    label = "Mesafe",
+                    label = theme.t("Mesafe", "Distance"),
                     isDone = isDone,
                     accent = accent,
                     suffix = "m",
@@ -547,10 +553,10 @@ private fun ActivityMetricsPanel(
                     value = repsValue,
                     onValueChange = onRepsChanged,
                     placeholder = "0",
-                    label = "Sayı",
+                    label = theme.t("Sayı", "Count"),
                     isDone = isDone,
                     accent = accent,
-                    suffix = "adet",
+                    suffix = theme.t("adet", "reps"),
                     keyboardType = KeyboardType.Number,
                     modifier = Modifier.weight(1f)
                 )
@@ -564,7 +570,7 @@ private fun ActivityMetricsPanel(
                         value = elevationValue,
                         onValueChange = onElevationChanged,
                         placeholder = "0",
-                        label = "Yükselti",
+                        label = theme.t("Yükselti", "Elevation"),
                         isDone = isDone,
                         accent = accent,
                         suffix = "m",
@@ -577,7 +583,7 @@ private fun ActivityMetricsPanel(
                         value = inclineValue,
                         onValueChange = onInclineChanged,
                         placeholder = "0",
-                        label = "Eğim",
+                        label = theme.t("Eğim", "Incline"),
                         isDone = isDone,
                         accent = accent,
                         suffix = "%",
@@ -658,6 +664,7 @@ private fun ActivityTimerSetupPanel(
     onStartStopwatch: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     var mode by remember { mutableStateOf("stopwatch") }
     val initialTotalSeconds = remember(initialMinutes, initialSeconds) {
         initialSeconds ?: initialMinutes.toDurationSeconds()
@@ -676,13 +683,13 @@ private fun ActivityTimerSetupPanel(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TimerModeChip(
-                label = "KRONOMETRE",
+                label = theme.t("KRONOMETRE", "STOPWATCH"),
                 selected = mode == "stopwatch",
                 onClick = { mode = "stopwatch" },
                 modifier = Modifier.weight(1f)
             )
             TimerModeChip(
-                label = "GERİ SAYIM",
+                label = theme.t("GERİ SAYIM", "COUNTDOWN"),
                 selected = mode == "countdown",
                 onClick = { mode = "countdown" },
                 modifier = Modifier.weight(1f)
@@ -691,9 +698,9 @@ private fun ActivityTimerSetupPanel(
         if (mode == "countdown") {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallTimeInput(hours, { hours = it }, "saat", Modifier.weight(1f))
-                SmallTimeInput(minutes, { minutes = it }, "dk", Modifier.weight(1f))
-                SmallTimeInput(seconds, { seconds = it }, "sn", Modifier.weight(1f))
+                SmallTimeInput(hours, { hours = it }, theme.t("saat", "hr"), Modifier.weight(1f))
+                SmallTimeInput(minutes, { minutes = it }, theme.t("dk", "min"), Modifier.weight(1f))
+                SmallTimeInput(seconds, { seconds = it }, theme.t("sn", "sec"), Modifier.weight(1f))
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -714,7 +721,11 @@ private fun ActivityTimerSetupPanel(
             Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                text = if (mode == "stopwatch") "KRONOMETREYİ BAŞLAT" else "GERİ SAYIMI BAŞLAT",
+                text = if (mode == "stopwatch") {
+                    theme.t("KRONOMETREYİ BAŞLAT", "START STOPWATCH")
+                } else {
+                    theme.t("GERİ SAYIMI BAŞLAT", "START COUNTDOWN")
+                },
                 fontWeight = FontWeight.Black,
                 fontSize = 11.sp
             )
@@ -729,6 +740,7 @@ private fun TimerModeChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier
@@ -776,6 +788,7 @@ private fun CompleteActionButton(
     onAccent: Color,
     onClick: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val bg = remember(isCompleted, accent) {
         if (isCompleted) {
             Brush.horizontalGradient(listOf(Surface3.copy(0.88f), Surface2.copy(0.72f)))
@@ -815,7 +828,7 @@ private fun CompleteActionButton(
         }
         Spacer(Modifier.width(9.dp))
         Text(
-            text = if (isCompleted) "GERİ AL" else "TAMAMLA",
+            text = if (isCompleted) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
             color = if (isCompleted) TextSecondary else onAccent,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black,
@@ -834,6 +847,7 @@ private fun TimedSetRow(
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     val durationSeconds = durationValue.toDurationSetSecondsLabel()
     val durationDisplay = durationSeconds.ifBlank { "0" }
     val bgAlpha by animateFloatAsState(
@@ -863,10 +877,10 @@ private fun TimedSetRow(
                 value = durationSeconds,
                 onValueChange = onDurationChanged,
                 placeholder = "60",
-                label = "Süre",
+                label = theme.t("Süre", "Duration"),
                 isDone = isDone,
                 accent = accent,
-                suffix = "sn",
+                suffix = theme.t("sn", "sec"),
                 keyboardType = KeyboardType.Number,
                 modifier = Modifier.weight(1.05f)
             )
@@ -874,7 +888,7 @@ private fun TimedSetRow(
             Column(Modifier.widthIn(min = 80.dp).weight(0.75f)) {
                 Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(2.dp))
-                Text("$durationDisplay sn", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(12.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
@@ -930,6 +944,7 @@ private fun SetRow(
     onToggle: () -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     val bgAlpha by animateFloatAsState(
         if (isDone) 0.20f else 0.08f,
         tween(250),
@@ -966,7 +981,7 @@ private fun SetRow(
                 value = weightValue,
                 onValueChange = onWeightChanged,
                 placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "0",
-                label = "Ağırlık",
+                label = theme.t("Ağırlık", "Weight"),
                 isDone = isDone,
                 accent = accent,
                 suffix = "kg",
@@ -984,7 +999,7 @@ private fun SetRow(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "$reps tekrar",
+                    text = theme.t("$reps tekrar", "$reps reps"),
                     color = TextMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -1000,7 +1015,7 @@ private fun SetRow(
         if (lastWeightKg != null || lastRepsActual != null) {
             Spacer(Modifier.height(8.dp))
             val lastText = buildString {
-                append("Son: ")
+                append(theme.t("Son: ", "Last: "))
                 if (lastWeightKg != null) append("${"%.1f".format(lastWeightKg)}kg")
                 if (lastWeightKg != null && lastRepsActual != null) append(" x ")
                 if (lastRepsActual != null) append("${lastRepsActual}rep")

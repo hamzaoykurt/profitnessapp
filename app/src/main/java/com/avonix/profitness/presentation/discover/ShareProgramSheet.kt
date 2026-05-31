@@ -42,6 +42,7 @@ import com.avonix.profitness.core.theme.LocalAppTheme
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.stroke
+import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.Difficulty
@@ -110,12 +111,15 @@ fun ShareProgramSheet(
                     .padding(bottom = 24.dp)
             ) {
                 // ── 1. Adım: Program seç ─────────────────────────────────────
-                Text("PAYLAŞILACAK PROGRAMI SEÇ",
+                Text(theme.t("PAYLAŞILACAK PROGRAMI SEÇ", "SELECT PROGRAM TO SHARE"),
                     color = theme.text0, fontSize = 18.sp,
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text     = "Kendi programlarından birini seç, ardından başlık/açıklama ekleyerek topluluğa paylaş. Paylaşım snapshot olarak sabit kalır; programı sonra düzenlesen bile bu paylaşım değişmez.",
+                    text     = theme.t(
+                        "Kendi programlarından birini seç, ardından başlık/açıklama ekleyerek topluluğa paylaş. Paylaşım snapshot olarak sabit kalır; programı sonra düzenlesen bile bu paylaşım değişmez.",
+                        "Choose one of your programs, then add a title/description and share it with the community. The share stays fixed as a snapshot, even if you edit the program later."
+                    ),
                     color    = theme.text2.copy(0.7f),
                     fontSize = 12.sp,
                     lineHeight = 17.sp
@@ -155,7 +159,7 @@ fun ShareProgramSheet(
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("VAZGEÇ", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         } else {
@@ -167,7 +171,7 @@ fun ShareProgramSheet(
                     .padding(bottom = 24.dp)
             ) {
                 // ── 2. Adım: Meta form ───────────────────────────────────────
-                Text("PROGRAMI PAYLAŞ",
+                Text(theme.t("PROGRAMI PAYLAŞ", "SHARE PROGRAM"),
                     color = theme.text0, fontSize = 18.sp,
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
@@ -193,7 +197,7 @@ fun ShareProgramSheet(
                     // Preselected değilse kullanıcı geri dönüp başka program seçebilir
                     if (preselectedProgramId == null) {
                         Text(
-                            text = "Değiştir",
+                            text = theme.t("Değiştir", "Change"),
                             color = theme.text2.copy(0.8f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -207,7 +211,7 @@ fun ShareProgramSheet(
                 if (selectedAlreadyShared) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Bu program zaten toplulukta yayında.",
+                        text = theme.t("Bu program zaten toplulukta yayında.", "This program is already live in the community."),
                         color = accent.copy(0.82f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
@@ -215,35 +219,35 @@ fun ShareProgramSheet(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                LabeledField("Başlık *", title, onChange = { title = it }, placeholder = "Örn. 3 Günlük Güç Protokolü")
+                LabeledField(theme.t("Başlık *", "Title *"), title, onChange = { title = it }, placeholder = theme.t("Örn. 3 Günlük Güç Protokolü", "e.g. 3-Day Strength Protocol"))
                 Spacer(Modifier.height(12.dp))
-                LabeledField("Açıklama", description, onChange = { description = it },
-                    placeholder = "Kime, ne kadar sürede, hangi amaca?", multiline = true)
+                LabeledField(theme.t("Açıklama", "Description"), description, onChange = { description = it },
+                    placeholder = theme.t("Kime, ne kadar sürede, hangi amaca?", "For whom, over how long, and for what goal?"), multiline = true)
                 Spacer(Modifier.height(12.dp))
-                LabeledField("Etiketler (virgülle ayır)", tagsText, onChange = { tagsText = it },
-                    placeholder = "güç, hipertrofi, başlangıç")
+                LabeledField(theme.t("Etiketler (virgülle ayır)", "Tags (comma-separated)"), tagsText, onChange = { tagsText = it },
+                    placeholder = theme.t("güç, hipertrofi, başlangıç", "strength, hypertrophy, beginner"))
                 Spacer(Modifier.height(12.dp))
 
-                Text("SEVİYE", color = theme.text2.copy(0.65f), fontSize = 11.sp,
+                Text(theme.t("SEVİYE", "LEVEL"), color = theme.text2.copy(0.65f), fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DifficultyChip("Başlangıç", difficulty == Difficulty.BEGINNER)
+                    DifficultyChip(theme.t("Başlangıç", "Beginner"), difficulty == Difficulty.BEGINNER)
                         { difficulty = if (difficulty == Difficulty.BEGINNER) null else Difficulty.BEGINNER }
-                    DifficultyChip("Orta",      difficulty == Difficulty.INTERMEDIATE)
+                    DifficultyChip(theme.t("Orta", "Intermediate"),      difficulty == Difficulty.INTERMEDIATE)
                         { difficulty = if (difficulty == Difficulty.INTERMEDIATE) null else Difficulty.INTERMEDIATE }
-                    DifficultyChip("İleri",     difficulty == Difficulty.ADVANCED)
+                    DifficultyChip(theme.t("İleri", "Advanced"),     difficulty == Difficulty.ADVANCED)
                         { difficulty = if (difficulty == Difficulty.ADVANCED) null else Difficulty.ADVANCED }
                 }
                 Spacer(Modifier.height(12.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(modifier = Modifier.weight(1f)) {
-                        LabeledField("Süre (hafta)", weeksText, onChange = { weeksText = it.filter { c -> c.isDigit() } },
+                        LabeledField(theme.t("Süre (hafta)", "Duration (weeks)"), weeksText, onChange = { weeksText = it.filter { c -> c.isDigit() } },
                             placeholder = "8", numeric = true)
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        LabeledField("Gün/Hafta", daysText, onChange = { daysText = it.filter { c -> c.isDigit() } },
+                        LabeledField(theme.t("Gün/Hafta", "Days/Week"), daysText, onChange = { daysText = it.filter { c -> c.isDigit() } },
                             placeholder = "3", numeric = true)
                     }
                 }
@@ -258,7 +262,7 @@ fun ShareProgramSheet(
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("VAZGEÇ", color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     Spacer(Modifier.width(10.dp))
                     Box(
                         modifier = Modifier
@@ -283,7 +287,7 @@ fun ShareProgramSheet(
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("PAYLAŞ",
+                        Text(theme.t("PAYLAŞ", "SHARE"),
                             color = if (canSubmit) Color.Black else theme.text2.copy(0.4f),
                             fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                     }
@@ -355,16 +359,19 @@ private fun ProgramPickerRow(
                 )
                 if (program.isActive) {
                     Spacer(Modifier.width(6.dp))
-                    ProgramStatusBadge("AKTİF", accent)
+                    ProgramStatusBadge(theme.t("AKTİF", "ACTIVE"), accent)
                 }
                 if (alreadyShared) {
                     Spacer(Modifier.width(6.dp))
-                    ProgramStatusBadge("YAYINDA", accent)
+                    ProgramStatusBadge(theme.t("YAYINDA", "LIVE"), accent)
                 }
             }
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "$workoutDays antrenman günü · $totalEx egzersiz",
+                text = theme.t(
+                    "$workoutDays antrenman günü · $totalEx egzersiz",
+                    "$workoutDays workout days · $totalEx exercises"
+                ),
                 color = theme.text2.copy(0.7f),
                 fontSize = 11.sp,
                 maxLines = 1,
@@ -412,11 +419,11 @@ private fun EmptyProgramsNotice() {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Paylaşılabilir programın yok",
+            Text(theme.t("Paylaşılabilir programın yok", "You have no programs to share"),
                 color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Önce Plan sekmesinde bir program oluştur.",
+                text = theme.t("Önce Plan sekmesinde bir program oluştur.", "Create a program in the Plan tab first."),
                 color = theme.text2.copy(0.7f), fontSize = 12.sp
             )
         }

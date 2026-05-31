@@ -1288,13 +1288,14 @@ fun AuthLiquidField(
 
 @Composable
 private fun BackRow(onBack: () -> Unit) {
+    val theme = LocalAppTheme.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(vertical = 2.dp, horizontal = 2.dp)
     ) {
         AppBackButton(onClick = onBack, accent = MaterialTheme.colorScheme.primary, size = 36.dp)
         Spacer(Modifier.width(8.dp))
-        Text("Giriş sayfasına dön", color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(theme.t("Giriş sayfasına dön", "Back to sign in"), color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }
 

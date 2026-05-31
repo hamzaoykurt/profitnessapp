@@ -87,19 +87,19 @@ enum class ProgramCategory(val trLabel: String, val color: Color, val icon: Imag
     BEGINNER("BAŞLANGIÇ", CardGreen, Icons.Rounded.StarOutline)
 }
 
-enum class ProgramSportFilter(val label: String, val color: Color, val icon: ImageVector) {
-    ALL("TÜM SPORLAR", Snow, Icons.Rounded.GridView),
-    FITNESS("FİTNESS", CardPurple, Icons.Rounded.FitnessCenter),
-    RUNNING("KOŞU", CardCyan, Icons.Rounded.DirectionsRun),
-    CYCLING("BİSİKLET", CardGreen, Icons.Rounded.DirectionsBike),
-    SWIMMING("YÜZME", CardCyan, Icons.Rounded.Pool),
-    ROWING("KÜREK", Amber, Icons.Rounded.Rowing),
-    WALKING("YÜRÜYÜŞ", CardGreen, Icons.Rounded.DirectionsWalk),
-    BOXING("BOKS", CardCoral, Icons.Rounded.SportsMma),
-    YOGA("YOGA", CardPurple, Icons.Rounded.SelfImprovement),
-    FOOTBALL("FUTBOL", CardGreen, Icons.Rounded.SportsSoccer),
-    BASKETBALL("BASKETBOL", Amber, Icons.Rounded.SportsBasketball),
-    TENNIS("TENİS", CardCyan, Icons.Rounded.SportsTennis)
+enum class ProgramSportFilter(val trLabel: String, val enLabel: String, val color: Color, val icon: ImageVector) {
+    ALL("TÜM SPORLAR", "ALL SPORTS", Snow, Icons.Rounded.GridView),
+    FITNESS("FİTNESS", "FITNESS", CardPurple, Icons.Rounded.FitnessCenter),
+    RUNNING("KOŞU", "RUNNING", CardCyan, Icons.Rounded.DirectionsRun),
+    CYCLING("BİSİKLET", "CYCLING", CardGreen, Icons.Rounded.DirectionsBike),
+    SWIMMING("YÜZME", "SWIMMING", CardCyan, Icons.Rounded.Pool),
+    ROWING("KÜREK", "ROWING", Amber, Icons.Rounded.Rowing),
+    WALKING("YÜRÜYÜŞ", "WALKING", CardGreen, Icons.Rounded.DirectionsWalk),
+    BOXING("BOKS", "BOXING", CardCoral, Icons.Rounded.SportsMma),
+    YOGA("YOGA", "YOGA", CardPurple, Icons.Rounded.SelfImprovement),
+    FOOTBALL("FUTBOL", "FOOTBALL", CardGreen, Icons.Rounded.SportsSoccer),
+    BASKETBALL("BASKETBOL", "BASKETBALL", Amber, Icons.Rounded.SportsBasketball),
+    TENNIS("TENİS", "TENNIS", CardCyan, Icons.Rounded.SportsTennis)
 }
 
 private fun ProgramSportFilter.matches(program: ReadyProgram): Boolean {
@@ -124,6 +124,12 @@ private fun ProgramSportFilter.matches(program: ReadyProgram): Boolean {
         ProgramSportFilter.BASKETBALL -> token.contains("BASKETBOL")
         ProgramSportFilter.TENNIS -> token.contains("TENİS")
     }
+}
+
+@Composable
+private fun ProgramSportFilter.localizedLabel(): String {
+    val theme = LocalAppTheme.current
+    return theme.t(trLabel, enLabel)
 }
 
 /** Returns the localised display label for this category. */
@@ -893,7 +899,7 @@ private fun SportFilterChip(
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                sport.label,
+                sport.localizedLabel(),
                 color = textColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -1117,19 +1123,22 @@ private fun SavedProgramTile(
             },
             text = {
                 Text(
-                    "\"${program.name}\" silinecek. Bu işlem geri alınamaz.",
+                    theme.t(
+                        "\"${program.name}\" silinecek. Bu işlem geri alınamaz.",
+                        "\"${program.name}\" will be deleted. This action cannot be undone."
+                    ),
                     color    = theme.text1,
                     fontSize = 14.sp
                 )
             },
             confirmButton = {
                 TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
-                    Text("Sil", color = CardCoral, fontWeight = FontWeight.Bold)
+                    Text(theme.t("Sil", "Delete"), color = CardCoral, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("İptal", color = theme.text2)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2)
                 }
             }
         )
@@ -1714,7 +1723,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     .padding(24.dp)
             ) {
                 Column {
-                    Text("TASARIM PARAMETRELERİ", color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                    Text(aiTheme.t("TASARIM PARAMETRELERİ", "DESIGN PARAMETERS"), color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                     Spacer(Modifier.height(16.dp))
                     val textFieldScroll = rememberScrollState()
                     BasicTextField(
@@ -1728,8 +1737,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         enabled = !uiState.aiLoading,
                         decorationBox = { inner ->
                             if (prompt.isEmpty()) Text(
-                                if (selectedBase64 != null) "Ek talimat ekleyebilirsin (opsiyonel)..."
-                                else "Antrenman sıklığı, hedefin ve seviyeni belirt...",
+                                if (selectedBase64 != null) {
+                                    aiTheme.t("Ek talimat ekleyebilirsin (opsiyonel)...", "You can add extra instructions (optional)...")
+                                } else {
+                                    aiTheme.t("Antrenman sıklığı, hedefin ve seviyeni belirt...", "Describe your training frequency, goal, and level...")
+                                },
                                 color = aiTheme.text2, fontSize = 15.sp
                             )
                             inner()
@@ -1763,7 +1775,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (selectedBase64 != null) "Değiştir" else "Görsel / PDF Yükle",
+                        text = if (selectedBase64 != null) {
+                            aiTheme.t("Değiştir", "Change")
+                        } else {
+                            aiTheme.t("Görsel / PDF Yükle", "Upload Image / PDF")
+                        },
                         color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
                         fontSize = 13.sp
                     )
@@ -1778,7 +1794,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             selectedFileError = null
                         }
                     ) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Kaldır", tint = CardCoral)
+                        Icon(Icons.Rounded.Close, contentDescription = aiTheme.t("Kaldır", "Remove"), tint = CardCoral)
                     }
                 }
             }
@@ -1855,9 +1871,9 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(3.dp))
-                        Text("6-10 Enerji", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text(aiTheme.t("6-10 Enerji", "6-10 Energy"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(6.dp))
-                        Text("Enerji: ${uiState.aiCredits}", color = LocalAppTheme.current.text2, fontSize = 10.sp)
+                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = LocalAppTheme.current.text2, fontSize = 10.sp)
                     }
                 }
             }
@@ -2195,7 +2211,7 @@ private fun EditProgramScreen(
                             border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke),
                             colors   = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent)
                         ) {
-                            Text("İptal", color = editTheme.text1, fontWeight = FontWeight.Medium)
+                            Text(editTheme.t("İptal", "Cancel"), color = editTheme.text1, fontWeight = FontWeight.Medium)
                         }
                         Button(
                             onClick  = {
@@ -2245,9 +2261,9 @@ private fun EditProgramScreen(
                                 Spacer(Modifier.width(6.dp))
                                 Text(
                                     if (uiState.userPlan == UserPlan.FREE) {
-                                        "Uygula - $AI_EDIT_ENERGY_COST Enerji"
+                                        editTheme.t("Uygula - $AI_EDIT_ENERGY_COST Enerji", "Apply - $AI_EDIT_ENERGY_COST Energy")
                                     } else {
-                                        "Uygula"
+                                        editTheme.t("Uygula", "Apply")
                                     },
                                     fontWeight = FontWeight.Black,
                                     fontSize = if (uiState.userPlan == UserPlan.FREE) 12.sp else 14.sp,
@@ -2794,7 +2810,12 @@ private fun ManualDayCard(
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(ex.name, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(
+                                    theme.exerciseDisplayName(ex.name),
+                                    color = theme.text0,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
                                 Spacer(Modifier.height(4.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     manualDraftBadges(ex, theme).forEachIndexed { badgeIndex, badge ->
@@ -2965,7 +2986,7 @@ private fun ExerciseEditDialog(
                         letterSpacing = 1.5.sp
                     )
                     Text(
-                        exercise.name,
+                        theme.exerciseDisplayName(exercise.name),
                         color      = theme.text0,
                         fontWeight = FontWeight.Bold,
                         fontSize   = 15.sp

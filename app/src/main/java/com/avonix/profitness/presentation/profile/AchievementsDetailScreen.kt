@@ -53,6 +53,16 @@ private val CATEGORY_LABELS = mapOf(
     "level"           to "Seviye Başarımları"
 )
 
+private fun categoryLabel(category: String, theme: AppThemeState): String = when (category) {
+    "streak" -> theme.t("Seri Başarımları", "Streak Achievements")
+    "volume" -> theme.t("Antrenman Başarımları", "Workout Achievements")
+    "xp" -> theme.t("XP Başarımları", "XP Achievements")
+    "milestone" -> theme.t("Kilometre Taşları", "Milestones")
+    "total_exercises" -> theme.t("Egzersiz Başarımları", "Exercise Achievements")
+    "level" -> theme.t("Seviye Başarımları", "Level Achievements")
+    else -> category.uppercase()
+}
+
 @Composable
 fun AchievementsDetailScreen(
     onBack   : () -> Unit,
@@ -94,7 +104,7 @@ fun AchievementsDetailScreen(
                             fontWeight    = FontWeight.Black,
                             letterSpacing = 2.sp
                         )
-                        Text("Tüm başarımlar ve rank yol haritası", color = theme.text2, fontSize = 11.sp)
+                        Text(theme.t("Tüm başarımlar ve rank yol haritası", "All achievements and rank roadmap"), color = theme.text2, fontSize = 11.sp)
                     }
                     // Sayaç badge
                     Box(
@@ -140,7 +150,7 @@ fun AchievementsDetailScreen(
 
             // ── Başarım Kategorileri ────────────────────────────────────────
             grouped.forEach { (category, achievements) ->
-                val categoryLabel = CATEGORY_LABELS[category] ?: category.uppercase()
+                val categoryLabel = categoryLabel(category, theme)
                 val (colorFrom, _) = achievementColor(category)
                 val catUnlocked = achievements.count { it.isUnlocked }
 
@@ -207,7 +217,7 @@ private fun RankRoadmapSection(
 ) {
     Column(modifier = modifier) {
         Text(
-            "RANK YOL HARİTASI",
+            theme.t("RANK YOL HARİTASI", "RANK ROADMAP"),
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -252,7 +262,7 @@ private fun RankRoadmapSection(
                                 fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold
                             )
                             Text(
-                                "$threshold XP gerekli",
+                                theme.t("$threshold XP gerekli", "$threshold XP required"),
                                 color    = theme.text2,
                                 fontSize = 10.sp
                             )
@@ -265,7 +275,7 @@ private fun RankRoadmapSection(
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    "MEVCUT",
+                                    theme.t("MEVCUT", "CURRENT"),
                                     color         = color,
                                     fontSize      = 9.sp,
                                     fontWeight    = FontWeight.Black,
@@ -319,7 +329,7 @@ private fun XpProgressCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("SEVİYE $level", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("SEVİYE $level", "LEVEL $level"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     Text("$xpInLevel / $xpPerLevel XP", color = theme.text1, fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(8.dp))
@@ -342,7 +352,7 @@ private fun XpProgressCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("SONRAKİ RANK", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("SONRAKİ RANK", "NEXT RANK"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("$xp / $nextRankXp XP", color = theme.text1, fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(8.dp))
@@ -363,7 +373,7 @@ private fun XpProgressCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("TOPLAM XP", color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(theme.t("TOPLAM XP", "TOTAL XP"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(
                     "$xp XP",
                     color      = accent,

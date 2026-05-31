@@ -68,7 +68,7 @@ private fun ExchangingContent() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = accent)
             Spacer(Modifier.height(16.dp))
-            Text("Bağlantı doğrulanıyor…", color = theme.text2, fontSize = 14.sp)
+            Text(theme.t("Bağlantı doğrulanıyor...", "Verifying link..."), color = theme.text2, fontSize = 14.sp)
         }
     }
 }
@@ -103,18 +103,21 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(28.dp))
             Text(
-                "Bağlantı geçersiz",
+                theme.t("Bağlantı geçersiz", "Invalid link"),
                 color = ObsidianText, fontSize = 22.sp, fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.\nLütfen yeni bir bağlantı isteyin.",
+                theme.t(
+                    "Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.\nLütfen yeni bir bağlantı isteyin.",
+                    "This password reset link is invalid or has expired.\nPlease request a new link."
+                ),
                 color = ObsidianSub, fontSize = 14.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(Modifier.height(32.dp))
             ObsidianButton(
-                text     = "GİRİŞ SAYFASINA DÖN",
+                text     = theme.t("GİRİŞ SAYFASINA DÖN", "BACK TO SIGN IN"),
                 onClick  = onDone,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -155,7 +158,7 @@ private fun NewPasswordContent(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = accent)
                 Spacer(Modifier.height(16.dp))
-                Text("Şifre güncelleniyor…", color = theme.text2, fontSize = 14.sp)
+                Text(theme.t("Şifre güncelleniyor...", "Updating password..."), color = theme.text2, fontSize = 14.sp)
             }
         }
         return
@@ -186,12 +189,12 @@ private fun NewPasswordContent(
 
             Spacer(Modifier.height(28.dp))
             Text(
-                "Yeni şifre belirle",
+                theme.t("Yeni şifre belirle", "Set a new password"),
                 color = ObsidianText, fontSize = 24.sp, fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Hesabın için güçlü bir şifre seç.",
+                theme.t("Hesabın için güçlü bir şifre seç.", "Choose a strong password for your account."),
                 color = ObsidianSub, fontSize = 14.sp
             )
 
@@ -200,7 +203,7 @@ private fun NewPasswordContent(
             AuthLiquidField(
                 value         = password,
                 onValueChange = { password = it; viewModel.clearError() },
-                label         = "YENİ ŞİFRE",
+                label         = theme.t("YENİ ŞİFRE", "NEW PASSWORD"),
                 icon          = Icons.Rounded.Lock,
                 isPassword    = true,
                 showPass      = showPass,
@@ -219,7 +222,7 @@ private fun NewPasswordContent(
             AuthLiquidField(
                 value         = confirmPassword,
                 onValueChange = { confirmPassword = it; viewModel.clearError() },
-                label         = "ŞİFRE TEKRAR",
+                label         = theme.t("ŞİFRE TEKRAR", "CONFIRM PASSWORD"),
                 icon          = Icons.Rounded.Lock,
                 isPassword    = true,
                 showPass      = showConfirmPass,
@@ -235,7 +238,7 @@ private fun NewPasswordContent(
             Spacer(Modifier.height(32.dp))
 
             ObsidianButton(
-                text     = "ŞİFREYİ GÜNCELLE",
+                text     = theme.t("ŞİFREYİ GÜNCELLE", "UPDATE PASSWORD"),
                 onClick  = {
                     keyboard?.hide()
                     viewModel.submit(password, confirmPassword)

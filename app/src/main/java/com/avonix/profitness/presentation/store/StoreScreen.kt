@@ -67,7 +67,7 @@ private data class MasterFeature(
 )
 
 private val ALL_FEATURES = listOf(
-    MasterFeature(Icons.Rounded.FitnessCenter,    "Forge antrenman takibi",              UserPlan.FREE),
+    MasterFeature(Icons.Rounded.FitnessCenter,    "Program antrenman takibi",            UserPlan.FREE),
     MasterFeature(Icons.Rounded.BarChart,          "Temel gelişim metrikleri",            UserPlan.FREE),
     MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",            UserPlan.FREE),
     MasterFeature(Icons.Rounded.ChatBubbleOutline, "Oracle sohbet paketi",                UserPlan.PRO),
@@ -80,7 +80,7 @@ private val ALL_FEATURES = listOf(
     MasterFeature(Icons.Rounded.Psychology,        "Elite koç hafızası",                  UserPlan.ELITE),
     MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                    UserPlan.ELITE),
     MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",            UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Diamond,           "Tüm Forge özellikleri dahil",         UserPlan.ELITE)
+    MasterFeature(Icons.Rounded.Diamond,           "Tüm program özellikleri dahil",       UserPlan.ELITE)
 )
 
 // Plan sıralaması: FREE < PRO < ELITE
@@ -120,7 +120,7 @@ private fun energyLabel(amount: Int, theme: AppThemeState): String =
     theme.t("$amount Enerji", "$amount Energy")
 
 private fun MasterFeature.localizedText(theme: AppThemeState): String = when (text) {
-    "Forge antrenman takibi" -> theme.t(text, "Forge workout tracking")
+    "Program antrenman takibi" -> theme.t(text, "Program workout tracking")
     "Temel gelişim metrikleri" -> theme.t(text, "Basic progress metrics")
     "Manuel program oluşturma" -> theme.t(text, "Manual program creation")
     "Oracle sohbet paketi" -> theme.t(text, "Oracle chat pack")
@@ -133,7 +133,7 @@ private fun MasterFeature.localizedText(theme: AppThemeState): String = when (te
     "Elite koç hafızası" -> theme.t(text, "Elite coach memory")
     "Öncelikli destek" -> theme.t(text, "Priority support")
     "Erken erişim özellikleri" -> theme.t(text, "Early access features")
-    "Tüm Forge özellikleri dahil" -> theme.t(text, "All Forge features included")
+    "Tüm program özellikleri dahil" -> theme.t(text, "All program features included")
     else -> text
 }
 
@@ -627,7 +627,7 @@ private fun StoreTopBar(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    theme.t("Forge Merkezi", "Forge Hub"),
+                    theme.t("Program Merkezi", "Program Hub"),
                     color      = theme.text0,
                     fontSize   = 17.sp,
                     fontWeight = FontWeight.Black,
@@ -934,7 +934,7 @@ private fun PlanOfferCard(
                 Text(
                     when (tier.plan) {
                         UserPlan.FREE -> theme.t("GÜNLÜK MOD", "DAILY MODE")
-                        UserPlan.PRO -> theme.t("FORGE MODU", "FORGE MODE")
+                        UserPlan.PRO -> theme.t("PRO MODU", "PRO MODE")
                         UserPlan.ELITE -> theme.t("ELITE MOD", "ELITE MODE")
                     },
                     color = accent,
@@ -1285,7 +1285,7 @@ private fun AccountSummaryHero(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    theme.t("Forge hesabın", "Your Forge Account"),
+                    theme.t("Profitness hesabın", "Your Profitness Account"),
                     color = theme.text0,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
