@@ -95,7 +95,8 @@ private enum class ProgramsSubTab { Community, Saved, Mine }
 @Composable
 fun DiscoverScreen(
     bottomPadding: Dp,
-    timerExtraPad: Dp = 0.dp
+    timerExtraPad: Dp = 0.dp,
+    externalRefreshSignal: Int = 0
 ) {
     var selected by rememberSaveable { mutableStateOf(DiscoverTab.Programs) }
     var programsSub by rememberSaveable { mutableStateOf(ProgramsSubTab.Community) }
@@ -126,6 +127,12 @@ fun DiscoverScreen(
     LaunchedEffect(Unit) {
         delay(120)
         viewModel.initLoad()
+    }
+
+    LaunchedEffect(externalRefreshSignal) {
+        if (externalRefreshSignal > 0) {
+            viewModel.refreshAfterExternalShare()
+        }
     }
 
     LaunchedEffect(state.shareResult) {

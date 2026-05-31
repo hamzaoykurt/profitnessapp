@@ -105,6 +105,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val readyTabs               = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     var warmupStage             by remember { mutableIntStateOf(0) }
     var programInitialMode      by remember { mutableStateOf<com.avonix.profitness.presentation.program.BuilderMode>(com.avonix.profitness.presentation.program.BuilderMode.Choose) }
+    var discoverRefreshSignal   by rememberSaveable { mutableIntStateOf(0) }
     val workoutViewModel: WorkoutViewModel = hiltViewModel()
     var showPerformanceDetail       by remember { mutableStateOf(false) }
     var showAchievementsDetail      by remember { mutableStateOf(false) }
@@ -285,7 +286,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     ProgramBuilderScreen(
                         initialMode       = capturedMode,
                         timerExtraPad     = timerExtraPad,
-                        onNavigateToStore = { showStore = true }
+                        onNavigateToStore = { showStore = true },
+                        onProgramShared   = { discoverRefreshSignal++ }
                     )
                 }
                 DashboardTab.AICoach -> AICoachScreen(
@@ -293,8 +295,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onNavigateToStore  = { showStore = true }
                 )
                 DashboardTab.Discover -> DiscoverScreen(
-                    bottomPadding = contentPad,
-                    timerExtraPad = timerExtraPad
+                    bottomPadding         = contentPad,
+                    timerExtraPad         = timerExtraPad,
+                    externalRefreshSignal = discoverRefreshSignal
                 )
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange                   = onThemeChange,

@@ -439,6 +439,7 @@ fun ProgramBuilderScreen(
     initialMode      : BuilderMode = BuilderMode.Choose,
     timerExtraPad    : androidx.compose.ui.unit.Dp = 0.dp,
     onNavigateToStore: () -> Unit = {},
+    onProgramShared  : () -> Unit = {},
     viewModel        : ProgramViewModel = hiltViewModel()
 ) {
     var showPaywall by remember { mutableStateOf(false) }
@@ -455,6 +456,9 @@ fun ProgramBuilderScreen(
 
     LaunchedEffect(shareState.result, shareViewModel) {
         shareState.result?.let { r ->
+            if (r is ProgramShareResult.Success) {
+                onProgramShared()
+            }
             currentToast = AppToastData(
                 message = when (r) {
                     ProgramShareResult.Success -> "Program topluluk akışına eklendi"

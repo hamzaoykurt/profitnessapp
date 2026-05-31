@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
@@ -166,10 +167,10 @@ fun PerformanceDetailScreen(
 
     if (showCalculators) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.94f
         ModalBottomSheet(
             onDismissRequest = { showCalculators = false },
             sheetState = sheetState,
-            modifier = Modifier.fillMaxHeight(0.94f),
             containerColor = theme.bg1,
             contentColor = theme.text0,
             dragHandle = {
@@ -188,7 +189,7 @@ fun PerformanceDetailScreen(
                 theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
+                    .height(sheetHeight)
                     .imePadding()
                     .navigationBarsPadding()
             )

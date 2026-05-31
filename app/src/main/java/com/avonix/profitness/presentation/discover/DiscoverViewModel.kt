@@ -106,6 +106,11 @@ class DiscoverViewModel @Inject constructor(
         loadMyShared()
     }
 
+    fun refreshAfterExternalShare() {
+        isInitialized = true
+        refresh()
+    }
+
     private fun loadFirstPage(isRefresh: Boolean = false) {
         viewModelScope.launch {
             if (!isRefresh) _state.update { it.copy(isLoading = true, error = null) }
