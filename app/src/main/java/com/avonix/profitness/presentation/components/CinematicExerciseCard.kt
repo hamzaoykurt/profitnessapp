@@ -426,8 +426,8 @@ fun CinematicExerciseCard(
                                     isRunning      = timerRunning,
                                     isDone         = timerDone,
                                     defaultSeconds = activityDuration.toDurationSeconds(),
-                                    idleLabel      = "SAYAÇ",
-                                    doneLabel      = "SÜRE BİTTİ",
+                                    idleLabel      = theme.t("SAYAÇ", "TIMER"),
+                                    doneLabel      = theme.t("SÜRE BİTTİ", "TIME'S UP"),
                                     onStart        = {
                                         if (timerRunning) onStopTimer()
                                         else showActivityTimerSetup = !showActivityTimerSetup
@@ -440,8 +440,8 @@ fun CinematicExerciseCard(
                                     isRunning      = timerRunning,
                                     isDone         = timerDone,
                                     defaultSeconds = nextTimedSetDurationSeconds,
-                                    idleLabel      = "SET SAYACI",
-                                    doneLabel      = "SET BİTTİ",
+                                    idleLabel      = theme.t("SET SAYACI", "SET TIMER"),
+                                    doneLabel      = theme.t("SET BİTTİ", "SET DONE"),
                                     onStart        = {
                                         if (timerRunning) onStopTimer()
                                         else showTimedSetTimerSetup = !showTimedSetTimerSetup
@@ -1222,12 +1222,13 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
             } else {
                 Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
                 Spacer(Modifier.width(4.dp))
-                Text(text = if (isDurationSet) reps.toDurationSetDisplayLabel() else reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
+                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "(${done} tamam)",
+                    text = LocalAppTheme.current.t("(${done} tamam)", "(${done} done)"),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
@@ -1237,9 +1238,9 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
     }
 }
 
-private fun String.toDurationSetDisplayLabel(): String {
+private fun String.toDurationSetDisplayLabel(theme: AppThemeState): String {
     val seconds = toDurationSetSecondsLabel()
-    return if (seconds.isBlank()) this else "${seconds} sn"
+    return if (seconds.isBlank()) this else "$seconds ${theme.t("sn", "sec")}"
 }
 
 private fun String.toDurationSetSecondsLabel(): String {
@@ -1279,8 +1280,8 @@ private fun String.toDurationLabel(): String {
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return buildString {
-        if (hours > 0) append("${hours}sa ")
-        if (minutes > 0) append("${minutes}dk ")
-        if (seconds > 0 || isEmpty()) append("${seconds}sn")
+        if (hours > 0) append("${hours}h ")
+        if (minutes > 0) append("${minutes}m ")
+        if (seconds > 0 || isEmpty()) append("${seconds}s")
     }.trim()
 }

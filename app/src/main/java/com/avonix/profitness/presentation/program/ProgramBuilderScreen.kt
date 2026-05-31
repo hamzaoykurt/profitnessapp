@@ -161,6 +161,118 @@ data class ReadyProgram(
     val muscleFractions: List<Float>
 )
 
+private val ReadyProgramEnglishText = mapOf(
+    "Hipertrofi Klasiği" to "Hypertrophy Classic",
+    "Schwarzenegger'ın Hacim Protokolü" to "Schwarzenegger Volume Protocol",
+    "Klasik 5 Gün Bölme" to "Classic 5-Day Split",
+    "HIIT Metabolik" to "Metabolic HIIT",
+    "Yüksek Yoğunluklu Yağ Yakımı" to "High Intensity Fat Loss",
+    "Tam Vücut Yağ Yakımı" to "Full Body Fat Loss",
+    "Yoğun Devre Antrenmanı" to "Intense Circuit Training",
+    "5×5 Güç" to "5×5 Strength",
+    "StrongLifts — Lineer Progresyon" to "StrongLifts - Linear Progression",
+    "Rekabet Gücü Protokolü" to "Competition Strength Protocol",
+    "Tier Tabanlı Güç Protokolü" to "Tier-Based Strength Protocol",
+    "Kardiyovasküler Temel" to "Cardiovascular Base",
+    "Aerobik Kapasite Gelişimi" to "Aerobic Capacity Development",
+    "Güç + Dayanıklılık Hibrit" to "Strength + Endurance Hybrid",
+    "Bisiklet 4 Hafta" to "Cycling 4 Weeks",
+    "Sürüş + Bacak Kuvveti" to "Riding + Leg Strength",
+    "5K Koşu Temeli" to "5K Running Base",
+    "Yüzme Temel" to "Swimming Basics",
+    "Yüzme + Omuz/Sırt Dayanıklılığı" to "Swimming + Shoulder/Back Endurance",
+    "Kürek Erg Temel" to "Rowing Erg Basics",
+    "Erg + Total Body Kuvvet" to "Erg + Total Body Strength",
+    "Yürüyüş & Hiking" to "Walking & Hiking",
+    "Düşük Etki Dayanıklılık" to "Low Impact Endurance",
+    "Boks Kondisyon" to "Boxing Conditioning",
+    "Round + Kuvvet + Kondisyon" to "Rounds + Strength + Conditioning",
+    "Yoga Mobilite" to "Yoga Mobility",
+    "Mobilite + Destek Kuvveti" to "Mobility + Support Strength",
+    "Futbol Atletik" to "Football Athletic",
+    "Saha Kondisyonu + Alt Vücut" to "Field Conditioning + Lower Body",
+    "Basketbol Atletik" to "Basketball Athletic",
+    "Sıçrama + Court Conditioning" to "Jumping + Court Conditioning",
+    "Tenis Atletik" to "Tennis Athletic",
+    "Ayak Çalışması + Rotasyon" to "Footwork + Rotation",
+    "Full Body Başlangıç" to "Full Body Beginner",
+    "Starting Strength Tabanlı" to "Starting Strength Based",
+    "Vücut Ağırlığı" to "Bodyweight",
+    "Ekipmansız Kalistenik" to "No-Equipment Calisthenics",
+    "Başlangıç" to "Beginner",
+    "Orta" to "Intermediate",
+    "İleri" to "Advanced",
+    "Kas Kütlesi" to "Muscle Mass",
+    "Yağ Yakımı" to "Fat Loss",
+    "Güç" to "Strength",
+    "Dayanıklılık" to "Endurance",
+    "Bisiklet" to "Cycling",
+    "Koşu" to "Running",
+    "Yüzme" to "Swimming",
+    "Kürek" to "Rowing",
+    "Yürüyüş" to "Walking",
+    "Boks" to "Boxing",
+    "Mobilite" to "Mobility",
+    "Futbol" to "Football",
+    "Basketbol" to "Basketball",
+    "Tenis" to "Tennis",
+    "Genel Fitness" to "General Fitness",
+    "ÜST VÜCUT" to "UPPER BODY",
+    "ALT VÜCUT" to "LOWER BODY",
+    "GÜÇ" to "STRENGTH",
+    "KARDİYO" to "CARDIO",
+    "SIRT/OMUZ" to "BACK/SHOULDERS",
+    "SIRT" to "BACK",
+    "MOBİLİTE" to "MOBILITY",
+    "KONDİSYON" to "CONDITIONING",
+    "PATLAYICI GÜÇ" to "EXPLOSIVE POWER",
+    "ROTASYON" to "ROTATION"
+)
+
+private fun ReadyProgram.localizedText(value: String, theme: AppThemeState): String =
+    if (theme.language == AppLanguage.ENGLISH) ReadyProgramEnglishText[value] ?: value else value
+
+private fun ReadyProgram.localizedTitle(theme: AppThemeState): String = localizedText(title, theme)
+private fun ReadyProgram.localizedSubtitle(theme: AppThemeState): String = localizedText(subtitle, theme)
+private fun ReadyProgram.localizedLevel(theme: AppThemeState): String = localizedText(level, theme)
+private fun ReadyProgram.localizedGoal(theme: AppThemeState): String = localizedText(goal, theme)
+private fun ReadyProgram.localizedDescription(theme: AppThemeState): String =
+    if (theme.language == AppLanguage.ENGLISH) {
+        when (title) {
+            "HIIT Metabolik" -> "A 30 sec work / 30 sec rest interval protocol. It keeps post-workout calorie burn high through the EPOC effect and is built for efficient conditioning."
+            "Yoga Mobilite" -> "Combines yoga flows with core, posterior chain and controlled strength support while keeping the focus on mobility and recovery."
+            "Kürek Erg Temel" -> "Combines erg sessions with deadlift, squat and row strength work for leg drive, hip hinge, back pull and core transfer."
+            "Push / Pull / Legs" -> "A 6-day Push/Pull/Legs program that trains each muscle group twice per week and balances volume with frequency."
+            else -> localizedText(description, theme)
+        }
+    } else description
+
+private fun ReadyProgram.localizedSchedule(theme: AppThemeState): String =
+    if (theme.language == AppLanguage.ENGLISH) {
+        schedule
+            .replace("Pzt", "Mon")
+            .replace("Paz", "Sun")
+            .replace("Sal", "Tue")
+            .replace("Çar", "Wed")
+            .replace("Per", "Thu")
+            .replace("Cum", "Fri")
+            .replace("Cmt", "Sat")
+            .replace("Dinlenme", "Rest")
+            .replace("Düşük Tempolu Uzun Koşu", "Easy Long Run")
+            .replace("Orta-Yüksek Hızda", "Medium-High Pace")
+            .replace("Uzun Koşu", "Long Run")
+            .replace("Bisiklet", "Cycling")
+            .replace("Kürek", "Rowing")
+            .replace("Devre", "Circuit")
+            .replace("Hacim", "Volume")
+            .replace("Göğüs", "Chest")
+            .replace("Omuz", "Shoulders")
+            .replace("Sırt", "Back")
+            .replace("Baldır", "Calves")
+            .replace("Patlayıcı", "Explosive")
+            .replace("yoğun", "heavy")
+    } else schedule
+
 private val READY_PROGRAMS = listOf(
     // ── KAS GELİŞİMİ ─────────────────────────────────────────────────────────
     ReadyProgram(
@@ -1009,17 +1121,17 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     ProgramBadge(program.category.localizedLabel(), accent)
-                    LevelBadge(program.level)
+                    LevelBadge(program.level, program.localizedLevel(theme))
                 }
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    program.title,
+                    program.localizedTitle(theme),
                     color = theme.text0,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
                 Text(
-                    program.subtitle,
+                    program.localizedSubtitle(theme),
                     color = theme.text1,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Light
@@ -1029,7 +1141,7 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     StatChip(Icons.Rounded.CalendarMonth, "${program.days} ${cardS.dayLabel}")
                     StatChip(Icons.Rounded.Schedule, "${program.weeks} ${cardS.weekLabel}")
-                    StatChip(Icons.Rounded.TrackChanges, program.goal)
+                    StatChip(Icons.Rounded.TrackChanges, program.localizedGoal(theme))
                 }
             }
 
@@ -1056,7 +1168,7 @@ private fun ProgramBadge(label: String, color: Color) {
 }
 
 @Composable
-private fun LevelBadge(level: String) {
+private fun LevelBadge(level: String, label: String = level) {
     val color = when (level) {
         "Başlangıç" -> CardGreen
         "Orta" -> Amber
@@ -1069,7 +1181,7 @@ private fun LevelBadge(level: String) {
             .background(color.copy(alpha = 0.12f))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
-        Text(level, color = color, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+        Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
     }
 }
 
@@ -1357,7 +1469,7 @@ private fun SavedProgramTile(
                         Icon(Icons.Rounded.PlayArrow, null, tint = primary, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(5.dp))
                         Text(
-                            "AKTİF ET",
+                            theme.t("AKTİF ET", "ACTIVATE"),
                             color      = primary,
                             fontSize   = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -1378,7 +1490,7 @@ private fun SavedProgramTile(
                     Icon(Icons.Rounded.Edit, null, tint = theme.text1.copy(0.8f), modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
-                        "DÜZENLE",
+                        theme.t("DÜZENLE", "EDIT"),
                         color      = theme.text1.copy(0.8f),
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -1398,7 +1510,7 @@ private fun SavedProgramTile(
                     Icon(Icons.Rounded.Share, null, tint = primary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
-                        "PAYLAŞ",
+                        theme.t("PAYLAŞ", "SHARE"),
                         color      = primary,
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -1418,7 +1530,7 @@ private fun SavedProgramTile(
                     Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral.copy(0.85f), modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
-                        "SİL",
+                        theme.t("SİL", "DELETE"),
                         color      = CardCoral.copy(0.85f),
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -1468,13 +1580,13 @@ private fun ProgramDetailDialog(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                        Text(program.level, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        Text(program.localizedLevel(theme), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Text(program.title, style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Black)
-                Text(program.subtitle, color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Light)
+                Text(program.localizedTitle(theme), style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Black)
+                Text(program.localizedSubtitle(theme), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Light)
 
                 Spacer(Modifier.height(20.dp))
 
@@ -1491,13 +1603,13 @@ private fun ProgramDetailDialog(
                     Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
                     DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accent)
                     Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
-                    DialogStat(Icons.Rounded.TrackChanges, program.level.take(3).uppercase(), strings.levelLabel, accent)
+                    DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).take(3).uppercase(), strings.levelLabel, accent)
                 }
 
                 Spacer(Modifier.height(20.dp))
 
                 // Description
-                Text(program.description, color = theme.text1, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.Light)
+                Text(program.localizedDescription(theme), color = theme.text1, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.Light)
 
                 Spacer(Modifier.height(20.dp))
 
@@ -1507,7 +1619,7 @@ private fun ProgramDetailDialog(
                 program.muscleLabels.forEachIndexed { i, label ->
                     Column(Modifier.padding(bottom = 8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(label, color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(program.localizedText(label, theme), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(program.musclePct[i], color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(4.dp))
@@ -1544,7 +1656,7 @@ private fun ProgramDetailDialog(
                         .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                         .padding(16.dp)
                 ) {
-                    Text(program.schedule, color = theme.text1, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
+                    Text(program.localizedSchedule(theme), color = theme.text1, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
                 }
 
                 Spacer(Modifier.height(24.dp))

@@ -103,7 +103,7 @@ fun ProfileScreen(
         ) {
             item {
                 ProfileHeroBanner(
-                    name             = state.displayName.ifBlank { "Kullanıcı" },
+                    name             = state.displayName.ifBlank { theme.t("Kullanıcı", "User") },
                     avatar           = state.avatar,
                     rank             = state.rank,
                     level            = state.level,
@@ -153,7 +153,7 @@ fun ProfileScreen(
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
-                    displayName          = state.displayName.ifBlank { "Kullanıcı" },
+                    displayName          = state.displayName.ifBlank { theme.t("Kullanıcı", "User") },
                     avatar               = state.avatar
                 )
             }
@@ -209,14 +209,14 @@ fun ProfileScreen(
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            "YENİ BAŞARIM!",
+                            theme.t("YENİ BAŞARIM!", "NEW ACHIEVEMENT!"),
                             color         = accent,
                             fontSize      = 11.sp,
                             fontWeight    = FontWeight.Black,
                             letterSpacing = 4.sp
                         )
                         Text(
-                            name,
+                            localizedProfileAchievementText(name, theme),
                             color      = Snow,
                             fontSize   = 22.sp,
                             fontWeight = FontWeight.Black,
@@ -224,7 +224,7 @@ fun ProfileScreen(
                         )
                         if (desc.isNotBlank()) {
                             Text(
-                                desc,
+                                localizedProfileAchievementText(desc, theme),
                                 color     = Snow.copy(0.6f),
                                 fontSize  = 13.sp,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -377,7 +377,7 @@ private fun ProfileHeroBanner(
                     ) {
                         Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
                         Text(
-                            "TEMA",
+                            theme.t("TEMA", "THEME"),
                             color      = accent,
                             fontSize   = 11.sp,
                             fontWeight = FontWeight.Black,
@@ -385,7 +385,7 @@ private fun ProfileHeroBanner(
                         )
                     }
                     Text(
-                        "PROFİL",
+                        theme.t("PROFİL", "PROFILE"),
                         color = theme.text0,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Black,
@@ -400,7 +400,7 @@ private fun ProfileHeroBanner(
                 val chipBorder = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.5f)  else accent.copy(alpha = 0.4f)
                 val chipTint   = if (isPaid) Color(0xFFFFD700) else accent
                 // Plan varsa: "Elite · 5"  |  Sadece free: "5 Enerji"
-                val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else "$aiCredits Enerji"
+                val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else theme.t("$aiCredits Enerji", "$aiCredits Energy")
 
                 Row(
                     modifier = Modifier
@@ -574,7 +574,7 @@ private fun ProfileHeroBanner(
                                 )
                             }
                             Text(
-                                if (xpLeft == 0) "SEVİYE HAZIR" else "$xpLeft XP KALDI",
+                                if (xpLeft == 0) theme.t("SEVİYE HAZIR", "LEVEL READY") else theme.t("$xpLeft XP KALDI", "$xpLeft XP LEFT"),
                                 color = accent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
@@ -608,7 +608,7 @@ private fun ProfileHeroBanner(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         HeroMiniStat(
-                            label = "TOPLAM XP",
+                            label = theme.t("TOPLAM XP", "TOTAL XP"),
                             value = "$xp",
                             icon = Icons.Rounded.Bolt,
                             color = accent,
@@ -617,7 +617,7 @@ private fun ProfileHeroBanner(
                             onClick = onOpenXpRanking
                         )
                         HeroMiniStat(
-                            label = "RÜTBE",
+                            label = theme.t("RÜTBE", "RANK"),
                             value = rank.uppercase(),
                             icon = Icons.Rounded.EmojiEvents,
                             color = rankColor,
@@ -628,8 +628,12 @@ private fun ProfileHeroBanner(
                     }
                     Spacer(Modifier.height(10.dp))
                     HeroMiniStat(
-                        label = "SERİ SIRALAMASI",
-                        value = if (streakRankPosition > 0L) "#$streakRankPosition · $currentStreak gün" else "$currentStreak gün",
+                        label = theme.t("SERİ SIRALAMASI", "STREAK RANKING"),
+                        value = if (streakRankPosition > 0L) {
+                            theme.t("#$streakRankPosition · $currentStreak gün", "#$streakRankPosition · $currentStreak days")
+                        } else {
+                            theme.t("$currentStreak gün", "$currentStreak days")
+                        },
                         icon = Icons.Rounded.LocalFireDepartment,
                         color = Color(0xFFFF6B4A),
                         theme = theme,
@@ -1035,7 +1039,7 @@ private fun TrophyGallery(
         if (sorted.isEmpty()) {
             // Loading placeholder
             Text(
-                "Başarımlar yükleniyor...",
+                theme.t("Başarımlar yükleniyor...", "Loading achievements..."),
                 color    = theme.text2,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(horizontal = 20.dp)
@@ -1052,6 +1056,25 @@ private fun TrophyGallery(
         }
     }
 }
+
+private val ProfileAchievementEnglishText = mapOf(
+    "3 Günlük Seri" to "3-Day Streak",
+    "Haftalık Savaşçı" to "Weekly Warrior",
+    "Demir Disiplin" to "Iron Discipline",
+    "İlk Antrenman" to "First Workout",
+    "10 Antrenman" to "10 Workouts",
+    "50 Antrenman" to "50 Workouts",
+    "100 Antrenman" to "100 Workouts",
+    "İlk Zafer" to "First Victory",
+    "7 Günlük" to "7-Day Streak",
+    "Süper Üye" to "Super Member",
+    "Mükemmellik" to "Excellence",
+    "3 gün üst üste antrenman yaptın!" to "You trained 3 days in a row!",
+    "7 gün üst üste antrenman yaptın!" to "You trained 7 days in a row!"
+)
+
+private fun localizedProfileAchievementText(value: String, theme: AppThemeState): String =
+    if (theme.language == AppLanguage.ENGLISH) ProfileAchievementEnglishText[value] ?: value else value
 
 @Composable
 private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeState) {
@@ -1094,7 +1117,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                achievement.name.uppercase().take(10),
+                localizedProfileAchievementText(achievement.name, theme).uppercase().take(10),
                 color         = if (achievement.isUnlocked) colorFrom else theme.text2,
                 fontSize      = 9.sp,
                 fontWeight    = FontWeight.ExtraBold,
@@ -1102,7 +1125,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                achievement.description.take(28),
+                localizedProfileAchievementText(achievement.description, theme).take(28),
                 color      = theme.text2.copy(alpha),
                 fontSize   = 7.sp,
                 fontWeight = FontWeight.Medium,
@@ -1167,7 +1190,7 @@ private fun SettingsSection(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    displayName.ifBlank { "Kullanıcı" }.uppercase(),
+                    displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
                     color      = accent,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Black,
@@ -1895,15 +1918,15 @@ private fun BodyMetricsCard(
     }
     val bmiLabel = when {
         bmi <= 0   -> ""
-        bmi < 18.5 -> "Zayıf"
+        bmi < 18.5 -> theme.t("Zayıf", "Underweight")
         bmi < 25.0 -> "Normal"
-        bmi < 30.0 -> "Fazla Kilolu"
-        else       -> "Obez"
+        bmi < 30.0 -> theme.t("Fazla Kilolu", "Overweight")
+        else       -> theme.t("Obez", "Obese")
     }
 
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text(
-            "VÜCUT METRİKLERİ",
+            theme.t("VÜCUT METRİKLERİ", "BODY METRICS"),
             style = MaterialTheme.typography.labelSmall,
             color = accent,
             letterSpacing = 2.sp
@@ -1917,7 +1940,7 @@ private fun BodyMetricsCard(
                 BodyMetricTile(
                     value    = "${heightCm.toInt()}",
                     unit     = "cm",
-                    label    = "BOY",
+                    label    = theme.t("BOY", "HEIGHT"),
                     color    = CardCyan,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
@@ -1927,7 +1950,7 @@ private fun BodyMetricsCard(
                 BodyMetricTile(
                     value    = "${weightKg.toInt()}",
                     unit     = "kg",
-                    label    = "KİLO",
+                    label    = theme.t("KİLO", "WEIGHT"),
                     color    = CardPurple,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
@@ -1947,7 +1970,7 @@ private fun BodyMetricsCard(
                 BodyMetricTile(
                     value    = "%.1f".format(bodyFatPct),
                     unit     = "%",
-                    label    = "YAĞ",
+                    label    = theme.t("YAĞ", "FAT"),
                     color    = CardCoral,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
@@ -2004,17 +2027,20 @@ private fun PerformanceShortcutsSection(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         PerformanceShortcutCard(
-            title    = "Vücut Kilosu",
-            subtitle = if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
-                       else "Kilo trendi ve AI analiz",
+            title    = theme.t("Vücut Kilosu", "Body Weight"),
+            subtitle = if (weightKg > 0) {
+                theme.t("${"%.1f".format(weightKg)} kg · Trend & AI Analiz", "${"%.1f".format(weightKg)} kg · Trend & AI Analysis")
+            } else {
+                theme.t("Kilo trendi ve AI analiz", "Weight trend and AI analysis")
+            },
             icon     = Icons.Rounded.ShowChart,
             accent   = accent,
             theme    = theme,
             onClick  = onWeightClick
         )
         PerformanceShortcutCard(
-            title    = "Hareket Performansı",
-            subtitle = "Ağırlık, süre, mesafe ve hareket bazlı gelişim",
+            title    = theme.t("Hareket Performansı", "Exercise Performance"),
+            subtitle = theme.t("Ağırlık, süre, mesafe ve hareket bazlı gelişim", "Weight, duration, distance and movement-based progress"),
             icon     = Icons.Rounded.TrendingUp,
             accent   = accent,
             theme    = theme,
@@ -2090,7 +2116,7 @@ fun WeightTrackingCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp)) {
         Text(
-            "PERFORMANS ÖLÇÜTLERİ",
+            theme.t("PERFORMANS ÖLÇÜTLERİ", "PERFORMANCE METRICS"),
             style         = androidx.compose.material3.MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -2123,14 +2149,14 @@ fun WeightTrackingCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Vücut Kilosu",
+                    theme.t("Vücut Kilosu", "Body Weight"),
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    if (weightKg > 0) "${"%.1f".format(weightKg)} kg · Trend & AI Analiz"
-                    else "Kilo ölçümlerini performans verilerinle birlikte takip et",
+                    if (weightKg > 0) theme.t("${"%.1f".format(weightKg)} kg · Trend & AI Analiz", "${"%.1f".format(weightKg)} kg · Trend & AI Analysis")
+                    else theme.t("Kilo ölçümlerini performans verilerinle birlikte takip et", "Track weight measurements alongside your performance data"),
                     color    = theme.text2,
                     fontSize = 11.sp
                 )
@@ -2156,7 +2182,7 @@ fun ExerciseProgressionCard(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) {
         Text(
-            "SPOR PERFORMANSI",
+            theme.t("SPOR PERFORMANSI", "SPORT PERFORMANCE"),
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
             letterSpacing = 2.sp
@@ -2187,13 +2213,13 @@ fun ExerciseProgressionCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Hareket Performansı",
+                    theme.t("Hareket Performansı", "Exercise Performance"),
                     color      = theme.text0,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Ağırlık · Süre · Mesafe · AI Analiz",
+                    theme.t("Ağırlık · Süre · Mesafe · AI Analiz", "Weight · Duration · Distance · AI Analysis"),
                     color    = theme.text2,
                     fontSize = 11.sp
                 )
@@ -2243,14 +2269,14 @@ private fun LeaderboardPreviewCard(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "SIRALAMA",
+                    theme.t("SIRALAMA", "RANKINGS"),
                     color         = theme.text0,
                     fontSize      = 13.sp,
                     fontWeight    = FontWeight.Black,
                     letterSpacing = 1.5.sp
                 )
                 Text(
-                    "Diğer kullanıcılarla kıyasla",
+                    theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
                     color    = theme.text2,
                     fontSize = 11.sp
                 )
@@ -2260,7 +2286,7 @@ private fun LeaderboardPreviewCard(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             RankModeTile(
                 title    = "XP",
-                subtitle = "Deneyim puanı",
+                subtitle = theme.t("Deneyim puanı", "Experience points"),
                 icon     = Icons.Rounded.Bolt,
                 accent   = accent,
                 theme    = theme,
@@ -2268,8 +2294,8 @@ private fun LeaderboardPreviewCard(
                 modifier = Modifier.weight(1f)
             )
             RankModeTile(
-                title    = "Başarım",
-                subtitle = "Kazanılan rozetler",
+                title    = theme.t("Başarım", "Achievements"),
+                subtitle = theme.t("Kazanılan rozetler", "Earned badges"),
                 icon     = Icons.Rounded.EmojiEvents,
                 accent   = accent,
                 theme    = theme,

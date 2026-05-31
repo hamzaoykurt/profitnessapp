@@ -68,6 +68,31 @@ import kotlinx.coroutines.delay
 private const val FIRST_REMOTE_SYNC_DELAY_MS = 1_500L
 private const val FIRST_DASHBOARD_EVENTS_DELAY_MS = 1_700L
 
+private fun localizedWorkoutDayLabel(value: String, theme: AppThemeState): String = when (value.lowercase()) {
+    "pzt" -> theme.t("Pzt", "Mon")
+    "sal" -> theme.t("Sal", "Tue")
+    "çar", "car" -> theme.t("Çar", "Wed")
+    "per" -> theme.t("Per", "Thu")
+    "cum" -> theme.t("Cum", "Fri")
+    "cmt" -> theme.t("Cmt", "Sat")
+    "paz" -> theme.t("Paz", "Sun")
+    else -> value
+}
+
+private fun localizedWorkoutTitle(value: String, theme: AppThemeState): String =
+    if (theme.language == AppLanguage.ENGLISH) {
+        when (value) {
+            "GÖĞÜS & TRİSEPS" -> "CHEST & TRICEPS"
+            "SIRT & BiSEPS" -> "BACK & BICEPS"
+            "DİNLENME" -> "REST"
+            "OMUZ & BACAK" -> "SHOULDERS & LEGS"
+            "CORE & KARDİYO" -> "CORE & CARDIO"
+            "MOBİLİTE & GERİNME" -> "MOBILITY & STRETCHING"
+            "Mobilite" -> "Mobility"
+            else -> theme.fitnessTermDisplayName(value)
+        }
+    } else value
+
 @Stable
 data class Exercise(
     val id: String,
@@ -1037,7 +1062,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = day.title,
+                    text = localizedWorkoutTitle(day.title, LocalAppTheme.current),
                     color = TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
@@ -1214,7 +1239,7 @@ private fun DaySelector(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = day.day.uppercase(),
+                        text = localizedWorkoutDayLabel(day.day, theme).uppercase(),
                         color = if (isSelected) onAccent else TextMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
