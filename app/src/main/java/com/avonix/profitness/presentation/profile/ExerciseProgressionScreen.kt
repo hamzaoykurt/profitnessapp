@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -20,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -30,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -209,89 +214,241 @@ fun ExerciseProgressionScreen(
         )
     }
 
+    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
+        PageAccentBloom()
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Top Bar ───────────────────────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AppBackButton(onClick = onBack, accent = accent, size = 52.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        theme.t("PERFORMANS ÖLÇÜTLERİ", "PERFORMANCE METRICS"),
+                        color = theme.text0,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                    Text(
+                        theme.t("Ağırlık, süre ve mesafe takibi", "Weight, duration and distance tracking"),
+                        color = theme.text2,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            HorizontalDivider(color = theme.stroke.copy(0.72f), thickness = 0.5.dp)
+
+            // ── Content ───────────────────────────────────────────────────────
+            when {
+                state.isLoading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = accent)
+                    }
+                }
+                state.summaries.isEmpty() -> {
+                    Box(Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+                        EmptyProgressionState(accent = accent, theme = theme)
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 34.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item(key = "summary_hero") {
+                            ProgressionSummaryHero(
+                                summaries = state.summaries,
+                                accent = accent,
+                                theme = theme
+                            )
+                        }
+                        item(key = "credit_info") {
+                            AiCreditInfoRow(
+                                isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                                credits   = state.aiCredits,
+                                costLabel = theme.t("2 Enerji / egzersiz analizi", "2 Energy / exercise analysis"),
+                                theme     = theme
+                            )
+                        }
+                        items(state.summaries, key = { it.exerciseId }) { summary ->
+                            ExerciseProgressionCard(
+                                summary      = summary,
+                                history      = state.historyMap[summary.exerciseId] ?: emptyList(),
+                                aiInsight    = state.aiInsightMap[summary.exerciseId] ?: "",
+                                isAiLoading  = summary.exerciseId in state.aiLoadingSet,
+                                accent       = accent,
+                                theme        = theme,
+                                isFree       = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
+                                aiCredits    = state.aiCredits,
+                                onExpand     = { viewModel.loadHistory(summary.exerciseId) },
+                                onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressionSummaryHero(
+    summaries: List<ExerciseProgressSummary>,
+    accent: Color,
+    theme: AppThemeState
+) {
+    val trackedCount = summaries.size
+    val weightCount = summaries.count { it.maxWeight > 0f || it.totalVolume > 0f }
+    val timedCount = summaries.count { it.totalDurationSeconds > 0 }
+    val distanceCount = summaries.count { it.totalDistanceMeters > 0f }
+    val shape = RoundedCornerShape(26.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 22.dp,
+                shape = shape,
+                spotColor = accent.copy(if (theme.isDark) 0.30f else 0.14f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.46f else 0.10f)
+            )
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        accent.copy(if (theme.isDark) 0.22f else 0.14f),
+                        CardCyan.copy(if (theme.isDark) 0.08f else 0.05f),
+                        theme.bg1.copy(0.96f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(920f, 520f)
+                )
+            )
+            .border(1.dp, accent.copy(0.34f), shape)
+            .padding(18.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(accent.copy(0.16f))
+                        .border(1.dp, accent.copy(0.28f), RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.TrendingUp, null, tint = accent, modifier = Modifier.size(23.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        theme.t("GELİŞİM PANELİ", "PROGRESSION PANEL"),
+                        color = theme.text0,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text(
+                        theme.t("Kayıtlı hareket performanslarını karşılaştır", "Compare tracked exercise performance"),
+                        color = theme.text2,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp
+                    )
+                }
+                Text(
+                    "$trackedCount",
+                    color = accent,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SummaryPill(theme.t("Ağırlık", "Weight"), weightCount.toString(), accent, theme, Modifier.weight(1f))
+                SummaryPill(theme.t("Süre", "Time"), timedCount.toString(), CardGreen, theme, Modifier.weight(1f))
+                SummaryPill(theme.t("Mesafe", "Distance"), distanceCount.toString(), CardCyan, theme, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryPill(
+    label: String,
+    value: String,
+    color: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(theme.bg0.copy(0.46f))
+            .border(1.dp, color.copy(0.22f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(value, color = color, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.width(5.dp))
+        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun EmptyProgressionState(
+    accent: Color,
+    theme: AppThemeState
+) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .background(theme.bg0)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(accent.copy(0.12f), theme.bg1.copy(0.96f))
+                )
+            )
+            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(26.dp))
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // ── Top Bar ───────────────────────────────────────────────────────
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(64.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(accent.copy(0.14f)),
+            contentAlignment = Alignment.Center
         ) {
-            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(
-                    "PERFORMANS ÖLÇÜTLERİ",
-                    color = accent, fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp
-                )
-                Text(
-                    "Ağırlık, süre ve mesafe takibi",
-                    color = theme.text2, fontSize = 12.sp
-                )
-            }
+            Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(30.dp))
         }
-
-        HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
-
-        // ── Content ───────────────────────────────────────────────────────
-        when {
-            state.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = accent)
-                }
-            }
-            state.summaries.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("💪", fontSize = 48.sp)
-                        Text(
-                            "Henüz performans kaydı yok",
-                            color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Antrenman sırasında ağırlık, süre\nveya mesafe girerek gelişimini takip et",
-                            color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item(key = "credit_info") {
-                        AiCreditInfoRow(
-                            isFree    = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
-                            credits   = state.aiCredits,
-                            costLabel = "2 Enerji / egzersiz analizi",
-                            theme     = theme
-                        )
-                    }
-                    items(state.summaries, key = { it.exerciseId }) { summary ->
-                        ExerciseProgressionCard(
-                            summary      = summary,
-                            history      = state.historyMap[summary.exerciseId] ?: emptyList(),
-                            aiInsight    = state.aiInsightMap[summary.exerciseId] ?: "",
-                            isAiLoading  = summary.exerciseId in state.aiLoadingSet,
-                            accent       = accent,
-                            theme        = theme,
-                            isFree       = state.userPlan == com.avonix.profitness.data.store.UserPlan.FREE,
-                            aiCredits    = state.aiCredits,
-                            onExpand     = { viewModel.loadHistory(summary.exerciseId) },
-                            onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle) }
-                        )
-                    }
-                }
-            }
-        }
+        Text(
+            theme.t("Henüz performans kaydı yok", "No performance records yet"),
+            color = theme.text0,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            theme.t(
+                "Antrenman sırasında ağırlık, süre veya mesafe girerek gelişimini takip et",
+                "Track progress by entering weight, duration or distance during workouts"
+            ),
+            color = theme.text2,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 16.sp
+        )
     }
 }
 
@@ -315,13 +472,31 @@ private fun ExerciseProgressionCard(
     val hasWeight = summary.maxWeight > 0f || summary.totalVolume > 0f
     val hasDuration = summary.totalDurationSeconds > 0
     val hasDistance = summary.totalDistanceMeters > 0f
+    val cardShape = RoundedCornerShape(24.dp)
+    val displayName = theme.exerciseDisplayName(summary.name).localizedPrimary(theme)
+    val targetName = theme.fitnessTermDisplayName(summary.targetMuscle).localizedPrimary(theme)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+            .shadow(
+                elevation = if (isExpanded) 18.dp else 8.dp,
+                shape = cardShape,
+                spotColor = accent.copy(if (isExpanded) 0.22f else 0.10f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.38f else 0.08f)
+            )
+            .clip(cardShape)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        if (isExpanded) accent.copy(0.12f) else theme.bg1.copy(0.98f),
+                        theme.bg0.copy(if (theme.isDark) 0.92f else 0.72f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(760f, 360f)
+                )
+            )
+            .border(1.dp, if (isExpanded) accent.copy(0.42f) else theme.stroke, cardShape)
     ) {
         // ── Header row ────────────────────────────────────────────────────
         Row(
@@ -337,9 +512,16 @@ private fun ExerciseProgressionCard(
             // Thumbnail
             Box(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(theme.bg2)
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(accent.copy(0.18f), theme.bg2),
+                            start = Offset(0f, 0f),
+                            end = Offset(120f, 120f)
+                        )
+                    )
+                    .border(1.dp, accent.copy(0.18f), RoundedCornerShape(16.dp))
             ) {
                 if (summary.imageUrl.isNotBlank()) {
                     AsyncImage(
@@ -359,26 +541,34 @@ private fun ExerciseProgressionCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    summary.name.uppercase(),
-                    color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold
+                    displayName.uppercase(),
+                    color = theme.text0,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
                 )
                 Text(
-                    summary.targetMuscle,
-                    color = theme.text2, fontSize = 11.sp
+                    targetName,
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (hasWeight) {
-                        StatChip(label = "MAX ${"%.1f".format(summary.maxWeight)}kg", color = accent)
+                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg", color = accent)
                     }
                     if (hasDistance) {
                         StatChip(label = formatDistance(summary.totalDistanceMeters), color = CardCyan)
                     }
                     if (hasDuration) {
-                        StatChip(label = formatDuration(summary.totalDurationSeconds), color = CardGreen)
+                        StatChip(label = formatDuration(summary.totalDurationSeconds, theme), color = CardGreen)
                     }
                     if (!hasWeight && !hasDistance && !hasDuration) {
-                        StatChip(label = "${summary.sessionCount} seans", color = theme.text2)
+                        StatChip(label = "${summary.sessionCount} ${theme.t("seans", "sessions")}", color = theme.text2)
                     }
                 }
             }
@@ -417,7 +607,10 @@ private fun ExerciseProgressionCard(
                     }
                 } else if (hasWeight) {
                     Text(
-                        "Ağırlık grafiği için en az 2 farklı günden veri gerekli",
+                        theme.t(
+                            "Ağırlık grafiği için en az 2 farklı günden veri gerekli",
+                            "Weight chart needs data from at least 2 different days"
+                        ),
                         color = theme.text2, fontSize = 11.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -453,12 +646,12 @@ private fun StatsGrid(
     theme   : AppThemeState
 ) {
     val stats = buildList {
-        if (summary.totalVolume > 0f) add(Triple("TOPLAM HACİM", "${"%.0f".format(summary.totalVolume)} kg", accent))
-        if (summary.totalDistanceMeters > 0f) add(Triple("TOPLAM MESAFE", formatDistance(summary.totalDistanceMeters), CardCyan))
-        if (summary.totalDurationSeconds > 0) add(Triple("TOPLAM SÜRE", formatDuration(summary.totalDurationSeconds), CardGreen))
-        if (summary.totalReps > 0) add(Triple("TOPLAM TEKRAR", "${summary.totalReps}", theme.text1))
-        if (summary.totalSets > 0) add(Triple("KAYIT", "${summary.totalSets}", theme.text1))
-        add(Triple("SEANS", "${summary.sessionCount}", theme.text1))
+        if (summary.totalVolume > 0f) add(Triple(theme.t("TOPLAM HACİM", "TOTAL VOLUME"), "${"%.0f".format(summary.totalVolume)} kg", accent))
+        if (summary.totalDistanceMeters > 0f) add(Triple(theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), formatDistance(summary.totalDistanceMeters), CardCyan))
+        if (summary.totalDurationSeconds > 0) add(Triple(theme.t("TOPLAM SÜRE", "TOTAL TIME"), formatDuration(summary.totalDurationSeconds, theme), CardGreen))
+        if (summary.totalReps > 0) add(Triple(theme.t("TOPLAM TEKRAR", "TOTAL REPS"), "${summary.totalReps}", theme.text1))
+        if (summary.totalSets > 0) add(Triple(theme.t("KAYIT", "SETS"), "${summary.totalSets}", theme.text1))
+        add(Triple(theme.t("SEANS", "SESSIONS"), "${summary.sessionCount}", theme.text1))
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         stats.chunked(2).forEach { row ->
@@ -471,7 +664,7 @@ private fun StatsGrid(
         }
         if (!summary.lastDate.isNullOrBlank()) {
             Text(
-                text = "Son antrenman: ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
+                text = theme.t("Son antrenman", "Last workout") + ": ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
                 color = theme.text2, fontSize = 10.sp,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -520,9 +713,9 @@ private fun LastSessionBreakdown(
     val durationSeconds = lastSets.sumOf { it.durationSeconds ?: 0 }
     val distanceMeters = lastSets.mapNotNull { it.distanceMeters }.sum()
     val sessionSummary = when {
-        weightCnt > 0 -> "ORT ${"%.1f".format(avgWeight)}kg"
+        weightCnt > 0 -> theme.t("ORT", "AVG") + " ${"%.1f".format(avgWeight)} kg"
         distanceMeters > 0f -> formatDistance(distanceMeters)
-        durationSeconds > 0 -> formatDuration(durationSeconds)
+        durationSeconds > 0 -> formatDuration(durationSeconds, theme)
         else -> ""
     }
 
@@ -542,7 +735,7 @@ private fun LastSessionBreakdown(
                 modifier = Modifier.size(13.dp)
             )
             Spacer(Modifier.width(6.dp))
-            Text("SON ANTRENMAN", color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+            Text(theme.t("SON ANTRENMAN", "LAST WORKOUT"), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
             Spacer(Modifier.weight(1f))
             if (sessionSummary.isNotBlank()) {
                 Text(
@@ -576,18 +769,18 @@ private fun LastSessionBreakdown(
                 Text(
                     text = set.weightKg?.let { "${"%.1f".format(it)} kg" }
                         ?: set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it) }
-                        ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it) }
-                        ?: "—",
+                        ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it, theme) }
+                        ?: "-",
                     color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = when {
-                        set.weightKg != null -> set.repsActual?.let { "× $it tekrar" } ?: "taslak"
-                        set.distanceMeters != null && set.durationSeconds != null -> set.durationSeconds?.let { formatDuration(it) } ?: "süre"
-                        set.durationSeconds != null -> "süre"
-                        set.distanceMeters != null -> "mesafe"
-                        else -> "taslak"
+                        set.weightKg != null -> set.repsActual?.let { "× $it ${theme.t("tekrar", "reps")}" } ?: theme.t("taslak", "draft")
+                        set.distanceMeters != null && set.durationSeconds != null -> set.durationSeconds?.let { formatDuration(it, theme) } ?: theme.t("süre", "time")
+                        set.durationSeconds != null -> theme.t("süre", "time")
+                        set.distanceMeters != null -> theme.t("mesafe", "distance")
+                        else -> theme.t("taslak", "draft")
                     },
                     color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium
                 )
@@ -639,9 +832,9 @@ private fun ProgressionChartSection(
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(14.dp))
+            Icon(Icons.AutoMirrored.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text("İLERLEME", color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+            Text(theme.t("İLERLEME", "PROGRESS"), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
             Spacer(Modifier.weight(1f))
             val chipColor = if (isGain) Color(0xFF22C55E) else Color(0xFFEF4444)
             val sign      = if (isGain) "+" else ""
@@ -653,7 +846,7 @@ private fun ProgressionChartSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown,
+                    if (isGain) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
                     null, tint = chipColor, modifier = Modifier.size(11.dp)
                 )
                 Spacer(Modifier.width(3.dp))
@@ -740,7 +933,7 @@ private fun AiInsightCard(
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(3.dp))
-                Text("AI KOÇ", color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Text(theme.t("AI KOÇ", "AI COACH"), color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             Spacer(Modifier.weight(1f))
             if (isFree && !isLoading) {
@@ -754,9 +947,9 @@ private fun AiInsightCard(
                 ) {
                     Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("2 Enerji", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(theme.t("2 Enerji", "2 Energy"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(4.dp))
-                    Text("$credits kaldı", color = theme.text2, fontSize = 9.sp)
+                    Text(theme.t("$credits kaldı", "$credits left"), color = theme.text2, fontSize = 9.sp)
                 }
                 Spacer(Modifier.width(6.dp))
             }
@@ -782,15 +975,15 @@ private fun AiInsightCard(
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(14.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text("Analiz yapılıyor...", color = theme.text2, fontSize = 11.sp)
+                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = theme.text2, fontSize = 11.sp)
             }
             insight.isBlank() -> Text(
-                "AI koçtan gelişim analizi al →",
+                theme.t("AI koçtan gelişim analizi al ->", "Get progression analysis from AI coach ->"),
                 color = theme.text2, fontSize = 11.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
                     .clickable(enabled = !isLoading, onClick = onRefresh).padding(8.dp)
             )
-            else -> Text(insight, color = theme.text1, fontSize = 11.sp, lineHeight = 17.sp)
+            else -> Text(localizedProgressionMessage(insight, theme), color = theme.text1, fontSize = 11.sp, lineHeight = 17.sp)
         }
     }
 }
@@ -811,15 +1004,31 @@ private fun StatChip(label: String, color: Color) {
     }
 }
 
-private fun formatDuration(totalSeconds: Int): String {
+private fun String.localizedPrimary(theme: AppThemeState): String {
+    if (theme.language == AppLanguage.ENGLISH) return this
+    val parenthetical = Regex("""^(.+)\((.+)\)$""").matchEntire(this.trim())
+    return parenthetical?.groupValues?.getOrNull(2)?.trim() ?: this
+}
+
+private fun localizedProgressionMessage(value: String, theme: AppThemeState): String =
+    if (theme.language != AppLanguage.ENGLISH) value else when (value) {
+        "Analiz yapılamadı." -> "Analysis could not be completed."
+        "Bu egzersiz için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. En az 1-2 seansı kaydettikten sonra daha net yorum yapabilirim." ->
+            "There is not enough weight, duration or distance data to analyze this exercise yet. After 1-2 logged sessions, I can give a clearer read."
+        else -> value
+    }
+
+private fun formatDuration(totalSeconds: Int, theme: AppThemeState): String {
     val minutes = (totalSeconds / 60).coerceAtLeast(0)
     val hours = minutes / 60
     val mins = minutes % 60
+    val hourUnit = theme.t("sa", "h")
+    val minuteUnit = theme.t("dk", "m")
     return when {
-        totalSeconds <= 0 -> "0 dk"
-        hours > 0 && mins > 0 -> "${hours}sa ${mins}dk"
-        hours > 0 -> "${hours}sa"
-        minutes > 0 -> "${minutes} dk"
+        totalSeconds <= 0 -> "0 $minuteUnit"
+        hours > 0 && mins > 0 -> "$hours$hourUnit $mins$minuteUnit"
+        hours > 0 -> "$hours$hourUnit"
+        minutes > 0 -> "$minutes $minuteUnit"
         else -> "${totalSeconds}s"
     }
 }

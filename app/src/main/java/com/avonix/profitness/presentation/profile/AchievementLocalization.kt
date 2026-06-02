@@ -45,8 +45,37 @@ private val AchievementEnglishText = mapOf(
     "50000 XP — tanrısal güç!" to "50000 XP - divine power!"
 )
 
+private val AchievementTurkishText = AchievementEnglishText.entries.associate { (tr, en) -> en to tr } + mapOf(
+    "First 100 XP!" to "İlk 100 XP!",
+    "100 XP collected!" to "100 XP topladın!",
+    "250 XP collected!" to "250 XP topladın!",
+    "500 XP collected!" to "500 XP topladın!",
+    "1000 XP collected!" to "1000 XP topladın!",
+    "2500 XP - rising!" to "2500 XP - yükseliş!",
+    "5000 XP - gold level!" to "5000 XP - altın seviye!",
+    "10000 XP - legendary performance!" to "10000 XP - efsanevi performans!",
+    "25000 XP - legendary!" to "25000 XP - efsanevi!",
+    "50000 XP - divine power!" to "50000 XP - tanrısal güç!",
+    "You completed your first workout!" to "İlk antrenmanını tamamladın!",
+    "You completed 100 exercises!" to "100 egzersiz tamamladın!",
+    "You completed 500 exercises!" to "500 egzersiz tamamladın!",
+    "You completed 1000 exercises!" to "1000 egzersiz tamamladın!",
+    "You completed 5000 exercises!" to "5000 egzersiz tamamladın!",
+    "You reached level 5!" to "Seviye 5e ulaştınız!",
+    "You reached level 15!" to "Seviye 15e ulaştınız!",
+    "You reached level 30!" to "Seviye 30a ulaştınız!",
+    "You reached level 50 - legendary!" to "Seviye 50ye ulaştınız - Efsane!"
+)
+
 internal fun localizedAchievementText(value: String, theme: AppThemeState): String {
-    if (theme.language != AppLanguage.ENGLISH) return value
+    return if (theme.language == AppLanguage.ENGLISH) {
+        localizedAchievementEnglish(value)
+    } else {
+        localizedAchievementTurkish(value)
+    }
+}
+
+private fun localizedAchievementEnglish(value: String): String {
     AchievementEnglishText[value]?.let { return it }
     return value
         .replaceAchievementPattern(Regex("""^(\d+)\s+Günlük Seri$""")) { "${it.groupValues[1]}-Day Streak" }
@@ -65,7 +94,25 @@ internal fun localizedAchievementText(value: String, theme: AppThemeState): Stri
         .replaceAchievementPattern(Regex("""^(\d+)\s+antrenman — canavarlaştın!$""")) { "${it.groupValues[1]} workouts - unstoppable!" }
         .replaceAchievementPattern(Regex("""^(\d+)\s+egzersiz tamamladın!$""")) { "You completed ${it.groupValues[1]} exercises!" }
         .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)e ulaştınız!$""")) { "You reached level ${it.groupValues[1]}!" }
+        .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)a ulaştınız!$""")) { "You reached level ${it.groupValues[1]}!" }
+        .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)ye ulaştınız - Efsane!$""")) { "You reached level ${it.groupValues[1]} - legendary!" }
         .replaceAchievementPattern(Regex("""^(\d+)\s+XP — tanrısal güç!$""")) { "${it.groupValues[1]} XP - divine power!" }
+}
+
+private fun localizedAchievementTurkish(value: String): String {
+    AchievementTurkishText[value]?.let { return it }
+    return value
+        .replaceAchievementPattern(Regex("""^(\d+)-Day Streak$""")) { "${it.groupValues[1]} Günlük Seri" }
+        .replaceAchievementPattern(Regex("""^(\d+)-Week Streak$""")) { "${it.groupValues[1]} Haftalık Seri" }
+        .replaceAchievementPattern(Regex("""^(\d+)\s+Workouts$""")) { "${it.groupValues[1]} Antrenman" }
+        .replaceAchievementPattern(Regex("""^(\d+)\s+Exercises$""")) { "${it.groupValues[1]} Egzersiz" }
+        .replaceAchievementPattern(Regex("""^Level\s+(\d+)$""")) { "Seviye ${it.groupValues[1]}" }
+        .replaceAchievementPattern(Regex("""^You trained\s+(\d+)\s+days in a row!$""")) { "${it.groupValues[1]} gün üst üste antrenman yaptın!" }
+        .replaceAchievementPattern(Regex("""^You completed\s+(\d+)\s+workouts!$""")) { "${it.groupValues[1]} antrenman tamamladın!" }
+        .replaceAchievementPattern(Regex("""^You completed\s+(\d+)\s+exercises!$""")) { "${it.groupValues[1]} egzersiz tamamladın!" }
+        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)!$""")) { "Seviye ${it.groupValues[1]}e ulaştınız!" }
+        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)\s+-\s+legendary!$""")) { "Seviye ${it.groupValues[1]}ye ulaştınız - Efsane!" }
+        .replaceAchievementPattern(Regex("""^(\d+)\s+XP\s+-\s+divine power!$""")) { "${it.groupValues[1]} XP - tanrısal güç!" }
 }
 
 private inline fun String.replaceAchievementPattern(
