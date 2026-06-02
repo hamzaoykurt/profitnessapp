@@ -2,6 +2,7 @@
 
 package com.avonix.profitness.presentation.discover
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -14,7 +15,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BookmarkBorder
@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.LocalAppTheme
+import com.avonix.profitness.core.theme.PageAccentBloom
 import com.avonix.profitness.core.theme.bg1
 import com.avonix.profitness.core.theme.bg2
 import com.avonix.profitness.core.theme.exerciseDisplayName
@@ -72,6 +73,7 @@ import com.avonix.profitness.core.theme.text2
 import com.avonix.profitness.domain.discover.DiscoverSort
 import com.avonix.profitness.domain.discover.MySharedProgram
 import com.avonix.profitness.domain.discover.SharedProgram
+import com.avonix.profitness.presentation.components.AppBackButton
 import com.avonix.profitness.presentation.components.AppToast
 import com.avonix.profitness.presentation.components.AppToastData
 import com.avonix.profitness.presentation.components.AppToastType
@@ -104,6 +106,10 @@ fun DiscoverScreen(
     var programsSub by rememberSaveable { mutableStateOf(ProgramsSubTab.Community) }
     var showShareSheet by rememberSaveable { mutableStateOf(false) }
     var selectedProgram by remember { mutableStateOf<SharedProgram?>(null) }
+
+    BackHandler(enabled = selectedProgram != null) {
+        selectedProgram = null
+    }
 
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -750,69 +756,64 @@ private fun SharedProgramDetailScreen(
     val accent = MaterialTheme.colorScheme.primary
     val detail = remember(program.id, program.programData) { program.toDetailPlan() }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(theme.bg1, Color.Black)))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 22.dp)
-                .padding(top = 18.dp, bottom = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        PageAccentBloom()
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(theme.bg2.copy(0.45f))
-                    .border(1.dp, theme.stroke.copy(0.35f), CircleShape)
-                    .clickable { onBack() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 12.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = theme.text0, modifier = Modifier.size(24.dp))
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = theme.t("Program içeriği", "Program content"),
-                    color = accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
-                )
-                Text(
-                    text = program.title,
-                    color = theme.text0,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 2,
-                    lineHeight = 28.sp
-                )
-            }
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 22.dp,
-                end = 22.dp,
-                top = 4.dp,
-                bottom = bottomPadding + 84.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                SharedProgramDetailHeader(program = program, dayCount = detail.days.size)
+                AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = theme.t("Program içeriği", "Program content"),
+                        color = accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.4.sp
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = program.title,
+                        color = theme.text0,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 2,
+                        lineHeight = 29.sp
+                    )
+                }
             }
 
-            if (detail.days.isEmpty()) {
-                item { EmptyProgramDetailCard() }
-            } else {
-                items(detail.days, key = { it.index }) { day ->
-                    SharedProgramDayCard(day = day)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 2.dp,
+                    bottom = bottomPadding + 84.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    SharedProgramDetailHeader(program = program, dayCount = detail.days.size)
+                }
+
+                if (detail.days.isEmpty()) {
+                    item { EmptyProgramDetailCard() }
+                } else {
+                    items(detail.days, key = { it.index }) { day ->
+                        SharedProgramDayCard(day = day)
+                    }
                 }
             }
         }
@@ -823,22 +824,21 @@ private fun SharedProgramDetailScreen(
 private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(22.dp)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.55f), theme.bg1.copy(0.72f))))
-            .border(1.dp, theme.stroke.copy(0.35f), shape)
-            .padding(16.dp)
+            .glassCard(accent, theme, shape)
+            .padding(18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(0.12f)),
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(accent.copy(0.14f))
+                    .border(1.dp, accent.copy(0.22f), RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = accent, modifier = Modifier.size(22.dp))
@@ -875,40 +875,50 @@ private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
 private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(22.dp)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.70f), theme.bg1.copy(0.60f))))
-            .border(1.dp, theme.stroke.copy(0.35f), shape)
+            .glassCard(accent, theme, shape)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(accent.copy(0.16f)),
+                    .background(accent.copy(0.16f))
+                    .border(1.dp, accent.copy(0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = day.index.toString(),
                     color = accent,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = day.title,
-                color = theme.text0,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.weight(1f),
-                maxLines = 2
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = day.title,
+                    color = theme.text0,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    lineHeight = 21.sp
+                )
+                if (!day.isRestDay && day.exercises.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = theme.t("${day.exercises.size} hareket", "${day.exercises.size} exercises"),
+                        color = theme.text2.copy(0.68f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             if (day.isRestDay) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Schedule, null, tint = theme.text2.copy(0.7f), modifier = Modifier.size(14.dp))
@@ -918,12 +928,16 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(theme.stroke.copy(0.25f))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(0.25f), theme.stroke.copy(0.18f), Color.Transparent)
+                    )
+                )
         )
 
         if (day.exercises.isEmpty()) {
@@ -938,8 +952,8 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
                 modifier = Modifier.padding(top = 14.dp)
             )
         } else {
-            Spacer(Modifier.height(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 day.exercises.forEach { exercise ->
                     SharedProgramExerciseRow(exercise = exercise)
                 }
@@ -952,22 +966,22 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
 private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(15.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Brush.linearGradient(listOf(theme.bg2.copy(0.62f), theme.bg1.copy(0.44f))))
+            .background(theme.bg1.copy(if (theme.isDark) 0.52f else 0.78f))
             .border(1.dp, theme.stroke.copy(0.25f), shape)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 13.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(9.dp)
+                .size(8.dp)
                 .clip(CircleShape)
-                .background(accent)
+                .background(accent.copy(0.95f))
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -1007,12 +1021,12 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
 @Composable
 private fun EmptyProgramDetailCard() {
     val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(18.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(theme.bg2.copy(0.50f))
-            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(18.dp))
+            .glassCard(accent, theme, shape)
             .padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

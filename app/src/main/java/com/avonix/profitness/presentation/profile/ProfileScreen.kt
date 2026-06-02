@@ -216,7 +216,7 @@ fun ProfileScreen(
                             letterSpacing = 4.sp
                         )
                         Text(
-                            localizedProfileAchievementText(name, theme),
+                            localizedAchievementText(name, theme),
                             color      = Snow,
                             fontSize   = 22.sp,
                             fontWeight = FontWeight.Black,
@@ -224,7 +224,7 @@ fun ProfileScreen(
                         )
                         if (desc.isNotBlank()) {
                             Text(
-                                localizedProfileAchievementText(desc, theme),
+                                localizedAchievementText(desc, theme),
                                 color     = Snow.copy(0.6f),
                                 fontSize  = 13.sp,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1057,25 +1057,6 @@ private fun TrophyGallery(
     }
 }
 
-private val ProfileAchievementEnglishText = mapOf(
-    "3 Günlük Seri" to "3-Day Streak",
-    "Haftalık Savaşçı" to "Weekly Warrior",
-    "Demir Disiplin" to "Iron Discipline",
-    "İlk Antrenman" to "First Workout",
-    "10 Antrenman" to "10 Workouts",
-    "50 Antrenman" to "50 Workouts",
-    "100 Antrenman" to "100 Workouts",
-    "İlk Zafer" to "First Victory",
-    "7 Günlük" to "7-Day Streak",
-    "Süper Üye" to "Super Member",
-    "Mükemmellik" to "Excellence",
-    "3 gün üst üste antrenman yaptın!" to "You trained 3 days in a row!",
-    "7 gün üst üste antrenman yaptın!" to "You trained 7 days in a row!"
-)
-
-private fun localizedProfileAchievementText(value: String, theme: AppThemeState): String =
-    if (theme.language == AppLanguage.ENGLISH) ProfileAchievementEnglishText[value] ?: value else value
-
 @Composable
 private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeState) {
     val (colorFrom, colorTo) = achievementColor(achievement.category)
@@ -1117,7 +1098,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                localizedProfileAchievementText(achievement.name, theme).uppercase().take(10),
+                localizedAchievementText(achievement.name, theme).uppercase().take(10),
                 color         = if (achievement.isUnlocked) colorFrom else theme.text2,
                 fontSize      = 9.sp,
                 fontWeight    = FontWeight.ExtraBold,
@@ -1125,7 +1106,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                localizedProfileAchievementText(achievement.description, theme).take(28),
+                localizedAchievementText(achievement.description, theme).take(28),
                 color      = theme.text2.copy(alpha),
                 fontSize   = 7.sp,
                 fontWeight = FontWeight.Medium,

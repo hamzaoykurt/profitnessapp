@@ -238,7 +238,8 @@ class ProgramRepositoryImpl @Inject constructor(
                     }
                 }
 
-                syncManager.pullPrograms(userId)
+                syncManager.pullExercises().getOrThrow()
+                syncManager.pullPrograms(userId).getOrThrow()
 
                 programDao.getActiveProgram(userId)?.toDomain()
                     ?: error("Program Room'a sync edilemedi")

@@ -60,6 +60,7 @@ class OnboardingViewModel @Inject constructor(
     private val supabase         : SupabaseClient
 ) : BaseViewModel<OnboardingState, OnboardingEvent>(OnboardingState()) {
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
+    private class ProgramParseException(message: String) : Exception(message)
 
     fun nextStep() {
         val s = uiState.value
@@ -166,13 +167,17 @@ JSON FORMAT:
                 return@launch
             }
 
-            val created = createProgramFromAiJson(userId, rawJson, baseExercises)
-            if (!created) {
+            val createResult = createProgramFromAiJson(userId, rawJson, baseExercises)
+            if (createResult.isFailure) {
+                val error = createResult.exceptionOrNull()
                 updateState {
                     it.copy(
                         isSaving = false,
                         isGeneratingProgram = false,
-                        programError = "Program ayrıştırılamadı. Plan ekranından AI ile tekrar oluşturabilirsin."
+                        programError = when (error) {
+                            is ProgramParseException -> error.message
+                            else -> programSaveErrorMessage(error)
+                        }
                     )
                 }
                 return@launch
@@ -236,15 +241,19 @@ Kurallar:
         userId: String,
         rawJson: String,
         baseExercises: List<ExerciseItem>
-    ): Boolean {
+    ): Result<Unit> {
+        val parseError = "Program ayrıştırılamadı. Plan ekranından AI ile tekrar oluşturabilirsin."
         val cleaned = rawJson
             .replace(Regex("```[a-zA-Z]*\\s*"), "")
             .replace("```", "")
             .trim()
-        val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value ?: return false
-        val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull() ?: return false
+        val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value
+            ?: return Result.failure(ProgramParseException(parseError))
+        val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull()
+            ?: return Result.failure(ProgramParseException(parseError))
         val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: "Kişisel AI Programı"
-        val daysArray = rootObj["days"] as? JsonArray ?: return false
+        val daysArray = rootObj["days"] as? JsonArray
+            ?: return Result.failure(ProgramParseException(parseError))
 
         val currentMap = baseExercises.associateBy { ExerciseNameRules.normalizedKey(it.name) }.toMutableMap()
         val currentMapEn = baseExercises.filter { it.nameEn.isNotBlank() }
@@ -288,8 +297,10 @@ Kurallar:
             }
         }
 
-        if (days.none { !it.isRestDay && it.exercises.isNotEmpty() }) return false
-        return programRepository.createManual(userId, programName, days).isSuccess
+        if (days.none { !it.isRestDay && it.exercises.isNotEmpty() }) {
+            return Result.failure(ProgramParseException(parseError))
+        }
+        return programRepository.createManual(userId, programName, days).map { Unit }
     }
 
     private fun flexInt(obj: JsonObject, key: String, default: Int): Int {
@@ -310,6 +321,23 @@ Kurallar:
         return (trMap.entries + enMap.entries)
             .firstOrNull { it.key.contains(key) || key.contains(it.key) }
             ?.value
+    }
+
+    private fun programSaveErrorMessage(error: Throwable?): String {
+        val message = error?.message.orEmpty()
+        return when {
+            message.contains("Oturum", ignoreCase = true) ->
+                message.ifBlank { "Oturum doğrulanamadı. Lütfen tekrar giriş yap." }
+            message.contains("permission denied", ignoreCase = true) ||
+                message.contains("JWT", ignoreCase = true) ||
+                message.contains("not authenticated", ignoreCase = true) ->
+                "Oturum doğrulanamadı. Lütfen tekrar giriş yap."
+            message.contains("network", ignoreCase = true) ||
+                message.contains("timeout", ignoreCase = true) ||
+                message.contains("Unable to resolve", ignoreCase = true) ->
+                "İnternet bağlantını kontrol edip tekrar dene."
+            else -> "Program kaydedilemedi. Plan ekranından tekrar deneyebilirsin."
+        }
     }
 
     private fun birthDigitsToDbDate(digits: String): String =

@@ -63,25 +63,6 @@ private fun categoryLabel(category: String, theme: AppThemeState): String = when
     else -> category.uppercase()
 }
 
-private val AchievementEnglishText = mapOf(
-    "3 Günlük Seri" to "3-Day Streak",
-    "Haftalık Savaşçı" to "Weekly Warrior",
-    "Demir Disiplin" to "Iron Discipline",
-    "İlk Antrenman" to "First Workout",
-    "10 Antrenman" to "10 Workouts",
-    "50 Antrenman" to "50 Workouts",
-    "100 Antrenman" to "100 Workouts",
-    "İlk Zafer" to "First Victory",
-    "7 Günlük" to "7-Day Streak",
-    "Süper Üye" to "Super Member",
-    "Mükemmellik" to "Excellence",
-    "3 gün üst üste antrenman yaptın!" to "You trained 3 days in a row!",
-    "7 gün üst üste antrenman yaptın!" to "You trained 7 days in a row!"
-)
-
-private fun localizedAchievementText(value: String, theme: AppThemeState): String =
-    if (theme.language == AppLanguage.ENGLISH) AchievementEnglishText[value] ?: value else value
-
 @Composable
 fun AchievementsDetailScreen(
     onBack   : () -> Unit,

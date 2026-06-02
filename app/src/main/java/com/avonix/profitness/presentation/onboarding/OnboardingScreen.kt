@@ -172,6 +172,7 @@ fun OnboardingScreen(
                 .widthIn(max = responsive.formMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
         ) {
             // Üst ilerleme çubuğu
             Spacer(Modifier.height(52.dp))
