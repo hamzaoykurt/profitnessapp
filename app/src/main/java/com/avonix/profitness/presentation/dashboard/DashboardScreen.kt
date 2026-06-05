@@ -145,12 +145,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         }
     }
 
-    // Nav yüksekliği 78 → 92 dp (item padding 10/12 → 14/16, icon 20 → 24)
     val responsive = rememberResponsiveLayoutInfo()
     val useNavRail = responsive.useNavigationRail
-    val navBarHeight = 92.dp
+    val navBarHeight = responsive.bottomNavHeight
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val contentPad   = if (useNavRail) 24.dp + navBarBottom else navBarHeight + navBarBottom + 8.dp
+    val contentPad   = navBarHeight + navBarBottom + if (responsive.isLargeFont) 12.dp else 8.dp
+    val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val haptic = LocalHapticFeedback.current
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
@@ -330,7 +330,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 onSelect = { tab -> if (tab != selectedTab) selectedTabRoute = tab.route },
                 modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
             )
-        } else {
+        } else if (!imeVisible) {
             AppNavBar(
                 tabs     = ALL_TABS,
                 selected = { selectedTab },
@@ -650,6 +650,7 @@ fun AppNavBar(
     val selectedTab = selected()
     val selectedState by rememberUpdatedState(selectedTab)
     val onSelectState by rememberUpdatedState(onSelect)
+    val showNavLabels = !responsive.isSmallPhone && !responsive.isLargeFont && responsive.screenWidth >= 390.dp
     val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
     var navWidthPx by remember { mutableStateOf(0f) }
     var dragX by remember { mutableStateOf<Float?>(null) }
@@ -804,7 +805,7 @@ fun AppNavBar(
                         showSelectedChrome = false,
                         accent     = accent,
                         theme      = theme,
-                        showLabel  = !responsive.isSmallPhone,
+                        showLabel  = showNavLabels,
                         onClick    = { onSelect(tab) },
                         modifier   = Modifier.onGloballyPositioned { coordinates ->
                             val position = coordinates.positionInParent()

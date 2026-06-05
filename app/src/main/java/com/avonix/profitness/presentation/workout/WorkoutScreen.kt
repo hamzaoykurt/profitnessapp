@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.avonix.profitness.presentation.workout
 
 import androidx.compose.animation.*
@@ -49,6 +51,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.components.CinematicExerciseCard
 import com.avonix.profitness.presentation.components.DynamicIslandTimer
 import com.avonix.profitness.presentation.components.glassCard
@@ -1042,38 +1045,45 @@ private fun StreakBanner(streak: Int) {
 // ── Dashboard Header with Progress Ring ───────────────────────────────────────
 @Composable
 private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
-    val strings = LocalAppTheme.current.strings
+    val theme = LocalAppTheme.current
+    val strings = theme.strings
+    val responsive = rememberResponsiveLayoutInfo()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp, 12.dp, 24.dp, 8.dp)
+            .padding(
+                horizontal = responsive.horizontalPadding,
+                vertical = 8.dp
+            )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(end = if (responsive.isLargeFont) 8.dp else 12.dp)) {
                 Text(
                     text = strings.helloAthlete,
                     color = TextSecondary,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = localizedWorkoutTitle(day.title, LocalAppTheme.current),
                     color = TextPrimary,
-                    fontSize = 22.sp,
+                    fontSize = if (responsive.isLargeFont) 20.sp else 22.sp,
                     fontWeight = FontWeight.Black,
-                    lineHeight = 26.sp,
-                    maxLines = 2,
+                    lineHeight = if (responsive.isLargeFont) 25.sp else 26.sp,
+                    maxLines = if (responsive.isLargeFont) 3 else 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(12.dp))
 
                 // Pill stats
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (day.totalKcal > 0) StatPill("${day.totalKcal}", "kcal", Amber)
                     if (day.durationMin > 0) StatPill("${day.durationMin}", strings.unitMin, MaterialTheme.colorScheme.primary)
                 }
@@ -1083,7 +1093,11 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
             if (!day.isRestDay && day.exercises.isNotEmpty()) {
                 CircularProgressRing(
                     progress = progress,
-                    size = 96.dp,
+                    size = when {
+                        responsive.isVeryLargeFont -> 78.dp
+                        responsive.isLargeFont -> 84.dp
+                        else -> 96.dp
+                    },
                     label = "${(progress * 100).toInt()}%"
                 )
             }
@@ -1093,25 +1107,28 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
 
 @Composable
 private fun StatPill(value: String, unit: String, color: Color) {
+    val responsive = rememberResponsiveLayoutInfo()
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(color.copy(alpha = 0.15f))
-            .padding(12.dp, 6.dp)
+            .padding(horizontal = if (responsive.isLargeFont) 10.dp else 12.dp, vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = value,
                 color = color,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Black
+                fontSize = if (responsive.isLargeFont) 13.sp else 15.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
             )
             Spacer(Modifier.width(3.dp))
             Text(
                 text = unit,
                 color = color.copy(0.7f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = if (responsive.isLargeFont) 10.sp else 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
         }
     }
@@ -1169,6 +1186,7 @@ fun CircularProgressRing(
         }
 
         val strings = LocalAppTheme.current.strings
+        val responsive = rememberResponsiveLayoutInfo()
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 10.dp)
@@ -1176,15 +1194,15 @@ fun CircularProgressRing(
             Text(
                 text = label,
                 color = if (progress > 0) resolvedRingColor else TextSecondary,
-                fontSize = 15.sp,
+                fontSize = if (responsive.isLargeFont) 13.sp else 15.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
             Text(
                 text = strings.unitDone,
                 color = TextMuted,
-                fontSize = 9.sp,
-                letterSpacing = 1.sp,
+                fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
+                letterSpacing = 0.4.sp,
                 maxLines = 1
             )
         }
@@ -1202,11 +1220,12 @@ private fun DaySelector(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val theme    = LocalAppTheme.current
     val haptic   = LocalHapticFeedback.current
+    val responsive = rememberResponsiveLayoutInfo()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp, 20.dp, 16.dp, 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 5.dp else 6.dp)
     ) {
         days.forEachIndexed { idx, state ->
             val day        = state.day
@@ -1224,7 +1243,7 @@ private fun DaySelector(
                 modifier = Modifier
                     .scale(scale)
                     .weight(1f)
-                    .height(64.dp)
+                    .heightIn(min = if (responsive.isLargeFont) 74.dp else 64.dp)
                     .then(
                         if (isSelected)
                             Modifier.clip(RoundedCornerShape(16.dp)).background(accent)
@@ -1241,9 +1260,11 @@ private fun DaySelector(
                     Text(
                         text = localizedWorkoutDayLabel(day.day, theme).uppercase(),
                         color = if (isSelected) onAccent else TextMuted,
-                        fontSize = 10.sp,
+                        fontSize = if (responsive.isLargeFont) 8.sp else 10.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp
+                        letterSpacing = if (responsive.isLargeFont) 0.sp else 1.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Spacer(Modifier.height(4.dp))
                     if (day.isRestDay) {
@@ -1257,7 +1278,7 @@ private fun DaySelector(
                         Text(
                             text = "${day.exercises.size}",
                             color = if (isSelected) onAccent else TextPrimary,
-                            fontSize = 18.sp,
+                            fontSize = if (responsive.isLargeFont) 16.sp else 18.sp,
                             fontWeight = FontWeight.Black
                         )
                         // Small progress dot

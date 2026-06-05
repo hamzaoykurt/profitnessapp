@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.presentation.workout.Exercise
 import com.avonix.profitness.presentation.workout.ExerciseMetric
 import com.avonix.profitness.presentation.workout.activityTrackingSpec
@@ -86,6 +88,7 @@ fun CinematicExerciseCard(
     val haptic   = LocalHapticFeedback.current
     val context  = LocalContext.current
     val theme    = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     var isExpanded by remember { mutableStateOf(false) }
     var showActivityTimerSetup by remember { mutableStateOf(false) }
     var showTimedSetTimerSetup by remember { mutableStateOf(false) }
@@ -173,7 +176,7 @@ fun CinematicExerciseCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp, 8.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
             .scale(cardScale)
     ) {
         ForgeCard(
@@ -199,7 +202,14 @@ fun CinematicExerciseCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(
+                            when {
+                                responsive.isVeryLargeFont -> 236.dp
+                                responsive.isLargeFont -> 212.dp
+                                responsive.isSmallPhone -> 176.dp
+                                else -> 180.dp
+                            }
+                        )
                         .clickable(
                             interactionSource = interactionSource,
                             indication        = null
@@ -249,7 +259,7 @@ fun CinematicExerciseCard(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(20.dp),
+                            .padding(if (responsive.isSmallPhone) 16.dp else 20.dp),
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Row(
@@ -272,9 +282,12 @@ fun CinematicExerciseCard(
                                     Text(
                                         text = theme.fitnessTermDisplayName(exercise.category).uppercase(),
                                         color = catColor,
-                                        fontSize = 9.sp,
+                                        fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 1.5.sp
+                                        letterSpacing = 0.8.sp,
+                                        lineHeight = 12.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                                 Spacer(Modifier.height(6.dp))
@@ -285,6 +298,8 @@ fun CinematicExerciseCard(
                                         style = MaterialTheme.typography.headlineMedium,
                                         fontWeight = FontWeight.Black,
                                         lineHeight = 28.sp,
+                                        maxLines = if (responsive.isLargeFont) 3 else 2,
+                                        overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f)
                                     )
                                     if (isCompleted) {
@@ -1208,22 +1223,23 @@ private fun RestTimerChip(
 
 @Composable
 fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = false, isDurationSet: Boolean = false) {
+    val responsive = rememberResponsiveLayoutInfo()
     Box(
         modifier = Modifier
             .background(Color.White.copy(0.1f), RoundedCornerShape(12.dp))
             .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))
-            .padding(12.dp, 6.dp)
+            .padding(horizontal = if (responsive.isLargeFont) 9.dp else 12.dp, vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isActivity) {
                 Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
             } else {
-                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
                 Spacer(Modifier.width(4.dp))
                 val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
-                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
             }
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
@@ -1231,7 +1247,8 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
                     text = LocalAppTheme.current.t("(${done} tamam)", "(${done} done)"),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp
+                    fontSize = if (responsive.isLargeFont) 9.sp else 11.sp,
+                    maxLines = 1
                 )
             }
         }

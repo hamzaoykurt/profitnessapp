@@ -20,9 +20,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 
 /**
  * ForgeButton — Apple/Substack-inspired 3D tactile button.
@@ -42,6 +44,7 @@ fun PremiumButton(
     isLoading: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
+    val responsive = rememberResponsiveLayoutInfo()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -69,6 +72,7 @@ fun PremiumButton(
     Box(
         modifier = modifier
             .scale(scale)
+            .heightIn(min = responsive.controlMinHeight)
             // Amber glow shadow — collapses on press
             .shadow(
                 elevation    = if (isEnabled) elevation else 0.dp,
@@ -124,7 +128,7 @@ fun PremiumButton(
                     onClick()
                 }
             )
-            .padding(24.dp, 18.dp),
+            .padding(horizontal = 24.dp, vertical = if (responsive.isLargeFont) 14.dp else 18.dp),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -139,7 +143,10 @@ fun PremiumButton(
                 color         = if (isEnabled) Color.Black else Fog,
                 fontWeight    = FontWeight.ExtraBold,
                 fontSize      = 14.sp,
-                letterSpacing = 1.sp
+                letterSpacing = 0.5.sp,
+                lineHeight    = 18.sp,
+                maxLines      = 2,
+                textAlign     = TextAlign.Center
             )
         }
     }
@@ -155,6 +162,7 @@ fun GhostButton(
 ) {
     val haptic = LocalHapticFeedback.current
     val theme  = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -165,6 +173,7 @@ fun GhostButton(
     Box(
         modifier = modifier
             .scale(scale)
+            .heightIn(min = responsive.controlMinHeight)
             .clip(RoundedCornerShape(18.dp))
             .background(theme.bg2)
             .border(1.dp, theme.stroke, RoundedCornerShape(18.dp))
@@ -172,7 +181,7 @@ fun GhostButton(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             })
-            .padding(24.dp, 16.dp),
+            .padding(horizontal = 24.dp, vertical = if (responsive.isLargeFont) 13.dp else 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -180,7 +189,10 @@ fun GhostButton(
             color         = if (isEnabled) theme.text1 else theme.text2,
             fontWeight    = FontWeight.Bold,
             fontSize      = 14.sp,
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.3.sp,
+            lineHeight    = 18.sp,
+            maxLines      = 2,
+            textAlign     = TextAlign.Center
         )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 
 /**
  * Compact row shown on every AI feature screen for FREE users.
@@ -37,55 +38,74 @@ fun AiCreditInfoRow(
     val accent    = MaterialTheme.colorScheme.primary
     val outOfCredits = credits == 0
     val badgeColor = if (outOfCredits) Color(0xFFFF4444) else accent
+    val responsive = rememberResponsiveLayoutInfo()
+    val stackBadge = responsive.isSmallPhone || responsive.isLargeFont
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(badgeColor.copy(alpha = 0.08f))
             .border(1.dp, badgeColor.copy(alpha = 0.28f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(badgeColor.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.Bolt, null, tint = badgeColor, modifier = Modifier.size(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(badgeColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Bolt, null, tint = badgeColor, modifier = Modifier.size(14.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (outOfCredits) theme.ui("Enerjin bitti!") else theme.ui(costLabel),
+                    color = badgeColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 16.sp
+                )
+                Text(
+                    if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
+                    else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
+                    color = theme.text2,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            if (!stackBadge) {
+                Spacer(Modifier.width(10.dp))
+                EnergyBadge(text = if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits), color = badgeColor)
+            }
         }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(
-                if (outOfCredits) theme.ui("Enerjin bitti!") else theme.ui(costLabel),
-                color = badgeColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
-                else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
-                color = theme.text2,
-                fontSize = 11.sp
-            )
+        if (stackBadge) {
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                EnergyBadge(text = if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits), color = badgeColor)
+            }
         }
-        Spacer(Modifier.weight(1f))
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(badgeColor.copy(alpha = 0.14f))
-                .border(1.dp, badgeColor.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits),
-                color = badgeColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
+    }
+}
+
+@Composable
+private fun EnergyBadge(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.14f))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = color,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 13.sp
+        )
     }
 }

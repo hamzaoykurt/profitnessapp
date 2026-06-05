@@ -46,6 +46,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.data.program.ManualExerciseInput
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.data.program.autoTitle
@@ -1792,6 +1793,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     val aiTheme    = LocalAppTheme.current
     val aiStrings  = aiTheme.strings
     val context    = LocalContext.current
+    val responsive = rememberResponsiveLayoutInfo()
 
     // Seçilen dosya bilgisi
     var selectedFileName by remember { mutableStateOf<String?>(null) }
@@ -1845,7 +1847,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     val canAnalyze = (prompt.isNotBlank() || selectedBase64 != null) && !uiState.aiLoading
     val scrollState = rememberScrollState()
 
-    val navBarHeight = 78.dp
+    val navBarHeight = responsive.bottomNavHeight
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
@@ -1954,7 +1956,10 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             aiTheme.t("Görsel / PDF Yükle", "Upload Image / PDF")
                         },
                         color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center
                     )
                 }
 
@@ -2019,6 +2024,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .imePadding()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(Color.Transparent, aiTheme.bg0),
@@ -2026,7 +2032,12 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         endY = 60f
                     )
                 )
-                .padding(start = 24.dp, end = 24.dp, bottom = contentPad + timerExtraPad, top = 16.dp)
+                .padding(
+                    start = responsive.horizontalPadding,
+                    end = responsive.horizontalPadding,
+                    bottom = contentPad + timerExtraPad,
+                    top = 16.dp
+                )
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
             if (uiState.userPlan == UserPlan.FREE) {
@@ -2039,14 +2050,22 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                             .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                            .widthIn(max = (responsive.screenWidth - (responsive.horizontalPadding * 2)).coerceAtLeast(180.dp))
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
                         Spacer(Modifier.width(3.dp))
-                        Text(aiTheme.t("6-10 Enerji", "6-10 Energy"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            aiTheme.t("6-10 Enerji", "6-10 Energy"),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
                         Spacer(Modifier.width(6.dp))
-                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = aiTheme.text2, fontSize = 10.sp)
+                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = aiTheme.text2, fontSize = if (responsive.isLargeFont) 9.sp else 10.sp, maxLines = 1)
                     }
                 }
             }
@@ -2055,7 +2074,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     viewModel.clearAiError()
                     viewModel.createFromAI(prompt, selectedBase64, selectedMimeType)
                 },
-                modifier = Modifier.fillMaxWidth().height(64.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = if (responsive.isLargeFont) 72.dp else 64.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (canAnalyze) MaterialTheme.colorScheme.primary else Surface2
                 ),
@@ -2072,7 +2091,10 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
                         },
                         color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else TextMuted,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 18.sp,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

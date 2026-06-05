@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class
+)
 
 package com.avonix.profitness.presentation.discover
 
@@ -54,6 +57,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +74,7 @@ import com.avonix.profitness.core.theme.stroke
 import com.avonix.profitness.core.theme.t
 import com.avonix.profitness.core.theme.text0
 import com.avonix.profitness.core.theme.text2
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.domain.discover.DiscoverSort
 import com.avonix.profitness.domain.discover.MySharedProgram
 import com.avonix.profitness.domain.discover.SharedProgram
@@ -309,33 +314,36 @@ private fun DiscoverHeader(
     onToggleSort: () -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = responsive.horizontalPadding)
             .padding(top = 8.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .widthIn(max = 92.dp)
+            modifier = Modifier.weight(1f)
         ) {
             Text(
                 text       = theme.t("KEŞFET", "DISCOVER"),
                 color      = theme.text0,
-                fontSize   = 22.sp,
+                fontSize   = if (responsive.isLargeFont) 20.sp else 22.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text     = theme.t("Topluluk programları ve challenge'lar", "Community programs and challenges"),
                 color    = theme.text2.copy(alpha = 0.7f),
-                fontSize = 9.sp,
-                maxLines = 1
+                fontSize = if (responsive.isLargeFont) 10.sp else 9.sp,
+                lineHeight = 14.sp,
+                maxLines = if (responsive.isLargeFont) 2 else 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         // Sort toggle
@@ -357,21 +365,27 @@ private fun SmallIconChip(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     val shape = RoundedCornerShape(12.dp)
     Row(
         modifier = Modifier
+            .heightIn(min = responsive.compactChipMinHeight)
             .clip(shape)
             .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.5f))
             .border(1.dp, if (selected) accent.copy(0.4f) else theme.stroke.copy(0.35f), shape)
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = if (selected) accent else theme.text2.copy(0.6f),
             modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
         Text(label, color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+            fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.2.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -382,9 +396,10 @@ private fun DiscoverTabBar(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val theme = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = responsive.horizontalPadding),
+        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 8.dp else 10.dp)
     ) {
         DiscoverTabPill(
             label    = theme.t("PROGRAMLAR", "PROGRAMS"),
@@ -419,10 +434,11 @@ private fun DiscoverTabPill(
     modifier: Modifier = Modifier, onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier = modifier
-            .height(58.dp)
+            .heightIn(min = if (responsive.isLargeFont) 70.dp else 58.dp)
             .clip(shape)
             .background(
                 if (selected) Brush.linearGradient(listOf(accent.copy(0.22f), accent.copy(0.10f)))
@@ -430,7 +446,7 @@ private fun DiscoverTabPill(
             )
             .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), shape)
             .clickable { onClick() }
-            .padding(vertical = 10.dp, horizontal = 8.dp),
+            .padding(vertical = if (responsive.isLargeFont) 11.dp else 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -439,10 +455,12 @@ private fun DiscoverTabPill(
         Text(
             text = label,
             color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = 10.sp,
+            fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp,
-            maxLines = 1,
+            letterSpacing = 0.15.sp,
+            lineHeight = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
     }
@@ -629,7 +647,9 @@ private fun SharedProgramCard(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     val shape = RoundedCornerShape(20.dp)
+    val stackActions = responsive.isSmallPhone || responsive.isLargeFont
 
     Column(
         modifier = Modifier
@@ -637,7 +657,7 @@ private fun SharedProgramCard(
             .heightIn(min = 184.dp)
             .glassCard(accent, theme, shape)
             .clickable { onOpenDetails() }
-            .padding(16.dp)
+            .padding(if (responsive.isSmallPhone) 14.dp else 16.dp)
     ) {
         // Author row
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -649,7 +669,8 @@ private fun SharedProgramCard(
                     color      = theme.text0,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines   = 1
+                    maxLines   = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 val metaParts = buildList {
                     program.difficulty?.name?.lowercase()?.let { add(it) }
@@ -660,7 +681,9 @@ private fun SharedProgramCard(
                     Text(
                         text     = metaParts.joinToString(" · "),
                         color    = theme.text2.copy(0.6f),
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -671,9 +694,11 @@ private fun SharedProgramCard(
         Text(
             text       = program.title,
             color      = theme.text0,
-            fontSize   = 19.sp,
+            fontSize   = if (responsive.isLargeFont) 18.sp else 19.sp,
             fontWeight = FontWeight.Black,
-            maxLines   = 2
+            maxLines   = if (responsive.isLargeFont) 3 else 2,
+            lineHeight = 23.sp,
+            overflow = TextOverflow.Ellipsis
         )
         if (!program.description.isNullOrBlank()) {
             Spacer(Modifier.height(4.dp))
@@ -681,15 +706,16 @@ private fun SharedProgramCard(
                 text     = program.description,
                 color    = theme.text2.copy(0.75f),
                 fontSize = 13.sp,
-                maxLines = 3,
-                lineHeight = 18.sp
+                maxLines = if (responsive.isLargeFont) 4 else 3,
+                lineHeight = 18.sp,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
         // Tags
         if (program.tags.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 program.tags.take(4).forEach { tag ->
                     Box(
                         modifier = Modifier
@@ -697,7 +723,7 @@ private fun SharedProgramCard(
                             .background(accent.copy(0.10f))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text("#$tag", color = accent.copy(0.9f), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        Text("#$tag", color = accent.copy(0.9f), fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -706,42 +732,62 @@ private fun SharedProgramCard(
         Spacer(Modifier.height(14.dp))
 
         // Actions row
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        val applyText = when {
+            isApplied -> theme.t("UYGULANDI", "APPLIED")
+            isApplying -> theme.t("UYGULANIYOR", "APPLYING")
+            else -> theme.t("UYGULA", "APPLY")
+        }
+        val chips: @Composable () -> Unit = {
             ActionChip(
-                icon     = if (program.isLikedByMe) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                count    = program.likesCount,
-                active   = program.isLikedByMe,
+                icon = if (program.isLikedByMe) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                count = program.likesCount,
+                active = program.isLikedByMe,
                 activeColor = Color(0xFFEF476F),
-                onClick  = onLike
+                onClick = onLike
             )
             Spacer(Modifier.width(12.dp))
             ActionChip(
-                icon     = if (program.isSavedByMe) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
-                count    = program.savesCount,
-                active   = program.isSavedByMe,
+                icon = if (program.isSavedByMe) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                count = program.savesCount,
+                active = program.isSavedByMe,
                 activeColor = accent,
-                onClick  = onSave
+                onClick = onSave
             )
             Spacer(Modifier.width(12.dp))
             ActionChip(
-                icon   = Icons.Rounded.CloudDownload,
-                count  = program.downloadsCount,
+                icon = Icons.Rounded.CloudDownload,
+                count = program.downloadsCount,
                 active = false,
                 activeColor = accent,
-                onClick = {}   // salt sayaç
+                onClick = {}
             )
-            Spacer(Modifier.weight(1f))
-            ApplyButton(
-                onClick = onApply,
-                text = when {
-                    isApplied -> theme.t("UYGULANDI", "APPLIED")
-                    isApplying -> theme.t("UYGULANIYOR", "APPLYING")
-                    else -> theme.t("UYGULA", "APPLY")
-                },
-                enabled = !isApplying && !isApplied,
-                isLoading = isApplying,
-                applied = isApplied
-            )
+        }
+        if (stackActions) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) { chips() }
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    ApplyButton(
+                        onClick = onApply,
+                        text = applyText,
+                        enabled = !isApplying && !isApplied,
+                        isLoading = isApplying,
+                        applied = isApplied
+                    )
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                chips()
+                Spacer(Modifier.weight(1f))
+                ApplyButton(
+                    onClick = onApply,
+                    text = applyText,
+                    enabled = !isApplying && !isApplied,
+                    isLoading = isApplying,
+                    applied = isApplied
+                )
+            }
         }
     }
 }
@@ -1160,6 +1206,7 @@ private fun ActionChip(
     onClick     : () -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
@@ -1170,7 +1217,7 @@ private fun ActionChip(
                 RoundedCornerShape(999.dp)
             )
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = if (responsive.isLargeFont) 7.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1183,8 +1230,9 @@ private fun ActionChip(
         Text(
             text = count.toString(),
             color = if (active) activeColor else theme.text2.copy(0.75f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            fontSize = if (responsive.isLargeFont) 11.sp else 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
         )
     }
 }
@@ -1198,6 +1246,7 @@ private fun ApplyButton(
     applied: Boolean = false
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     val shape = RoundedCornerShape(14.dp)
     val background = when {
         applied -> Brush.linearGradient(listOf(accent.copy(0.18f), accent.copy(0.10f)))
@@ -1207,7 +1256,7 @@ private fun ApplyButton(
     val textColor = if (applied) accent else Color.Black
     Row(
         modifier = Modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = if (responsive.isLargeFont) 48.dp else 44.dp)
             .clip(shape)
             .background(background)
             .border(
@@ -1230,9 +1279,12 @@ private fun ApplyButton(
         Text(
             text = text,
             color = textColor,
-            fontSize = 11.sp,
+            fontSize = if (responsive.isLargeFont) 10.sp else 11.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 0.8.sp
+            letterSpacing = 0.3.sp,
+            lineHeight = 13.sp,
+            maxLines = 2,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -1409,12 +1461,13 @@ private fun ProgramsSubTabBar(
     onSelect: (ProgramsSubTab) -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = responsive.horizontalPadding)
             .padding(top = 8.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 8.dp else 10.dp)
     ) {
         SubTabChip(
             label = theme.t("TOPLULUK", "COMMUNITY"),
@@ -1454,24 +1507,27 @@ private fun SubTabChip(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = modifier
-            .height(40.dp)
+            .heightIn(min = if (responsive.isLargeFont) 52.dp else 40.dp)
             .clip(shape)
             .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.4f))
             .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.3f), shape)
             .clickable { onClick() }
-            .padding(horizontal = 4.dp, vertical = 9.dp),
+            .padding(horizontal = 5.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
             color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = 9.sp,
+            fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
+            letterSpacing = 0.sp,
+            lineHeight = 11.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
     }

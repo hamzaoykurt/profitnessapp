@@ -28,6 +28,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -172,6 +173,7 @@ fun OnboardingScreen(
                 .widthIn(max = responsive.formMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .imePadding()
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
         ) {
             // Üst ilerleme çubuğu
@@ -662,18 +664,28 @@ private fun OnboardingChoiceGrid(
     labelFor: (String) -> String = { it },
     onSelect: (String) -> Unit
 ) {
-    val rows = options.chunked(2)
+    val responsive = rememberResponsiveLayoutInfo()
+    val renderedOptions = options.map { it to labelFor(it) }
+    val useSingleColumn = responsive.isVeryLargeFont ||
+        responsive.screenWidth < 350.dp ||
+        (responsive.isLargeFont && renderedOptions.any { (_, label) -> label.length > 14 })
+    val rows = if (useSingleColumn) renderedOptions.map { listOf(it) } else renderedOptions.chunked(2)
+    val resolvedHeight = when {
+        useSingleColumn -> maxOf(itemHeight, if (responsive.isLargeFont) 58.dp else 50.dp)
+        responsive.isLargeFont -> maxOf(itemHeight, 48.dp)
+        else -> itemHeight
+    }
     rows.forEachIndexed { index, row ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            row.forEach { option ->
+            row.forEach { (option, label) ->
                 val isSelected = selected == option
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(itemHeight)
+                        .heightIn(min = resolvedHeight)
                         .clip(RoundedCornerShape(14.dp))
                         .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
                         .border(
@@ -685,14 +697,19 @@ private fun OnboardingChoiceGrid(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = labelFor(option),
+                        text = label,
                         color = if (isSelected) accent else theme.text1,
-                        fontSize = fontSize,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                        fontSize = if (responsive.isLargeFont) fontSize * 0.92f else fontSize,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                        lineHeight = if (responsive.isLargeFont) 17.sp else 15.sp,
+                        maxLines = if (useSingleColumn || responsive.isLargeFont) 2 else 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
                     )
                 }
             }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
+            if (row.size == 1 && !useSingleColumn) Spacer(Modifier.weight(1f))
         }
         if (index != rows.lastIndex) {
             Spacer(Modifier.height(rowSpacing))
@@ -927,6 +944,7 @@ private fun StepGoal(
     accent : Color,
     theme  : AppThemeState
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -945,42 +963,19 @@ private fun StepGoal(
 
         Spacer(Modifier.height(28.dp))
 
-        // Hızlı seçim çipleri
-        val chunked = GOAL_SUGGESTIONS.chunked(2)
-        chunked.forEach { row ->
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                row.forEach { suggestion ->
-                    val selected = state.fitnessGoal == suggestion
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(0.18f) else theme.bg1)
-                            .border(
-                                width = if (selected) 2.dp else 1.dp,
-                                color = if (selected) accent else theme.stroke,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { vm.setFitnessGoal(if (selected) "" else suggestion) }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            theme.goalLabel(suggestion),
-                            color      = if (selected) accent else theme.text1,
-                            fontSize   = 13.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-                // tek kalan chip varsa boşluk doldur
-                if (row.size == 1) Spacer(Modifier.weight(1f))
+        OnboardingChoiceGrid(
+            options = GOAL_SUGGESTIONS,
+            selected = state.fitnessGoal,
+            accent = accent,
+            theme = theme,
+            itemHeight = 52.dp,
+            rowSpacing = 10.dp,
+            fontSize = 13.sp,
+            labelFor = { theme.goalLabel(it) },
+            onSelect = { suggestion ->
+                vm.setFitnessGoal(if (state.fitnessGoal == suggestion) "" else suggestion)
             }
-            Spacer(Modifier.height(10.dp))
-        }
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -1008,7 +1003,7 @@ private fun StepGoal(
         Button(
             onClick  = { vm.nextStep() },
             enabled  = !state.isSaving,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
             shape    = RoundedCornerShape(16.dp),
             colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
@@ -1017,7 +1012,15 @@ private fun StepGoal(
             } else {
                 Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(theme.t("Program Önerisine Geç", "Go to Program Suggestion"), fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 0.5.sp)
+                Text(
+                    theme.t("Program Önerisine Geç", "Go to Program Suggestion"),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 15.sp,
+                    letterSpacing = 0.2.sp,
+                    lineHeight = 18.sp,
+                    maxLines = 2,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
@@ -1227,11 +1230,27 @@ private fun StepHeader(
     accent  : Color,
     theme   : AppThemeState
 ) {
-    Text(step, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+    val responsive = rememberResponsiveLayoutInfo()
+    Text(step, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
     Spacer(Modifier.height(6.dp))
-    Text(title, color = theme.text0, fontSize = 26.sp, fontWeight = FontWeight.Black)
+    Text(
+        title,
+        color = theme.text0,
+        fontSize = if (responsive.isLargeFont) 24.sp else 26.sp,
+        fontWeight = FontWeight.Black,
+        lineHeight = if (responsive.isLargeFont) 29.sp else 31.sp,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
     Spacer(Modifier.height(4.dp))
-    Text(subtitle, color = theme.text2, fontSize = 14.sp)
+    Text(
+        subtitle,
+        color = theme.text2,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable
@@ -1244,14 +1263,24 @@ private fun StepNavButtons(
     canSkip  : Boolean = false,
     onSkip   : () -> Unit = {}
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(
             onClick  = onNext,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
             shape    = RoundedCornerShape(16.dp),
             colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
         ) {
-            Text(nextLabel, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
+            Text(
+                nextLabel,
+                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+                letterSpacing = 0.4.sp,
+                lineHeight = 18.sp,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f, fill = false)
+            )
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.ArrowForwardIos, null, modifier = Modifier.size(14.dp))
         }

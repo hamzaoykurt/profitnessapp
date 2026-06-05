@@ -896,6 +896,7 @@ private fun AuthCenteredScaffold(
                 .widthIn(max = responsive.formMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = responsive.horizontalPadding)
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value),

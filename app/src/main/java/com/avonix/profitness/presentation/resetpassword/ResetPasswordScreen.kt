@@ -172,6 +172,8 @@ private fun NewPasswordContent(
                 .widthIn(max = responsive.formMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .graphicsLayer(alpha = alphaAnim.value, translationY = yAnim.value)
                 .padding(horizontal = responsive.horizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,

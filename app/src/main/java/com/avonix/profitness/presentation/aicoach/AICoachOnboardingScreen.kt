@@ -17,9 +17,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.data.ai.AICoachPrefs
 import com.avonix.profitness.data.ai.CommunicationStyle
 import com.avonix.profitness.data.ai.ResponseLength
@@ -36,6 +38,7 @@ fun AICoachOnboardingScreen(
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
 
     var step            by remember { mutableIntStateOf(0) }
     var selectedLength  by remember { mutableStateOf(initialPrefs.responseLength) }
@@ -142,9 +145,10 @@ fun AICoachOnboardingScreen(
             // ── Next / Finish button ───────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 32.dp)
+                    .padding(horizontal = responsive.horizontalPadding)
                     .padding(bottom = bottomPadding + 16.dp)
                     .fillMaxWidth()
+                    .heightIn(min = responsive.controlMinHeight)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.75f))))
                     .clickable {
@@ -162,7 +166,7 @@ fun AICoachOnboardingScreen(
                             )
                         }
                     }
-                    .padding(vertical = 18.dp),
+                    .padding(horizontal = 16.dp, vertical = if (responsive.isLargeFont) 15.dp else 18.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -170,7 +174,11 @@ fun AICoachOnboardingScreen(
                     color     = Color.White,
                     style     = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.2.sp,
+                    lineHeight = 20.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -279,10 +287,13 @@ private fun StepScaffold(
     subtitle: String,
     content : @Composable ColumnScope.() -> Unit
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 28.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = responsive.horizontalPadding)
+            .padding(vertical = if (responsive.isShortScreen) 16.dp else 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -292,8 +303,8 @@ private fun StepScaffold(
         Text(
             title,
             color        = accent,
-            fontSize     = 10.sp,
-            letterSpacing = 3.sp,
+            fontSize     = if (responsive.isLargeFont) 9.sp else 10.sp,
+            letterSpacing = 1.8.sp,
             fontWeight   = FontWeight.Medium
         )
         Spacer(Modifier.height(8.dp))
@@ -302,9 +313,12 @@ private fun StepScaffold(
             color      = theme.text1,
             style      = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Light,
-            textAlign  = TextAlign.Center
+            textAlign  = TextAlign.Center,
+            lineHeight = 22.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
         )
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(if (responsive.isShortScreen) 22.dp else 32.dp))
 
         Column(
             verticalArrangement     = Arrangement.spacedBy(10.dp),
@@ -325,6 +339,7 @@ private fun CenteredOptionCard(
     theme      : AppThemeState,
     onClick    : () -> Unit
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     val borderColor = if (selected) accent.copy(0.65f) else theme.stroke.copy(0.2f)
     val bgBrush = if (selected)
         Brush.horizontalGradient(listOf(accent.copy(0.14f), accent.copy(0.04f)))
@@ -333,13 +348,13 @@ private fun CenteredOptionCard(
 
     Row(
         modifier = Modifier
-            .widthIn(max = 380.dp)
+            .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(bgBrush)
             .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -351,9 +366,9 @@ private fun CenteredOptionCard(
                 unselectedColor = theme.text2.copy(0.4f)
             )
         )
-        Column {
-            Text(title,       color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-            Text(description, color = theme.text2, fontWeight = FontWeight.Light,  fontSize = 12.sp)
+        Column(Modifier.weight(1f)) {
+            Text(title, color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(description, color = theme.text2, fontWeight = FontWeight.Light, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -368,15 +383,16 @@ private fun PermissionCard(
     theme          : AppThemeState,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val responsive = rememberResponsiveLayoutInfo()
     Row(
         modifier = Modifier
-            .widthIn(max = 380.dp)
+            .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(theme.bg1.copy(0.9f))
             .border(1.dp, theme.stroke.copy(0.2f), RoundedCornerShape(14.dp))
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
         verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -390,12 +406,12 @@ private fun PermissionCard(
                 uncheckedTrackColor = theme.bg0
             )
         )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text(title, color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text(title, color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (recommended) {
                     Box(
                         modifier = Modifier
@@ -407,7 +423,7 @@ private fun PermissionCard(
                     }
                 }
             }
-            Text(description, color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light, lineHeight = 18.sp)
+            Text(description, color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light, lineHeight = 18.sp, maxLines = if (responsive.isLargeFont) 4 else 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }

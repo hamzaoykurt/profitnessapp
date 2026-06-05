@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avonix.profitness.core.theme.*
+import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.avonix.profitness.data.ai.ChatSession
 import com.avonix.profitness.data.store.UserPlan
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
@@ -76,6 +77,7 @@ fun AICoachScreen(
     val theme     = LocalAppTheme.current
     val strings   = theme.strings
     val isEnglish = theme.language == AppLanguage.ENGLISH
+    val responsive = rememberResponsiveLayoutInfo()
 
     var showPaywall by remember { mutableStateOf(false) }
 
@@ -177,7 +179,11 @@ fun AICoachScreen(
 
         // ── Message feed fills full Box, has bottom padding for the input area ─
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        val inputAreaHeight = if (imeVisible) 72.dp else 148.dp + bottomPadding
+        val inputAreaHeight = if (imeVisible) {
+            if (responsive.isLargeFont) 112.dp else 88.dp
+        } else {
+            (if (responsive.isLargeFont) 172.dp else 148.dp) + bottomPadding
+        }
         LazyColumn(
             state           = listState,
             modifier        = Modifier.fillMaxSize(),
@@ -750,6 +756,7 @@ private fun SanctuaryInput(
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val shape  = RoundedCornerShape(28.dp)
+    val responsive = rememberResponsiveLayoutInfo()
 
     val borderBrush = Brush.horizontalGradient(
         listOf(
@@ -765,6 +772,7 @@ private fun SanctuaryInput(
                 modifier = Modifier
                     .align(Alignment.End)
                     .padding(end = 16.dp, bottom = 4.dp)
+                    .widthIn(max = (responsive.screenWidth - 32.dp).coerceAtLeast(180.dp))
                     .clip(RoundedCornerShape(20.dp))
                     .background(accent.copy(alpha = 0.12f))
                     .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
@@ -773,9 +781,22 @@ private fun SanctuaryInput(
             ) {
                 Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(3.dp))
-                Text(theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"),
+                    color = accent,
+                    fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
                 Spacer(Modifier.width(6.dp))
-                Text(theme.t("Enerji: $credits", "Energy: $credits"), color = theme.text2, fontSize = 10.sp)
+                Text(
+                    theme.t("Enerji: $credits", "Energy: $credits"),
+                    color = theme.text2,
+                    fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
+                    maxLines = 1
+                )
             }
         }
     Row(
@@ -826,7 +847,14 @@ private fun SanctuaryInput(
             value         = value,
             onValueChange = onValueChange,
             placeholder   = {
-                Text(theme.t("Sanctuary'ye sor...", "Ask Sanctuary..."), color = Mist.copy(0.7f), fontSize = 14.sp, fontWeight = FontWeight.Light)
+                Text(
+                    theme.t("Sanctuary'ye sor...", "Ask Sanctuary..."),
+                    color = Mist.copy(0.7f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Light,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor   = Color.Transparent,
@@ -841,7 +869,7 @@ private fun SanctuaryInput(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
             singleLine     = false,
-            maxLines       = 4
+            maxLines       = if (responsive.isShortScreen) 3 else 4
         )
 
         val sendActive = value.isNotBlank() && !isTyping
