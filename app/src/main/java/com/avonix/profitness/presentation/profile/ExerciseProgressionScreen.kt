@@ -45,6 +45,7 @@ import com.avonix.profitness.core.BaseViewModel
 import com.avonix.profitness.core.theme.*
 import com.avonix.profitness.presentation.components.AiCreditInfoRow
 import com.avonix.profitness.presentation.components.AppBackButton
+import com.avonix.profitness.presentation.components.glassCard
 import com.avonix.profitness.data.ai.AiAccessException
 import com.avonix.profitness.data.ai.AiAnalysisPrompts
 import com.avonix.profitness.data.ai.AiToolType
@@ -473,6 +474,12 @@ private fun ExerciseProgressionCard(
     val hasDuration = summary.totalDurationSeconds > 0
     val hasDistance = summary.totalDistanceMeters > 0f
     val cardShape = RoundedCornerShape(24.dp)
+    val cardAccent = when {
+        hasWeight -> accent
+        hasDuration -> CardGreen
+        hasDistance -> CardCyan
+        else -> accent
+    }
     val displayName = theme.exerciseDisplayName(summary.name).localizedPrimary(theme)
     val targetName = theme.fitnessTermDisplayName(summary.targetMuscle).localizedPrimary(theme)
 
@@ -480,23 +487,12 @@ private fun ExerciseProgressionCard(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = if (isExpanded) 18.dp else 8.dp,
+                elevation = if (isExpanded) 26.dp else 18.dp,
                 shape = cardShape,
-                spotColor = accent.copy(if (isExpanded) 0.22f else 0.10f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.38f else 0.08f)
+                spotColor = cardAccent.copy(if (isExpanded) 0.34f else 0.22f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.52f else 0.10f)
             )
-            .clip(cardShape)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        if (isExpanded) accent.copy(0.12f) else theme.bg1.copy(0.98f),
-                        theme.bg0.copy(if (theme.isDark) 0.92f else 0.72f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(760f, 360f)
-                )
-            )
-            .border(1.dp, if (isExpanded) accent.copy(0.42f) else theme.stroke, cardShape)
+            .glassCard(cardAccent, theme, cardShape)
     ) {
         // ── Header row ────────────────────────────────────────────────────
         Row(
@@ -516,12 +512,12 @@ private fun ExerciseProgressionCard(
                     .clip(RoundedCornerShape(16.dp))
                     .background(
                         Brush.linearGradient(
-                            listOf(accent.copy(0.18f), theme.bg2),
+                            listOf(cardAccent.copy(0.20f), theme.bg2),
                             start = Offset(0f, 0f),
                             end = Offset(120f, 120f)
                         )
                     )
-                    .border(1.dp, accent.copy(0.18f), RoundedCornerShape(16.dp))
+                    .border(1.dp, cardAccent.copy(0.28f), RoundedCornerShape(16.dp))
             ) {
                 if (summary.imageUrl.isNotBlank()) {
                     AsyncImage(
@@ -532,7 +528,7 @@ private fun ExerciseProgressionCard(
                     )
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Rounded.FitnessCenter, null, tint = cardAccent, modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -559,7 +555,7 @@ private fun ExerciseProgressionCard(
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (hasWeight) {
-                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg", color = accent)
+                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg", color = cardAccent)
                     }
                     if (hasDistance) {
                         StatChip(label = formatDistance(summary.totalDistanceMeters), color = CardCyan)
@@ -576,7 +572,7 @@ private fun ExerciseProgressionCard(
             Icon(
                 if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 null,
-                tint = theme.text2,
+                tint = if (isExpanded) cardAccent else theme.text2,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -588,7 +584,7 @@ private fun ExerciseProgressionCard(
             exit    = shrinkVertically()
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 14.dp)) {
-                HorizontalDivider(color = theme.stroke, thickness = 0.5.dp, modifier = Modifier.padding(bottom = 12.dp))
+                HorizontalDivider(color = cardAccent.copy(0.22f), thickness = 0.5.dp, modifier = Modifier.padding(bottom = 12.dp))
 
                 // ── İstatistik Izgara ─────────────────────────────────────────
                 StatsGrid(summary = summary, accent = accent, theme = theme)

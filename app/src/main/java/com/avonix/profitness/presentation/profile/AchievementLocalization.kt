@@ -29,6 +29,18 @@ private val AchievementEnglishText = mapOf(
     "Süper Üye" to "Super Member",
     "Mükemmellik" to "Excellence",
     "Egzersiz Ustası" to "Exercise Master",
+    "100 Egzersiz" to "100 Exercises",
+    "500 Egzersiz" to "500 Exercises",
+    "1000 Egzersiz" to "1000 Exercises",
+    "5000 Egzersiz" to "5000 Exercises",
+    "100 Exercises" to "100 Exercises",
+    "500 Exercises" to "500 Exercises",
+    "1000 Exercises" to "1000 Exercises",
+    "5000 Exercises" to "5000 Exercises",
+    "Level 5" to "Level 5",
+    "Level 15" to "Level 15",
+    "Level 30" to "Level 30",
+    "Level 50" to "Level 50",
     "3 gün üst üste antrenman yaptın!" to "You trained 3 days in a row!",
     "5 gün üst üste antrenman yaptın!" to "You trained 5 days in a row!",
     "7 gün üst üste antrenman yaptın!" to "You trained 7 days in a row!",
@@ -46,6 +58,16 @@ private val AchievementEnglishText = mapOf(
 )
 
 private val AchievementTurkishText = AchievementEnglishText.entries.associate { (tr, en) -> en to tr } + mapOf(
+    "First Step" to "İlk Adım",
+    "Exercise Master" to "Egzersiz Ustası",
+    "100 Exercises" to "100 Egzersiz",
+    "500 Exercises" to "500 Egzersiz",
+    "1000 Exercises" to "1000 Egzersiz",
+    "5000 Exercises" to "5000 Egzersiz",
+    "Level 5" to "Seviye 5",
+    "Level 15" to "Seviye 15",
+    "Level 30" to "Seviye 30",
+    "Level 50" to "Seviye 50",
     "First 100 XP!" to "İlk 100 XP!",
     "100 XP collected!" to "100 XP topladın!",
     "250 XP collected!" to "250 XP topladın!",
@@ -61,10 +83,10 @@ private val AchievementTurkishText = AchievementEnglishText.entries.associate { 
     "You completed 500 exercises!" to "500 egzersiz tamamladın!",
     "You completed 1000 exercises!" to "1000 egzersiz tamamladın!",
     "You completed 5000 exercises!" to "5000 egzersiz tamamladın!",
-    "You reached level 5!" to "Seviye 5e ulaştınız!",
-    "You reached level 15!" to "Seviye 15e ulaştınız!",
-    "You reached level 30!" to "Seviye 30a ulaştınız!",
-    "You reached level 50 - legendary!" to "Seviye 50ye ulaştınız - Efsane!"
+    "You reached level 5!" to "Seviye 5'e ulaştın!",
+    "You reached level 15!" to "Seviye 15'e ulaştın!",
+    "You reached level 30!" to "Seviye 30'a ulaştın!",
+    "You reached level 50 - legendary!" to "Seviye 50'ye ulaştın - efsane!"
 )
 
 internal fun localizedAchievementText(value: String, theme: AppThemeState): String {
@@ -96,6 +118,8 @@ private fun localizedAchievementEnglish(value: String): String {
         .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)e ulaştınız!$""")) { "You reached level ${it.groupValues[1]}!" }
         .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)a ulaştınız!$""")) { "You reached level ${it.groupValues[1]}!" }
         .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)ye ulaştınız - Efsane!$""")) { "You reached level ${it.groupValues[1]} - legendary!" }
+        .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)'[ae] ulaştın!$""")) { "You reached level ${it.groupValues[1]}!" }
+        .replaceAchievementPattern(Regex("""^Seviye\s+(\d+)'ye ulaştın - efsane!$""")) { "You reached level ${it.groupValues[1]} - legendary!" }
         .replaceAchievementPattern(Regex("""^(\d+)\s+XP — tanrısal güç!$""")) { "${it.groupValues[1]} XP - divine power!" }
 }
 
@@ -110,10 +134,21 @@ private fun localizedAchievementTurkish(value: String): String {
         .replaceAchievementPattern(Regex("""^You trained\s+(\d+)\s+days in a row!$""")) { "${it.groupValues[1]} gün üst üste antrenman yaptın!" }
         .replaceAchievementPattern(Regex("""^You completed\s+(\d+)\s+workouts!$""")) { "${it.groupValues[1]} antrenman tamamladın!" }
         .replaceAchievementPattern(Regex("""^You completed\s+(\d+)\s+exercises!$""")) { "${it.groupValues[1]} egzersiz tamamladın!" }
-        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)!$""")) { "Seviye ${it.groupValues[1]}e ulaştınız!" }
-        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)\s+-\s+legendary!$""")) { "Seviye ${it.groupValues[1]}ye ulaştınız - Efsane!" }
+        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)!$""")) { "Seviye ${it.groupValues[1]}${turkishLevelSuffix(it.groupValues[1])} ulaştın!" }
+        .replaceAchievementPattern(Regex("""^You reached level\s+(\d+)\s+-\s+legendary!$""")) { "Seviye ${it.groupValues[1]}${turkishLevelSuffix(it.groupValues[1])} ulaştın - efsane!" }
         .replaceAchievementPattern(Regex("""^(\d+)\s+XP\s+-\s+divine power!$""")) { "${it.groupValues[1]} XP - tanrısal güç!" }
 }
+
+private fun turkishLevelSuffix(level: String): String =
+    when (level.toIntOrNull()?.rem(100)) {
+        10, 30, 40, 60, 90 -> "'a"
+        20, 50, 70 -> "'ye"
+        else -> when (level.lastOrNull()) {
+            '6' -> "'ya"
+            '9' -> "'a"
+            else -> "'e"
+        }
+    }
 
 private inline fun String.replaceAchievementPattern(
     regex: Regex,

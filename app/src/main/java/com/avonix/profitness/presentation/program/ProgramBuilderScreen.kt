@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1807,7 +1808,10 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             selectedBase64 = null
             selectedMimeType = null
             selectedFileName = null
-            selectedFileError = "Sadece PDF, JPG, PNG veya WebP dosyası yükleyebilirsin."
+            selectedFileError = aiTheme.t(
+                "Sadece PDF, JPG, PNG veya WebP dosyası yükleyebilirsin.",
+                "You can only upload PDF, JPG, PNG or WebP files."
+            )
             return@rememberLauncherForActivityResult
         }
 
@@ -1815,14 +1819,20 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         }.getOrNull()
         if (bytes == null) {
-            selectedFileError = "Dosya okunamadı. Başka bir dosya seçmeyi dene."
+            selectedFileError = aiTheme.t(
+                "Dosya okunamadı. Başka bir dosya seçmeyi dene.",
+                "The file could not be read. Try another file."
+            )
             return@rememberLauncherForActivityResult
         }
         if (bytes.size > AI_MAX_UPLOAD_BYTES) {
             selectedBase64 = null
             selectedMimeType = null
             selectedFileName = null
-            selectedFileError = "Dosya en fazla ${aiUploadLimitLabel()} olabilir."
+            selectedFileError = aiTheme.t(
+                "Dosya en fazla ${aiUploadLimitLabel()} olabilir.",
+                "File size can be at most ${aiUploadLimitLabel()}."
+            )
             return@rememberLauncherForActivityResult
         }
 
@@ -1854,7 +1864,10 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             AiCreditInfoRow(
                 isFree  = uiState.userPlan == UserPlan.FREE,
                 credits = uiState.aiCredits,
-                costLabel = "6 Enerji / metin · 10 Enerji / dosya",
+                costLabel = aiTheme.t(
+                    "6 Enerji / metin · 10 Enerji / dosya",
+                    "6 Energy / text · 10 Energy / file"
+                ),
                 theme   = aiTheme,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -1866,9 +1879,13 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(aiTheme.bg1.copy(0.9f))
-                    .border(1.dp, aiTheme.stroke, RoundedCornerShape(24.dp))
+                    .shadow(
+                        elevation = 24.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
+                        ambientColor = Color.Black.copy(alpha = if (aiTheme.isDark) 0.55f else 0.12f)
+                    )
+                    .glassCard(MaterialTheme.colorScheme.primary, aiTheme, RoundedCornerShape(24.dp))
                     .padding(24.dp)
             ) {
                 Column {
@@ -1914,7 +1931,14 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     enabled = !uiState.aiLoading,
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .shadow(
+                            elevation = if (selectedBase64 != null) 16.dp else 8.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = if (selectedBase64 != null) 0.24f else 0.10f),
+                            ambientColor = Color.Black.copy(alpha = if (aiTheme.isDark) 0.34f else 0.08f)
+                        )
                 ) {
                     Icon(
                         imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
@@ -2022,7 +2046,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         Spacer(Modifier.width(3.dp))
                         Text(aiTheme.t("6-10 Enerji", "6-10 Energy"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(6.dp))
-                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = LocalAppTheme.current.text2, fontSize = 10.sp)
+                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = aiTheme.text2, fontSize = 10.sp)
                     }
                 }
             }
@@ -2042,7 +2066,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
                     Text(
-                        if (selectedBase64 != null) "DOSYADAN PROGRAM OLUŞTUR" else "PROTOKOLÜ ANALİZ ET",
+                        if (selectedBase64 != null) {
+                            aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
+                        } else {
+                            aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
+                        },
                         color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else TextMuted,
                         fontWeight = FontWeight.Black
                     )
