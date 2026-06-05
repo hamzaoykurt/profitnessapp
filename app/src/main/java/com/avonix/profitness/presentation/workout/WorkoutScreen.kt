@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -723,25 +724,39 @@ private fun WorkoutContent(
         // ── Section Label ─────────────────────────────────────────────────
         if (visibleExercises.isNotEmpty() && !skipProgramToday) {
             item(key = "section_label", contentType = "section_label") {
+                val responsive = rememberResponsiveLayoutInfo()
+                val completedCount = currentState.completedIds.count { id -> visibleExercises.any { it.id == id } }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp, 16.dp),
+                        .padding(
+                            horizontal = responsive.horizontalPadding,
+                            vertical = 12.dp
+                        ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = strings.todayProgram,
                         color = TextSecondary,
-                        fontSize = 11.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
+                        letterSpacing = 1.6.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(Modifier.width(12.dp))
                     Text(
-                        text = "${currentState.completedIds.count { id -> visibleExercises.any { it.id == id } }}/${visibleExercises.size} ${strings.completedLabel}",
+                        text = "$completedCount/${visibleExercises.size}",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(0.12f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
@@ -1006,6 +1021,7 @@ private fun StreakBanner(streak: Int) {
     val streakDays = streak
     val accent  = MaterialTheme.colorScheme.primary
     val strings = LocalAppTheme.current.strings
+    val responsive = rememberResponsiveLayoutInfo()
     val bgBrush = remember(accent) {
         Brush.horizontalGradient(listOf(accent.copy(0.18f), Amber.copy(0.12f)))
     }
@@ -1013,29 +1029,39 @@ private fun StreakBanner(streak: Int) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp, 60.dp, 24.dp, 4.dp)
+            .padding(
+                start = responsive.horizontalPadding,
+                top = if (responsive.isShortScreen) 28.dp else 40.dp,
+                end = responsive.horizontalPadding,
+                bottom = 2.dp
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(bgBrush)
             .border(1.dp, accent.copy(0.25f), RoundedCornerShape(16.dp))
-            .padding(20.dp, 12.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("🔥", fontSize = 24.sp)
-            Spacer(Modifier.width(12.dp))
-            Column {
+            Text("🔥", fontSize = 20.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
                     if (streakDays > 0) strings.streakTitle.format(streakDays) else strings.streakStart,
                     color = TextPrimary,
                     fontWeight = FontWeight.Black,
-                    fontSize = 15.sp
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (streakDays > 0) strings.streakMotivate else strings.streakBegin,
                     color = TextSecondary,
-                    fontSize = 12.sp
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1065,7 +1091,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                 Text(
                     text = strings.helloAthlete,
                     color = TextSecondary,
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -1074,13 +1100,13 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                 Text(
                     text = localizedWorkoutTitle(day.title, LocalAppTheme.current),
                     color = TextPrimary,
-                    fontSize = if (responsive.isLargeFont) 20.sp else 22.sp,
+                    fontSize = if (responsive.isLargeFont) 18.sp else 19.sp,
                     fontWeight = FontWeight.Black,
-                    lineHeight = if (responsive.isLargeFont) 25.sp else 26.sp,
-                    maxLines = if (responsive.isLargeFont) 3 else 2,
+                    lineHeight = if (responsive.isLargeFont) 22.sp else 23.sp,
+                    maxLines = 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
 
                 // Pill stats
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1095,8 +1121,8 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
                     progress = progress,
                     size = when {
                         responsive.isVeryLargeFont -> 78.dp
-                        responsive.isLargeFont -> 84.dp
-                        else -> 96.dp
+                        responsive.isLargeFont -> 74.dp
+                        else -> 80.dp
                     },
                     label = "${(progress * 100).toInt()}%"
                 )
@@ -1112,13 +1138,13 @@ private fun StatPill(value: String, unit: String, color: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(color.copy(alpha = 0.15f))
-            .padding(horizontal = if (responsive.isLargeFont) 10.dp else 12.dp, vertical = 6.dp)
+            .padding(horizontal = if (responsive.isLargeFont) 8.dp else 10.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = value,
                 color = color,
-                fontSize = if (responsive.isLargeFont) 13.sp else 15.sp,
+                fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
@@ -1126,7 +1152,7 @@ private fun StatPill(value: String, unit: String, color: Color) {
             Text(
                 text = unit,
                 color = color.copy(0.7f),
-                fontSize = if (responsive.isLargeFont) 10.sp else 11.sp,
+                fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
@@ -1161,7 +1187,7 @@ fun CircularProgressRing(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 9.dp.toPx()
+            val strokeWidth = (if (size <= 80.dp) 7.dp else 8.dp).toPx()
             val radius = (size.toPx() - strokeWidth) / 2f
             val center = Offset(size.toPx() / 2f, size.toPx() / 2f)
             val startAngle = -90f
@@ -1194,14 +1220,14 @@ fun CircularProgressRing(
             Text(
                 text = label,
                 color = if (progress > 0) resolvedRingColor else TextSecondary,
-                fontSize = if (responsive.isLargeFont) 13.sp else 15.sp,
+                fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
             Text(
                 text = strings.unitDone,
                 color = TextMuted,
-                fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
+                fontSize = if (responsive.isLargeFont) 7.sp else 8.sp,
                 letterSpacing = 0.4.sp,
                 maxLines = 1
             )
@@ -1224,8 +1250,8 @@ private fun DaySelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 5.dp else 6.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 4.dp else 5.dp)
     ) {
         days.forEachIndexed { idx, state ->
             val day        = state.day
@@ -1243,7 +1269,7 @@ private fun DaySelector(
                 modifier = Modifier
                     .scale(scale)
                     .weight(1f)
-                    .heightIn(min = if (responsive.isLargeFont) 74.dp else 64.dp)
+                    .heightIn(min = if (responsive.isLargeFont) 64.dp else 56.dp)
                     .then(
                         if (isSelected)
                             Modifier.clip(RoundedCornerShape(16.dp)).background(accent)
@@ -1260,13 +1286,13 @@ private fun DaySelector(
                     Text(
                         text = localizedWorkoutDayLabel(day.day, theme).uppercase(),
                         color = if (isSelected) onAccent else TextMuted,
-                        fontSize = if (responsive.isLargeFont) 8.sp else 10.sp,
+                        fontSize = if (responsive.isLargeFont) 7.sp else 9.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = if (responsive.isLargeFont) 0.sp else 1.sp,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(3.dp))
                     if (day.isRestDay) {
                         Icon(
                             Icons.Rounded.Hotel,
@@ -1278,7 +1304,7 @@ private fun DaySelector(
                         Text(
                             text = "${day.exercises.size}",
                             color = if (isSelected) onAccent else TextPrimary,
-                            fontSize = if (responsive.isLargeFont) 16.sp else 18.sp,
+                            fontSize = if (responsive.isLargeFont) 14.sp else 16.sp,
                             fontWeight = FontWeight.Black
                         )
                         // Small progress dot

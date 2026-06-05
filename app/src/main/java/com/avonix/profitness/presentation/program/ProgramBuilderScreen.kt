@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -824,10 +825,11 @@ private fun BuilderChooseScreen(
     }
 
     val sectionStrings = LocalAppTheme.current.strings
+    val responsive = rememberResponsiveLayoutInfo()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 140.dp + timerExtraPad)
+        contentPadding = PaddingValues(bottom = responsive.bottomNavHeight + 48.dp + timerExtraPad)
     ) {
         // ── Header ────────────────────────────────────────────────────────────
         item {
@@ -835,25 +837,25 @@ private fun BuilderChooseScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 8.dp, bottom = 18.dp),
+                    .padding(horizontal = responsive.horizontalPadding)
+                    .padding(top = 4.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.widthIn(max = 86.dp)) {
+                Column(modifier = Modifier.widthIn(max = 110.dp)) {
                     Text(
                         "PROGRAM",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 2.sp,
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.ExtraLight,
                         maxLines = 1
                     )
                     Text(
                         "STUDIO",
                         color = LocalAppTheme.current.text0,
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1
                     )
@@ -861,12 +863,12 @@ private fun BuilderChooseScreen(
                 Text(
                     LocalAppTheme.current.strings.programStudioSub,
                     color = LocalAppTheme.current.text1.copy(alpha = 0.76f),
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
+                    fontSize = 9.sp,
+                    lineHeight = 11.sp,
                     fontWeight = FontWeight.Light,
                     textAlign = TextAlign.End,
                     maxLines = 2,
-                    modifier = Modifier.widthIn(max = 108.dp)
+                    modifier = Modifier.widthIn(max = 122.dp)
                 )
             }
         }
@@ -876,8 +878,8 @@ private fun BuilderChooseScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = responsive.horizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 val chooseStrings = LocalAppTheme.current.strings
                 QuickCreateButton(
@@ -926,8 +928,8 @@ private fun BuilderChooseScreen(
 
         item {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = responsive.horizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(ProgramSportFilter.values()) { sport ->
@@ -938,14 +940,14 @@ private fun BuilderChooseScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
         }
 
         // ── Category Tabs ─────────────────────────────────────────────────────
         item {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = responsive.horizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(ProgramCategory.values()) { cat ->
@@ -956,7 +958,7 @@ private fun BuilderChooseScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(14.dp))
         }
 
         // ── Program Cards ─────────────────────────────────────────────────────
@@ -973,12 +975,21 @@ private fun BuilderChooseScreen(
 
 @Composable
 private fun SectionLabel(text: String, color: Color) {
+    val responsive = rememberResponsiveLayoutInfo()
     Text(
         text,
         style = MaterialTheme.typography.labelSmall,
         color = color,
-        letterSpacing = 2.sp,
-        modifier = Modifier.padding(start = 24.dp, top = 36.dp, end = 24.dp, bottom = 16.dp)
+        fontSize = 9.sp,
+        letterSpacing = 1.6.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(
+            start = responsive.horizontalPadding,
+            top = 28.dp,
+            end = responsive.horizontalPadding,
+            bottom = 12.dp
+        )
     )
 }
 
@@ -998,24 +1009,27 @@ private fun QuickCreateButton(
 
     Box(
         modifier = modifier
-            .height(64.dp)
+            .heightIn(min = 54.dp)
             .scale(scale)
             .clip(RoundedCornerShape(16.dp))
             .background(accent.copy(alpha = 0.08f))
             .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
             .clickable(iSource, null, onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(7.dp))
             Text(
                 label,
                 color = accent,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.3.sp
+                letterSpacing = 0.1.sp,
+                lineHeight = 15.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1039,22 +1053,24 @@ private fun SportFilterChip(
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(50))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 9.dp)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 sport.icon,
                 null,
                 tint = if (selected) Surface0 else sport.color,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(5.dp))
             Text(
                 sport.localizedLabel(),
                 color = textColor,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1080,22 +1096,24 @@ private fun CategoryChip(
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(50))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 9.dp)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 category.icon,
                 null,
                 tint = if (selected) Surface0 else category.color,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(5.dp))
             Text(
                 category.localizedLabel(),
                 color = textColor,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1107,6 +1125,7 @@ private fun CategoryChip(
 private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
     val accent = program.category.color
     val theme  = LocalAppTheme.current
+    val responsive = rememberResponsiveLayoutInfo()
     val iSource = remember { MutableInteractionSource() }
     val isPressed by iSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "pscale")
@@ -1114,9 +1133,9 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 7.dp)
+            .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
             .scale(scale)
-            .glassCard(accent, theme, RoundedCornerShape(20.dp))
+            .glassCard(accent, theme, RoundedCornerShape(18.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
         // Left accent bar
@@ -1132,14 +1151,14 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+                .padding(start = 16.dp, end = 14.dp, top = 13.dp, bottom = 13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon circle
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(accent.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -1147,11 +1166,11 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     program.category.icon,
                     null,
                     tint = accent,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 // Category + Level badges row
@@ -1162,20 +1181,25 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     ProgramBadge(program.category.localizedLabel(), accent)
                     LevelBadge(program.level, program.localizedLevel(theme))
                 }
-                Spacer(Modifier.height(7.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     program.localizedTitle(theme),
                     color = theme.text0,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     program.localizedSubtitle(theme),
                     color = theme.text1,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Light,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 val cardS = LocalAppTheme.current.strings
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     StatChip(Icons.Rounded.CalendarMonth, "${program.days} ${cardS.dayLabel}")
@@ -1188,7 +1212,7 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                 Icons.Rounded.ChevronRight,
                 null,
                 tint = accent.copy(0.6f),
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -1202,7 +1226,7 @@ private fun ProgramBadge(label: String, color: Color) {
             .background(color.copy(alpha = 0.15f))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
-        Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+        Text(label, color = color, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp, maxLines = 1)
     }
 }
 
@@ -1220,7 +1244,7 @@ private fun LevelBadge(level: String, label: String = level) {
             .background(color.copy(alpha = 0.12f))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
-        Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+        Text(label, color = color, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp, maxLines = 1)
     }
 }
 
@@ -1230,7 +1254,7 @@ private fun StatChip(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = theme.text2, modifier = Modifier.size(11.dp))
         Spacer(Modifier.width(3.dp))
-        Text(text, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -1246,6 +1270,7 @@ private fun SavedProgramTile(
 ) {
     val theme   = LocalAppTheme.current
     val primary = MaterialTheme.colorScheme.primary
+    val responsive = rememberResponsiveLayoutInfo()
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val typeIcon = when (program.type) {
@@ -1313,7 +1338,7 @@ private fun SavedProgramTile(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 7.dp)
+            .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
     ) {
         // ── Glow shadow for active program ────────────────────────────────
         if (program.isActive) {
@@ -1363,7 +1388,7 @@ private fun SavedProgramTile(
                 Box(
                     modifier = Modifier
                         .width(5.dp)
-                        .height(120.dp)
+                        .height(104.dp)
                         .background(
                             Brush.verticalGradient(
                                 listOf(accentColor, accentColor.copy(0.25f))
@@ -1371,12 +1396,12 @@ private fun SavedProgramTile(
                         )
                 )
 
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(12.dp))
 
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(top = 14.dp, bottom = 14.dp)
+                        .padding(top = 12.dp, bottom = 12.dp)
                 ) {
                     // ── Top: badge + active indicator ─────────────────────
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1385,7 +1410,7 @@ private fun SavedProgramTile(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(accentColor.copy(0.15f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -1393,13 +1418,14 @@ private fun SavedProgramTile(
                                     tint     = accentColor,
                                     modifier = Modifier.size(10.dp)
                                 )
-                                Spacer(Modifier.width(4.dp))
+                                Spacer(Modifier.width(3.dp))
                                 Text(
                                     typeLabel,
                                     color         = accentColor,
-                                    fontSize      = 9.sp,
+                                    fontSize      = 8.sp,
                                     fontWeight    = FontWeight.ExtraBold,
-                                    letterSpacing = 1.sp
+                                    letterSpacing = 0.6.sp,
+                                    maxLines      = 1
                                 )
                             }
                         }
@@ -1410,55 +1436,59 @@ private fun SavedProgramTile(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(primary.copy(0.15f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     theme.strings.activeLabel,
                                     color         = primary,
-                                    fontSize      = 9.sp,
+                                    fontSize      = 8.sp,
                                     fontWeight    = FontWeight.ExtraBold,
-                                    letterSpacing = 1.sp
+                                    letterSpacing = 0.6.sp,
+                                    maxLines      = 1
                                 )
                             }
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(7.dp))
 
                     // ── Program name ──────────────────────────────────────
                     Text(
                         program.name,
                         color      = theme.text0,
                         fontWeight = FontWeight.Bold,
-                        fontSize   = 16.sp,
-                        lineHeight = 20.sp
+                        fontSize   = 14.sp,
+                        lineHeight = 18.sp,
+                        maxLines   = 2,
+                        overflow   = TextOverflow.Ellipsis
                     )
 
-                    Spacer(Modifier.height(5.dp))
+                    Spacer(Modifier.height(4.dp))
 
                     // ── Stats row ─────────────────────────────────────────
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Rounded.CalendarMonth, null,
                             tint     = theme.text2.copy(0.6f),
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(11.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(
-                            "$workoutDays antrenman günü",
-                            color    = theme.text2.copy(0.7f),
-                            fontSize = 12.sp
-                        )
-                        if (totalExercises > 0) {
-                            Text(
-                                "  ·  $totalExercises egzersiz",
-                                color    = theme.text2.copy(0.5f),
-                                fontSize = 12.sp
-                            )
+                        val statsText = if (totalExercises > 0) {
+                            "$workoutDays antrenman günü · $totalExercises egzersiz"
+                        } else {
+                            "$workoutDays antrenman günü"
                         }
+                        Text(
+                            statsText,
+                            color    = theme.text2.copy(0.7f),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(9.dp))
 
                     // ── Day dots strip ────────────────────────────────────
                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -1470,18 +1500,18 @@ private fun SavedProgramTile(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(if (isWork) 7.dp else 5.dp)
+                                        .size(if (isWork) 6.dp else 4.dp)
                                         .clip(CircleShape)
                                         .background(
                                             if (isWork) accentColor
                                             else theme.text2.copy(0.18f)
                                         )
                                 )
-                                Spacer(Modifier.height(3.dp))
+                                Spacer(Modifier.height(2.dp))
                                 Text(
                                     label,
                                     color    = if (isWork) accentColor.copy(0.8f) else theme.text2.copy(0.3f),
-                                    fontSize = 8.sp,
+                                    fontSize = 7.sp,
                                     fontWeight = if (isWork) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -1501,16 +1531,16 @@ private fun SavedProgramTile(
                             .weight(1f)
                             .fillMaxHeight()
                             .clickable(onClick = onSetActive)
-                            .padding(vertical = 13.dp),
+                            .padding(vertical = 10.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.PlayArrow, null, tint = primary, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(5.dp))
+                        Icon(Icons.Rounded.PlayArrow, null, tint = primary, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
                             theme.t("AKTİF ET", "ACTIVATE"),
                             color      = primary,
-                            fontSize   = 11.sp,
+                            fontSize   = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 0.5.sp
                         )
@@ -1522,16 +1552,16 @@ private fun SavedProgramTile(
                         .weight(1f)
                         .fillMaxHeight()
                         .clickable(onClick = onEdit)
-                        .padding(vertical = 13.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Edit, null, tint = theme.text1.copy(0.8f), modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(5.dp))
+                    Icon(Icons.Rounded.Edit, null, tint = theme.text1.copy(0.8f), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         theme.t("DÜZENLE", "EDIT"),
                         color      = theme.text1.copy(0.8f),
-                        fontSize   = 11.sp,
+                        fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -1542,16 +1572,16 @@ private fun SavedProgramTile(
                         .weight(1f)
                         .fillMaxHeight()
                         .clickable(onClick = onShare)
-                        .padding(vertical = 13.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Rounded.Share, null, tint = primary, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         theme.t("PAYLAŞ", "SHARE"),
                         color      = primary,
-                        fontSize   = 11.sp,
+                        fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -1562,16 +1592,16 @@ private fun SavedProgramTile(
                         .weight(if (program.isActive) 0.6f else 0.8f)
                         .fillMaxHeight()
                         .clickable(onClick = { showDeleteConfirm = true })
-                        .padding(vertical = 13.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral.copy(0.85f), modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(5.dp))
+                    Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral.copy(0.85f), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         theme.t("SİL", "DELETE"),
                         color      = CardCoral.copy(0.85f),
-                        fontSize   = 11.sp,
+                        fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )

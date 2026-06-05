@@ -176,7 +176,7 @@ fun CinematicExerciseCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 6.dp)
             .scale(cardScale)
     ) {
         ForgeCard(
@@ -204,10 +204,10 @@ fun CinematicExerciseCard(
                         .fillMaxWidth()
                         .height(
                             when {
-                                responsive.isVeryLargeFont -> 236.dp
-                                responsive.isLargeFont -> 212.dp
-                                responsive.isSmallPhone -> 176.dp
-                                else -> 180.dp
+                                responsive.isVeryLargeFont -> 210.dp
+                                responsive.isLargeFont -> 190.dp
+                                responsive.isSmallPhone -> 158.dp
+                                else -> 164.dp
                             }
                         )
                         .clickable(
@@ -241,8 +241,8 @@ fun CinematicExerciseCard(
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(12.dp)
-                                .size(40.dp)
+                                .padding(10.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
                                 .background(Color.Black.copy(0.45f))
                                 .clickable { onShowDetail() },
@@ -251,7 +251,7 @@ fun CinematicExerciseCard(
                             Icon(
                                 Icons.Rounded.Info, null,
                                 tint = Snow.copy(0.9f),
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -259,7 +259,7 @@ fun CinematicExerciseCard(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(if (responsive.isSmallPhone) 16.dp else 20.dp),
+                            .padding(if (responsive.isSmallPhone) 14.dp else 16.dp),
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Row(
@@ -277,28 +277,28 @@ fun CinematicExerciseCard(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(catColor.copy(0.2f))
-                                        .padding(8.dp, 3.dp)
+                                        .padding(horizontal = 7.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = theme.fitnessTermDisplayName(exercise.category).uppercase(),
                                         color = catColor,
-                                        fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
+                                        fontSize = if (responsive.isLargeFont) 7.sp else 8.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 0.8.sp,
-                                        lineHeight = 12.sp,
+                                        letterSpacing = 0.5.sp,
+                                        lineHeight = 10.sp,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                                Spacer(Modifier.height(6.dp))
+                                Spacer(Modifier.height(5.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = theme.exerciseDisplayName(exercise.name).uppercase(),
                                         color = Snow,
-                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontSize = if (responsive.isLargeFont) 18.sp else 20.sp,
                                         fontWeight = FontWeight.Black,
-                                        lineHeight = 28.sp,
-                                        maxLines = if (responsive.isLargeFont) 3 else 2,
+                                        lineHeight = if (responsive.isLargeFont) 22.sp else 24.sp,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -306,14 +306,17 @@ fun CinematicExerciseCard(
                                         Icon(
                                             Icons.Rounded.CheckCircle, null,
                                             tint = accent,
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
                                 Text(
                                     text = theme.fitnessTermDisplayName(exercise.target),
                                     color = Mist,
-                                    style = MaterialTheme.typography.bodySmall
+                                    fontSize = if (responsive.isLargeFont) 10.sp else 12.sp,
+                                    lineHeight = 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             val doneCount = doneSetIndices.size
@@ -339,7 +342,7 @@ fun CinematicExerciseCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.Black.copy(0.92f))
-                            .padding(20.dp)
+                            .padding(16.dp)
                     ) {
                         Spacer(Modifier.height(4.dp))
                         if (activityBased) {
@@ -397,7 +400,7 @@ fun CinematicExerciseCard(
                             }
                         }
 
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(12.dp))
                         if (activityBased && showActivityTimerSetup) {
                             ActivityTimerSetupPanel(
                                 initialMinutes = activityDuration,
@@ -410,7 +413,7 @@ fun CinematicExerciseCard(
                                     onStartStopwatchTimer()
                                 }
                             )
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
                         }
                         if (durationSetBased && showTimedSetTimerSetup) {
                             ActivityTimerSetupPanel(
@@ -425,10 +428,10 @@ fun CinematicExerciseCard(
                                     onStartSetStopwatchTimer(nextTimedSetIndex)
                                 }
                             )
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
                         }
                         HorizontalDivider(color = Snow.copy(0.08f))
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(10.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -524,7 +527,7 @@ private fun ActivityMetricsPanel(
                 if (isDone) accent.copy(0.42f) else Snow.copy(0.08f),
                 RoundedCornerShape(16.dp)
             )
-            .padding(14.dp)
+            .padding(12.dp)
     ) {
         Text(
             text = when {
@@ -533,12 +536,12 @@ private fun ActivityMetricsPanel(
                 else -> theme.t("$specLabel · süre", "$specLabel · duration")
             },
             color = if (isDone) accent else TextPrimary,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.2.sp
         )
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             WeightInputField(
                 value = durationValue,
                 onValueChange = onDurationChanged,
@@ -578,8 +581,8 @@ private fun ActivityMetricsPanel(
             }
         }
         if (supportsElevation || supportsIncline) {
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 if (supportsElevation) {
                     WeightInputField(
                         value = elevationValue,
@@ -624,7 +627,7 @@ private fun MetricDisplayTile(
     }
     Row(
         modifier = modifier
-            .heightIn(min = 58.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(backgroundBrush)
             .border(
@@ -632,7 +635,7 @@ private fun MetricDisplayTile(
                 if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
                 RoundedCornerShape(13.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -655,7 +658,7 @@ private fun MetricDisplayTile(
             Text(
                 text = label,
                 color = TextMuted,
-                fontSize = 9.sp,
+                fontSize = 8.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.7.sp
             )
@@ -663,7 +666,7 @@ private fun MetricDisplayTile(
             Text(
                 text = value,
                 color = if (isDone) accent else Snow,
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
@@ -694,7 +697,7 @@ private fun ActivityTimerSetupPanel(
             .clip(RoundedCornerShape(12.dp))
             .background(Surface3.copy(0.55f))
             .border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
-            .padding(12.dp)
+            .padding(10.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TimerModeChip(
@@ -711,14 +714,14 @@ private fun ActivityTimerSetupPanel(
             )
         }
         if (mode == "countdown") {
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SmallTimeInput(hours, { hours = it }, theme.t("saat", "hr"), Modifier.weight(1f))
                 SmallTimeInput(minutes, { minutes = it }, theme.t("dk", "min"), Modifier.weight(1f))
                 SmallTimeInput(seconds, { seconds = it }, theme.t("sn", "sec"), Modifier.weight(1f))
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         val countdownSeconds = (hours.toIntOrNull() ?: 0) * 3600 +
             (minutes.toIntOrNull() ?: 0) * 60 +
             (seconds.toIntOrNull() ?: 0)
@@ -763,15 +766,17 @@ private fun TimerModeChip(
             .background(if (selected) accent.copy(0.22f) else Surface3.copy(0.6f))
             .border(1.dp, if (selected) accent.copy(0.5f) else Snow.copy(0.08f), RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             color = if (selected) accent else TextMuted,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
+            letterSpacing = 0.7.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -813,23 +818,23 @@ private fun CompleteActionButton(
     }
     Row(
         modifier = Modifier
-            .heightIn(min = 54.dp)
-            .widthIn(min = 168.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .heightIn(min = 48.dp)
+            .widthIn(min = 136.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(bg)
             .border(
                 1.dp,
                 if (isCompleted) Snow.copy(0.10f) else Snow.copy(0.18f),
-                RoundedCornerShape(16.dp)
+                RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(if (isCompleted) Surface1.copy(0.74f) else Color.White.copy(0.22f)),
             contentAlignment = Alignment.Center
@@ -838,16 +843,17 @@ private fun CompleteActionButton(
                 Icons.Rounded.CheckCircle,
                 null,
                 tint = if (isCompleted) TextSecondary else onAccent,
-                modifier = Modifier.size(17.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
-        Spacer(Modifier.width(9.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             text = if (isCompleted) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
             color = if (isCompleted) TextSecondary else onAccent,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.2.sp,
+            maxLines = 1
         )
     }
 }
@@ -885,7 +891,7 @@ private fun TimedSetRow(
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundBrush)
             .border(1.dp, if (isDone) accent.copy(0.50f) else Snow.copy(0.08f), RoundedCornerShape(16.dp))
-            .padding(12.dp)
+            .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             WeightInputField(
@@ -899,13 +905,13 @@ private fun TimedSetRow(
                 keyboardType = KeyboardType.Number,
                 modifier = Modifier.weight(1.05f)
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.widthIn(min = 80.dp).weight(0.75f)) {
-                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
+                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(2.dp))
-                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(8.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
         }
     }
@@ -920,7 +926,7 @@ private fun SetToggleButton(
     val haptic = LocalHapticFeedback.current
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(42.dp)
             .clip(CircleShape)
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -930,7 +936,7 @@ private fun SetToggleButton(
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .clip(CircleShape)
                 .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
                 .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape),
@@ -940,7 +946,7 @@ private fun SetToggleButton(
                 imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                 contentDescription = null,
                 tint = if (isDone) accent else TextMuted,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
     }
@@ -984,7 +990,7 @@ private fun SetRow(
                 if (isDone) accent.copy(0.50f) else Snow.copy(0.08f),
                 RoundedCornerShape(16.dp)
             )
-            .padding(12.dp)
+            .padding(10.dp)
     ) {
         // Üst satır: ağırlık input + set no + program tekrarı + checkbox
         Row(
@@ -1003,25 +1009,25 @@ private fun SetRow(
                 keyboardType = KeyboardType.Decimal,
                 modifier = Modifier.weight(1.05f)
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
 
-            Column(Modifier.widthIn(min = 80.dp).weight(0.75f)) {
+            Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
                 Text(
                     text = "Set $setNumber",
                     color = if (isDone) accent else TextPrimary,
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Black
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = theme.t("$reps tekrar", "$reps reps"),
                     color = TextMuted,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(8.dp))
 
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
         }
@@ -1038,7 +1044,7 @@ private fun SetRow(
             Text(
                 text = lastText,
                 color = TextMuted,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 12.dp)
             )
@@ -1063,7 +1069,7 @@ private fun WeightInputField(
     }
     Column(
         modifier = modifier
-            .heightIn(min = 58.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(backgroundBrush)
             .border(
@@ -1071,17 +1077,17 @@ private fun WeightInputField(
                 if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
                 RoundedCornerShape(13.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = 7.dp)
     ) {
         if (label != null) {
             Text(
                 text = label,
                 color = TextMuted,
-                fontSize = 9.sp,
+                fontSize = 8.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.7.sp
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(3.dp))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             BasicTextField(
@@ -1093,7 +1099,7 @@ private fun WeightInputField(
                 },
                 textStyle = TextStyle(
                     color = if (isDone) accent else Snow,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Start
                 ),
@@ -1106,7 +1112,7 @@ private fun WeightInputField(
                             Text(
                                 text = placeholder,
                                 color = TextMuted.copy(0.82f),
-                                fontSize = 15.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Black,
                                 textAlign = TextAlign.Start
                             )
@@ -1118,7 +1124,7 @@ private fun WeightInputField(
             Text(
                 text = suffix,
                 color = if (isDone) accent.copy(0.72f) else TextMuted,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(start = 6.dp)
             )
@@ -1174,26 +1180,26 @@ private fun RestTimerChip(
 
     Row(
         modifier = Modifier
-            .heightIn(min = 48.dp)
-            .widthIn(min = 132.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .heightIn(min = 44.dp)
+            .widthIn(min = 112.dp)
+            .clip(RoundedCornerShape(13.dp))
             .background(chipBackground)
             .border(
                 1.dp,
                 chipColor.copy(if (isIdle) 0.62f else 0.74f),
-                RoundedCornerShape(14.dp)
+                RoundedCornerShape(13.dp)
             )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (isRunning) onStop() else onStart()
             }
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
             .then(if (isRunning) Modifier.scale(pulseScale.value) else Modifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(chipColor.copy(if (isIdle) 0.22f else 0.30f))
                 .border(1.dp, chipColor.copy(0.36f), CircleShape),
@@ -1203,10 +1209,10 @@ private fun RestTimerChip(
                 Icons.Rounded.Timer,
                 null,
                 tint = chipColor,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp)
             )
         }
-        Spacer(Modifier.width(9.dp))
+        Spacer(Modifier.width(7.dp))
         Text(
             text = when {
                 isDone    -> doneLabel
@@ -1214,9 +1220,11 @@ private fun RestTimerChip(
                 else      -> idleLabel
             },
             color = if (isIdle) Snow else chipColor,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = if (isIdle) 0.9.sp else 0.2.sp
+            letterSpacing = if (isIdle) 0.5.sp else 0.2.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -1228,18 +1236,18 @@ fun StatBadge(sets: Int, reps: String, done: Int = 0, isActivity: Boolean = fals
         modifier = Modifier
             .background(Color.White.copy(0.1f), RoundedCornerShape(12.dp))
             .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))
-            .padding(horizontal = if (responsive.isLargeFont) 9.dp else 12.dp, vertical = 6.dp)
+            .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isActivity) {
-                Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
-            } else {
-                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
+                Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(4.dp))
+                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
+            } else {
+                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
+                Spacer(Modifier.width(3.dp))
                 val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
-                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 12.sp else 14.sp, maxLines = 1)
+                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
             }
             if (done > 0) {
                 Spacer(Modifier.width(6.dp))
