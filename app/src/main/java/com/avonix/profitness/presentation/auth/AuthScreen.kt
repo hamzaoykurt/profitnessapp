@@ -693,9 +693,9 @@ private fun AuthScaffold(
         MaterialTheme.typography.headlineLarge
     }
     val topPad = when {
-        responsive.isShortScreen -> 24.dp
-        responsive.isSmallPhone -> 30.dp
-        else -> 38.dp
+        responsive.isShortScreen -> 36.dp
+        responsive.isSmallPhone -> 52.dp
+        else -> 72.dp
     }
 
     val alphaAnim = remember { Animatable(0f) }
@@ -745,13 +745,13 @@ private fun AuthScaffold(
                 )
             }
 
-            Spacer(Modifier.height(if (responsive.isShortScreen) 14.dp else 18.dp))
+            Spacer(Modifier.height(if (responsive.isShortScreen) 18.dp else 24.dp))
 
             GlassCard {
                 content()
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }
@@ -911,7 +911,7 @@ private fun GlassCard(
                     )
                 }
             }
-            .padding(horizontal = 18.dp, vertical = 18.dp),
+            .padding(horizontal = 18.dp, vertical = 22.dp),
         horizontalAlignment = horizontalAlignment,
         content = content
     )
@@ -923,12 +923,12 @@ private fun AuthModeTabs(selected: AuthMode, onSelected: (AuthMode) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg2.copy(0.78f))
-            .border(1.dp, theme.stroke.copy(0.65f), RoundedCornerShape(14.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .height(48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (theme.isDark) Color.White.copy(0.055f) else Color.Black.copy(0.035f))
+            .border(1.dp, theme.stroke.copy(0.52f), RoundedCornerShape(16.dp))
+            .padding(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         AuthModeTab(
             text = theme.t("Giriş", "Sign in"),
@@ -965,25 +965,25 @@ private fun AuthModeTab(
     Row(
         modifier = modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .border(
                 1.dp,
-                if (selected) accent.copy(0.42f) else Color.Transparent,
-                RoundedCornerShape(11.dp)
+                if (selected) accent.copy(0.50f) else Color.Transparent,
+                RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (selected) accent else theme.text2, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(6.dp))
+        Icon(icon, null, tint = if (selected) accent else theme.text2, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(7.dp))
         Text(
             text,
             color = if (selected) theme.text0 else theme.text2,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 0.4.sp
+            letterSpacing = 0.sp
         )
     }
 }

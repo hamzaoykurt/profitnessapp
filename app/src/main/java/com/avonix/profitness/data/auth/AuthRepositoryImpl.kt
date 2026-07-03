@@ -82,25 +82,27 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun awaitSessionLoaded(): Boolean {
         return withContext(Dispatchers.IO) {
-            supabase.auth.awaitInitialization()
+            withTimeoutOrNull(2_500) {
+                supabase.auth.awaitInitialization()
 
-            fun hasConfirmedSession(): Boolean {
-                val session = supabase.auth.currentSessionOrNull() ?: return false
-                val user = supabase.auth.currentUserOrNull() ?: session.user ?: return false
-                return user.emailConfirmedAt != null
-            }
+                fun hasConfirmedSession(): Boolean {
+                    val session = supabase.auth.currentSessionOrNull() ?: return false
+                    val user = supabase.auth.currentUserOrNull() ?: session.user ?: return false
+                    return user.emailConfirmedAt != null
+                }
 
-            if (hasConfirmedSession()) return@withContext true
+                if (hasConfirmedSession()) return@withTimeoutOrNull true
 
-            withTimeoutOrNull(750) {
-                supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
-            }
+                withTimeoutOrNull(750) {
+                    supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+                }
 
-            if (!hasConfirmedSession()) {
-                runCatching { supabase.auth.loadFromStorage() }
-            }
+                if (!hasConfirmedSession()) {
+                    runCatching { supabase.auth.loadFromStorage() }
+                }
 
-            hasConfirmedSession()
+                hasConfirmedSession()
+            } ?: false
         }
     }
 

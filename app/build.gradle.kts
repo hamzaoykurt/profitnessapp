@@ -27,6 +27,11 @@ fun singleLineSecret(name: String, defaultValue: String = ""): String =
 fun base64Secret(name: String): String =
     secret(name).filterNot { it.isWhitespace() }
 
+fun requiredSecret(name: String): String =
+    singleLineSecret(name).ifBlank {
+        throw GradleException("$name is required. Add it to local.properties or the build environment.")
+    }
+
 // Debug keystore: local development only.
 val ksBase64: String = base64Secret("KEYSTORE_BASE64")
 val ksPassword: String = singleLineSecret("KEYSTORE_PASSWORD", "android")
@@ -59,6 +64,12 @@ val hasReleaseSigning = releaseKeystore != null &&
     releaseKsAlias.isNotBlank() &&
     releaseKsKeyPassword.isNotBlank()
 
+val supabaseUrl = requiredSecret("SUPABASE_URL")
+val supabaseAnonKey = requiredSecret("SUPABASE_ANON_KEY")
+val mapsApiKey = singleLineSecret("MAPS_API_KEY")
+val resetPasswordLinkHost = singleLineSecret("RESET_PASSWORD_LINK_HOST", "cosmibit.com")
+val resetPasswordRedirectUrl = singleLineSecret("RESET_PASSWORD_REDIRECT_URL", "profitness://reset-password")
+
 android {
     namespace = "com.avonix.profitness"
     compileSdk = 35
@@ -72,12 +83,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL",      "\"${secret("SUPABASE_URL")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("SUPABASE_ANON_KEY")}\"")
-        buildConfigField("String", "MAPS_API_KEY",      "\"${secret("MAPS_API_KEY")}\"")
-        buildConfigField("String", "RESET_PASSWORD_LINK_HOST", "\"${secret("RESET_PASSWORD_LINK_HOST", "cosmibit.com")}\"")
-        buildConfigField("String", "RESET_PASSWORD_REDIRECT_URL", "\"${secret("RESET_PASSWORD_REDIRECT_URL", "profitness://reset-password")}\"")
-        manifestPlaceholders["resetPasswordLinkHost"] = secret("RESET_PASSWORD_LINK_HOST", "cosmibit.com")
+        buildConfigField("String", "SUPABASE_URL",      "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "MAPS_API_KEY",      "\"$mapsApiKey\"")
+        buildConfigField("String", "RESET_PASSWORD_LINK_HOST", "\"$resetPasswordLinkHost\"")
+        buildConfigField("String", "RESET_PASSWORD_REDIRECT_URL", "\"$resetPasswordRedirectUrl\"")
+        manifestPlaceholders["resetPasswordLinkHost"] = resetPasswordLinkHost
     }
 
     signingConfigs {

@@ -56,11 +56,18 @@ jobs:
 
       - name: Inject public build configuration
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
           RESET_PASSWORD_LINK_HOST: ${{ vars.RESET_PASSWORD_LINK_HOST || secrets.RESET_PASSWORD_LINK_HOST }}
           RESET_PASSWORD_REDIRECT_URL: ${{ vars.RESET_PASSWORD_REDIRECT_URL || secrets.RESET_PASSWORD_REDIRECT_URL }}
         run: |
           RESET_PASSWORD_LINK_HOST="${RESET_PASSWORD_LINK_HOST:-cosmibit.com}"
           RESET_PASSWORD_REDIRECT_URL="${RESET_PASSWORD_REDIRECT_URL:-profitness://reset-password}"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_ANON_KEY GitHub Secrets are required for a working release build."
+            exit 1
+          fi
           if [ -z "$RESET_PASSWORD_LINK_HOST" ] || [ -z "$RESET_PASSWORD_REDIRECT_URL" ]; then
             echo "::error::Reset password link configuration could not be resolved."
             exit 1
@@ -68,9 +75,9 @@ jobs:
           if [ "$RESET_PASSWORD_REDIRECT_URL" = "profitness://reset-password" ]; then
             echo "::warning::Using legacy password reset redirect. Publish assetlinks.json and set RESET_PASSWORD_REDIRECT_URL to enable verified Android App Links."
           fi
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"              >> local.properties
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"    >> local.properties
-          echo "MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}"              >> local.properties
+          echo "SUPABASE_URL=$SUPABASE_URL"                            >> local.properties
+          echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"                  >> local.properties
+          echo "MAPS_API_KEY=$MAPS_API_KEY"                            >> local.properties
           echo "RESET_PASSWORD_LINK_HOST=$RESET_PASSWORD_LINK_HOST"     >> local.properties
           echo "RESET_PASSWORD_REDIRECT_URL=$RESET_PASSWORD_REDIRECT_URL" >> local.properties
 

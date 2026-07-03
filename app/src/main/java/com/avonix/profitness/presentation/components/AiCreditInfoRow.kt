@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avonix.profitness.core.theme.*
-import com.avonix.profitness.core.ui.rememberResponsiveLayoutInfo
 
 /**
  * Compact row shown on every AI feature screen for FREE users.
@@ -38,8 +38,11 @@ fun AiCreditInfoRow(
     val accent    = MaterialTheme.colorScheme.primary
     val outOfCredits = credits == 0
     val badgeColor = if (outOfCredits) Color(0xFFFF4444) else accent
-    val responsive = rememberResponsiveLayoutInfo()
-    val stackBadge = responsive.isSmallPhone || responsive.isLargeFont
+    val badgeText = if (outOfCredits) {
+        theme.ui("0 Enerji")
+    } else {
+        theme.ui("%d Enerji", "%d Energy").format(credits)
+    }
 
     Column(
         modifier = modifier
@@ -66,26 +69,22 @@ fun AiCreditInfoRow(
                     color = badgeColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    lineHeight = 16.sp
+                    lineHeight = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
                     else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
                     color = theme.text2,
                     fontSize = 11.sp,
-                    lineHeight = 15.sp
+                    lineHeight = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            if (!stackBadge) {
-                Spacer(Modifier.width(10.dp))
-                EnergyBadge(text = if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits), color = badgeColor)
-            }
-        }
-        if (stackBadge) {
-            Spacer(Modifier.height(8.dp))
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                EnergyBadge(text = if (outOfCredits) theme.ui("0 Enerji") else theme.ui("%d Enerji", "%d Energy").format(credits), color = badgeColor)
-            }
+            Spacer(Modifier.width(8.dp))
+            EnergyBadge(text = badgeText, color = badgeColor)
         }
     }
 }
@@ -105,7 +104,8 @@ private fun EnergyBadge(text: String, color: Color) {
             color = color,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,
-            lineHeight = 13.sp
+            lineHeight = 13.sp,
+            maxLines = 1
         )
     }
 }
