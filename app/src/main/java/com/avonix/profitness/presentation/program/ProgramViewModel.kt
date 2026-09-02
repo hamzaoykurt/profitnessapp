@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -299,6 +300,9 @@ class ProgramViewModel @Inject constructor(
             .replace('\u015f', 's')
             .replace('\u00f6', 'o')
             .replace('\u00e7', 'c')
+
+    /** Metni elle kaçışlamak yerine JSON kuralına göre güvenli biçimde yazar. */
+    private fun jsonString(value: String): String = JsonPrimitive(value).toString()
 
     private fun isStrengthRowRequested(instruction: String): Boolean {
         val normalized = normalizeExerciseText(instruction)
@@ -709,16 +713,19 @@ FORMAT:
                 exerciseNameMap = exerciseNameMap
             )
             val currentProgramJson = buildString {
-                append("{\"name\":\"${currentName.replace("\"", "\\\"")}\",\"days\":[")
+                append("{\"name\":${jsonString(currentName)},\"days\":[")
                 currentDays.forEachIndexed { i, day ->
                     if (i > 0) append(",")
-                    append("{\"title\":\"${day.title.replace("\"", "\\\"")}\",\"isRestDay\":${day.isRestDay}")
+                    append("{\"title\":${jsonString(day.title)},\"isRestDay\":${day.isRestDay}")
                     if (!day.isRestDay && day.selectedExercises.isNotEmpty()) {
                         append(",\"exercises\":[")
                         day.selectedExercises.forEachIndexed { j, ex ->
                             if (j > 0) append(",")
-                            val exName = exerciseNameMap[ex.exerciseId]?.name ?: ex.exerciseId
-                            append("{\"exerciseName\":\"${exName.replace("\"", "\\\"")}\",\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds},\"targetDurationSeconds\":${ex.targetDurationSeconds ?: "null"},\"targetDistanceMeters\":${ex.targetDistanceMeters ?: "null"}}")
+                            val catalogExercise = exerciseNameMap[ex.exerciseId]
+                            val exName = catalogExercise?.name ?: ex.exerciseId
+                            val targetMuscle = catalogExercise?.targetMuscle ?: "Genel"
+                            val category = catalogExercise?.category ?: "Serbest Ağırlık"
+                            append("{\"exerciseName\":${jsonString(exName)},\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds},\"targetMuscle\":${jsonString(targetMuscle)},\"category\":${jsonString(category)},\"targetDurationSeconds\":${ex.targetDurationSeconds ?: "null"},\"targetDistanceMeters\":${ex.targetDistanceMeters ?: "null"}}")
                         }
                         append("]")
                     }
@@ -728,27 +735,42 @@ FORMAT:
             }
 
             val geminiPrompt = """
-Mevcut antrenman programı:
+<mevcut_program>
 $currentProgramJson
+</mevcut_program>
 
-Kullanıcının düzenleme isteği: $userInstruction
+<kullanici_talebi>
+$userInstruction
+</kullanici_talebi>
 
-Her egzersiz için standart Türkçe veya İngilizce adını kullan.
-Tek alanda iki alternatif yazma; "Lat Pulldown veya Row" gibi değil, yalnızca tek egzersiz adı döndür.
-Mümkünse aşağıdaki katalogdaki adlardan birini birebir kullan. Kullanıcı "row" isterse row veya row varyasyonu kullan; pulldown/lat pulldown ile değiştirme. Katalogda yoksa istenen hareketin kendi adını döndür, ben ekleyeceğim.
+TALİMATI UYGULAMA KURALLARI:
+1. Kullanıcı talebindeki her maddeyi eksiksiz ve kelimesi kelimesine uygula. Talep, genel fitness tercihlerinden ve katalog önerilerinden önceliklidir.
+2. Talebin kapsamı bir günü, egzersizi veya değeri belirtiyorsa yalnızca o kapsamı değiştir. Kapsam belirtilmeden adı verilen bir egzersiz kaldırılıyor veya sayısal değeri değiştiriliyorsa programdaki tüm eşleşmelerine uygula.
+3. Kullanıcının istemediği hiçbir günü, egzersizi, sıralamayı, seti, tekrarı, dinlenmeyi, süreyi, mesafeyi veya program adını değiştirme.
+4. "X yerine Y" denirse X'i aynı konumda Y ile değiştir. Aksi belirtilmedikçe X'in set/tekrar/dinlenme/süre/mesafe değerlerini Y'ye taşı.
+5. Bir gün ekleme/silme talebi yoksa gün sayısını ve sırasını koru. Egzersiz ekleme/silme talebi yoksa her günün egzersiz sayısını ve sırasını koru.
+6. Türkçe ekleri, yazım hatalarını ve "ilk/son/ikinci/3." gibi gün tariflerini bağlamdan anla. Sayıları ve birimleri tam istenen değerle uygula.
+7. Kullanıcı belirli bir hareket istediyse onu benzer başka bir hareketle değiştirme. Katalogda birebir karşılığı yoksa kullanıcının yazdığı hareket adını kullan; sistem bu hareketi ekleyecek.
+8. Talep açıkça istemedikçe aynı güne aynı egzersizi ikinci kez ekleme.
+
+Her egzersiz için tek bir standart Türkçe veya İngilizce ad kullan. "Lat Pulldown veya Row" gibi alternatifli ad yazma.
+Kullanıcı "row" isterse bir row hareketi kullan; pulldown/lat pulldown ile değiştirme.
+Katalog yalnızca ad eşleştirme yardımıdır; kullanıcı talebini değiştirme yetkisi vermez.
 Egzersiz kataloğu:
 $focusedExerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
-Kullanıcının isteğini uygula, değiştirilmeyen günleri olduğu gibi bırak, tüm programı güncellenmiş haliyle döndür.
+Yanıt vermeden önce talepteki işlemleri sessizce tek tek kontrol et. Ardından değiştirilmeyen her alanı birebir koruyarak tüm programı güncellenmiş haliyle döndür.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
 {"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
             """.trimIndent()
 
-            val systemPrompt = "Sen bir fitness programı düzenleyicisisin. Mevcut programı kullanıcının isteğine göre güncelle. Değiştirilmesi istenmeyen günleri olduğu gibi koru. SADECE ham JSON döndür, başka hiçbir şey yazma."
+            val systemPrompt = """
+Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcının doğal dildeki talebini mevcut programa eksiksiz uygula. Yalnızca talebin zorunlu kıldığı alanları değiştir; diğer tüm alanları birebir koru. Kullanıcının istediği egzersizi daha uygun olduğunu düşündüğün başka bir egzersizle değiştirme. Yalnızca geçerli ham JSON döndür; Markdown, kod bloğu, açıklama veya yorum yazma.
+            """.trimIndent()
 
             val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_EDIT)
             val rawJson = result.getOrNull()

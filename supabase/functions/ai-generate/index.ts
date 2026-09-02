@@ -23,6 +23,7 @@ type GeminiRequest = {
   generationConfig?: {
     temperature?: number;
     maxOutputTokens?: number;
+    responseMimeType?: string;
   };
 };
 
@@ -63,14 +64,18 @@ const ALLOWED_TOOLS = new Set([
   "ORACLE_TO_PROGRAM",
 ]);
 
-function configuredModels(): string[] {
+function configuredModels(tool?: string): string[] {
   const configured = Deno.env.get("GEMINI_MODEL")
     ?.split(",")
     .map((model) => model.trim())
     .filter(Boolean);
 
-  const models = configured?.length ? configured : DEFAULT_GEMINI_MODELS;
-  return [...new Set(models)];
+  const models = [...new Set(configured?.length ? configured : DEFAULT_GEMINI_MODELS)];
+  if (tool !== "PROGRAM_EDIT") return models;
+
+  // Program düzenleme, sohbetten daha fazla talimat takibi gerektirir. Yapılandırılmış
+  // model listesini koru; ancak lite olmayan modeli bu araç için öne al.
+  return models.sort((left, right) => Number(left.includes("flash-lite")) - Number(right.includes("flash-lite")));
 }
 
 function energyEntitlementMessage(message?: string | null): string {
@@ -162,6 +167,9 @@ function sanitizeRequest(body: GeminiRequest): GeminiRequest {
 
   const temperature = Number(body.generationConfig?.temperature ?? 0.7);
   const maxOutputTokens = Number(body.generationConfig?.maxOutputTokens ?? 600);
+  const responseMimeType = body.generationConfig?.responseMimeType === "application/json"
+    ? "application/json"
+    : undefined;
 
   return {
     system_instruction: systemParts?.length ? { parts: systemParts } : undefined,
@@ -171,6 +179,7 @@ function sanitizeRequest(body: GeminiRequest): GeminiRequest {
       maxOutputTokens: Number.isFinite(maxOutputTokens)
         ? Math.min(Math.max(Math.floor(maxOutputTokens), 128), 4096)
         : 600,
+      responseMimeType,
     },
   };
 }
@@ -240,7 +249,7 @@ Deno.serve(async (req: Request) => {
     let lastProviderStatus = 0;
     let lastProviderCode = "ai_provider_error";
 
-    for (const model of configuredModels()) {
+    for (const model of configuredModels(tool)) {
       const upstream = await fetch(
         `${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
         {

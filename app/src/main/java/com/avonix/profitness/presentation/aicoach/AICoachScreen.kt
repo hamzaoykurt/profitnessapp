@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -21,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -555,7 +558,16 @@ private fun SanctuaryMessage(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
+    val clipboardManager = LocalClipboardManager.current
+    var copied by remember(msg.id) { mutableStateOf(false) }
     val showProgramButton = !msg.isUser && msg.id != "welcome" && looksLikeProgram(msg.text)
+
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1_500)
+            copied = false
+        }
+    }
 
     if (msg.isUser) {
         // ── User bubble — right aligned, solid accent fill ──────────────────
@@ -667,14 +679,16 @@ private fun SanctuaryMessage(
                         )
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
-                    Text(
-                        text          = msg.text,
-                        color         = Snow.copy(0.92f),
-                        fontSize      = 15.sp,
-                        lineHeight    = 24.sp,
-                        fontWeight    = FontWeight.Light,
-                        letterSpacing = 0.2.sp
-                    )
+                    SelectionContainer {
+                        Text(
+                            text          = msg.text,
+                            color         = Snow.copy(0.92f),
+                            fontSize      = 15.sp,
+                            lineHeight    = 24.sp,
+                            fontWeight    = FontWeight.Light,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(3.dp))
@@ -689,6 +703,20 @@ private fun SanctuaryMessage(
                         fontSize   = 10.sp,
                         fontWeight = FontWeight.Light
                     )
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(msg.text))
+                            copied = true
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+                            contentDescription = theme.t("Mesajı kopyala", "Copy message"),
+                            tint = if (copied) accent else theme.text2.copy(0.62f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                     if (showProgramButton) {
                         Box(
                             modifier = Modifier

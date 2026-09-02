@@ -42,6 +42,9 @@ class GeminiRepositoryImpl(
         tool: AiToolType
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
+            val expectsJson = tool == AiToolType.PROGRAM_EDIT ||
+                tool == AiToolType.PROGRAM_GENERATE_TEXT ||
+                tool == AiToolType.ORACLE_TO_PROGRAM
             val contents: List<GeminiContent> = history.map { (role, text) ->
                 GeminiContent(role = role, parts = listOf(GeminiPart(text = text)))
             } + GeminiContent(role = "user", parts = listOf(GeminiPart(text = userMessage)))
@@ -51,7 +54,11 @@ class GeminiRepositoryImpl(
                 requestBody = GeminiRequest(
                     system_instruction = GeminiSystemInstruction(listOf(GeminiPart(text = systemPrompt))),
                     contents = contents,
-                    generationConfig = GeminiGenerationConfig(temperature = 0.7, maxOutputTokens = 4096)
+                    generationConfig = GeminiGenerationConfig(
+                        temperature = if (tool == AiToolType.PROGRAM_EDIT) 0.15 else if (expectsJson) 0.3 else 0.7,
+                        maxOutputTokens = 4096,
+                        responseMimeType = if (expectsJson) "application/json" else null
+                    )
                 )
             )
         }
@@ -75,7 +82,11 @@ class GeminiRepositoryImpl(
                 requestBody = GeminiRequest(
                     system_instruction = GeminiSystemInstruction(listOf(GeminiPart(text = systemPrompt))),
                     contents = listOf(GeminiContent(role = "user", parts = parts)),
-                    generationConfig = GeminiGenerationConfig(temperature = 0.4, maxOutputTokens = 4096)
+                    generationConfig = GeminiGenerationConfig(
+                        temperature = 0.25,
+                        maxOutputTokens = 4096,
+                        responseMimeType = "application/json"
+                    )
                 )
             )
         }

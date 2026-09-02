@@ -37,7 +37,8 @@ data class GeminiInlineData(
 @Serializable
 data class GeminiGenerationConfig(
     val temperature: Double = 0.7,
-    val maxOutputTokens: Int = 600
+    val maxOutputTokens: Int = 600,
+    val responseMimeType: String? = null
 )
 
 // ── Response ──────────────────────────────────────────────────────────────────
