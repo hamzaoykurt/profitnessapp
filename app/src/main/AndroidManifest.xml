@@ -49,6 +49,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="profitness" android:host="reset-password" />
             </intent-filter>
+            <!-- Web sitesindeki "Fitness'i aç" butonu: profitness://open -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="profitness" android:host="open" />
+            </intent-filter>
         </activity>
 
         <!-- Antrenman ön plan servisi: timer bildirimleri + arka plan çalışma -->
