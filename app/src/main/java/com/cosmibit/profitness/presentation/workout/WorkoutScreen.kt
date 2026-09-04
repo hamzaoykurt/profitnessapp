@@ -1222,17 +1222,50 @@ private fun DaySelector(
                 label = "scale"
             )
             val hasProgress = state.progress > 0f && !day.isRestDay
+            val dayShape = RoundedCornerShape(16.dp)
 
             Box(
                 modifier = Modifier
                     .scale(scale)
                     .weight(1f)
                     .height(if (responsive.isLargeFont) 48.dp else 44.dp)
+                    .shadow(
+                        elevation = if (isSelected) 12.dp else 5.dp,
+                        shape = dayShape,
+                        spotColor = if (isSelected) accent.copy(0.34f)
+                                    else Color.Black.copy(if (theme.isDark) 0.24f else 0.08f),
+                        ambientColor = Color.Black.copy(if (theme.isDark) 0.20f else 0.06f)
+                    )
                     .then(
                         if (isSelected)
-                            Modifier.clip(RoundedCornerShape(16.dp)).background(accent)
+                            Modifier
+                                .clip(dayShape)
+                                .background(Brush.verticalGradient(listOf(accent, accent.copy(0.78f))))
+                                .drawWithCache {
+                                    val lowerDepth = Brush.verticalGradient(
+                                        colorStops = arrayOf(
+                                            0.48f to Color.Transparent,
+                                            1.00f to Color.Black.copy(0.15f)
+                                        )
+                                    )
+                                    onDrawWithContent {
+                                        drawContent()
+                                        drawRect(lowerDepth)
+                                        drawRect(
+                                            color = Color.White.copy(0.34f),
+                                            size = Size(size.width, 1.dp.toPx())
+                                        )
+                                    }
+                                }
+                                .border(
+                                    1.dp,
+                                    Brush.verticalGradient(
+                                        listOf(Color.White.copy(0.55f), accent.copy(0.40f))
+                                    ),
+                                    dayShape
+                                )
                         else
-                            Modifier.glassCard(accent, theme, RoundedCornerShape(16.dp))
+                            Modifier.glassCard(accent, theme, dayShape)
                     )
                     .clickable(iSource, null) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)

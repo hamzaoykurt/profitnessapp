@@ -578,6 +578,12 @@ private fun SanctuaryMessage(
             Column(horizontalAlignment = Alignment.End) {
                 Box(
                     modifier = Modifier
+                        .shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp),
+                            spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f),
+                            ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.08f)
+                        )
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
                         .drawBehind {
                             drawRect(color = accent)
@@ -588,11 +594,18 @@ private fun SanctuaryMessage(
                                 )
                             )
                         }
+                        .border(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(Color.White.copy(0.32f), accent.copy(0.62f), accent.copy(0.18f))
+                            ),
+                            RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
+                        )
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Text(
                         text       = msg.text,
-                        color      = Color.White,
+                        color      = theme.effectiveOnAccentColor,
                         fontSize   = 15.sp,
                         lineHeight = 23.sp,
                         fontWeight = FontWeight.Normal
@@ -652,14 +665,19 @@ private fun SanctuaryMessage(
                 // Glass bubble
                 Box(
                     modifier = Modifier
+                        .shadow(
+                            elevation = 10.dp,
+                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
+                            spotColor = accent.copy(if (theme.isDark) 0.18f else 0.10f),
+                            ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.08f)
+                        )
                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
                         .drawBehind {
-                            // Dark glass base — clip handles asymmetric corners
-                            drawRect(color = Color(0xFF1A1A1A).copy(alpha = 0.82f))
+                            drawRect(color = theme.bg2.copy(alpha = if (theme.isDark) 0.86f else 0.96f))
                             // Top glass sheen
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    listOf(Color.White.copy(0.07f), Color.Transparent),
+                                listOf(Color.White.copy(if (theme.isDark) 0.08f else 0.52f), Color.Transparent),
                                     startY = 0f, endY = size.height * 0.4f
                                 )
                             )
@@ -673,7 +691,11 @@ private fun SanctuaryMessage(
                         .border(
                             width = 0.8.dp,
                             brush = Brush.linearGradient(
-                                listOf(accent.copy(0.30f), Color.White.copy(0.06f), Color.Transparent)
+                                listOf(
+                                    accent.copy(if (theme.isDark) 0.30f else 0.24f),
+                                    Color.White.copy(if (theme.isDark) 0.08f else 0.72f),
+                                    theme.stroke.copy(0.52f)
+                                )
                             ),
                             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
                         )
@@ -836,11 +858,11 @@ private fun SanctuaryInput(
                 shape        = shape,
                 clip         = false,
                 spotColor    = accent.copy(alpha = 0.30f),
-                ambientColor = Color.Black.copy(alpha = 0.60f)
+                ambientColor = Color.Black.copy(alpha = if (theme.isDark) 0.60f else 0.12f)
             )
             .clip(shape)
             .drawWithCache {
-                val bgBase      = theme.bg0.copy(alpha = 0.82f)
+                val bgBase      = theme.bg1.copy(alpha = if (theme.isDark) 0.86f else 0.97f)
                 val topMirror   = Brush.verticalGradient(colorStops = arrayOf(
                     0.00f to Color.White.copy(alpha = 0.09f),
                     0.30f to Color.White.copy(alpha = 0.02f),
@@ -858,7 +880,8 @@ private fun SanctuaryInput(
                 )
                 val depthShadow = Brush.verticalGradient(colorStops = arrayOf(
                     0.42f to Color.Transparent,
-                    1.00f to Color.Black.copy(alpha = 0.38f)
+                    1.00f to if (theme.isDark) Color.Black.copy(alpha = 0.38f)
+                             else Color(0xFF526176).copy(alpha = 0.08f)
                 ))
                 onDrawBehind {
                     drawRect(bgBase)
@@ -877,7 +900,7 @@ private fun SanctuaryInput(
             placeholder   = {
                 Text(
                     theme.t("Sanctuary'ye sor...", "Ask Sanctuary..."),
-                    color = Mist.copy(0.7f),
+                    color = theme.text2.copy(0.72f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Light,
                     maxLines = 2,
@@ -908,8 +931,14 @@ private fun SanctuaryInput(
                 .clip(CircleShape)
                 .then(
                     if (sendActive) Modifier
-                        .background(Brush.radialGradient(listOf(accent.copy(0.25f), accent.copy(0.08f))))
-                        .border(1.dp, accent.copy(0.45f), CircleShape)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = CircleShape,
+                            spotColor = accent.copy(0.38f),
+                            ambientColor = Color.Transparent
+                        )
+                        .background(Brush.verticalGradient(listOf(accent, accent.copy(0.76f))))
+                        .border(1.dp, Color.White.copy(0.28f), CircleShape)
                     else Modifier.background(Color.Transparent)
                 )
                 .clickable(enabled = sendActive) { onSend() },
@@ -918,7 +947,7 @@ private fun SanctuaryInput(
             Icon(
                 Icons.AutoMirrored.Rounded.Send,
                 contentDescription = null,
-                tint     = if (sendActive) accent else theme.text2.copy(0.5f),
+                tint     = if (sendActive) theme.effectiveOnAccentColor else theme.text2.copy(0.5f),
                 modifier = Modifier.size(20.dp)
             )
         }

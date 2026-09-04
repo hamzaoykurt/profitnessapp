@@ -156,8 +156,8 @@ fun CinematicExerciseCard(
     // competing with the card's existing press/expand animations.
     val ambientGlowTransition = rememberInfiniteTransition(label = "exercise_card_glow_$index")
     val ambientGlowStrength by ambientGlowTransition.animateFloat(
-        initialValue = 0.16f,
-        targetValue = 0.30f,
+        initialValue = 0.28f,
+        targetValue = 0.50f,
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = 3400 + ((index % 3) * 350),

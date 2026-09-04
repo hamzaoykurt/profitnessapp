@@ -17,6 +17,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cosmibit.profitness.core.theme.*
@@ -51,6 +52,16 @@ fun ForgeCard(
 
     Box(
         modifier = modifier
+            .then(
+                if (hasGlow) {
+                    Modifier.shadow(
+                        elevation = elevation + (6.dp * resolvedGlowStrength),
+                        shape = shape,
+                        spotColor = accentColor.copy(alpha = 0.30f * resolvedGlowStrength),
+                        ambientColor = Color.Transparent
+                    )
+                } else Modifier
+            )
             .shadow(
                 elevation = elevation,
                 shape = shape,
@@ -79,21 +90,16 @@ fun ForgeCard(
                         theme.stroke.copy(if (theme.isDark) 0.66f else 0.82f)
                     )
                 )
-                onDrawBehind {
+                val glassSheen = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.00f to Color.White.copy(if (theme.isDark) 0.09f else 0.34f),
+                        0.16f to Color.White.copy(if (theme.isDark) 0.025f else 0.10f),
+                        0.38f to Color.Transparent
+                    )
+                )
+                onDrawWithContent {
                     drawRect(surface)
                     drawRect(innerDepth)
-                    // 1dp rim light — top edge
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                Color.Transparent,
-                                accentColor.copy(rimAlpha),
-                                Color.Transparent
-                            )
-                        ),
-                        size = Size(size.width, 1.dp.toPx())
-                    )
-                    // Corner accent wash (very subtle)
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(accentColor.copy(washAlpha), Color.Transparent),
@@ -101,12 +107,37 @@ fun ForgeCard(
                             radius = size.width * 0.6f
                         )
                     )
+                    drawContent()
+
+                    // Polished glass layers must sit above image content to remain visible.
+                    drawRect(glassSheen)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(
+                                accentColor.copy(alpha = 0.10f * resolvedGlowStrength),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.90f, size.height * 0.06f),
+                            radius = size.width * 0.42f
+                        )
+                    )
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.White.copy(if (theme.isDark) 0.20f else 0.72f),
+                                accentColor.copy(rimAlpha),
+                                Color.Transparent
+                            )
+                        ),
+                        size = Size(size.width, 1.25.dp.toPx())
+                    )
                     drawRoundRect(
                         brush = border,
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(
                             (shape as? RoundedCornerShape)?.topStart?.toPx(size, this) ?: 20.dp.toPx()
                         ),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+                        style = Stroke(width = 1.25.dp.toPx())
                     )
                 }
             }

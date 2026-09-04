@@ -116,6 +116,9 @@ _Son güncelleme: 2026-09-04_
 - [x] Workout, AI Coach, timer, program picker ve toast yüzeylerindeki eski sabit koyu tokenlar tema-aware hale getirildi
 - [x] Discover, challenge, profil düzenleme, onboarding ve sosyal aksiyonlarda accent üstü metin/ikon kontrastı dinamik hale getirildi
 - [x] Discover açık mod arka planındaki sabit siyah gradient kaldırıldı
+- [x] Kart cam/rim katmanları içerik üstüne taşındı; çift gölge ve görünür nefes alan glow eklendi
+- [x] Gün seçiciye bevel highlight, iç alt gölge ve elevation collapse eklendi
+- [x] AI Chat kullanıcı/Oracle balonları ile mesaj giriş yüzeyi dark/light için yeniden işlendi
 - [x] `:app:compileDebugKotlin` doğrulaması yapıldı
 
 | Sorun | Dosya | Öncelik |
