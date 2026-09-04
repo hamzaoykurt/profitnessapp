@@ -10,6 +10,19 @@ AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yap
 
 ## Son Tamamlanan Değişiklikler
 
+### CosmiBit Marka ve Paket Geçişi (2026-09-04)
+
+- Şirket adı tüm kullanıcı metinleri, e-posta şablonları ve dokümantasyonda `CosmiBit` olarak güncellendi.
+- Android application ID, namespace ve Kotlin paket ağacı `com.cosmibit.profitness` olarak taşındı.
+- Baseline profile, ProGuard ve Android App Links kayıtları yeni paket kimliğiyle eşitlendi.
+
+### Ana Ekran Yoğunluk Azaltma (2026-09-04)
+
+- Workout başlığındaki karşılama, gün öneki ve kcal/süre pill'leri kaldırıldı; progress halkası küçültüldü.
+- Streak banner tek satırlık kompakt pill'e, gün seçici yalnızca gün etiketlerini gösteren ince bir şeride dönüştürüldü.
+- Kartlarda kategori rozeti ve tamamlanan set cümlesi kaldırıldı; hareket/hedef adları seçili dilde tekil gösteriliyor.
+- Gün, hareket ve grup ayrıntıları kart bilgi panelinde korunuyor.
+
 ### AI Program Ayrıntılarını Koruma (2026-09-04)
 
 - Program AI ve Oracle → Program JSON şemaları `weightKg`, `section`, `notes`, `groupId`, `groupType`, `groupLabel`, `groupRounds`, `groupRestSeconds` alanlarıyla genişletildi.

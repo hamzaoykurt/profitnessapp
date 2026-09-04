@@ -1,0 +1,332 @@
+package com.cosmibit.profitness.data.local
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.cosmibit.profitness.data.local.dao.ExerciseDao
+import com.cosmibit.profitness.data.local.dao.ProgramDao
+import com.cosmibit.profitness.data.local.dao.SetCompletionDao
+import com.cosmibit.profitness.data.local.dao.WeightLogDao
+import com.cosmibit.profitness.data.local.dao.WorkoutDao
+import com.cosmibit.profitness.data.local.entity.ExerciseEntity
+import com.cosmibit.profitness.data.local.entity.ExerciseLogEntity
+import com.cosmibit.profitness.data.local.entity.ProgramDayEntity
+import com.cosmibit.profitness.data.local.entity.ProgramEntity
+import com.cosmibit.profitness.data.local.entity.ProgramExerciseEntity
+import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
+import com.cosmibit.profitness.data.local.entity.WeightLogEntity
+import com.cosmibit.profitness.data.local.entity.WorkoutLogEntity
+
+@Database(
+    entities = [
+        ProgramEntity::class,
+        ProgramDayEntity::class,
+        ProgramExerciseEntity::class,
+        ExerciseEntity::class,
+        WorkoutLogEntity::class,
+        ExerciseLogEntity::class,
+        SetCompletionEntity::class,
+        WeightLogEntity::class
+    ],
+    version = 14,
+    exportSchema = false
+)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun programDao(): ProgramDao
+    abstract fun exerciseDao(): ExerciseDao
+    abstract fun workoutDao(): WorkoutDao
+    abstract fun setCompletionDao(): SetCompletionDao
+    abstract fun weightLogDao(): WeightLogDao
+
+    companion object {
+        const val NAME = "profitness.db"
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS set_completions (
+                        user_id TEXT NOT NULL,
+                        exercise_id TEXT NOT NULL,
+                        program_day_id TEXT NOT NULL,
+                        set_index INTEGER NOT NULL,
+                        date TEXT NOT NULL,
+                        PRIMARY KEY (user_id, exercise_id, program_day_id, set_index, date)
+                    )
+                """)
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_set_completions_user_day_date
+                    ON set_completions (user_id, program_day_id, date)
+                """)
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS weight_logs (
+                        id          TEXT NOT NULL PRIMARY KEY,
+                        user_id     TEXT NOT NULL,
+                        weight_kg   REAL NOT NULL,
+                        note        TEXT NOT NULL DEFAULT '',
+                        recorded_at TEXT NOT NULL,
+                        synced      INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_weight_logs_user_recorded
+                    ON weight_logs (user_id, recorded_at)
+                """)
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN weight_kg REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN reps_actual INTEGER DEFAULT NULL")
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_set_completions_user_exercise_date
+                    ON set_completions (user_id, exercise_id, date)
+                """)
+            }
+        }
+
+        /**
+         * Migration 4→5: Index isimlerini Room'un auto-generated naming convention'ıyla hizalar.
+         *
+         * Migration 1-2-3-4 sırasıyla oluşturulan index'ler Room'un beklediği isimlerden farklıydı
+         * (ör: "index_set_completions_user_day_date" vs Room'un beklediği
+         * "index_set_completions_user_id_program_day_id_date"). Bu uyumsuzluk Room'un schema
+         * validation'ında IllegalStateException'a ve uygulama crash'ine yol açıyordu.
+         *
+         * Çözüm: Eski index'leri bırak ve Room'un entity annotation'larından türettiği
+         * isimlerle yeniden oluştur. IF EXISTS / IF NOT EXISTS güvenceleri ile hem migration
+         * yolundan hem de fresh-install v4'ten gelen cihazları kapsar.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // set_completions — eski index'leri kaldır
+                database.execSQL("DROP INDEX IF EXISTS index_set_completions_user_day_date")
+                database.execSQL("DROP INDEX IF EXISTS index_set_completions_user_exercise_date")
+                // set_completions — Room'un beklediği isimlerle yeniden oluştur
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_set_completions_user_id_program_day_id_date " +
+                    "ON set_completions (user_id, program_day_id, date)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_set_completions_user_id_exercise_id_date " +
+                    "ON set_completions (user_id, exercise_id, date)"
+                )
+                // weight_logs — eski index'i kaldır, yeniden oluştur
+                database.execSQL("DROP INDEX IF EXISTS index_weight_logs_user_recorded")
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_weight_logs_user_id_recorded_at " +
+                    "ON weight_logs (user_id, recorded_at)"
+                )
+            }
+        }
+
+        /**
+         * Migration 5→6: `programs` tablosuna `content_hash` ve `applied_from_shared_id`
+         * sütunlarını ekler.
+         *
+         * Bu sütunlar Supabase tarafında trigger ile otomatik dolduruluyor; Room sadece
+         * pull edilen değerleri yansıtır (kullanıcının kendi düzenlemesi yapıldığında
+         * bir sonraki sync'te yeni hash gelir). Eski cihazların `programs` satırları
+         * için geçici olarak NULL kalır; ilk sync sırasında doldurulur.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE programs ADD COLUMN content_hash TEXT DEFAULT NULL")
+                database.execSQL("ALTER TABLE programs ADD COLUMN applied_from_shared_id TEXT DEFAULT NULL")
+            }
+        }
+
+        /**
+         * Migration 6→7 / 7→8: Eski debug kurulumlarında cihazda daha ileri Room
+         * user_version kalabiliyor. 7→8, `programs` index'lerini idempotent şekilde
+         * garanti ederek Room schema validation'ını mevcut yerel DB'lerle hizalar.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) = Unit
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("PRAGMA defer_foreign_keys = TRUE")
+                database.execSQL("DROP TABLE IF EXISTS programs_new")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS programs_new (
+                        id TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        is_active INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        content_hash TEXT DEFAULT NULL,
+                        applied_from_shared_id TEXT DEFAULT NULL,
+                        PRIMARY KEY(id)
+                    )
+                """)
+                database.execSQL("""
+                    INSERT INTO programs_new (
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    )
+                    SELECT
+                        id,
+                        user_id,
+                        name,
+                        type,
+                        is_active,
+                        created_at,
+                        content_hash,
+                        applied_from_shared_id
+                    FROM programs
+                """)
+                database.execSQL("DROP TABLE programs")
+                database.execSQL("ALTER TABLE programs_new RENAME TO programs")
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_created_at " +
+                    "ON programs (user_id, created_at)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_programs_user_id_is_active " +
+                    "ON programs (user_id, is_active)"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN duration_seconds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN distance_meters REAL DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE exercises ADD COLUMN sport_type TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE exercises ADD COLUMN tracking_mode TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_duration_seconds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_distance_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_elevation_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN target_incline_percent REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN elevation_meters REAL DEFAULT NULL")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN incline_percent REAL DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN synced INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE set_completions ADD COLUMN updated_at_ms INTEGER NOT NULL DEFAULT 0")
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_set_completions_user_id_dirty_updated_at_ms " +
+                    "ON set_completions (user_id, dirty, updated_at_ms)"
+                )
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.normalizeExercisesCreatedBySchema()
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.normalizeExercisesCreatedBySchema()
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE program_days ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN section TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_id TEXT DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_type TEXT NOT NULL DEFAULT 'straight'")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_label TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_rounds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_rest_seconds INTEGER DEFAULT NULL")
+            }
+        }
+
+        private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Boolean =
+            query("PRAGMA table_info($table)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == column) return true
+                }
+                false
+            }
+
+        private fun SupportSQLiteDatabase.normalizeExercisesCreatedBySchema() {
+            val createdBySelect = if (hasColumn("exercises", "created_by")) {
+                "created_by"
+            } else {
+                "NULL"
+            }
+
+            execSQL("DROP INDEX IF EXISTS index_exercises_created_by")
+            execSQL("DROP TABLE IF EXISTS exercises_new")
+            execSQL("""
+                CREATE TABLE exercises_new (
+                    id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    name_en TEXT NOT NULL,
+                    target_muscle TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    sets_default INTEGER NOT NULL,
+                    reps_default INTEGER NOT NULL,
+                    description TEXT NOT NULL,
+                    image_url TEXT NOT NULL,
+                    sport_type TEXT NOT NULL,
+                    tracking_mode TEXT NOT NULL,
+                    created_by TEXT,
+                    PRIMARY KEY(id)
+                )
+            """)
+            execSQL("""
+                INSERT INTO exercises_new (
+                    id,
+                    name,
+                    name_en,
+                    target_muscle,
+                    category,
+                    sets_default,
+                    reps_default,
+                    description,
+                    image_url,
+                    sport_type,
+                    tracking_mode,
+                    created_by
+                )
+                SELECT
+                    id,
+                    name,
+                    name_en,
+                    target_muscle,
+                    category,
+                    sets_default,
+                    reps_default,
+                    description,
+                    image_url,
+                    sport_type,
+                    tracking_mode,
+                    $createdBySelect
+                FROM exercises
+            """)
+            execSQL("DROP TABLE exercises")
+            execSQL("ALTER TABLE exercises_new RENAME TO exercises")
+        }
+    }
+}

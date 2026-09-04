@@ -8,6 +8,19 @@ _Son güncelleme: 2026-09-04_
 
 ## ✅ Tamamlananlar
 
+### CosmiBit Marka Kimliği
+
+- [x] Görünen şirket adı ve e-posta şablonları `CosmiBit` olarak güncellendi
+- [x] Android namespace/application ID ve Kotlin paketleri `com.cosmibit.profitness` olarak taşındı
+- [x] ProGuard, baseline profile, App Links ve proje dokümantasyonu yeni kimlikle eşitlendi
+
+### Ana Ekran Premium Sadeleştirme
+
+- [x] Karşılama, gün öneki, günlük stat pill'leri ve kart kategori rozetleri ana yüzeyden kaldırıldı
+- [x] Streak ve gün seçici bileşenleri kompaktlaştırıldı
+- [x] Çift dilli kart metinleri seçili dilde tekil gösterime geçirildi
+- [x] Gün/hareket/grup ayrıntıları bilgi panelinde korundu
+
 ### AI Program İçe Aktarma ve Yapısal Alanlar
 
 - [x] Başlangıç kilosu AI çıktısından Supabase/Room/program/antrenman ekranına uçtan uca bağlandı
@@ -20,7 +33,7 @@ _Son güncelleme: 2026-09-04_
 
 ### Altyapı & Kurulum
 
-- [x] Android projesi oluşturuldu (`com.avonix.profitness`)
+- [x] Android projesi oluşturuldu (`com.cosmibit.profitness`)
 - [x] Kotlin + Jetpack Compose + Material 3 entegrasyonu
 - [x] Hilt (KSP) dependency injection kurulumu
 - [x] Gradle Kotlin DSL yapılandırması (`compileSdk=35`, `targetSdk=35`, `minSdk=31`)

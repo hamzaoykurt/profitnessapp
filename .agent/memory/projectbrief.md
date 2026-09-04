@@ -2,7 +2,7 @@
 
 ## Proje Tanımı
 
-**Profitness**, kullanıcıların antrenman programlarını takip edebildiği, günlük egzersizlerini yönetebildiği ve yapay zeka destekli koçluk alabileceği premium bir Android fitness uygulamasıdır. Avonix tarafından geliştirilmektedir.
+**Profitness**, kullanıcıların antrenman programlarını takip edebildiği, günlük egzersizlerini yönetebildiği ve yapay zeka destekli koçluk alabileceği premium bir Android fitness uygulamasıdır. CosmiBit tarafından geliştirilmektedir.
 
 Backend: **Supabase** (PostgreSQL + Auth + Storage + Edge Functions)
 AI: **Gemini API**

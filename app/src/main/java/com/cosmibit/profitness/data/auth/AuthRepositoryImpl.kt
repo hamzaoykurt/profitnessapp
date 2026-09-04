@@ -1,0 +1,156 @@
+package com.cosmibit.profitness.data.auth
+
+import com.cosmibit.profitness.BuildConfig
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.OtpType
+import io.github.jan.supabase.gotrue.SessionStatus
+import kotlinx.coroutines.flow.first
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import javax.inject.Inject
+
+@Serializable
+private data class EmailCheckResult(val registered: Boolean)
+
+class AuthRepositoryImpl @Inject constructor(
+    private val supabase: SupabaseClient
+) : AuthRepository {
+
+    override suspend fun signIn(email: String, password: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.signInWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+                Unit
+            }
+        }
+
+    override suspend fun signUp(email: String, password: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                // ── Adım 1: Sadece ONAYLANMIŞ emaili engelle ─────────────────────
+                // "OTP aldı ama doğrulamadı" senaryosu → email_confirmed_at NULL →
+                // registered = false → tekrar kayıt izni (yeni OTP gönderilir).
+                // "Daha önce doğrulamış" senaryosu → email_confirmed_at DOLU →
+                // registered = true → "Zaten kayıtlı" hatası.
+                val check = supabase.postgrest.rpc(
+                    "check_email_registered",
+                    buildJsonObject { put("p_email", email) }
+                ).decodeSingle<EmailCheckResult>()
+
+                if (check.registered) {
+                    throw IllegalStateException("User already registered")
+                }
+
+                // ── Adım 2: Kayıt ─────────────────────────────────────────────────
+                // Onaylanmamış kayıt varsa Supabase OTP'yi yeniden gönderir.
+                // Yeni kayıtsa kullanıcı oluşturulur ve OTP gönderilir.
+                supabase.auth.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+                // Supabase, signUpWith sonrası onaylanmamış kullanıcı için bile
+                // geçici session oluşturur. Bunu temizliyoruz; kullanıcı OTP'yi
+                // doğruladıktan sonra gerçek session açılacak.
+                runCatching { supabase.auth.signOut() }
+                Unit
+            }
+        }
+
+    override suspend fun signOut(): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching { supabase.auth.signOut() }
+        }
+
+    override fun isLoggedIn(): Boolean {
+        supabase.auth.currentSessionOrNull() ?: return false
+        // Onaylanmamış kullanıcılar için Supabase geçici session oluşturur.
+        // emailConfirmedAt null ise email henüz doğrulanmamış → login sayılmaz.
+        val user = supabase.auth.currentUserOrNull() ?: return false
+        return user.emailConfirmedAt != null
+    }
+
+    override suspend fun awaitSessionLoaded(): Boolean {
+        return withContext(Dispatchers.IO) {
+            withTimeoutOrNull(2_500) {
+                supabase.auth.awaitInitialization()
+
+                fun hasConfirmedSession(): Boolean {
+                    val session = supabase.auth.currentSessionOrNull() ?: return false
+                    val user = supabase.auth.currentUserOrNull() ?: session.user ?: return false
+                    return user.emailConfirmedAt != null
+                }
+
+                if (hasConfirmedSession()) return@withTimeoutOrNull true
+
+                withTimeoutOrNull(750) {
+                    supabase.auth.sessionStatus.first { it !is SessionStatus.LoadingFromStorage }
+                }
+
+                if (!hasConfirmedSession()) {
+                    runCatching { supabase.auth.loadFromStorage() }
+                }
+
+                hasConfirmedSession()
+            } ?: false
+        }
+    }
+
+    override suspend fun sendPasswordReset(email: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                // Supabase Dashboard → Auth → URL Configuration → Redirect URLs listesine
+                // BuildConfig.RESET_PASSWORD_REDIRECT_URL eklenmiş olmalı.
+                supabase.auth.resetPasswordForEmail(
+                    email       = email,
+                    redirectUrl = BuildConfig.RESET_PASSWORD_REDIRECT_URL
+                )
+            }
+        }
+
+    override suspend fun verifyOtp(email: String, code: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type  = OtpType.Email.SIGNUP,
+                    email = email,
+                    token = code
+                )
+                Unit
+            }
+        }
+
+    override suspend fun resendOtp(email: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, email)
+                Unit
+            }
+        }
+
+    override suspend fun exchangeRecoveryCode(code: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.exchangeCodeForSession(code)
+                Unit
+            }
+        }
+
+    override suspend fun updatePassword(newPassword: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.auth.updateUser { password = newPassword }
+                Unit
+            }
+        }
+}

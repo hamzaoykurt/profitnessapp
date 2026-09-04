@@ -57,7 +57,7 @@ function New-ProfitnessEmail {
                           </td>
                           <td valign="middle" style="padding-left:18px;">
                             <div class="pf-brand" style="font-size:32px; line-height:36px; font-weight:900; letter-spacing:0; color:#FFFFFF;">Profitness</div>
-                            <div style="margin-top:3px; font-size:12px; line-height:17px; color:#D9D9E6; font-weight:800; letter-spacing:2px;">BY AVONIX</div>
+                            <div style="margin-top:3px; font-size:12px; line-height:17px; color:#D9D9E6; font-weight:800; letter-spacing:2px;">BY COSMIBIT</div>
                             <div style="margin-top:13px;">
                               <span class="pf-pill" style="display:inline-block; padding:8px 12px; border-radius:999px; background:#CBFF4D; color:#0A0A0F; font-size:11px; line-height:13px; font-weight:900;">GÜVENLİ DOĞRULAMA</span>
                               <span class="pf-pill" style="display:inline-block; margin-left:7px; padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.22); color:#F8F8F8; font-size:11px; line-height:13px; font-weight:800;">PROFITNESS APP</span>
@@ -95,7 +95,7 @@ function New-ProfitnessEmail {
             </tr>
             <tr>
               <td align="center" style="padding:22px 18px 0 18px; color:#67677F; font-size:12px; line-height:20px;">
-                © 2026 Profitness · Avonix<br>
+                © 2026 Profitness · CosmiBit<br>
                 Bu otomatik bir mesajdır, lütfen yanıtlamayın.
               </td>
             </tr>

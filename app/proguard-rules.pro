@@ -16,15 +16,15 @@
 -keepclasseswithmembers class **$$serializer {
     static **$$serializer INSTANCE;
 }
--keep,includedescriptorclasses class com.avonix.profitness.**$$serializer { *; }
--keepclassmembers @kotlinx.serialization.Serializable class com.avonix.profitness.** {
+-keep,includedescriptorclasses class com.cosmibit.profitness.**$$serializer { *; }
+-keepclassmembers @kotlinx.serialization.Serializable class com.cosmibit.profitness.** {
     *** Companion;
     *** INSTANCE;
     kotlinx.serialization.KSerializer serializer(...);
 }
 
 # Room — entity, DAO, database classes
--keep class com.avonix.profitness.data.local.** { *; }
+-keep class com.cosmibit.profitness.data.local.** { *; }
 
 # Supabase / Ktor
 -keep class io.github.jan.supabase.** { *; }
@@ -38,8 +38,8 @@
 -dontwarn kotlinx.coroutines.**
 
 # App model classes (Supabase JSON serialization)
--keep class com.avonix.profitness.data.** { *; }
--keep class com.avonix.profitness.domain.** { *; }
+-keep class com.cosmibit.profitness.data.** { *; }
+-keep class com.cosmibit.profitness.domain.** { *; }
 
 # Coil
 -keep class coil.** { *; }

@@ -1,0 +1,78 @@
+package com.cosmibit.profitness.domain.model
+
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class ProgramType { TEMPLATE, AI, MANUAL }
+
+@Serializable
+data class Program(
+    val id: String,
+    val userId: String,
+    val name: String,
+    val type: ProgramType,
+    val isActive: Boolean,
+    val days: ImmutableList<ProgramDay> = persistentListOf(),
+    val createdAt: String = "",
+    /** SHA-256 of the canonical program content. Server-maintained; used to detect drift vs shared snapshots. */
+    val contentHash: String? = null,
+    /** id of the [shared_programs] row this program was applied from (null if user-authored). */
+    val appliedFromSharedId: String? = null
+)
+
+@Serializable
+data class ProgramDay(
+    val id: String,
+    val programId: String,
+    val dayIndex: Int,
+    val title: String,
+    val isRestDay: Boolean,
+    val notes: String = "",
+    val exercises: ImmutableList<ProgramExercise> = persistentListOf()
+)
+
+@Serializable
+data class ProgramExercise(
+    val id: String,
+    val programDayId: String,
+    val exerciseId: String,
+    val exerciseName: String,  // denormalized for display
+    val targetMuscle: String,  // denormalized for display
+    val sets: Int,
+    val reps: Int,
+    val weightKg: Float = 0f,
+    val restSeconds: Int = 60,           // set arası dinlenme
+    val exerciseRestSeconds: Int = 180,  // son set / egzersiz sonu dinlenmesi
+    val orderIndex: Int,
+    val category: String = "",
+    val imageUrl: String = "",
+    val sportType: String = "",
+    val trackingMode: String = "",
+    val targetDurationSeconds: Int? = null,
+    val targetDistanceMeters: Float? = null,
+    val targetElevationMeters: Float? = null,
+    val targetInclinePercent: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null
+)
+
+@Serializable
+data class ExerciseItem(
+    val id: String,
+    val name: String,
+    val nameEn: String,
+    val targetMuscle: String,
+    val category: String,
+    val setsDefault: Int,
+    val repsDefault: Int,
+    val description: String = "",
+    val sportType: String = "",
+    val trackingMode: String = ""
+)

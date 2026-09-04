@@ -73,7 +73,7 @@ profitnessapp/
 │       └── update_memory_bank.md
 ├── app/
 │   ├── build.gradle.kts
-│   └── src/main/java/com/avonix/profitness/
+│   └── src/main/java/com/cosmibit/profitness/
 │       ├── MainActivity.kt              ← Single Activity, theme state owner
 │       ├── ProfitnessApplication.kt     ← @HiltAndroidApp
 │       ├── core/

@@ -71,11 +71,11 @@ val resetPasswordLinkHost = singleLineSecret("RESET_PASSWORD_LINK_HOST", "cosmib
 val resetPasswordRedirectUrl = singleLineSecret("RESET_PASSWORD_REDIRECT_URL", "profitness://reset-password")
 
 android {
-    namespace = "com.avonix.profitness"
+    namespace = "com.cosmibit.profitness"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.avonix.profitness"
+        applicationId = "com.cosmibit.profitness"
         minSdk = 31
         targetSdk = 35
         versionCode = 1

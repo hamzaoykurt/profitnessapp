@@ -4,7 +4,7 @@ Profitness is a native Android fitness application built with **Kotlin** and **J
 
 ## Project Identity
 
-- **Package:** `com.avonix.profitness`
+- **Package:** `com.cosmibit.profitness`
 - **Single Activity:** `MainActivity`
 - **Min SDK:** 31 (Android 12) | **Target SDK:** 35 | **Compile SDK:** 35
 - **Supabase Project ID:** `dkcriptafzdrynsilxku` (region: ap-southeast-1)

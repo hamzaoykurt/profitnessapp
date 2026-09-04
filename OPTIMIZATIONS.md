@@ -20,7 +20,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Frontend / Network / DB
 * **Severity**: High
 * **Impact**: Improves page-transition latency, UI thread smoothness, DB/API load, battery.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/presentation/dashboard/DashboardScreen.kt` uses `AnimatedContent` for tab transitions and calls `workoutViewModel.refresh()` / `forceRefresh()` from `LaunchedEffect(selectedTab)` when returning to Workout. `WorkoutScreen.kt` also refreshes on lifecycle resume. `WorkoutViewModel.refresh()` calls both workout and program remote sync.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/presentation/dashboard/DashboardScreen.kt` uses `AnimatedContent` for tab transitions and calls `workoutViewModel.refresh()` / `forceRefresh()` from `LaunchedEffect(selectedTab)` when returning to Workout. `WorkoutScreen.kt` also refreshes on lifecycle resume. `WorkoutViewModel.refresh()` calls both workout and program remote sync.
 * **Why it’s inefficient**: `AnimatedContent` can keep old and new screens composed during animation. At the same time, entering or resuming a tab starts remote sync work, Room flow emissions, and recompositions. This makes navigation compete with network/DB work on exactly the frame window where smoothness matters most.
 * **Recommended fix**: Debounce/throttle tab refreshes, move sync to a background app-level coordinator, and use stale-while-revalidate: show local Room data immediately, then sync after the transition settles. Avoid `forceRefresh()` on ordinary tab return unless a write happened.
 * **Tradeoffs / Risks**: Data may appear stale for a short period unless the UI shows subtle syncing state. Requires defining freshness windows per screen.
@@ -34,7 +34,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Frontend / Network / Cost
 * **Severity**: High
 * **Impact**: Reduces unnecessary RPC calls, startup work, memory, and recompositions when opening Program.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/presentation/program/ProgramBuilderScreen.kt` creates `DiscoverViewModel` and collects its state near the top of the Program screen. `DiscoverViewModel.init` immediately calls `loadFirstPage()` and `loadMyShared()`, which hit Discover RPC/feed paths.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/presentation/program/ProgramBuilderScreen.kt` creates `DiscoverViewModel` and collects its state near the top of the Program screen. `DiscoverViewModel.init` immediately calls `loadFirstPage()` and `loadMyShared()`, which hit Discover RPC/feed paths.
 * **Why it’s inefficient**: Opening Program should not automatically fetch the Discover feed. This couples two expensive feature areas and makes Program tab transitions pay for social/feed work even if the user never shares or browses public programs.
 * **Recommended fix**: Extract share-only operations into a small `ProgramShareViewModel` or lazy-create `DiscoverViewModel` only when the share sheet opens. Keep feed loading inside Discover tab.
 * **Tradeoffs / Risks**: Requires moving share result events out of Discover state or adding a lightweight shared use case.
@@ -48,7 +48,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Network / DB / Algorithm
 * **Severity**: High
 * **Impact**: Improves sync latency, throughput, battery, and Supabase request cost.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/data/sync/SyncManager.kt` fetches all programs, then for each program queries `program_days`, then for each day queries `program_exercises`. It also fetches workout logs, then queries `exercise_logs` once per workout log.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/data/sync/SyncManager.kt` fetches all programs, then for each program queries `program_days`, then for each day queries `program_exercises`. It also fetches workout logs, then queries `exercise_logs` once per workout log.
 * **Why it’s inefficient**: Network round trips scale with entity count. A user with 20 programs and 100 workouts can generate hundreds of Supabase requests from one sync path.
 * **Recommended fix**: Batch by IDs: fetch programs once, days with `program_id IN (...)`, exercises with `program_day_id IN (...)`, workout exercise logs with `workout_log_id IN (...)`. Consider one RPC returning nested program/workout payloads if PostgREST client ergonomics are weak.
 * **Tradeoffs / Risks**: Batched reads need careful payload mapping and should preserve local deletion/upsert semantics.
@@ -62,7 +62,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: DB / Algorithm / Reuse Opportunity
 * **Severity**: High
 * **Impact**: Improves Profile screen load time, Supabase DB load, and mobile network usage.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/data/profile/ProfileRepositoryImpl.kt` `getWeeklyCompletionRatios()` fetches weekly workout logs, then inside a loop queries `program_exercises` and `exercise_logs` per log.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/data/profile/ProfileRepositoryImpl.kt` `getWeeklyCompletionRatios()` fetches weekly workout logs, then inside a loop queries `program_exercises` and `exercise_logs` per log.
 * **Why it’s inefficient**: This is an N+1 query pattern on a screen that is commonly opened. It scales with workout count and duplicates logic that could be aggregated once.
 * **Recommended fix**: Replace the loop with one RPC or two batched queries: fetch all weekly logs, all exercises for involved `program_day_id`s, and all exercise logs for involved `workout_log_id`s. Compute ratios from grouped maps. Prefer a SQL function if this is purely aggregate data.
 * **Tradeoffs / Risks**: RPC aggregation moves logic to DB and needs tests for partial workouts and rest days.
@@ -104,7 +104,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Frontend / CPU / I/O
 * **Severity**: Medium
 * **Impact**: Reduces recompositions, main-thread work, and notification update overhead during workouts.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/presentation/workout/WorkoutViewModel.kt` updates `WorkoutScreenState` every second while rest timer is active and calls `notificationManager.updateRestTimer()` every tick. `WorkoutScreen.kt` collects the full UI state.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/presentation/workout/WorkoutViewModel.kt` updates `WorkoutScreenState` every second while rest timer is active and calls `notificationManager.updateRestTimer()` every tick. `WorkoutScreen.kt` collects the full UI state.
 * **Why it’s inefficient**: A one-second timer should not invalidate large workout screen state, exercise cards, dashboard data, and derived UI. Notification updates every second can also be expensive depending on Android version/device.
 * **Recommended fix**: Split timer state into a separate `StateFlow<RestTimerState>` collected only by timer UI. Throttle notification updates or only update when visible/foreground constraints require it. Use `derivedStateOf` for timer text.
 * **Tradeoffs / Risks**: Need to preserve notification accuracy and workout lifecycle behavior.
@@ -146,7 +146,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Network / Cost / Reliability
 * **Severity**: Medium
 * **Impact**: Reduces API latency, token/cost growth, memory, and hanging request risk.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/presentation/aicoach/AICoachViewModel.kt` stores conversation history in a mutable list and sends `conversationHistory.toList()` to Gemini. `GeminiRepositoryImpl.kt` maps the full history into request contents. `AppModule.kt` provides a Ktor Android `HttpClient` without explicit `HttpTimeout` or bounded retry/backoff policy.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/presentation/aicoach/AICoachViewModel.kt` stores conversation history in a mutable list and sends `conversationHistory.toList()` to Gemini. `GeminiRepositoryImpl.kt` maps the full history into request contents. `AppModule.kt` provides a Ktor Android `HttpClient` without explicit `HttpTimeout` or bounded retry/backoff policy.
 * **Why it’s inefficient**: Each message increases future request size. Long sessions become slower and more expensive. Missing request timeout/retry policy can leave poor mobile network behavior to defaults.
 * **Recommended fix**: Keep a rolling message window plus optional summary. Add Ktor `HttpTimeout` and a small retry policy with jitter for transient failures. Add request-size metrics.
 * **Tradeoffs / Risks**: Summarization may lose nuance unless tested with representative coaching conversations.
@@ -216,7 +216,7 @@ Biggest risk if no changes are made: the app will feel increasingly slower as us
 * **Category**: Caching / I/O / Reliability
 * **Severity**: Low
 * **Impact**: Reduces long-term disk growth risk and worst-case cache invalidation cost.
-* **Evidence**: `app/src/main/java/com/avonix/profitness/data/cache/DiskCache.kt` reads/writes whole JSON files, has no visible global max size/TTL enforcement, and `removeByPrefix()` scans files in the cache directory.
+* **Evidence**: `app/src/main/java/com/cosmibit/profitness/data/cache/DiskCache.kt` reads/writes whole JSON files, has no visible global max size/TTL enforcement, and `removeByPrefix()` scans files in the cache directory.
 * **Why it’s inefficient**: This is fine for small cache counts, but stale data and prefix scans can become slow or consume storage if more features use the helper.
 * **Recommended fix**: Add per-entry metadata with TTL, max file count/bytes, and a lightweight index if cache usage grows. Keep current simple cache for small static datasets.
 * **Tradeoffs / Risks**: More cache machinery can be overkill today.

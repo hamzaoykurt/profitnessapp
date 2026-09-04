@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.avonix.profitness.baselineprofile"
+    namespace = "com.cosmibit.profitness.baselineprofile"
     compileSdk = 35
 
     defaultConfig {

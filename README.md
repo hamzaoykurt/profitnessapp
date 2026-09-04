@@ -104,4 +104,4 @@ The nav bar is a floating pill with an **expanding selected item** animation:
 
 ## License
 
-© 2024 Avonix. All rights reserved.
+© 2024 CosmiBit. All rights reserved.

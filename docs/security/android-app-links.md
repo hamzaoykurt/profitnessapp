@@ -4,7 +4,7 @@ Password reset should move from the old custom scheme to a verified HTTPS App Li
 
 Production settings:
 
-- App package: `com.avonix.profitness`
+- App package: `com.cosmibit.profitness`
 - Redirect URL: `https://cosmibit.com/reset-password`
 - Manifest host override: `RESET_PASSWORD_LINK_HOST`
 - Supabase redirect override: `RESET_PASSWORD_REDIRECT_URL`
@@ -29,7 +29,7 @@ Use the release signing SHA-256 fingerprint from the GitHub Actions release work
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.avonix.profitness",
+      "package_name": "com.cosmibit.profitness",
       "sha256_cert_fingerprints": [
         "A5:90:AE:C9:93:5F:56:DF:A1:28:65:05:61:2C:B0:DB:F8:65:A5:F8:C0:DE:A7:A1:AA:B2:DC:DD:CA:CC:7F:E2"
       ]

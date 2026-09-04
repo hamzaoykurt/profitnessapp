@@ -172,7 +172,7 @@ Validation performed in this pass:
 * `.\gradlew.bat :baselineprofile:compileBenchmarkReleaseKotlin` succeeded.
 * `.\gradlew.bat :baselineprofile:connectedBenchmarkReleaseAndroidTest` succeeded on the connected emulator after enabling the benchmark module's emulator suppression for local sanity runs. Physical-device results are still required for final performance numbers.
 * Emulator benchmark snapshot: cold startup `timeToInitialDisplayMs` median 433.1ms, max 698.8ms. Workout scroll/tab benchmark produced Perfetto traces, but the unauthenticated/emulator context limits the frame-count usefulness.
-* Installed `app-debug.apk` on the connected emulator and launched `com.avonix.profitness`; the process stayed alive and logcat showed no `FATAL EXCEPTION`, `AndroidRuntime` crash, or Room migration verification error after startup.
+* Installed `app-debug.apk` on the connected emulator and launched `com.cosmibit.profitness`; the process stayed alive and logcat showed no `FATAL EXCEPTION`, `AndroidRuntime` crash, or Room migration verification error after startup.
 * Fixed a Room schema validation crash risk by adding the new dirty-sync index to `SetCompletionEntity` so it matches `MIGRATION_10_11`.
 * Fixed invalid manual baseline profile wildcard rules (`;->*`) by converting them to valid method wildcards (`;->**(**)**`), unblocking ART profile expansion for benchmark/release-style builds.
 * Fixed local benchmark packaging when release signing secrets are absent: actual `assembleRelease`/`bundleRelease` still fail without release credentials, while benchmark/local measurement builds can use the debug keystore.
