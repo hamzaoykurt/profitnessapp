@@ -151,6 +151,22 @@ fun CinematicExerciseCard(
         label         = "card_scale"
     )
 
+    // Slow ambient pulse: enough separation from the dark background without
+    // competing with the card's existing press/expand animations.
+    val ambientGlowTransition = rememberInfiniteTransition(label = "exercise_card_glow_$index")
+    val ambientGlowStrength by ambientGlowTransition.animateFloat(
+        initialValue = 0.16f,
+        targetValue = 0.30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 3400 + ((index % 3) * 350),
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "exercise_card_glow_strength_$index"
+    )
+
     val glowAlpha by animateFloatAsState(
         targetValue   = if (isCompleted) 0.25f else 0f,
         animationSpec = tween(600),
@@ -181,10 +197,11 @@ fun CinematicExerciseCard(
     ) {
         ForgeCard(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp)),
-            glowColor = if (isCompleted) accent else Color.Transparent,
-            elevation = if (isCompleted) 10.dp else 6.dp
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            glowColor = accent,
+            elevation = if (isCompleted) 10.dp else 8.dp,
+            glowStrength = if (isCompleted) 0.85f else ambientGlowStrength
         ) {
             // animateContentSize gives the same bouncy height expansion as before,
             // but is measured via placement — no explicit height state, no layout-per-frame jank
@@ -268,6 +285,10 @@ fun CinematicExerciseCard(
                             verticalAlignment = Alignment.Bottom
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
+                                val categoryLabel = theme.fitnessTermDisplayName(exercise.category)
+                                val targetLabel = theme.fitnessTermDisplayName(exercise.target)
+                                val showTarget = targetLabel.isNotBlank() &&
+                                    !targetLabel.trim().equals(categoryLabel.trim(), ignoreCase = true)
                                 val catColor = when (exercise.category) {
                                     "Bodyweight" -> CardCyan
                                     "Cable"      -> CardPurple
@@ -280,7 +301,7 @@ fun CinematicExerciseCard(
                                         .padding(horizontal = 7.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = theme.fitnessTermDisplayName(exercise.category).uppercase(),
+                                        text = categoryLabel.uppercase(),
                                         color = catColor,
                                         fontSize = if (responsive.isLargeFont) 7.sp else 8.sp,
                                         fontWeight = FontWeight.ExtraBold,
@@ -310,14 +331,16 @@ fun CinematicExerciseCard(
                                         )
                                     }
                                 }
-                                Text(
-                                    text = theme.fitnessTermDisplayName(exercise.target),
-                                    color = Mist,
-                                    fontSize = if (responsive.isLargeFont) 10.sp else 12.sp,
-                                    lineHeight = 15.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                if (showTarget) {
+                                    Text(
+                                        text = targetLabel,
+                                        color = Mist,
+                                        fontSize = if (responsive.isLargeFont) 10.sp else 12.sp,
+                                        lineHeight = 15.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                             val doneCount = doneSetIndices.size
                             StatBadge(

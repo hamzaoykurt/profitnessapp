@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +71,7 @@ fun ExerciseDetailSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
         ) {
             // Header
@@ -90,14 +93,14 @@ fun ExerciseDetailSheet(
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
-                        exercise.name.uppercase(),
+                        theme.exerciseDisplayName(exercise.name).uppercase(),
                         color = accent,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        exercise.target,
+                        theme.fitnessTermDisplayName(exercise.target),
                         color = theme.text2,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
@@ -106,6 +109,33 @@ fun ExerciseDetailSheet(
             }
 
             Spacer(Modifier.height(20.dp))
+
+            if (exercise.notes.isNotBlank()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accent.copy(alpha = 0.08f))
+                        .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = theme.t("PROGRAM NOTU", "PLAN NOTE"),
+                        color = accent,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.3.sp
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        text = exercise.notes,
+                        color = theme.text1,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
 
             // Stats row
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

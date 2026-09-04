@@ -638,11 +638,21 @@ private fun WorkoutContent(
         }
     }
 
-    LaunchedEffect(expandedExIdx, hasTodayBanner) {
+    val itemsBeforeExercises = remember(
+        hasUpcomingSection,
+        hasTodayBanner,
+        currentDay.notes,
+        skipProgramToday
+    ) {
+        3 + // streak + dashboard header + day selector
+            (if (hasUpcomingSection) 1 else 0) +
+            (if (hasTodayBanner) 1 else 0) +
+            (if (currentDay.notes.isNotBlank() && !skipProgramToday) 1 else 0)
+    }
+
+    LaunchedEffect(expandedExIdx, itemsBeforeExercises) {
         if (expandedExIdx >= 0) {
-            // Header items: StreakBanner(0), [EventBanner(1)?], Header, DaySelector, SectionLabel
-            val bannerOffset = if (hasTodayBanner) 1 else 0
-            val lazyIdx = 4 + bannerOffset + expandedExIdx
+            val lazyIdx = itemsBeforeExercises + expandedExIdx
             kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
             val viewportHeight = listState.layoutInfo.viewportSize.height
             listState.animateScrollToItem(lazyIdx, scrollOffset = -(viewportHeight / 5))
@@ -729,47 +739,6 @@ private fun WorkoutContent(
             )
         }
 
-        // ── Section Label ─────────────────────────────────────────────────
-        if (visibleExercises.isNotEmpty() && !skipProgramToday) {
-            item(key = "section_label", contentType = "section_label") {
-                val responsive = rememberResponsiveLayoutInfo()
-                val completedCount = currentState.completedIds.count { id -> visibleExercises.any { it.id == id } }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = responsive.horizontalPadding,
-                            vertical = 12.dp
-                        ),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = strings.todayProgram,
-                        color = TextSecondary,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.6.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "$completedCount/${visibleExercises.size}",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(0.12f))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
-                }
-            }
-        }
-
         if (currentDay.notes.isNotBlank() && !skipProgramToday) {
             item(key = "day_notes", contentType = "day_notes") {
                 Text(
@@ -830,15 +799,6 @@ private fun WorkoutContent(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                         )
                     }
-                }
-                if (exercise.notes.isNotBlank()) {
-                    Text(
-                        exercise.notes,
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                    )
                 }
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
@@ -1278,27 +1238,15 @@ fun CircularProgressRing(
             }
         }
 
-        val strings = LocalAppTheme.current.strings
         val responsive = rememberResponsiveLayoutInfo()
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Text(
+            text = label,
+            color = if (progress > 0) resolvedRingColor else TextSecondary,
+            fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
             modifier = Modifier.padding(horizontal = 10.dp)
-        ) {
-            Text(
-                text = label,
-                color = if (progress > 0) resolvedRingColor else TextSecondary,
-                fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
-            Text(
-                text = strings.unitDone,
-                color = TextMuted,
-                fontSize = if (responsive.isLargeFont) 7.sp else 8.sp,
-                letterSpacing = 0.4.sp,
-                maxLines = 1
-            )
-        }
+        )
     }
 }
 

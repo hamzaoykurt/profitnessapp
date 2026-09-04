@@ -37,13 +37,18 @@ fun ForgeCard(
     shape: Shape = RoundedCornerShape(20.dp),
     glowColor: Color = Color.Transparent,
     elevation: Dp = 16.dp,
+    glowStrength: Float = 1f,
     content: @Composable () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accentColor = if (glowColor != Color.Transparent) glowColor else MaterialTheme.colorScheme.primary
-    val shadowSpot = if (glowColor != Color.Transparent) accentColor.copy(0.35f)
+    val hasGlow = glowColor != Color.Transparent && glowStrength > 0f
+    val resolvedGlowStrength = glowStrength.coerceIn(0f, 1f)
+    val accentColor = if (hasGlow) glowColor else MaterialTheme.colorScheme.primary
+    val shadowSpot = if (hasGlow) accentColor.copy(alpha = 0.28f * resolvedGlowStrength)
                      else if (theme.isDark) Color.Black.copy(0.8f) else accentColor.copy(0.20f)
     val shadowAmbient = if (theme.isDark) Color.Black.copy(0.4f) else Color.Black.copy(0.10f)
+    val rimAlpha = if (hasGlow) 0.20f + (0.18f * resolvedGlowStrength) else 0.35f
+    val washAlpha = if (hasGlow) 0.02f + (0.04f * resolvedGlowStrength) else 0.04f
 
     Box(
         modifier = modifier
@@ -62,7 +67,7 @@ fun ForgeCard(
                         brush = Brush.horizontalGradient(
                             listOf(
                                 Color.Transparent,
-                                accentColor.copy(0.35f),
+                                accentColor.copy(rimAlpha),
                                 Color.Transparent
                             )
                         ),
@@ -71,7 +76,7 @@ fun ForgeCard(
                     // Corner accent wash (very subtle)
                     drawCircle(
                         brush = Brush.radialGradient(
-                            listOf(accentColor.copy(0.04f), Color.Transparent),
+                            listOf(accentColor.copy(washAlpha), Color.Transparent),
                             center = Offset(size.width, 0f),
                             radius = size.width * 0.6f
                         )
@@ -89,14 +94,26 @@ fun ForgeCardPro(
     shape: Shape = RoundedCornerShape(24.dp),
     accentColor: Color = Lime,
     content: @Composable () -> Unit
-) = ForgeCard(modifier, shape, accentColor, 20.dp, content)
+) = ForgeCard(
+    modifier = modifier,
+    shape = shape,
+    glowColor = accentColor,
+    elevation = 20.dp,
+    content = content
+)
 
 @Composable
 fun ForgeCardSmall(
     modifier: Modifier = Modifier,
     glowColor: Color = Color.Transparent,
     content: @Composable () -> Unit
-) = ForgeCard(modifier, RoundedCornerShape(16.dp), glowColor, 10.dp, content)
+) = ForgeCard(
+    modifier = modifier,
+    shape = RoundedCornerShape(16.dp),
+    glowColor = glowColor,
+    elevation = 10.dp,
+    content = content
+)
 
 /**
  * glassCard — Frosted-glass Modifier extension.
