@@ -487,37 +487,29 @@ fun AppBackground(modifier: Modifier = Modifier) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
-    // Light mode: a restrained bloom preserves the clean neutral canvas.
-    val radialPeak = if (theme.isDark) 0.10f else 0.018f
-    val radialMid  = if (theme.isDark) 0.045f else 0.008f
-    val radialEdge = if (theme.isDark) 0.012f else 0.002f
-    val sweepPeak  = if (theme.isDark) 0.032f else 0.006f
-    val sweepMid   = if (theme.isDark) 0.008f else 0.002f
-
     Box(modifier = modifier.drawWithCache {
         val radial = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f  to accent.copy(alpha = radialPeak),
-                0.30f to accent.copy(alpha = radialMid),
-                0.60f to accent.copy(alpha = radialEdge),
+                0.0f  to accent.copy(alpha = if (theme.isDark) 0.09f else 0.025f),
+                0.34f to accent.copy(alpha = if (theme.isDark) 0.035f else 0.008f),
                 1.0f  to Color.Transparent
             ),
             center = Offset(size.width, 0f),
-            radius = size.width * 2.2f
+            radius = size.width * 1.5f
         )
-        val sweep = Brush.linearGradient(
+        val mineral = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f to accent.copy(alpha = sweepPeak),
-                0.5f to accent.copy(alpha = sweepMid),
+                0.0f to if (theme.isDark) Color(0xFF756787).copy(0.05f) else Color(0xFFBEADCD).copy(0.16f),
+                0.46f to if (theme.isDark) Color(0xFF756787).copy(0.012f) else Color(0xFFEADFF1).copy(0.05f),
                 1.0f to Color.Transparent
             ),
-            start = Offset(size.width, 0f),
-            end   = Offset(size.width * 0.3f, size.height)
+            center = Offset(0f, size.height * 0.15f),
+            radius = size.width * 1.2f
         )
         onDrawBehind {
             drawRect(theme.bg0)
+            drawRect(mineral)
             drawRect(radial)
-            drawRect(sweep)
         }
     })
 }

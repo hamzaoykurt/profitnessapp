@@ -61,6 +61,7 @@ import com.cosmibit.profitness.presentation.components.AppToastType
 import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.activityTrackingSpec
 import com.cosmibit.profitness.presentation.workout.defaultDurationSecondsForExercise
@@ -666,7 +667,6 @@ fun ProgramBuilderScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        ArchitectGrid()
         PageAccentBloom()
 
         Crossfade(
@@ -1006,7 +1006,7 @@ private fun QuickCreateButton(
     prominent: Boolean,
     onClick: () -> Unit
 ) {
-    val buttonModifier = modifier.height(62.dp)
+    val buttonModifier = modifier.height(72.dp)
     if (prominent) {
         PremiumButton(
             text = label,
@@ -1140,15 +1140,14 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 14.dp, top = 13.dp, bottom = 13.dp),
+                .padding(start = 16.dp, end = 14.dp, top = 15.dp, bottom = 15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon circle
+            // Nested icon tile: a second material layer, not another colored button.
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(alpha = 0.12f)),
+                    .size(44.dp)
+                    .insetControlSurface(accent, theme, RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -1162,15 +1161,6 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Category + Level badges row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    ProgramBadge(program.category.localizedLabel(), accent)
-                    LevelBadge(program.level, program.localizedLevel(theme))
-                }
-                Spacer(Modifier.height(6.dp))
                 Text(
                     program.localizedTitle(theme),
                     color = theme.text0,
@@ -1188,12 +1178,25 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 val cardS = LocalAppTheme.current.strings
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    StatChip(Icons.Rounded.CalendarMonth, "${program.days} ${cardS.dayLabel}")
-                    StatChip(Icons.Rounded.Schedule, "${program.weeks} ${cardS.weekLabel}")
-                    StatChip(Icons.Rounded.TrackChanges, program.localizedGoal(theme))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${program.days} ${cardS.dayLabel}  •  ${program.weeks} ${cardS.weekLabel}",
+                        color = theme.text2,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Box(Modifier.size(3.dp).clip(CircleShape).background(accent.copy(0.55f)))
+                    Text(
+                        program.localizedLevel(theme),
+                        color = accent.copy(0.76f),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 

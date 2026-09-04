@@ -20,41 +20,31 @@ import androidx.compose.ui.graphics.Color
 fun PageAccentBloom(modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
-    // Light modda bloom çok daha subtle; vurgu rengi yalnızca derinlik verir.
-    val radialPeak  = if (theme.isDark) 0.055f else 0.012f
-    val radialMid   = if (theme.isDark) 0.022f else 0.005f
-    val radialEdge  = if (theme.isDark) 0.006f else 0.001f
-    val sweepPeak   = if (theme.isDark) 0.015f else 0.003f
-    val sweepMid    = if (theme.isDark) 0.003f else 0.001f
-
     Spacer(
         modifier = modifier
             .fillMaxSize()
             .drawWithCache {
-                // Sağ üst köşeden yayılan radyal bloom — büyük yarıçap
-                val radial = Brush.radialGradient(
+                val accentAtmosphere = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f  to accent.copy(alpha = radialPeak),
-                        0.30f to accent.copy(alpha = radialMid),
-                        0.60f to accent.copy(alpha = radialEdge),
+                        0.0f  to accent.copy(alpha = if (theme.isDark) 0.085f else 0.028f),
+                        0.34f to accent.copy(alpha = if (theme.isDark) 0.030f else 0.010f),
                         1.0f  to Color.Transparent
                     ),
                     center = Offset(size.width, 0f),
-                    radius = size.width * 2.2f
+                    radius = size.width * 1.45f
                 )
-                // Diyagonal sweep — sağ üstten sol alta rengi uzatır
-                val sweep = Brush.linearGradient(
+                val mineralAtmosphere = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f to accent.copy(alpha = sweepPeak),
-                        0.5f to accent.copy(alpha = sweepMid),
-                        1.0f to Color.Transparent
+                        0.0f to if (theme.isDark) Color(0xFF746688).copy(0.045f) else Color(0xFFB8A8CA).copy(0.16f),
+                        0.48f to if (theme.isDark) Color(0xFF746688).copy(0.012f) else Color(0xFFE8DDF0).copy(0.055f),
+                        1.0f to Color.Transparent,
                     ),
-                    start = Offset(size.width, 0f),
-                    end   = Offset(size.width * 0.3f, size.height)
+                    center = Offset(0f, size.height * 0.16f),
+                    radius = size.width * 1.15f
                 )
                 onDrawBehind {
-                    drawRect(radial)
-                    drawRect(sweep)
+                    drawRect(mineralAtmosphere)
+                    drawRect(accentAtmosphere)
                 }
             }
     )

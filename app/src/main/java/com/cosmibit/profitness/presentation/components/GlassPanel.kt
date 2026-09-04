@@ -48,7 +48,7 @@ fun ForgeCard(
                          alpha = (if (theme.isDark) 0.34f else 0.10f) * resolvedGlowStrength
                      )
                      else if (theme.isDark) Color.Black.copy(0.76f) else accentColor.copy(0.14f)
-    val shadowAmbient = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF526176).copy(0.13f)
+    val shadowAmbient = if (theme.isDark) Color.Black.copy(0.62f) else Color(0xFF574D68).copy(0.16f)
     val rimAlpha = if (hasGlow) {
         (if (theme.isDark) 0.24f else 0.10f) + (0.20f * resolvedGlowStrength)
     } else 0.28f
@@ -69,6 +69,12 @@ fun ForgeCard(
                 } else Modifier
             )
             .shadow(
+                elevation = elevation + 8.dp,
+                shape = shape,
+                spotColor = if (theme.isDark) Color.Black.copy(0.72f) else Color(0xFF6B5F79).copy(0.10f),
+                ambientColor = Color.Transparent
+            )
+            .shadow(
                 elevation = elevation,
                 shape = shape,
                 spotColor = shadowSpot,
@@ -78,9 +84,9 @@ fun ForgeCard(
             .drawWithCache {
                 val surface = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to if (theme.isDark) theme.bg3.copy(0.92f) else Color.White,
-                        0.42f to theme.bg2,
-                        1.00f to if (theme.isDark) theme.bg1.copy(0.98f) else theme.bg2.copy(0.96f)
+                        0.00f to if (theme.isDark) Color(0xFF25262E) else Color(0xFFFFFFFF),
+                        0.44f to if (theme.isDark) Color(0xFF17181E) else Color(0xFFFFFDFF),
+                        1.00f to if (theme.isDark) Color(0xFF0D0E12) else Color(0xFFF3F0F6)
                     )
                 )
                 val innerDepth = Brush.verticalGradient(
@@ -138,6 +144,13 @@ fun ForgeCard(
                         ),
                         size = Size(size.width, 1.25.dp.toPx())
                     )
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(if (theme.isDark) 0.34f else 0.07f))
+                        ),
+                        topLeft = Offset(0f, size.height * 0.82f),
+                        size = Size(size.width, size.height * 0.18f)
+                    )
                     drawRoundRect(
                         brush = border,
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(
@@ -193,26 +206,43 @@ fun Modifier.premiumSolidSurface(
     val borderBrush = remember(accent, theme.isDark, theme.stroke) {
         Brush.linearGradient(
             listOf(
-                Color.White.copy(alpha = if (theme.isDark) 0.13f else 0.92f),
-                theme.stroke.copy(alpha = if (theme.isDark) 0.72f else 0.86f),
-                accent.copy(alpha = if (theme.isDark) 0.12f else 0.08f)
+                Color.White.copy(alpha = if (theme.isDark) 0.19f else 0.98f),
+                theme.stroke.copy(alpha = if (theme.isDark) 0.78f else 0.72f),
+                accent.copy(alpha = if (theme.isDark) 0.11f else 0.045f)
             )
         )
     }
 
     Modifier
         .shadow(
+            elevation = elevation + 8.dp,
+            shape = shape,
+            spotColor = if (theme.isDark) Color.Black.copy(0.72f)
+                        else Color(0xFF675A76).copy(0.10f),
+            ambientColor = Color.Transparent
+        )
+        .shadow(
             elevation = elevation,
             shape = shape,
             spotColor = if (theme.isDark) Color.Black.copy(0.72f)
-                        else Color(0xFF445064).copy(0.12f),
+                        else Color(0xFF665A73).copy(0.13f),
             ambientColor = if (theme.isDark) Color.Black.copy(0.42f)
-                           else Color(0xFF445064).copy(0.07f)
+                           else Color(0xFF8B7B98).copy(0.07f)
         )
         .clip(shape)
         .drawWithCache {
-            val base = if (theme.isDark) theme.bg2.copy(alpha = 0.98f) else theme.bg2
-            val shimmerAlphaTop = if (theme.isDark) 0.065f else 0.62f
+            val base = Brush.verticalGradient(
+                colorStops = if (theme.isDark) arrayOf(
+                    0.00f to Color(0xFF24252D),
+                    0.36f to Color(0xFF1A1B21),
+                    1.00f to Color(0xFF111216)
+                ) else arrayOf(
+                    0.00f to Color(0xFFFFFFFF),
+                    0.55f to Color(0xFFFFFDFF),
+                    1.00f to Color(0xFFF4F1F7)
+                )
+            )
+            val shimmerAlphaTop = if (theme.isDark) 0.105f else 0.78f
             val shimmerAlphaMid = if (theme.isDark) 0.012f else 0.10f
             val shimmer = Brush.verticalGradient(
                 colorStops = arrayOf(
@@ -276,6 +306,12 @@ fun Modifier.floatingGlassSurface(
 ): Modifier = composed {
     Modifier
         .shadow(
+            elevation = elevation + 10.dp,
+            shape = shape,
+            spotColor = Color.Black.copy(if (theme.isDark) 0.74f else 0.10f),
+            ambientColor = Color.Transparent
+        )
+        .shadow(
             elevation = elevation,
             shape = shape,
             spotColor = accent.copy(alpha = if (theme.isDark) 0.24f else 0.08f),
@@ -286,13 +322,13 @@ fun Modifier.floatingGlassSurface(
         .drawWithCache {
             val base = Brush.verticalGradient(
                 listOf(
-                    theme.bg2.copy(alpha = if (theme.isDark) 0.86f else 0.94f),
-                    theme.bg1.copy(alpha = if (theme.isDark) 0.76f else 0.88f)
+                    if (theme.isDark) Color(0xFF292A32).copy(0.90f) else Color.White.copy(0.88f),
+                    if (theme.isDark) Color(0xFF111217).copy(0.88f) else Color(0xFFF5F1F8).copy(0.80f)
                 )
             )
             val glint = Brush.linearGradient(
                 listOf(
-                    Color.White.copy(alpha = if (theme.isDark) 0.12f else 0.72f),
+                    Color.White.copy(alpha = if (theme.isDark) 0.18f else 0.92f),
                     Color.Transparent,
                     accent.copy(alpha = if (theme.isDark) 0.08f else 0.025f)
                 )

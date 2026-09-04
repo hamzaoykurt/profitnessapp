@@ -54,7 +54,7 @@ class ThemeRepository @Inject constructor(
             AppThemeState(
                 isDark               = isDark,
                 accent               = accent,
-                surfaceStyle         = SurfaceStyle.OLED,
+                surfaceStyle         = SurfaceStyle.GRAPHITE,
                 intensity            = intensity,
                 language             = language,
                 notificationsEnabled = notifications,
@@ -66,7 +66,7 @@ class ThemeRepository @Inject constructor(
         context.themeDataStore.edit { prefs ->
             prefs[Keys.IS_DARK]       = state.isDark
             prefs[Keys.ACCENT_ORD]    = state.accent.ordinal
-            prefs[Keys.SURFACE_ORD]   = SurfaceStyle.OLED.ordinal
+            prefs[Keys.SURFACE_ORD]   = SurfaceStyle.GRAPHITE.ordinal
             prefs[Keys.INTENSITY_ORD] = state.intensity.ordinal
             prefs[Keys.LANGUAGE_ORD]  = state.language.ordinal
             prefs[Keys.NOTIFICATIONS] = state.notificationsEnabled

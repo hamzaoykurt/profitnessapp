@@ -200,6 +200,22 @@ fun CinematicExerciseCard(
                 translationY = if (isPressed) 2.dp.toPx() else 0f
             }
     ) {
+        // A separate lower shell gives the media card a real physical edge.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(y = 6.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    if (theme.isDark) Color(0xFF050609)
+                    else Color(0xFFD8D2DE)
+                )
+                .border(
+                    1.dp,
+                    if (theme.isDark) accent.copy(0.16f) else Color.White.copy(0.72f),
+                    RoundedCornerShape(24.dp)
+                )
+        )
         ForgeCard(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -268,9 +284,10 @@ fun CinematicExerciseCard(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(10.dp)
-                                .size(34.dp)
+                                .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(0.45f))
+                                .background(Color.Black.copy(0.58f))
+                                .border(1.dp, Color.White.copy(0.24f), CircleShape)
                                 .clickable { onShowDetail() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -1240,19 +1257,20 @@ private fun RestTimerChip(
 @Composable
 fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSet: Boolean = false) {
     val responsive = rememberResponsiveLayoutInfo()
+    val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .background(Color.White.copy(0.1f), RoundedCornerShape(12.dp))
-            .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(0.44f), RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(0.20f), RoundedCornerShape(12.dp))
             .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isActivity) {
-                Icon(Icons.Rounded.Timer, null, tint = Amber, modifier = Modifier.size(13.dp))
+                Icon(Icons.Rounded.Timer, null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
             } else {
-                Text(text = "${sets}x", color = Amber, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
+                Text(text = "${sets}x", color = accent, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
                 Spacer(Modifier.width(3.dp))
                 val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
                 Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)

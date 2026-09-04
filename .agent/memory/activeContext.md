@@ -4,11 +4,22 @@ _Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
-Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. Koyu ve açık tema birbirinden bağımsız tasarlandı; glass yalnızca yüzen chrome'da, solid yükseltilmiş yüzeyler içerikte, inset yüzeyler girişlerde kullanılıyor.
+Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. İkinci kalite geçişinde gerçek iki katmanlı 3D kontroller, çift gölgeli porselen/grafit kartlar ve atmosferik açık tema devreye alındı; glass yalnızca yüzen chrome'da kullanılıyor.
 
 ---
 
 ## Son Tamamlanan Değişiklikler
+
+### Katmanlı Premium Malzeme Geçişi (2026-09-04)
+
+- `PremiumButton` ve `GhostButton` tek parça gradient olmaktan çıkarıldı: ayrı alt kaide, hareket eden ön yüz, üst highlight ve fiziksel basma mesafesi kullanılıyor.
+- Açık tema sıcak olmayan porselen + soft-lila mineral atmosfere taşındı; kartlarda geniş ambient gölge, beyaz iç rim ve hafif mor derinlik var.
+- Karanlık temanın varsayılanı Graphite oldu. OLED seçeneğinde dahi içerik katmanları tamamen siyaha gömülmüyor; kartlar üstten aydınlanan grafit tonlarla ayrılıyor.
+- `premiumSolidSurface`, `ForgeCard` ve `floatingGlassSurface` çift gölge, üst ışık, alt yoğunluk ve daha belirgin yüzey hiyerarşisi aldı.
+- Program Studio'nun dekoratif grid'i kaldırıldı. AI aksiyonu tek primary, Manuel nötr tutuldu; buton ikonları iç plakalara alındı.
+- Hazır program kartlarındaki rozet/stat kalabalığı tek kompakt meta satırına indirildi; ikon kutuları inset yüzey oldu.
+- `CinematicExerciseCard` için ayrı alt gövde/kaide, güçlendirilmiş medya kabuğu, kontrollü accent glow ve tek-accent stat plakası eklendi; mevcut kart animasyonları ve veri sözleşmesi korundu.
+- Açık ve koyu Program Studio ile auth/profile emülatör QA'sı yapıldı; `:app:assembleDebug` başarılı.
 
 ### Uygulama Geneli Premium Tasarım Sistemi (2026-09-04)
 
@@ -79,7 +90,8 @@ Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. Koyu ve
 - **Extension mapper zorunlu:** `fun Dto.toDomain()` — ayrı mapper class yasak.
 - **Supabase IO dispatcher:** Tüm Supabase çağrıları `withContext(Dispatchers.IO)` + `runCatching`.
 - **BaseViewModel<S,E>:** Navigation/toast için `sendEvent()`, state'e flag ekleme.
-- **Dual-mode tema (2026-09-04):** Koyu Neon Forge korunur; açık tema eski sıcak paleti kullanmaz. Mineral Light açık paleti (`#F1F3F6`, beyaz yüzeyler, slate metin/gölge) ve tema tokenları zorunludur.
+- **Dual-mode tema (2026-09-04):** Koyu tema Graphite katman hiyerarşisini kullanır; açık tema porselen yüzey + soft-lila mineral atmosferdir. İki tema mekanik olarak terslenmez.
+- **Fiziksel kontrol derinliği (2026-09-04):** Önemli CTA'larda yalnız shadow/scale yetmez; ayrı alt kaide ve basıldığında kaideye yaklaşan ön yüz kullanılmalıdır.
 - **Malzeme rolleri (2026-09-04):** İçerik kartı solid/elevated, yüzen chrome kontrollü glass, girişler inset olmalıdır. Sayfa geneline yoğun neon/glass yayılmaz.
 - **Aksiyon rengi (2026-09-04):** Primary marka accent'ini, secondary nötr yüzeyi kullanır. Komşu CTA'lara kategori bazlı ayrı renk verilmez; kırmızı/amber/yeşil yalnız gerçek semantik anlam taşır.
 - **CinematicExerciseCard:** Veri ve etkileşim sözleşmesini koru; kullanıcı yönlendirmesiyle görsel malzeme, glow ve press derinliği geliştirilebilir.

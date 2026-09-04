@@ -21,6 +21,10 @@ _Son güncelleme: 2026-09-04_
 - [x] Workout metin yoğunluğu azaltıldı; ayrıntılar bilgi panelinde korundu
 - [x] Sayfa geneli neon bloom azaltıldı; kart kenarı ve eylem vurguları kontrollü hale getirildi
 - [x] Auth, dashboard, program, AI, discover, store ve profile dark/light emülatör QA'sı tamamlandı
+- [x] Primary/secondary CTA'lar ayrı kaide + hareketli ön yüz kullanan gerçek 3D kontrollere geçirildi
+- [x] Açık tema porselen/soft-lila atmosfere, koyu tema varsayılan Graphite katman sistemine geçirildi
+- [x] Program Studio grid'i ve kart rozet kalabalığı kaldırıldı; ikonlar inset plakalara taşındı
+- [x] Ana sayfa egzersiz kartlarına ayrı alt kabuk, çift gölge ve tek-accent medya chrome'u eklendi
 
 ### CosmiBit Marka Kimliği
 

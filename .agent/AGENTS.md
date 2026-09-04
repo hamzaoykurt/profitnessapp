@@ -38,12 +38,12 @@ The project follows MVVM + Clean Architecture:
 
 The app supports **dark and light modes**. Light mode uses a purpose-built cool-neutral palette; it is not a mechanical inversion of dark colors.
 
-### Dark Mode — Neon Forge
-- Background: `#0A0A0F` → `#21212A` near-black surface hierarchy
+### Dark Mode — Graphite Forge
+- Background: `#0C0D11` → `#25262E` distinct graphite surface hierarchy; OLED remains an optional darker variant
 - Accents: Neon (LIME `#CBFF4D`, PURPLE `#A855F7`, CYAN `#00E5D3`, etc.)
 
-### Light Mode — Mineral Light
-- Background: `#F1F3F6` with white elevated surfaces and cool slate depth
+### Light Mode — Porcelain Mineral
+- Background: `#F2F0F5` with porcelain elevated surfaces, soft lilac atmosphere and cool mineral depth
 - Accents: darker readable variants from `AccentPreset.lightColor`
 - Shadows, borders, and bloom use lower opacity than dark mode
 
@@ -51,7 +51,7 @@ The app supports **dark and light modes**. Light mode uses a purpose-built cool-
 - `premiumSolidSurface`: normal content cards; solid, layered, elevated
 - `floatingGlassSurface`: navigation, media chrome, and transient overlays only
 - `insetControlSurface`: recessed search and form controls
-- `PremiumButton` / `PremiumIconButton`: tactile primary controls with press depth and bevel
+- `PremiumButton` / `GhostButton`: tactile controls with a separate lower ledge and a moving front face; important CTA depth must not rely on shadow alone
 - One view uses one interaction accent: only the preferred primary action receives an accent surface; secondary actions stay neutral
 - Extra colors are reserved for semantic meaning such as destructive, warning, success, rank, or distinct chart series
 
