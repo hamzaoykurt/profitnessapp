@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,8 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,7 +59,16 @@ fun AICoachOnboardingScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+        if (theme.isDark) {
+            PageAccentBloom()
+        } else {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .background(Brush.verticalGradient(listOf(theme.bg1, Color.Transparent)))
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -143,15 +156,41 @@ fun AICoachOnboardingScreen(
             }
 
             // ── Next / Finish button ───────────────────────────────────────────
+            val actionInteraction = remember { MutableInteractionSource() }
+            val actionPressed by actionInteraction.collectIsPressedAsState()
+            val actionScale by animateFloatAsState(
+                if (actionPressed) 0.965f else 1f,
+                spring(stiffness = Spring.StiffnessHigh),
+                label = "oracle_setup_cta_scale"
+            )
+            val actionElevation by animateDpAsState(
+                if (actionPressed) 1.dp else if (theme.isDark) 12.dp else 8.dp,
+                spring(stiffness = Spring.StiffnessHigh),
+                label = "oracle_setup_cta_depth"
+            )
+            val actionShape = RoundedCornerShape(16.dp)
             Box(
                 modifier = Modifier
                     .padding(horizontal = responsive.horizontalPadding)
                     .padding(bottom = bottomPadding + 16.dp)
                     .fillMaxWidth()
                     .heightIn(min = responsive.controlMinHeight)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.75f))))
-                    .clickable {
+                    .graphicsLayer {
+                        scaleX = actionScale
+                        scaleY = actionScale
+                        translationY = if (actionPressed) 2.dp.toPx() else 0f
+                    }
+                    .shadow(
+                        elevation = actionElevation,
+                        shape = actionShape,
+                        clip = false,
+                        ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.13f),
+                        spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f)
+                    )
+                    .clip(actionShape)
+                    .background(Brush.verticalGradient(listOf(accent.copy(0.92f), accent, accent.copy(0.78f))))
+                    .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), actionShape)
+                    .clickable(interactionSource = actionInteraction, indication = null) {
                         if (step < TOTAL_STEPS - 1) {
                             step++
                         } else {
@@ -171,7 +210,7 @@ fun AICoachOnboardingScreen(
             ) {
                 Text(
                     text      = if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("Oracle'ı Başlat", "Start Oracle"),
-                    color     = Color.White,
+                    color     = theme.effectiveOnAccentColor,
                     style     = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp,
@@ -341,15 +380,23 @@ private fun CenteredOptionCard(
 ) {
     val responsive = rememberResponsiveLayoutInfo()
     val borderColor = if (selected) accent.copy(0.65f) else theme.stroke.copy(0.2f)
-    val bgBrush = if (selected)
-        Brush.horizontalGradient(listOf(accent.copy(0.14f), accent.copy(0.04f)))
-    else
-        Brush.horizontalGradient(listOf(theme.bg1.copy(0.9f), theme.bg1.copy(0.9f)))
+    val bgBrush = when {
+        selected && theme.isDark -> Brush.horizontalGradient(listOf(accent.copy(0.14f), theme.bg1))
+        selected -> Brush.horizontalGradient(listOf(theme.bg1, accent.copy(0.055f)))
+        else -> Brush.horizontalGradient(listOf(theme.bg1, theme.bg1))
+    }
 
     Row(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
+            .shadow(
+                elevation = if (selected) 7.dp else if (theme.isDark) 2.dp else 4.dp,
+                shape = RoundedCornerShape(14.dp),
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.09f),
+                spotColor = if (selected && theme.isDark) accent.copy(0.18f) else Color(0xFF64748B).copy(0.09f)
+            )
             .clip(RoundedCornerShape(14.dp))
             .background(bgBrush)
             .border(1.dp, borderColor, RoundedCornerShape(14.dp))
@@ -388,8 +435,15 @@ private fun PermissionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
+            .shadow(
+                elevation = if (theme.isDark) 2.dp else 4.dp,
+                shape = RoundedCornerShape(14.dp),
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.09f),
+                spotColor = Color(0xFF64748B).copy(0.08f)
+            )
             .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.9f))
+            .background(theme.bg1)
             .border(1.dp, theme.stroke.copy(0.2f), RoundedCornerShape(14.dp))
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),

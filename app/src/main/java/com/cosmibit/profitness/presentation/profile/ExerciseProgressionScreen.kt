@@ -45,7 +45,6 @@ import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
 import com.cosmibit.profitness.presentation.components.AppBackButton
-import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiAnalysisPrompts
 import com.cosmibit.profitness.data.ai.AiToolType
@@ -315,25 +314,7 @@ private fun ProgressionSummaryHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 22.dp,
-                shape = shape,
-                spotColor = accent.copy(if (theme.isDark) 0.30f else 0.14f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.46f else 0.10f)
-            )
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        accent.copy(if (theme.isDark) 0.22f else 0.14f),
-                        CardCyan.copy(if (theme.isDark) 0.08f else 0.05f),
-                        theme.bg1.copy(0.96f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(920f, 520f)
-                )
-            )
-            .border(1.dp, accent.copy(0.34f), shape)
+            .profilePremiumSurface(theme, shape, accent, if (theme.isDark) 22.dp else 10.dp)
             .padding(18.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -392,9 +373,12 @@ private fun SummaryPill(
     Row(
         modifier = modifier
             .height(42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg0.copy(0.46f))
-            .border(1.dp, color.copy(0.22f), RoundedCornerShape(14.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(14.dp),
+                color,
+                if (theme.isDark) 7.dp else 3.dp
+            )
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -413,13 +397,7 @@ private fun EmptyProgressionState(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(0.12f), theme.bg1.copy(0.96f))
-                )
-            )
-            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(26.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(26.dp), accent)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -486,13 +464,12 @@ private fun ExerciseProgressionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (isExpanded) 26.dp else 18.dp,
+            .profilePremiumSurface(
+                theme = theme,
                 shape = cardShape,
-                spotColor = cardAccent.copy(if (isExpanded) 0.34f else 0.22f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.52f else 0.10f)
+                accent = cardAccent,
+                elevation = if (isExpanded) 24.dp else 15.dp
             )
-            .glassCard(cardAccent, theme, cardShape)
     ) {
         // ── Header row ────────────────────────────────────────────────────
         Row(
@@ -677,9 +654,12 @@ private fun StatsTile(
     val (label, value, valueColor) = data
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(10.dp),
+                valueColor,
+                if (theme.isDark) 7.dp else 3.dp
+            )
             .padding(10.dp)
     ) {
         Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -718,9 +698,12 @@ private fun LastSessionBreakdown(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(12.dp),
+                accent,
+                if (theme.isDark) 8.dp else 4.dp
+            )
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -822,9 +805,12 @@ private fun ProgressionChartSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(12.dp),
+                accent,
+                if (theme.isDark) 8.dp else 4.dp
+            )
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -914,9 +900,12 @@ private fun AiInsightCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(12.dp),
+                accent,
+                if (theme.isDark) 9.dp else 4.dp
+            )
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -953,9 +942,13 @@ private fun AiInsightCard(
                 Box(
                     modifier = Modifier
                         .size(26.dp)
-                        .clip(CircleShape)
-                        .background(theme.bg3)
-                        .clickable(enabled = !isLoading, onClick = onRefresh),
+                        .profilePremiumAction(
+                            theme = theme,
+                            accent = accent,
+                            onClick = onRefresh,
+                            shape = CircleShape,
+                            enabled = !isLoading
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(13.dp))

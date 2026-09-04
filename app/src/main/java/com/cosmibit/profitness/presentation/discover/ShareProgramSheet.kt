@@ -1,8 +1,13 @@
 package com.cosmibit.profitness.presentation.discover
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,8 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +56,6 @@ import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.domain.model.Program
-import com.cosmibit.profitness.presentation.components.glassCard
 
 /**
  * Paylaş sheet'i — iki adımlı:
@@ -98,11 +105,26 @@ fun ShareProgramSheet(
     val selectedAlreadyShared = selectedProgram
         ?.isAlreadyShared(alreadySharedProgramIds, alreadySharedProgramHashes) == true
     val canSubmit = selectedProgram != null && !selectedAlreadyShared && title.isNotBlank()
+    val confirmInteraction = remember { MutableInteractionSource() }
+    val confirmPressed by confirmInteraction.collectIsPressedAsState()
+    val confirmScale by animateFloatAsState(
+        targetValue = if (confirmPressed) 0.94f else 1f,
+        animationSpec = spring(stiffness = 780f, dampingRatio = 0.76f),
+        label = "share_confirm_scale"
+    )
+    val confirmElevation by animateDpAsState(
+        targetValue = if (confirmPressed) 1.dp else if (canSubmit) 9.dp else 0.dp,
+        label = "share_confirm_elevation"
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = sheetState,
-        containerColor   = theme.bg1
+        containerColor   = theme.bg1,
+        contentColor     = theme.text0,
+        scrimColor       = Color.Black.copy(if (theme.isDark) 0.62f else 0.28f),
+        shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        tonalElevation   = 0.dp
     ) {
         if (selectedProgram == null) {
             Column(
@@ -259,7 +281,8 @@ fun ShareProgramSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
-                            .glassCard(theme.text2, theme, RoundedCornerShape(14.dp))
+                            .background(if (theme.isDark) theme.bg2 else Color.White)
+                            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(14.dp))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
@@ -268,12 +291,38 @@ fun ShareProgramSheet(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .graphicsLayer {
+                                scaleX = confirmScale
+                                scaleY = confirmScale
+                                translationY = if (confirmPressed) 2.dp.toPx() else 0f
+                            }
+                            .shadow(
+                                elevation = confirmElevation,
+                                shape = RoundedCornerShape(14.dp),
+                                ambientColor = accent.copy(0.24f),
+                                spotColor = accent.copy(0.34f)
+                            )
                             .clip(RoundedCornerShape(14.dp))
                             .background(
-                                if (canSubmit) Brush.linearGradient(listOf(accent, accent.copy(0.75f)))
+                                if (canSubmit) Brush.verticalGradient(
+                                    listOf(
+                                        lerp(accent, Color.White, if (theme.isDark) 0.08f else 0.15f),
+                                        accent,
+                                        lerp(accent, Color.Black, if (theme.isDark) 0.20f else 0.12f)
+                                    )
+                                )
                                 else           Brush.linearGradient(listOf(theme.bg2.copy(0.4f), theme.bg2.copy(0.4f)))
                             )
-                            .clickable(enabled = canSubmit) {
+                            .border(
+                                1.dp,
+                                if (canSubmit) Color.White.copy(if (theme.isDark) 0.20f else 0.32f) else theme.stroke.copy(0.35f),
+                                RoundedCornerShape(14.dp)
+                            )
+                            .clickable(
+                                enabled = canSubmit,
+                                interactionSource = confirmInteraction,
+                                indication = null
+                            ) {
                                 val tagList = tagsText.split(',').map { it.trim() }.filter { it.isNotEmpty() }.take(8)
                                 onConfirm(
                                     selectedProgram.id,

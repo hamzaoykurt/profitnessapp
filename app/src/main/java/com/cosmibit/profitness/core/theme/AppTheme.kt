@@ -50,45 +50,47 @@ data class AppThemeState(
     val customAccentArgb    : Int?            = null
 )
 
-// Surface helpers — dark (3 styles) / cool-neutral light
+// Surface helpers — dark forged depth / independently composed porcelain light.
+// Light mode intentionally does not mirror the dark hierarchy: the canvas is
+// mineral grey while content cards rise to white.
 //
 // OLED stratejisi: bg0 ve bg1 saf siyah (#000000) — ekran ve kart yüzeyi AMOLED
 // pikselleri gerçekten kapatır. Derinlik, hafif yükseltilmiş bg2/bg3 + parlak
 // stroke ile sağlanır. Bu, "near-black gri" kartların oluşturduğu "kirli"
 // OLED hissini önler.
 val AppThemeState.bg0: Color get() = when {
-    !isDark                               -> Color(0xFFF5F7FA)
+    !isDark                               -> Color(0xFFF1F3F6)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF000000)
     surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF14141A)
     else                                  -> Color(0xFF0A0A0F)
 }
 val AppThemeState.bg1: Color get() = when {
-    !isDark                               -> Color(0xFFFFFFFF)
+    !isDark                               -> Color(0xFFF8F9FB)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF000000)
     surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF1C1C23)
     else                                  -> Color(0xFF111117)
 }
 val AppThemeState.bg2: Color get() = when {
-    !isDark                               -> Color(0xFFEDF1F6)
+    !isDark                               -> Color(0xFFFFFFFF)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF0A0A0F)
     surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF24242D)
     else                                  -> Color(0xFF18181F)
 }
 val AppThemeState.bg3: Color get() = when {
-    !isDark                               -> Color(0xFFE1E7EF)
+    !isDark                               -> Color(0xFFE8EBF0)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF131319)
     surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF2E2E38)
     else                                  -> Color(0xFF21212A)
 }
 val AppThemeState.stroke: Color get() = when {
-    !isDark                               -> Color(0xFFC9D2DE)
+    !isDark                               -> Color(0xFFD5DAE2)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF262632)   // parlak — saf siyahta görünür olsun
     surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF3A3A45)
     else                                  -> Color(0xFF2A2A35)
 }
-val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF8F8F8) else Color(0xFF11151C)
-val AppThemeState.text1: Color get() = if (isDark) Color(0xFF9A9AB0) else Color(0xFF4F5B6B)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFF5A5A72) else Color(0xFF7E8998)
+val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF8F8F8) else Color(0xFF151820)
+val AppThemeState.text1: Color get() = if (isDark) Color(0xFF9A9AB0) else Color(0xFF515967)
+val AppThemeState.text2: Color get() = if (isDark) Color(0xFF5A5A72) else Color(0xFF808896)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {

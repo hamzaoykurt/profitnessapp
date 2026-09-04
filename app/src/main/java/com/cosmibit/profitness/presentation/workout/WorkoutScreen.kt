@@ -56,6 +56,8 @@ import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.components.CinematicExerciseCard
 import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
 import com.cosmibit.profitness.presentation.components.glassCard
+import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.cosmibit.profitness.presentation.dashboard.ChallengeTodayBanner
 import com.cosmibit.profitness.presentation.dashboard.DashboardViewModel
@@ -539,30 +541,20 @@ private fun NoProgramView(
         Spacer(Modifier.height(36.dp))
 
         // AI ile Oluştur
-        Button(
+        PremiumButton(
+            text = theme.t("AI İLE OLUŞTUR", "CREATE WITH AI"),
             onClick = onAI,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = accent)
-        ) {
-            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(theme.t("AI İLE OLUŞTUR", "CREATE WITH AI"), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(Modifier.height(12.dp))
 
         // Manuel Oluştur
-        OutlinedButton(
+        GhostButton(
+            text = theme.t("MANUEL OLUŞTUR", "CREATE MANUALLY"),
             onClick = onManual,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, theme.stroke)
-        ) {
-            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(20.dp), tint = theme.text1)
-            Spacer(Modifier.width(10.dp))
-            Text(theme.t("MANUEL OLUŞTUR", "CREATE MANUALLY"), fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, color = theme.text1)
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -1052,7 +1044,7 @@ private fun StreakBanner(streak: Int) {
     val strings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
     val bgBrush = remember(accent) {
-        Brush.horizontalGradient(listOf(accent.copy(0.18f), Amber.copy(0.12f)))
+        Brush.horizontalGradient(listOf(accent.copy(0.13f), Amber.copy(0.06f)))
     }
 
     Row(
@@ -1063,9 +1055,22 @@ private fun StreakBanner(streak: Int) {
                 end = responsive.horizontalPadding,
                 bottom = 4.dp
             )
+            .shadow(
+                elevation = if (theme.isDark) 8.dp else 6.dp,
+                shape = RoundedCornerShape(999.dp),
+                spotColor = Color.Black.copy(if (theme.isDark) 0.52f else 0.10f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
+            )
             .clip(RoundedCornerShape(999.dp))
+            .background(if (theme.isDark) theme.bg2 else Color.White)
             .background(bgBrush)
-            .border(1.dp, accent.copy(0.20f), RoundedCornerShape(999.dp))
+            .border(
+                1.dp,
+                Brush.horizontalGradient(
+                    listOf(Color.White.copy(if (theme.isDark) 0.12f else 0.84f), accent.copy(0.20f))
+                ),
+                RoundedCornerShape(999.dp)
+            )
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1153,13 +1158,37 @@ fun CircularProgressRing(
     }
 
     Box(
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .shadow(
+                elevation = if (progress > 0f) 12.dp else 7.dp,
+                shape = CircleShape,
+                spotColor = if (progress > 0f) resolvedRingColor.copy(if (theme.isDark) 0.30f else 0.10f)
+                            else Color.Black.copy(if (theme.isDark) 0.40f else 0.08f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.05f)
+            )
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        if (theme.isDark) theme.bg3 else Color.White,
+                        if (theme.isDark) theme.bg1 else theme.bg1
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(Color.White.copy(if (theme.isDark) 0.14f else 0.88f), theme.stroke)
+                ),
+                CircleShape
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
             val strokeWidth = (if (size <= 80.dp) 7.dp else 8.dp).toPx()
-            val radius = (size.toPx() - strokeWidth) / 2f
-            val center = Offset(size.toPx() / 2f, size.toPx() / 2f)
+            val radius = (this.size.minDimension - strokeWidth) / 2f
+            val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val startAngle = -90f
 
             drawCircle(

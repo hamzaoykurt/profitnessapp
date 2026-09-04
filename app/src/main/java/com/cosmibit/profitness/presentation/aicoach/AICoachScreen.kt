@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -178,7 +181,16 @@ fun AICoachScreen(
             .background(theme.bg0)
             .imePadding()           // keyboard resizes this Box from the bottom
     ) {
-        PageAccentBloom()
+        if (theme.isDark) {
+            PageAccentBloom()
+        } else {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .background(Brush.verticalGradient(listOf(theme.bg1, Color.Transparent)))
+            )
+        }
 
         // ── Message feed fills full Box, has bottom padding for the input area ─
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -237,8 +249,15 @@ fun AICoachScreen(
                         val chipTheme = LocalAppTheme.current
                         Box(
                             modifier = Modifier
+                                .shadow(
+                                    elevation = if (chipTheme.isDark) 2.dp else 4.dp,
+                                    shape = RoundedCornerShape(12.dp),
+                                    clip = false,
+                                    ambientColor = if (chipTheme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.08f),
+                                    spotColor = Color(0xFF64748B).copy(0.08f)
+                                )
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(chipTheme.bg1.copy(0.85f))
+                                .background(chipTheme.bg1)
                                 .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
                                 .clickable(enabled = !state.isLoading) { sendMessage(chip) }
                                 .padding(14.dp, 7.dp)
@@ -271,6 +290,7 @@ fun AICoachScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
+                .background(theme.bg0.copy(alpha = if (theme.isDark) 0.88f else 0.97f))
                 .padding(horizontal = 8.dp)
                 .padding(top = 8.dp)
         ) {
@@ -471,8 +491,14 @@ fun AICoachScreen(
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp)
                     .padding(top = 90.dp)
+                    .shadow(
+                        elevation = if (theme.isDark) 10.dp else 6.dp,
+                        shape = RoundedCornerShape(12.dp),
+                        ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF64748B).copy(0.10f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(if (theme.isDark) 0.16f else 0.08f)
+                    )
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1A3A2F))
+                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
                     .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(12.dp))
                     .clickable { viewModel.resetProgramStatus() }
                     .padding(16.dp)
@@ -581,15 +607,15 @@ private fun SanctuaryMessage(
                         .shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp),
-                            spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f),
-                            ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.08f)
+                            spotColor = if (theme.isDark) accent.copy(0.24f) else Color(0xFF64748B).copy(0.12f),
+                            ambientColor = if (theme.isDark) Color.Black.copy(0.34f) else Color(0xFF64748B).copy(0.10f)
                         )
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
                         .drawBehind {
                             drawRect(color = accent)
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    listOf(Color.White.copy(0.22f), Color.Transparent),
+                                    listOf(Color.White.copy(if (theme.isDark) 0.18f else 0.10f), Color.Transparent),
                                     startY = 0f, endY = size.height * 0.5f
                                 )
                             )
@@ -597,7 +623,7 @@ private fun SanctuaryMessage(
                         .border(
                             1.dp,
                             Brush.linearGradient(
-                                listOf(Color.White.copy(0.32f), accent.copy(0.62f), accent.copy(0.18f))
+                                listOf(Color.White.copy(if (theme.isDark) 0.26f else 0.18f), accent.copy(0.54f), accent.copy(0.18f))
                             ),
                             RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
                         )
@@ -666,21 +692,22 @@ private fun SanctuaryMessage(
                 Box(
                     modifier = Modifier
                         .shadow(
-                            elevation = 10.dp,
+                            elevation = if (theme.isDark) 10.dp else 7.dp,
                             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
-                            spotColor = accent.copy(if (theme.isDark) 0.18f else 0.10f),
-                            ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.08f)
+                            spotColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.12f),
+                            ambientColor = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.10f)
                         )
                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
                         .drawBehind {
-                            drawRect(color = theme.bg2.copy(alpha = if (theme.isDark) 0.86f else 0.96f))
-                            // Top glass sheen
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                listOf(Color.White.copy(if (theme.isDark) 0.08f else 0.52f), Color.Transparent),
-                                    startY = 0f, endY = size.height * 0.4f
+                            drawRect(color = if (theme.isDark) theme.bg2 else theme.bg1)
+                            if (theme.isDark) {
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        listOf(Color.White.copy(0.055f), Color.Transparent),
+                                        startY = 0f, endY = size.height * 0.4f
+                                    )
                                 )
-                            )
+                            }
                             // Left accent border line
                             drawRect(
                                 color   = accent.copy(0.55f),
@@ -692,9 +719,9 @@ private fun SanctuaryMessage(
                             width = 0.8.dp,
                             brush = Brush.linearGradient(
                                 listOf(
-                                    accent.copy(if (theme.isDark) 0.30f else 0.24f),
-                                    Color.White.copy(if (theme.isDark) 0.08f else 0.72f),
-                                    theme.stroke.copy(0.52f)
+                                    accent.copy(if (theme.isDark) 0.28f else 0.20f),
+                                    theme.stroke.copy(if (theme.isDark) 0.48f else 0.90f),
+                                    theme.stroke.copy(if (theme.isDark) 0.40f else 0.72f)
                                 )
                             ),
                             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
@@ -808,13 +835,13 @@ private fun SanctuaryInput(
     val shape  = RoundedCornerShape(28.dp)
     val responsive = rememberResponsiveLayoutInfo()
 
-    val borderBrush = Brush.horizontalGradient(
-        listOf(
-            accent.copy(alpha = 0.55f),
-            Color.White.copy(alpha = 0.10f),
-            accent.copy(alpha = 0.35f)
+    val borderBrush = if (theme.isDark) {
+        Brush.horizontalGradient(
+            listOf(accent.copy(alpha = 0.42f), theme.stroke.copy(0.60f), accent.copy(alpha = 0.24f))
         )
-    )
+    } else {
+        Brush.horizontalGradient(listOf(theme.stroke, theme.stroke.copy(0.76f), theme.stroke))
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (isFree && creditsLoaded) {
@@ -854,25 +881,25 @@ private fun SanctuaryInput(
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
             .shadow(
-                elevation    = 24.dp,
+                elevation    = if (theme.isDark) 18.dp else 9.dp,
                 shape        = shape,
                 clip         = false,
-                spotColor    = accent.copy(alpha = 0.30f),
-                ambientColor = Color.Black.copy(alpha = if (theme.isDark) 0.60f else 0.12f)
+                spotColor    = if (theme.isDark) accent.copy(alpha = 0.18f) else Color(0xFF64748B).copy(0.13f),
+                ambientColor = if (theme.isDark) Color.Black.copy(0.54f) else Color(0xFF64748B).copy(0.11f)
             )
             .clip(shape)
             .drawWithCache {
-                val bgBase      = theme.bg1.copy(alpha = if (theme.isDark) 0.86f else 0.97f)
+                val bgBase      = if (theme.isDark) theme.bg1.copy(alpha = 0.96f) else theme.bg1
                 val topMirror   = Brush.verticalGradient(colorStops = arrayOf(
-                    0.00f to Color.White.copy(alpha = 0.09f),
-                    0.30f to Color.White.copy(alpha = 0.02f),
+                    0.00f to Color.White.copy(alpha = if (theme.isDark) 0.07f else 0f),
+                    0.30f to Color.White.copy(alpha = if (theme.isDark) 0.015f else 0f),
                     0.55f to Color.Transparent
                 ))
                 val accentBleed = Brush.linearGradient(
                     colorStops = arrayOf(
-                        0.00f to accent.copy(alpha = 0.18f),
-                        0.28f to accent.copy(alpha = 0.09f),
-                        0.58f to accent.copy(alpha = 0.03f),
+                        0.00f to accent.copy(alpha = if (theme.isDark) 0.10f else 0f),
+                        0.28f to accent.copy(alpha = if (theme.isDark) 0.05f else 0f),
+                        0.58f to accent.copy(alpha = if (theme.isDark) 0.015f else 0f),
                         1.00f to Color.Transparent
                     ),
                     start = Offset(0f, size.height * 0.5f),
@@ -924,24 +951,46 @@ private fun SanctuaryInput(
         )
 
         val sendActive = value.isNotBlank() && !isTyping
+        val sendInteraction = remember { MutableInteractionSource() }
+        val sendPressed by sendInteraction.collectIsPressedAsState()
+        val sendScale by animateFloatAsState(
+            if (sendPressed && sendActive) 0.88f else 1f,
+            spring(stiffness = Spring.StiffnessHigh),
+            label = "oracle_send_scale"
+        )
+        val sendElevation by animateDpAsState(
+            if (sendPressed) 1.dp else 8.dp,
+            spring(stiffness = Spring.StiffnessHigh),
+            label = "oracle_send_depth"
+        )
         Box(
             modifier = Modifier
                 .padding(end = 4.dp)
                 .size(44.dp)
+                .graphicsLayer {
+                    scaleX = sendScale
+                    scaleY = sendScale
+                    translationY = if (sendPressed) 1.dp.toPx() else 0f
+                }
                 .clip(CircleShape)
                 .then(
                     if (sendActive) Modifier
                         .shadow(
-                            elevation = 8.dp,
+                            elevation = sendElevation,
                             shape = CircleShape,
-                            spotColor = accent.copy(0.38f),
-                            ambientColor = Color.Transparent
+                            spotColor = if (theme.isDark) accent.copy(0.30f) else Color(0xFF64748B).copy(0.12f),
+                            ambientColor = if (theme.isDark) Color.Transparent else Color(0xFF64748B).copy(0.10f)
                         )
                         .background(Brush.verticalGradient(listOf(accent, accent.copy(0.76f))))
-                        .border(1.dp, Color.White.copy(0.28f), CircleShape)
+                        .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), CircleShape)
                     else Modifier.background(Color.Transparent)
                 )
-                .clickable(enabled = sendActive) { onSend() },
+                .clickable(
+                    enabled = sendActive,
+                    interactionSource = sendInteraction,
+                    indication = null,
+                    onClick = onSend
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -1178,12 +1227,23 @@ private fun SanctuaryTypingIndicator() {
 
         Box(
             modifier = Modifier
+                .shadow(
+                    elevation = if (theme.isDark) 8.dp else 6.dp,
+                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
+                    clip = false,
+                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.09f),
+                    spotColor = if (theme.isDark) accent.copy(0.10f) else Color(0xFF64748B).copy(0.10f)
+                )
                 .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
                 .drawBehind {
-                    drawRect(color = Color(0xFF1A1A1A).copy(alpha = 0.82f))
+                    drawRect(color = if (theme.isDark) theme.bg2 else theme.bg1)
                     drawRect(color = accent.copy(0.55f), topLeft = Offset(0f, 0f), size = Size(2.dp.toPx(), size.height))
                 }
-                .border(0.8.dp, accent.copy(0.25f), RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
+                .border(
+                    0.8.dp,
+                    if (theme.isDark) accent.copy(0.25f) else theme.stroke,
+                    RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                )
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             Row(

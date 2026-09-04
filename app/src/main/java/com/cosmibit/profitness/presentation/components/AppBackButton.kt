@@ -1,6 +1,8 @@
 package com.cosmibit.profitness.presentation.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -40,16 +47,53 @@ fun AppBackButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(),
         label = "app_back_button_scale"
     )
-    val fill = if (theme.isDark) Color.Black.copy(alpha = 0.58f) else theme.bg1.copy(alpha = 0.92f)
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 11.dp,
+        animationSpec = spring(),
+        label = "app_back_button_depth"
+    )
+    val fillTop = if (theme.isDark) theme.bg3 else Color.White
+    val fillBottom = if (theme.isDark) theme.bg1 else theme.bg3.copy(alpha = 0.82f)
 
     Box(
         modifier = modifier
             .size(size)
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = if (isPressed) 2.dp.toPx() else 0f
+            }
+            .shadow(
+                elevation = elevation,
+                shape = CircleShape,
+                spotColor = if (theme.isDark) accent.copy(0.22f) else Color(0xFF526176).copy(0.14f),
+                ambientColor = if (theme.isDark) Color.Black.copy(0.48f) else Color(0xFF526176).copy(0.07f)
+            )
             .clip(CircleShape)
-            .background(fill)
+            .background(Brush.verticalGradient(listOf(fillTop, fillBottom)))
+            .drawWithCache {
+                val canvasSize = this.size
+                onDrawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.White.copy(if (theme.isDark) 0.13f else 0.62f), Color.Transparent)
+                        ),
+                        size = Size(canvasSize.width, canvasSize.height * 0.48f)
+                    )
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(if (theme.isDark) 0.25f else 0.06f)),
+                            startY = canvasSize.height * 0.55f,
+                            endY = canvasSize.height
+                        ),
+                        topLeft = Offset(0f, canvasSize.height * 0.55f),
+                        size = Size(canvasSize.width, canvasSize.height * 0.45f)
+                    )
+                }
+            }
             .border(
                 width = 1.dp,
                 brush = Brush.linearGradient(

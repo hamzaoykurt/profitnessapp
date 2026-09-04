@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
+import com.cosmibit.profitness.presentation.components.floatingGlassSurface
 import com.cosmibit.profitness.presentation.workout.RestTimerState
 import com.cosmibit.profitness.presentation.workout.WorkoutScreen
 import com.cosmibit.profitness.presentation.workout.WorkoutViewModel
@@ -487,11 +488,11 @@ fun AppBackground(modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
 
     // Light mode: a restrained bloom preserves the clean neutral canvas.
-    val radialPeak = if (theme.isDark) 0.16f else 0.06f
-    val radialMid  = if (theme.isDark) 0.10f else 0.03f
-    val radialEdge = if (theme.isDark) 0.04f else 0.01f
-    val sweepPeak  = if (theme.isDark) 0.07f else 0.03f
-    val sweepMid   = if (theme.isDark) 0.02f else 0.005f
+    val radialPeak = if (theme.isDark) 0.10f else 0.018f
+    val radialMid  = if (theme.isDark) 0.045f else 0.008f
+    val radialEdge = if (theme.isDark) 0.012f else 0.002f
+    val sweepPeak  = if (theme.isDark) 0.032f else 0.006f
+    val sweepMid   = if (theme.isDark) 0.008f else 0.002f
 
     Box(modifier = modifier.drawWithCache {
         val radial = Brush.radialGradient(
@@ -550,31 +551,7 @@ private fun AppNavRail(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(68.dp)
-                .shadow(
-                    elevation    = 18.dp,
-                    shape        = shape,
-                    spotColor    = accent.copy(0.20f),
-                    ambientColor = Color.Black.copy(if (theme.isDark) 0.45f else 0.12f)
-                )
-                .clip(shape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            theme.bg2.copy(if (theme.isDark) 0.96f else 0.98f),
-                            theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(if (theme.isDark) 0.12f else 0.60f),
-                            theme.stroke.copy(0.40f)
-                        )
-                    ),
-                    shape = shape
-                )
+                .floatingGlassSurface(accent, theme, shape, elevation = 18.dp)
                 .padding(vertical = 14.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
@@ -706,31 +683,7 @@ fun AppNavBar(
         Box(
             modifier = Modifier
                 .wrapContentWidth()
-                .shadow(
-                    elevation    = 20.dp,
-                    shape        = shape,
-                    spotColor    = accent.copy(0.25f),
-                    ambientColor = Color.Black.copy(if (theme.isDark) 0.55f else 0.14f)
-                )
-                .clip(shape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            theme.bg2.copy(if (theme.isDark) 0.96f else 0.98f),
-                            theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(if (theme.isDark) 0.12f else 0.60f),
-                            theme.stroke.copy(0.40f)
-                        )
-                    ),
-                    shape = shape
-                )
+                .floatingGlassSurface(accent, theme, shape, elevation = 20.dp)
                 .padding(horizontal = 8.dp, vertical = 8.dp)
                 .onSizeChanged { navWidthPx = it.width.toFloat() }
                 .pointerInput(tabs) {

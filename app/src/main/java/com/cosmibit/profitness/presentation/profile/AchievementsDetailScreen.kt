@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -227,9 +226,7 @@ private fun RankRoadmapSection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
                 .padding(20.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -317,9 +314,7 @@ private fun XpProgressCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
             .padding(20.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -393,27 +388,17 @@ private fun AchievementRow(
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    val (colorFrom, colorTo) = achievementColor(achievement.category)
+    val (colorFrom, _) = achievementColor(achievement.category)
     val isUnlocked = achievement.isUnlocked
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        colorFrom.copy(if (isUnlocked) 0.1f else 0.03f),
-                        colorTo.copy(0.02f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end   = Offset(600f, 0f)
-                )
-            )
-            .border(
-                1.dp,
-                if (isUnlocked) colorFrom.copy(0.3f) else theme.stroke,
-                RoundedCornerShape(16.dp)
+            .profilePremiumSurface(
+                theme = theme,
+                shape = RoundedCornerShape(16.dp),
+                accent = if (isUnlocked) colorFrom else null,
+                elevation = if (theme.isDark) 10.dp else 5.dp
             )
             .padding(14.dp)
     ) {

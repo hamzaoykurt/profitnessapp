@@ -137,7 +137,7 @@ class WorkoutViewModel : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScree
 
 ---
 
-## Tema Sistemi — Neon Forge + Polar Glass (GÜNCEL)
+## Tema Sistemi — Neon Forge + Mineral Light (GÜNCEL)
 
 > **2026-09-04 kararı:** Light mode ürün kapsamındadır. Eski sıcak/kahverengi palet kullanılmaz; açık mod için serin nötr yüzeyler ve düşük opaklıklı glow/gölgeler kullanılır.
 
@@ -168,14 +168,14 @@ MaterialTheme  +  LocalAppTheme (CompositionLocal)
 
 | Token    | Dark       | Light      |
 |----------|------------|------------|
-| `bg0`    | `#0A0A0F`  | `#F5F7FA`  |
-| `bg1`    | `#111117`  | `#FFFFFF`  |
-| `bg2`    | `#18181F`  | `#EDF1F6`  |
-| `bg3`    | `#21212A`  | `#E1E7EF`  |
-| `stroke` | `#2A2A35`  | `#C9D2DE`  |
-| `text0`  | `#F8F8F8`  | `#11151C`  |
-| `text1`  | `#9A9AB0`  | `#4F5B6B`  |
-| `text2`  | `#5A5A72`  | `#7E8998`  |
+| `bg0`    | `#0A0A0F`  | `#F1F3F6`  |
+| `bg1`    | `#111117`  | `#F8F9FB`  |
+| `bg2`    | `#18181F`  | `#FFFFFF`  |
+| `bg3`    | `#21212A`  | `#E8EBF0`  |
+| `stroke` | `#2A2A35`  | `#D5DAE2`  |
+| `text0`  | `#F8F8F8`  | `#151820`  |
+| `text1`  | `#9A9AB0`  | `#515967`  |
+| `text2`  | `#5A5A72`  | `#808896`  |
 
 ### Image Overlay İstisnası
 
@@ -246,16 +246,18 @@ ForgeCard(modifier, shape, glowColor, elevation) { ... }
 
 **Aliases:** `GlassPanel`, `GlassCard`, `ObsidianCard`, `ObsidianCardPro`, `ForgeCardPro`, `ForgeCardSmall`
 
-### glassCard Modifier (GlassPanel.kt)
+### Surface Roles (GlassPanel.kt)
 
 ```kotlin
-Modifier.glassCard(accent, theme, shape)
+Modifier.premiumSolidSurface(accent, theme, shape)
+Modifier.floatingGlassSurface(accent, theme, shape)
+Modifier.insetControlSurface(accent, theme, shape)
 ```
 
-- `theme.bg1` semi-transparent base (dark: `0.75f`, light: `0.90f`)
-- Accent bleed gradient (light modda %50 daha subtle)
-- Depth shadow: dark → `Color.Black.copy(0.30f)`, light → cool slate tint at low opacity
-- Accent + stroke border
+- `premiumSolidSurface`: standart içerik kartı; opaque katman, ince rim ve dış elevation
+- `floatingGlassSurface`: yalnız alt nav, medya chrome'u ve geçici overlay gibi yüzen elemanlar
+- `insetControlSurface`: arama/form alanlarında içeri gömülmüş koyu-alt kenar ve üst highlight
+- `glassCard` geriye dönük alias olarak solid role yönlenir; yeni kod doğrudan rolü belirtir
 
 ### CinematicExerciseCard
 
@@ -287,17 +289,22 @@ CircularProgressRing(progress, size, label, trackColor, ringColor)
 ### PageAccentBloom (core/theme/PageAccentBloom.kt)
 
 - Sağ üst köşe radial glow + diagonal sweep
-- Dark: `radialPeak=0.16f`, light: `radialPeak=0.07f` (yarı strength)
+- Dark: `radialPeak=0.055f`, light: `radialPeak=0.012f`; sayfa geneli renk yıkaması oluşturmaz
 - Tüm ana ekranlarda `AppBackground` üstüne katman
 
-### GhostButton / ForgeButton (PremiumButton.kt)
+### PremiumButton / GhostButton / PremiumIconButton (PremiumButton.kt)
 
 ```kotlin
+PremiumButton(text, onClick, modifier, leadingIcon)
 GhostButton(text, onClick, modifier, isEnabled)
+PremiumIconButton(onClick, icon, contentDescription)
 ```
 
-- `GhostButton`: `theme.bg2` bg, `theme.stroke` border, `theme.text1/text2` label
-- `ForgeButton`: `effectiveAccentColor` solid fill, spring scale press, 3D shadow
+- Primary ve icon kontroller: spring scale/translation, press sırasında elevation collapse, üst bevel ve alt depth shade
+- `GhostButton`: solid katmanlı secondary yüzey; glass değildir
+- Koyu mod primary: tam neon dolgu yerine koyu yüzeye karıştırılmış accent tint + accent metin/rim
+- Açık mod primary: okunaklı koyu accent yüzey; komşu secondary daima nötr
+- `PremiumButton` ve `PremiumIconButton` keyfi renk override kabul etmez; tek interaction accent tema tarafından belirlenir
 
 ---
 
@@ -344,7 +351,9 @@ val Snow     = TextPrimary   // Color.kt'de sabit — composable'da theme.text0 
 | Glassmorphic → Solid Forge | Render/tutarsızlık sorunları |
 | Solid Forge → Matte Obsidian | Kullanıcı: Apple/Porsche seviye minimallik |
 | Matte Obsidian → Neon Forge | Kullanıcı: Referans fitness uygulamalarına eşleşme |
-| Neon Forge Dark + Polar Glass Light | Light mod ayrı serin-nötr palette; mekanik renk tersleme yok |
+| Neon Forge Dark + Mineral Light | Light mod ayrı serin-nötr palette; mekanik renk tersleme yok |
+| Solid / floating glass / inset yüzey rolleri | Glass her yerde kullanılmaz; içerik, chrome ve girişler farklı derinlik modeli taşır |
+| Tek-accent aksiyon hiyerarşisi | Bir görünümde yalnız preferred primary renkli; secondary nötr, renkli istisnalar semantik |
 | `rememberSaveable` + DataStore | Rotation: hızlı state; process kill: kalıcı storage |
 | Interface-first repository | Test edilebilirlik, DI swap, backend bağımsızlığı |
 | Extension mapper, no mapper class | `fun Dto.toDomain()` — boilerplate azaltır |

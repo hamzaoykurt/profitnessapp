@@ -58,7 +58,9 @@ import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.AppToast
 import com.cosmibit.profitness.presentation.components.AppToastData
 import com.cosmibit.profitness.presentation.components.AppToastType
+import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.glassCard
+import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.activityTrackingSpec
 import com.cosmibit.profitness.presentation.workout.defaultDurationSecondsForExercise
@@ -887,14 +889,14 @@ private fun BuilderChooseScreen(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.AutoAwesome,
                     label = chooseStrings.createWithAI,
-                    accent = MaterialTheme.colorScheme.primary,
+                    prominent = true,
                     onClick = { onMode(BuilderMode.AI) }
                 )
                 QuickCreateButton(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.Draw,
                     label = chooseStrings.createManually,
-                    accent = CardCyan,
+                    prominent = false,
                     onClick = { onMode(BuilderMode.Manual) }
                 )
             }
@@ -1001,38 +1003,24 @@ private fun QuickCreateButton(
     modifier: Modifier,
     icon: ImageVector,
     label: String,
-    accent: Color,
+    prominent: Boolean,
     onClick: () -> Unit
 ) {
-    val iSource = remember { MutableInteractionSource() }
-    val isPressed by iSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.97f else 1f, label = "scale")
-
-    Box(
-        modifier = modifier
-            .heightIn(min = 54.dp)
-            .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
-            .background(accent.copy(alpha = 0.08f))
-            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-            .clickable(iSource, null, onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(7.dp))
-            Text(
-                label,
-                color = accent,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.1.sp,
-                lineHeight = 15.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+    val buttonModifier = modifier.height(62.dp)
+    if (prominent) {
+        PremiumButton(
+            text = label,
+            onClick = onClick,
+            modifier = buttonModifier,
+            leadingIcon = icon
+        )
+    } else {
+        GhostButton(
+            text = label,
+            onClick = onClick,
+            modifier = buttonModifier,
+            leadingIcon = icon
+        )
     }
 }
 
@@ -1044,9 +1032,11 @@ private fun SportFilterChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (selected) sport.color else sport.color.copy(alpha = 0.06f)
-    val textColor = if (selected) sport.color.readableOnAccentColor() else sport.color
-    val border = if (selected) sport.color else sport.color.copy(alpha = 0.2f)
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val bg = if (selected) accent.copy(alpha = if (theme.isDark) 0.15f else 0.10f) else theme.bg2
+    val textColor = if (selected) accent else theme.text1
+    val border = if (selected) accent.copy(alpha = 0.34f) else theme.stroke.copy(alpha = 0.72f)
 
     Box(
         modifier = Modifier
@@ -1060,7 +1050,7 @@ private fun SportFilterChip(
             Icon(
                 sport.icon,
                 null,
-                tint = if (selected) sport.color.readableOnAccentColor() else sport.color,
+                tint = if (selected) accent else theme.text2,
                 modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(5.dp))
@@ -1083,9 +1073,11 @@ private fun CategoryChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (selected) category.color else category.color.copy(alpha = 0.06f)
-    val textColor = if (selected) category.color.readableOnAccentColor() else category.color
-    val border = if (selected) category.color else category.color.copy(alpha = 0.2f)
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val bg = if (selected) accent.copy(alpha = if (theme.isDark) 0.15f else 0.10f) else theme.bg2
+    val textColor = if (selected) accent else theme.text1
+    val border = if (selected) accent.copy(alpha = 0.34f) else theme.stroke.copy(alpha = 0.72f)
 
     Box(
         modifier = Modifier
@@ -1099,7 +1091,7 @@ private fun CategoryChip(
             Icon(
                 category.icon,
                 null,
-                tint = if (selected) category.color.readableOnAccentColor() else category.color,
+                tint = if (selected) accent else theme.text2,
                 modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(5.dp))
@@ -1120,7 +1112,7 @@ private fun CategoryChip(
 
 @Composable
 private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
-    val accent = program.category.color
+    val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
     val iSource = remember { MutableInteractionSource() }
@@ -1138,10 +1130,10 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
         // Left accent bar
         Box(
             modifier = Modifier
-                .width(4.dp)
+                .width(2.dp)
                 .fillMaxHeight()
                 .background(
-                    Brush.verticalGradient(listOf(accent, accent.copy(0.3f)))
+                    Brush.verticalGradient(listOf(accent.copy(0.66f), Color.Transparent))
                 )
         )
 
@@ -1229,19 +1221,15 @@ private fun ProgramBadge(label: String, color: Color) {
 
 @Composable
 private fun LevelBadge(level: String, label: String = level) {
-    val color = when (level) {
-        "Başlangıç" -> CardGreen
-        "Orta" -> Amber
-        "İleri" -> CardCoral
-        else -> Mist
-    }
+    val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(color.copy(alpha = 0.12f))
+            .background(theme.bg3.copy(alpha = if (theme.isDark) 0.70f else 0.52f))
+            .border(1.dp, theme.stroke.copy(alpha = 0.62f), RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
-        Text(label, color = color, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp, maxLines = 1)
+        Text(label, color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp, maxLines = 1)
     }
 }
 
@@ -1317,13 +1305,8 @@ private fun SavedProgramTile(
         )
     }
 
-    // ── Type accent color ─────────────────────────────────────────────────────
-    val typeColor = when (program.type) {
-        ProgramType.AI       -> CardPurple
-        ProgramType.MANUAL   -> Amber
-        ProgramType.TEMPLATE -> CardCyan
-    }
-    val accentColor = if (program.isActive) primary else typeColor
+    // Program type is conveyed by icon + label; actions share the theme accent.
+    val accentColor = primary
 
     // ── Program stats ─────────────────────────────────────────────────────────
     val workoutDays  = program.days.count { !it.isRestDay }
@@ -1617,7 +1600,7 @@ private fun ProgramDetailDialog(
     onDismiss: () -> Unit,
     onApply: () -> Unit = onDismiss
 ) {
-    val accent  = program.category.color
+    val accent  = MaterialTheme.colorScheme.primary
     val theme   = LocalAppTheme.current
     val strings = theme.strings
 
@@ -1727,40 +1710,13 @@ private fun ProgramDetailDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                Button(
+                PremiumButton(
+                    text = if (isApplying) "UYGULANIYOR" else strings.applyProtocol,
                     onClick = onApply,
-                    enabled = !isApplying,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = accent,
-                        contentColor = accent.readableOnAccentColor(),
-                        disabledContainerColor = accent.copy(0.72f),
-                        disabledContentColor = accent.readableOnAccentColor().copy(0.82f)
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    if (isApplying) {
-                        CircularProgressIndicator(
-                            color = accent.readableOnAccentColor(),
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "UYGULANIYOR",
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
-                    } else {
-                        Text(
-                            strings.applyProtocol,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
+                    modifier = Modifier.fillMaxWidth(),
+                    isEnabled = !isApplying,
+                    isLoading = isApplying
+                )
             }
 
             if (isApplying) {
@@ -2096,35 +2052,21 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     }
                 }
             }
-            Button(
+            PremiumButton(
+                text = if (selectedBase64 != null) {
+                    aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
+                } else {
+                    aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
+                },
                 onClick = {
                     viewModel.clearAiError()
                     viewModel.createFromAI(prompt, selectedBase64, selectedMimeType)
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = if (responsive.isLargeFont) 72.dp else 64.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (canAnalyze) MaterialTheme.colorScheme.primary else aiTheme.bg2
-                ),
-                shape = RoundedCornerShape(16.dp),
-                enabled = canAnalyze
-            ) {
-                if (uiState.aiLoading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
-                } else {
-                    Text(
-                        if (selectedBase64 != null) {
-                            aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
-                        } else {
-                            aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
-                        },
-                        color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else aiTheme.text2,
-                        fontWeight = FontWeight.Black,
-                        lineHeight = 18.sp,
-                        maxLines = 2,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+                isEnabled = canAnalyze,
+                isLoading = uiState.aiLoading,
+                leadingIcon = Icons.Rounded.AutoAwesome
+            )
             } // Column
         }
     }
@@ -2907,7 +2849,8 @@ private fun ManualBuilderScreen(
 
         // ── Save button ───────────────────────────────────────────────────────
         val isLoading = uiState.isLoading
-        Button(
+        PremiumButton(
+            text = manStrings.saveProtocol,
             onClick = {
                 val dayDrafts = days.mapIndexed { i, d ->
                     ManualDayDraft(
@@ -2942,23 +2885,11 @@ private fun ManualBuilderScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
                 .padding(horizontal = 24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = manAccent,
-                contentColor = manOnAccent,
-                disabledContainerColor = manTheme.bg3,
-                disabledContentColor = manTheme.text2
-            ),
-            shape = RoundedCornerShape(16.dp),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(color = manOnAccent, modifier = Modifier.size(22.dp))
-            } else {
-                Text(manStrings.saveProtocol, color = manOnAccent, fontWeight = FontWeight.Black)
-            }
-        }
+            isEnabled = !isLoading,
+            isLoading = isLoading,
+            leadingIcon = Icons.Rounded.Check
+        )
     }
 }
 

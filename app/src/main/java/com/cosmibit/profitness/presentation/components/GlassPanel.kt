@@ -44,10 +44,14 @@ fun ForgeCard(
     val hasGlow = glowColor != Color.Transparent && glowStrength > 0f
     val resolvedGlowStrength = glowStrength.coerceIn(0f, 1f)
     val accentColor = if (hasGlow) glowColor else MaterialTheme.colorScheme.primary
-    val shadowSpot = if (hasGlow) accentColor.copy(alpha = 0.22f * resolvedGlowStrength)
+    val shadowSpot = if (hasGlow) accentColor.copy(
+                         alpha = (if (theme.isDark) 0.34f else 0.10f) * resolvedGlowStrength
+                     )
                      else if (theme.isDark) Color.Black.copy(0.76f) else accentColor.copy(0.14f)
     val shadowAmbient = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF526176).copy(0.13f)
-    val rimAlpha = if (hasGlow) 0.18f + (0.16f * resolvedGlowStrength) else 0.28f
+    val rimAlpha = if (hasGlow) {
+        (if (theme.isDark) 0.24f else 0.10f) + (0.20f * resolvedGlowStrength)
+    } else 0.28f
     val washAlpha = if (hasGlow) 0.025f + (0.045f * resolvedGlowStrength) else 0.035f
 
     Box(
@@ -57,7 +61,9 @@ fun ForgeCard(
                     Modifier.shadow(
                         elevation = elevation + (6.dp * resolvedGlowStrength),
                         shape = shape,
-                        spotColor = accentColor.copy(alpha = 0.30f * resolvedGlowStrength),
+                        spotColor = accentColor.copy(
+                            alpha = (if (theme.isDark) 0.38f else 0.08f) * resolvedGlowStrength
+                        ),
                         ambientColor = Color.Transparent
                     )
                 } else Modifier
@@ -174,32 +180,40 @@ fun ForgeCardSmall(
 )
 
 /**
- * glassCard — Frosted-glass Modifier extension.
- * Semi-transparent layered background (shimmer + accent bleed + depth shadow)
- * with an accent-tinted border — matches the Bottom Navigation Bar's visual language.
+ * Historical API name retained for callers. This is now the default premium
+ * information surface: mostly solid and architectural. Actual translucent glass
+ * remains reserved for navigation, media overlays and floating input chrome.
  */
-fun Modifier.glassCard(
+fun Modifier.premiumSolidSurface(
     accent: Color,
     theme : AppThemeState,
-    shape : Shape = RoundedCornerShape(20.dp)
+    shape : Shape = RoundedCornerShape(20.dp),
+    elevation: Dp = if (theme.isDark) 10.dp else 8.dp
 ): Modifier = composed {
     val borderBrush = remember(accent, theme.isDark, theme.stroke) {
         Brush.linearGradient(
             listOf(
-                accent.copy(alpha = if (theme.isDark) 0.28f else 0.35f),
-                theme.stroke.copy(alpha = if (theme.isDark) 0.45f else 0.70f),
-                accent.copy(alpha = if (theme.isDark) 0.16f else 0.20f)
+                Color.White.copy(alpha = if (theme.isDark) 0.13f else 0.92f),
+                theme.stroke.copy(alpha = if (theme.isDark) 0.72f else 0.86f),
+                accent.copy(alpha = if (theme.isDark) 0.12f else 0.08f)
             )
         )
     }
 
     Modifier
+        .shadow(
+            elevation = elevation,
+            shape = shape,
+            spotColor = if (theme.isDark) Color.Black.copy(0.72f)
+                        else Color(0xFF445064).copy(0.12f),
+            ambientColor = if (theme.isDark) Color.Black.copy(0.42f)
+                           else Color(0xFF445064).copy(0.07f)
+        )
         .clip(shape)
         .drawWithCache {
-            val base = theme.bg1.copy(alpha = if (theme.isDark) 0.75f else 0.90f)
-            // In light mode the stronger white rim creates a polished glass edge.
-            val shimmerAlphaTop = if (theme.isDark) 0.09f else 0.50f
-            val shimmerAlphaMid = if (theme.isDark) 0.02f else 0.15f
+            val base = if (theme.isDark) theme.bg2.copy(alpha = 0.98f) else theme.bg2
+            val shimmerAlphaTop = if (theme.isDark) 0.065f else 0.62f
+            val shimmerAlphaMid = if (theme.isDark) 0.012f else 0.10f
             val shimmer = Brush.verticalGradient(
                 colorStops = arrayOf(
                     0.00f to Color.White.copy(alpha = shimmerAlphaTop),
@@ -209,16 +223,16 @@ fun Modifier.glassCard(
             )
             val accentBleed = Brush.linearGradient(
                 colorStops = arrayOf(
-                    0.00f to accent.copy(alpha = if (theme.isDark) 0.14f else 0.08f),
-                    0.45f to accent.copy(alpha = if (theme.isDark) 0.05f else 0.03f),
+                    0.00f to accent.copy(alpha = if (theme.isDark) 0.055f else 0.018f),
+                    0.45f to accent.copy(alpha = if (theme.isDark) 0.018f else 0.006f),
                     1.00f to Color.Transparent
                 ),
                 start = Offset(0f, size.height * 0.5f),
                 end   = Offset(size.width, size.height * 0.5f)
             )
             // Light mode uses a cool slate depth tint instead of muddy black.
-            val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.30f)
-                             else Color(0xFF526176).copy(alpha = 0.09f)
+            val depthColor = if (theme.isDark) Color.Black.copy(alpha = 0.24f)
+                             else Color(0xFF526176).copy(alpha = 0.045f)
             val depth = Brush.verticalGradient(
                 colorStops = arrayOf(
                     0.48f to Color.Transparent,
@@ -236,6 +250,113 @@ fun Modifier.glassCard(
             width = 1.dp,
             brush = borderBrush,
             shape = shape
+        )
+}
+
+/**
+ * Compatibility alias for older call sites. Despite its historical name this
+ * deliberately resolves to the solid architectural surface above.
+ */
+fun Modifier.glassCard(
+    accent: Color,
+    theme : AppThemeState,
+    shape : Shape = RoundedCornerShape(20.dp)
+): Modifier = premiumSolidSurface(accent, theme, shape)
+
+/**
+ * True translucent chrome, reserved for floating navigation, media controls
+ * and input docks. Keeping this separate prevents every content card from
+ * looking like the same sheet of glass.
+ */
+fun Modifier.floatingGlassSurface(
+    accent: Color,
+    theme: AppThemeState,
+    shape: Shape = RoundedCornerShape(28.dp),
+    elevation: Dp = 18.dp
+): Modifier = composed {
+    Modifier
+        .shadow(
+            elevation = elevation,
+            shape = shape,
+            spotColor = accent.copy(alpha = if (theme.isDark) 0.24f else 0.08f),
+            ambientColor = if (theme.isDark) Color.Black.copy(0.56f)
+                           else Color(0xFF445064).copy(0.12f)
+        )
+        .clip(shape)
+        .drawWithCache {
+            val base = Brush.verticalGradient(
+                listOf(
+                    theme.bg2.copy(alpha = if (theme.isDark) 0.86f else 0.94f),
+                    theme.bg1.copy(alpha = if (theme.isDark) 0.76f else 0.88f)
+                )
+            )
+            val glint = Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = if (theme.isDark) 0.12f else 0.72f),
+                    Color.Transparent,
+                    accent.copy(alpha = if (theme.isDark) 0.08f else 0.025f)
+                )
+            )
+            onDrawBehind {
+                drawRect(base)
+                drawRect(glint)
+            }
+        }
+        .border(
+            1.dp,
+            Brush.linearGradient(
+                listOf(
+                    Color.White.copy(if (theme.isDark) 0.16f else 0.92f),
+                    accent.copy(if (theme.isDark) 0.22f else 0.08f),
+                    theme.stroke.copy(0.74f)
+                )
+            ),
+            shape
+        )
+}
+
+/**
+ * Recessed control well for search, filters and compact form fields. It uses
+ * an inner top shadow and lower rim instead of an outer card shadow.
+ */
+fun Modifier.insetControlSurface(
+    accent: Color,
+    theme: AppThemeState,
+    shape: Shape = RoundedCornerShape(14.dp)
+): Modifier = composed {
+    Modifier
+        .clip(shape)
+        .drawWithCache {
+            val base = if (theme.isDark) theme.bg0 else theme.bg3.copy(alpha = 0.72f)
+            val innerShadow = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.00f to if (theme.isDark) Color.Black.copy(0.64f) else Color(0xFF526176).copy(0.13f),
+                    0.18f to if (theme.isDark) Color.Black.copy(0.18f) else Color(0xFF526176).copy(0.035f),
+                    0.52f to Color.Transparent
+                )
+            )
+            val lowerRim = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.62f to Color.Transparent,
+                    1.00f to Color.White.copy(if (theme.isDark) 0.055f else 0.46f)
+                )
+            )
+            onDrawBehind {
+                drawRect(base)
+                drawRect(innerShadow)
+                drawRect(lowerRim)
+            }
+        }
+        .border(
+            1.dp,
+            Brush.verticalGradient(
+                listOf(
+                    theme.stroke.copy(if (theme.isDark) 0.90f else 0.74f),
+                    accent.copy(if (theme.isDark) 0.10f else 0.045f),
+                    Color.White.copy(if (theme.isDark) 0.07f else 0.70f)
+                )
+            ),
+            shape
         )
 }
 

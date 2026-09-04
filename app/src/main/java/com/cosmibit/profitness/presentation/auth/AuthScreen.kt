@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
@@ -237,7 +238,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
             }) {
                 Text(
                     theme.t("Şifremi Unuttum", "Forgot Password"),
-                    color    = ObsidianMuted,
+                    color    = theme.text2,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -506,7 +507,7 @@ private fun OtpVerifyScreen(
         ) {
             Text(
                 text     = if (state.resendCooldown) theme.t("Kod gönderildi (30sn bekle)", "Code sent (wait 30s)") else theme.t("Kodu tekrar gönder", "Resend code"),
-                color    = if (state.resendCooldown) ObsidianMuted else accent,
+                color    = if (state.resendCooldown) theme.text2 else accent,
                 fontSize = 14.sp
             )
         }
@@ -516,9 +517,9 @@ private fun OtpVerifyScreen(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(13.dp))
+            Icon(Icons.Rounded.Info, null, tint = theme.text2, modifier = Modifier.size(13.dp))
             Spacer(Modifier.width(6.dp))
-            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = ObsidianMuted, fontSize = 12.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = theme.text2, fontSize = 12.sp)
         }
     }
 }
@@ -663,9 +664,9 @@ private fun EmailSentScreen(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Rounded.Info, null, tint = ObsidianMuted, modifier = Modifier.size(14.dp))
+            Icon(Icons.Rounded.Info, null, tint = theme.text2, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = ObsidianMuted, fontSize = 12.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = theme.text2, fontSize = 12.sp)
         }
     }
 }
@@ -770,7 +771,7 @@ private fun AuthBrandHeader() {
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .border(1.dp, Color.White.copy(0.10f), RoundedCornerShape(13.dp))
+                .border(1.dp, if (theme.isDark) Color.White.copy(0.10f) else theme.stroke, RoundedCornerShape(13.dp))
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -876,7 +877,8 @@ private fun AuthCenteredScaffold(
 // ══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Glassmorphism kart — yarı saydam arka plan, ince border, blur efekti hissi.
+ * Authentication surface. Dark mode keeps a restrained forged sheen while light
+ * mode uses a deliberately solid paper-white card with slate depth.
  */
 @Composable
 private fun GlassCard(
@@ -885,20 +887,32 @@ private fun GlassCard(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val cardBg = if (theme.isDark) Color.White.copy(alpha = 0.045f) else Color.Black.copy(alpha = 0.035f)
-    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.07f)
+    val shape = RoundedCornerShape(22.dp)
+    val cardBrush = if (theme.isDark) {
+        Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
+    } else {
+        Brush.verticalGradient(listOf(theme.bg1, theme.bg2.copy(alpha = 0.58f)))
+    }
+    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.10f) else theme.stroke.copy(alpha = 0.80f)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(cardBg)
+            .shadow(
+                elevation = if (theme.isDark) 18.dp else 12.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.54f) else Color(0xFF64748B).copy(0.10f),
+                spotColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.14f)
+            )
+            .clip(shape)
+            .background(cardBrush)
             .border(
                 1.dp,
                 Brush.verticalGradient(
                     listOf(accent.copy(0.34f), borderColor, borderColor.copy(0.42f))
                 ),
-                RoundedCornerShape(22.dp)
+                shape
             )
             .drawWithCache {
                 onDrawBehind {
@@ -925,7 +939,7 @@ private fun AuthModeTabs(selected: AuthMode, onSelected: (AuthMode) -> Unit) {
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (theme.isDark) Color.White.copy(0.055f) else Color.Black.copy(0.035f))
+            .background(if (theme.isDark) theme.bg2 else theme.bg1)
             .border(1.dp, theme.stroke.copy(0.52f), RoundedCornerShape(16.dp))
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1064,20 +1078,19 @@ fun GlassInputField(
 
     val borderColor by animateColorAsState(
         if (isFocused) accent.copy(alpha = 0.72f)
-        else if (theme.isDark) Color.White.copy(alpha = 0.08f)
-        else Color.Black.copy(alpha = 0.06f),
+        else theme.stroke.copy(alpha = if (theme.isDark) 0.82f else 0.95f),
         animationSpec = tween(200),
         label = "field_border"
     )
     val iconColor by animateColorAsState(
-        if (isFocused) accent else ObsidianMuted,
+        if (isFocused) accent else theme.text2,
         animationSpec = tween(200),
         label = "field_icon"
     )
     val fieldBg by animateColorAsState(
         if (isFocused) accent.copy(0.08f)
-        else if (theme.isDark) Color.White.copy(alpha = 0.052f)
-        else Color.Black.copy(alpha = 0.04f),
+        else if (theme.isDark) theme.bg2.copy(alpha = 0.88f)
+        else theme.bg1,
         tween(180),
         label = "field_bg"
     )
@@ -1086,6 +1099,13 @@ fun GlassInputField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 54.dp)
+            .shadow(
+                elevation = if (isFocused) 8.dp else if (theme.isDark) 0.dp else 3.dp,
+                shape = RoundedCornerShape(16.dp),
+                clip = false,
+                ambientColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.08f),
+                spotColor = if (theme.isDark) accent.copy(0.08f) else Color(0xFF64748B).copy(0.10f)
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(fieldBg)
             .border(if (isFocused) 1.4.dp else 1.dp, borderColor, RoundedCornerShape(16.dp))
@@ -1106,7 +1126,7 @@ fun GlassInputField(
             TextField(
                 value               = value,
                 onValueChange       = onValueChange,
-                placeholder         = { Text(placeholder, color = ObsidianMuted, fontSize = 14.sp) },
+                placeholder         = { Text(placeholder, color = theme.text2, fontSize = 14.sp) },
                 visualTransformation = if (isPassword && !showPass)
                     PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions     = KeyboardOptions(
@@ -1132,7 +1152,7 @@ fun GlassInputField(
                 IconButton(onClick = onTogglePass, modifier = Modifier.size(40.dp)) {
                     Icon(
                         if (showPass) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                        null, tint = ObsidianMuted, modifier = Modifier.size(20.dp)
+                        null, tint = theme.text2, modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -1153,14 +1173,21 @@ fun AccentGradientButton(
     accent   : Color = Color.Unspecified
 ) {
     val resolvedAccent   = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else accent
-    val resolvedOnAccent = MaterialTheme.colorScheme.onPrimary
+    val resolvedOnAccent = resolvedAccent.readableOnAccentColor()
+    val theme = LocalAppTheme.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        if (isPressed) 0.97f else 1f,
+        if (isPressed) 0.965f else 1f,
         spring(Spring.DampingRatioMediumBouncy),
         label = "btn_scale"
     )
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else if (theme.isDark) 12.dp else 8.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "btn_elevation"
+    )
+    val shape = RoundedCornerShape(16.dp)
 
     val gradientBrush = Brush.horizontalGradient(
         listOf(
@@ -1172,10 +1199,25 @@ fun AccentGradientButton(
     Box(
         modifier = modifier
             .scale(scale)
+            .graphicsLayer { translationY = if (isPressed) 2.dp.toPx() else 0f }
             .heightIn(min = 54.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.48f) else Color(0xFF64748B).copy(0.12f),
+                spotColor = resolvedAccent.copy(if (theme.isDark) 0.34f else 0.20f)
+            )
+            .clip(shape)
             .background(gradientBrush)
-            .clickable(interactionSource, null, onClick = onClick),
+            .drawWithCache {
+                val bevel = Brush.verticalGradient(
+                    listOf(Color.White.copy(if (theme.isDark) 0.26f else 0.34f), Color.Transparent, Color.Black.copy(0.16f))
+                )
+                onDrawBehind { drawRect(bevel) }
+            }
+            .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), shape)
+            .clickable(interactionSource, null, enabled = !isLoading, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -1255,7 +1297,7 @@ private fun BackRow(onBack: () -> Unit) {
     ) {
         AppBackButton(onClick = onBack, accent = MaterialTheme.colorScheme.primary, size = 36.dp)
         Spacer(Modifier.width(8.dp))
-        Text(theme.t("Giriş sayfasına dön", "Back to sign in"), color = ObsidianSub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(theme.t("Giriş sayfasına dön", "Back to sign in"), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -1327,12 +1369,13 @@ private fun hintContent(hint: AuthHint): Pair<String, ImageVector> {
 @Composable
 private fun AuthSwitchRow(message: String, actionText: String, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Text(message, color = ObsidianMuted, fontSize = 14.sp)
+        Text(message, color = theme.text2, fontSize = 14.sp)
         TextButton(onClick = onClick) {
             Text(
                 actionText,

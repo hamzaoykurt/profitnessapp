@@ -41,7 +41,6 @@ import com.cosmibit.profitness.presentation.components.AccentColorSwatch
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.data.store.UserPlan
-import com.cosmibit.profitness.presentation.components.glassCard
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -341,7 +340,10 @@ private fun ProfileHeroBanner(
                 .height(190.dp)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent)
+                        colors = listOf(
+                            accent.copy(alpha = if (theme.isDark) 0.07f else 0.025f),
+                            Color.Transparent
+                        )
                     )
                 )
         )
@@ -367,10 +369,12 @@ private fun ProfileHeroBanner(
                     Row(
                         modifier = Modifier
                             .height(34.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(theme.bg1.copy(0.75f))
-                            .border(1.dp, accent.copy(0.40f), RoundedCornerShape(18.dp))
-                            .clickable(onClick = onSettingsClick)
+                            .profilePremiumAction(
+                                theme = theme,
+                                accent = accent,
+                                onClick = onSettingsClick,
+                                shape = RoundedCornerShape(18.dp)
+                            )
                             .padding(horizontal = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -396,23 +400,20 @@ private fun ProfileHeroBanner(
 
                 // Enerji / Plan chip — sağ üst köşe, tıklanınca store'a gider
                 val isPaid     = userPlan != UserPlan.FREE
-                val chipColor  = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.15f) else accent.copy(alpha = 0.12f)
-                val chipBorder = if (isPaid) Color(0xFFFFD700).copy(alpha = 0.5f)  else accent.copy(alpha = 0.4f)
                 val chipTint   = if (isPaid) Color(0xFFFFD700) else accent
                 // Plan varsa: "Elite · 5"  |  Sadece free: "5 Enerji"
                 val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else theme.t("$aiCredits Enerji", "$aiCredits Energy")
 
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(chipColor)
-                        .border(1.dp, chipBorder, RoundedCornerShape(20.dp))
-                        .clickable(
-                            indication        = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick           = onNavigateToStore
+                        .height(34.dp)
+                        .profilePremiumAction(
+                            theme = theme,
+                            accent = chipTint,
+                            onClick = onNavigateToStore,
+                            shape = RoundedCornerShape(20.dp)
                         )
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 10.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -440,26 +441,22 @@ private fun ProfileHeroBanner(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                theme.bg1.copy(0.90f),
-                                theme.bg2.copy(0.52f),
-                                theme.bg1.copy(0.74f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(900f, 680f)
-                        )
+                    .profilePremiumSurface(
+                        theme = theme,
+                        shape = RoundedCornerShape(28.dp),
+                        accent = accent,
+                        elevation = if (theme.isDark) 14.dp else 8.dp
                     )
-                    .border(1.dp, accent.copy(0.30f), RoundedCornerShape(28.dp))
             ) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(accent.copy(0.20f), Color.Transparent),
+                                colors = listOf(
+                                    accent.copy(if (theme.isDark) 0.10f else 0.045f),
+                                    Color.Transparent
+                                ),
                                 center = Offset(520f, 80f),
                                 radius = 520f
                             )
@@ -470,7 +467,10 @@ private fun ProfileHeroBanner(
                         .matchParentSize()
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(rankColor.copy(0.16f), Color.Transparent),
+                                colors = listOf(
+                                    rankColor.copy(if (theme.isDark) 0.08f else 0.04f),
+                                    Color.Transparent
+                                ),
                                 center = Offset(20f, 440f),
                                 radius = 460f
                             )
@@ -490,7 +490,10 @@ private fun ProfileHeroBanner(
                                 .clip(CircleShape)
                                 .background(
                                     Brush.radialGradient(
-                                        listOf(accent.copy(0.24f), Color.Transparent)
+                                        listOf(
+                                            accent.copy(if (theme.isDark) 0.17f else 0.09f),
+                                            Color.Transparent
+                                        )
                                     )
                                 )
                         )
@@ -657,11 +660,19 @@ private fun HeroMiniStat(
     onClick: (() -> Unit)? = null
 ) {
     Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(color.copy(0.11f))
-            .border(1.dp, color.copy(0.28f), RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+        modifier = (if (onClick != null) modifier
+            .profilePremiumAction(
+                theme = theme,
+                accent = color,
+                onClick = onClick,
+                shape = RoundedCornerShape(16.dp)
+            )
+        else modifier.profilePremiumSurface(
+            theme = theme,
+            shape = RoundedCornerShape(16.dp),
+            accent = color,
+            elevation = if (theme.isDark) 9.dp else 4.dp
+        ))
             .padding(horizontal = 11.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -826,12 +837,17 @@ private fun MetricCard(
     theme: AppThemeState,
     onClick: () -> Unit
 ) {
+    val visualAccent = theme.effectiveAccentColor
     Box(
         modifier = Modifier
             .width(130.dp)
             .height(160.dp)
-            .glassCard(metric.color, theme, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
+            .profilePremiumAction(
+                theme = theme,
+                accent = visualAccent,
+                onClick = onClick,
+                shape = RoundedCornerShape(22.dp)
+            )
             .padding(16.dp)
     ) {
         Column(
@@ -842,10 +858,10 @@ private fun MetricCard(
                 modifier         = Modifier
                     .size(38.dp)
                     .clip(RoundedCornerShape(11.dp))
-                    .background(metric.color.copy(0.12f)),
+                    .background(visualAccent.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(metric.icon, null, tint = metric.color, modifier = Modifier.size(20.dp))
+                Icon(metric.icon, null, tint = visualAccent, modifier = Modifier.size(20.dp))
             }
 
             Column {
@@ -860,7 +876,7 @@ private fun MetricCard(
                     Spacer(Modifier.width(3.dp))
                     Text(
                         metric.unit,
-                        color      = metric.color,
+                        color      = visualAccent,
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier   = Modifier.padding(bottom = 3.dp)
@@ -882,7 +898,7 @@ private fun MetricCard(
                     .clip(CircleShape)
                     .background(
                         Brush.horizontalGradient(
-                            listOf(metric.color, metric.color.copy(0.2f))
+                            listOf(visualAccent, visualAccent.copy(0.2f))
                         )
                     )
             )
@@ -921,7 +937,7 @@ private fun WeeklyActivitySection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassCard(accent, theme, RoundedCornerShape(20.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
                 .padding(20.dp, 20.dp, 20.dp, 14.dp)
         ) {
             Row(
@@ -1065,18 +1081,11 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
     Box(
         modifier = Modifier
             .size(118.dp, 158.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(colorFrom.copy(if (achievement.isUnlocked) 0.15f else 0.05f), colorTo.copy(0.03f)),
-                    start  = Offset(0f, 0f),
-                    end    = Offset(300f, 450f)
-                )
-            )
-            .border(
-                1.dp,
-                if (achievement.isUnlocked) colorFrom.copy(0.4f) else theme.stroke,
-                RoundedCornerShape(20.dp)
+            .profilePremiumSurface(
+                theme = theme,
+                shape = RoundedCornerShape(20.dp),
+                accent = if (achievement.isUnlocked) colorFrom else null,
+                elevation = if (achievement.isUnlocked && theme.isDark) 12.dp else 6.dp
             )
     ) {
         Column(
@@ -1143,9 +1152,12 @@ private fun SettingsSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .glassCard(accent, theme, RoundedCornerShape(16.dp))
-                .clickable(onClick = onEditProfile)
+                .profilePremiumAction(
+                    theme = theme,
+                    accent = accent,
+                    onClick = onEditProfile,
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1205,7 +1217,7 @@ private fun SettingsSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassCard(accent, theme, RoundedCornerShape(16.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
         ) {
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive
                               else strings.notificationsOff
@@ -1233,10 +1245,12 @@ private fun SettingsSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardCoral.copy(0.07f))
-                .border(1.dp, CardCoral.copy(0.2f), RoundedCornerShape(16.dp))
-                .clickable(onClick = onLogout)
+                .profilePremiumAction(
+                    theme = theme,
+                    accent = CardCoral,
+                    onClick = onLogout,
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .padding(16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1436,6 +1450,11 @@ private fun ThemeSettingsSheet(
             colors   = ButtonDefaults.buttonColors(
                 containerColor = previewAccent,
                 contentColor   = previewOnAccent
+            ),
+            border = BorderStroke(1.dp, Color.White.copy(if (preview.isDark) 0.28f else 0.42f)),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = if (preview.isDark) 12.dp else 7.dp,
+                pressedElevation = 2.dp
             )
         ) {
             Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
@@ -1472,9 +1491,7 @@ private fun PreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(preview.bg1)
-            .border(1.dp, preview.stroke, RoundedCornerShape(16.dp))
+            .profilePremiumSurface(preview, RoundedCornerShape(16.dp), acc)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -1536,9 +1553,12 @@ private fun <T> SegmentedSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .profilePremiumSurface(
+                theme,
+                RoundedCornerShape(12.dp),
+                accent,
+                if (theme.isDark) 8.dp else 4.dp
+            )
             .padding(4.dp)
     ) {
         options.forEach { (value, label) ->
@@ -1596,9 +1616,7 @@ private fun NotificationsSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(theme.bg2)
-                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
         ) {
             NotifToggleRow(
                 label           = strings.workoutReminders,
@@ -1625,7 +1643,12 @@ private fun NotificationsSettingsSheet(
             shape    = RoundedCornerShape(14.dp),
             colors   = ButtonDefaults.buttonColors(
                 containerColor = accent,
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                contentColor   = theme.effectiveOnAccentColor
+            ),
+            border = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = if (theme.isDark) 12.dp else 7.dp,
+                pressedElevation = 2.dp
             )
         ) {
             Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
@@ -1675,7 +1698,7 @@ private fun NotifToggleRow(
             onCheckedChange = onCheckedChange,
             colors          = SwitchDefaults.colors(
                 checkedTrackColor   = accent,
-                checkedThumbColor   = Color.White,
+                checkedThumbColor   = theme.effectiveOnAccentColor,
                 uncheckedTrackColor = theme.bg3,
                 uncheckedThumbColor = theme.text2
             )
@@ -1714,9 +1737,7 @@ private fun LanguageSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(theme.bg2)
-                .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
         ) {
             LanguageOptionRow(
                 flag       = "🇹🇷",
@@ -1743,7 +1764,12 @@ private fun LanguageSettingsSheet(
             shape    = RoundedCornerShape(14.dp),
             colors   = ButtonDefaults.buttonColors(
                 containerColor = accent,
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                contentColor   = theme.effectiveOnAccentColor
+            ),
+            border = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = if (theme.isDark) 12.dp else 7.dp,
+                pressedElevation = 2.dp
             )
         ) {
             Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
@@ -1788,7 +1814,7 @@ private fun LanguageOptionRow(
                 Icon(
                     Icons.Rounded.Check,
                     null,
-                    tint     = Color.White,
+                    tint     = theme.effectiveOnAccentColor,
                     modifier = Modifier.size(13.dp)
                 )
             }
@@ -2056,8 +2082,7 @@ private fun PerformanceShortcutCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .glassCard(accent, theme)
-            .clickable(onClick = onClick)
+            .profilePremiumAction(theme, accent, onClick)
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -2120,8 +2145,7 @@ fun WeightTrackingCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassCard(accent, theme)
-                .clickable(onClick = onClick)
+                .profilePremiumAction(theme, accent, onClick)
                 .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -2186,8 +2210,7 @@ fun ExerciseProgressionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassCard(accent, theme)
-                .clickable(onClick = onClick)
+                .profilePremiumAction(theme, accent, onClick)
                 .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -2242,7 +2265,7 @@ private fun LeaderboardPreviewCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .glassCard(accent, theme)
+            .profilePremiumSurface(theme, accent = accent)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -2313,10 +2336,12 @@ private fun RankModeTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg2.copy(0.6f))
-            .border(1.dp, theme.stroke.copy(0.6f), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .profilePremiumAction(
+                theme = theme,
+                accent = accent,
+                onClick = onClick,
+                shape = RoundedCornerShape(14.dp)
+            )
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {

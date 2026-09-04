@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import com.cosmibit.profitness.domain.model.ExerciseItem
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.classifyExerciseMetric
 import com.cosmibit.profitness.presentation.workout.defaultDurationSecondsForExercise
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 private val multiCategoryColors = mapOf(
     "Göğüs"   to CardCoral,
@@ -154,9 +156,7 @@ fun ExerciseMultiPickerSheet(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -239,6 +239,13 @@ fun ExerciseMultiPickerSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(
+                                elevation = if (isSelected) 11.dp else 6.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = if (isSelected) accent.copy(if (theme.isDark) 0.24f else 0.09f)
+                                            else Color.Black.copy(if (theme.isDark) 0.36f else 0.07f),
+                                ambientColor = Color.Black.copy(if (theme.isDark) 0.24f else 0.04f)
+                            )
                             .clip(RoundedCornerShape(16.dp))
                             .background(if (isSelected) accent.copy(alpha = 0.08f) else theme.bg2)
                             .border(
@@ -365,7 +372,7 @@ fun ExerciseMultiPickerSheet(
                 ) {
                     Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
-                Button(
+                PickerPrimaryButton(
                     onClick = {
                         // Rebuild list in orderedIds order; re-index sortIndex 0..N.
                         val out = orderedIds.mapIndexedNotNull { idx, exId ->
@@ -375,7 +382,7 @@ fun ExerciseMultiPickerSheet(
                     },
                     enabled = selected.isNotEmpty(),
                     modifier = Modifier.weight(1.4f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    accent = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))

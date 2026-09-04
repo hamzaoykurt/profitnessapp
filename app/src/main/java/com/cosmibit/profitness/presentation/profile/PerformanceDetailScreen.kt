@@ -33,7 +33,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AppBackButton
-import com.cosmibit.profitness.presentation.components.glassCard
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
@@ -212,24 +211,7 @@ private fun PerformanceShortcutCard(
     Box(
         modifier = modifier
             .height(146.dp)
-            .shadow(
-                elevation = 18.dp,
-                shape = shape,
-                spotColor = accent.copy(if (theme.isDark) 0.26f else 0.16f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.42f else 0.10f)
-            )
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        accent.copy(if (theme.isDark) 0.18f else 0.11f),
-                        theme.bg1.copy(if (theme.isDark) 0.96f else 0.98f),
-                        theme.bg0.copy(if (theme.isDark) 0.95f else 0.96f)
-                    )
-                )
-            )
-            .border(1.dp, accent.copy(if (theme.isDark) 0.42f else 0.34f), shape)
-            .clickable(onClick = onClick)
+            .profilePremiumAction(theme, accent, onClick, shape)
             .padding(16.dp)
     ) {
         Column(
@@ -316,10 +298,7 @@ private fun CalculatorLauncherButton(
         modifier = Modifier
             .widthIn(min = 136.dp)
             .height(42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(accent.copy(0.13f))
-            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .profilePremiumAction(theme, accent, onClick, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -428,14 +407,11 @@ private fun CalculatorModeButton(
     Row(
         modifier = modifier
             .height(50.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) modeAccent.copy(0.15f) else theme.bg0.copy(0.58f))
-            .border(
-                1.dp,
-                if (selected) modeAccent.copy(0.55f) else theme.stroke,
-                RoundedCornerShape(16.dp)
+            .profilePremiumAction(theme, modeAccent, onClick, RoundedCornerShape(16.dp))
+            .background(
+                if (selected) modeAccent.copy(if (theme.isDark) 0.15f else 0.08f)
+                else Color.Transparent
             )
-            .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -971,10 +947,8 @@ private fun FormulaSelector(
                 modifier = Modifier
                     .weight(1f)
                     .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(0.14f) else theme.bg0.copy(0.55f))
-                    .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke, RoundedCornerShape(12.dp))
-                    .clickable { onFormulaSelected(formula) },
+                    .profilePremiumAction(theme, accent, { onFormulaSelected(formula) }, RoundedCornerShape(12.dp))
+                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1002,10 +976,8 @@ private fun GenderSelector(
                 modifier = Modifier
                     .weight(1f)
                     .height(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(0.14f) else theme.bg0.copy(0.55f))
-                    .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke, RoundedCornerShape(12.dp))
-                    .clickable { onGenderSelected(gender) },
+                    .profilePremiumAction(theme, accent, { onGenderSelected(gender) }, RoundedCornerShape(12.dp))
+                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
                 contentAlignment = Alignment.Center
             ) {
                 Text(gender.localizedLabel(theme), color = if (selected) theme.text0 else theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1030,10 +1002,8 @@ private fun ActivitySelector(
                         modifier = Modifier
                             .weight(1f)
                             .height(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(0.14f) else theme.bg0.copy(0.55f))
-                            .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke, RoundedCornerShape(12.dp))
-                            .clickable { onActivitySelected(activity) },
+                            .profilePremiumAction(theme, accent, { onActivitySelected(activity) }, RoundedCornerShape(12.dp))
+                            .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(activity.localizedLabel(theme), color = if (selected) theme.text0 else theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -1058,10 +1028,8 @@ private fun ProteinGoalSelector(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(0.14f) else theme.bg0.copy(0.55f))
-                    .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke, RoundedCornerShape(12.dp))
-                    .clickable { onGoalSelected(goal) },
+                    .profilePremiumAction(theme, accent, { onGoalSelected(goal) }, RoundedCornerShape(12.dp))
+                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1087,9 +1055,7 @@ private fun CalculatorPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Brush.verticalGradient(listOf(accent.copy(0.10f), theme.bg0.copy(0.82f))))
-            .border(1.dp, accent.copy(0.30f), RoundedCornerShape(20.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1151,8 +1117,8 @@ private fun CalculationInput(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = theme.stroke,
             cursorColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = theme.bg0.copy(0.35f),
-            unfocusedContainerColor = theme.bg0.copy(0.35f)
+            focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
+            unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White
         )
     )
 }
@@ -1168,9 +1134,7 @@ private fun CalculationResultCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(accent.copy(0.12f))
-            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(16.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent, if (theme.isDark) 8.dp else 4.dp)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1206,9 +1170,7 @@ private fun EmptyCalculationHint(message: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg0.copy(0.45f))
-            .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(14.dp), elevation = if (theme.isDark) 7.dp else 3.dp)
             .padding(14.dp)
     ) {
         Text(message, color = theme.text2, fontSize = 11.sp)
@@ -1458,7 +1420,7 @@ private fun WorkoutBarChart(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(22.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(22.dp), accent)
             .padding(20.dp)
     ) {
         Column {
@@ -1543,14 +1505,15 @@ private fun MetricSection(
             letterSpacing = 2.sp
         )
         Spacer(Modifier.height(14.dp))
-        MetricsGrid(metrics = metrics, theme = theme)
+        MetricsGrid(metrics = metrics, theme = theme, accent = accent)
     }
 }
 
 @Composable
 private fun MetricsGrid(
     metrics: List<RealMetric>,
-    theme  : AppThemeState
+    theme  : AppThemeState,
+    accent : Color
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         metrics.chunked(2).forEach { row ->
@@ -1563,13 +1526,12 @@ private fun MetricsGrid(
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 128.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(m.color.copy(0.10f), theme.bg1.copy(0.92f))
-                                )
+                            .profilePremiumSurface(
+                                theme,
+                                RoundedCornerShape(18.dp),
+                                accent,
+                                if (theme.isDark) 11.dp else 6.dp
                             )
-                            .border(1.dp, m.color.copy(0.28f), RoundedCornerShape(18.dp))
                             .padding(16.dp)
                     ) {
                         Column(
@@ -1580,16 +1542,16 @@ private fun MetricsGrid(
                                 Modifier
                                     .size(34.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(m.color.copy(0.1f)),
+                                    .background(accent.copy(0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(m.icon, null, tint = m.color, modifier = Modifier.size(17.dp))
+                                Icon(m.icon, null, tint = accent, modifier = Modifier.size(17.dp))
                             }
                             Column {
                                 Row(verticalAlignment = Alignment.Bottom) {
                                     Text(m.value, color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 24.sp)
                                     Spacer(Modifier.width(3.dp))
-                                    Text(m.unit, color = m.color, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
+                                    Text(m.unit, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
                                 }
                                 Text(m.label, color = theme.text2, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                             }
@@ -1615,7 +1577,7 @@ private fun WeeklyActivityDataCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(22.dp))
+            .profilePremiumSurface(theme, RoundedCornerShape(22.dp), accent)
             .padding(20.dp, 20.dp, 20.dp, 14.dp)
     ) {
         Column {

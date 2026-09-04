@@ -106,6 +106,9 @@ import com.cosmibit.profitness.domain.challenges.UpdateEventChallengeRequest
 import com.cosmibit.profitness.domain.challenges.UpdateMetricChallengeRequest
 import com.cosmibit.profitness.domain.challenges.normalizeOnlineEventUrl
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.GhostButton
+import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
@@ -284,44 +287,35 @@ fun ChallengeDetailOverlay(
 
                     // ── Join/Leave button ───────────────────────────
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (c.isJoined) theme.bg2 else accent)
-                                .border(
-                                    1.dp,
-                                    if (c.isJoined) theme.stroke else Color.Transparent,
-                                    RoundedCornerShape(14.dp)
-                                )
-                                .clickable(enabled = !state.inFlight) {
-                                    when {
-                                        c.isJoined -> { vm.leave(); onChanged() }
-                                        c.visibility == ChallengeVisibility.Private && !c.isInvited -> {
-                                            showJoinPasswordDialog = true
-                                        }
-                                        else -> { vm.join(null); onChanged() }
-                                    }
+                        val action = {
+                            when {
+                                c.isJoined -> { vm.leave(); onChanged() }
+                                c.visibility == ChallengeVisibility.Private && !c.isInvited -> {
+                                    showJoinPasswordDialog = true
                                 }
-                                .padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (state.inFlight) {
-                                CircularProgressIndicator(
-                                    color = if (c.isJoined) accent else theme.effectiveOnAccentColor,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            } else {
-                                Text(
-                                    if (c.isJoined) strings.leaveLabel else strings.joinLabel,
-                                    color = if (c.isJoined) theme.text0 else theme.effectiveOnAccentColor,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 2.sp
-                                )
+                                else -> { vm.join(null); onChanged() }
                             }
+                        }
+                        if (c.isJoined) {
+                            GhostButton(
+                                text = strings.leaveLabel,
+                                onClick = action,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                isEnabled = !state.inFlight
+                            )
+                        } else {
+                            PremiumButton(
+                                text = strings.joinLabel,
+                                onClick = action,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                isEnabled = !state.inFlight,
+                                isLoading = state.inFlight,
+                                leadingIcon = Icons.Rounded.Bolt
+                            )
                         }
                     }
 
@@ -563,9 +557,7 @@ private fun PrivateJoinPasswordDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 20.dp)
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -673,13 +665,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(theme.bg1.copy(0.85f), theme.bg1.copy(0.55f))
-                )
-            )
-            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(18.dp))
+            .premiumSolidSurface(accent, theme, RoundedCornerShape(18.dp), elevation = 12.dp)
             .padding(14.dp)
     ) {
         // ── Mode header pill ──
@@ -1277,13 +1263,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(0.28f), accent.copy(0.06f))
-                )
-            )
-            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(20.dp))
+            .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 18.dp)
     ) {
         // Subtle radial accent overlay
         Box(

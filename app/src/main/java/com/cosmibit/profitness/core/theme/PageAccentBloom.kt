@@ -21,11 +21,11 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
     // Light modda bloom çok daha subtle; vurgu rengi yalnızca derinlik verir.
-    val radialPeak  = if (theme.isDark) 0.16f else 0.07f
-    val radialMid   = if (theme.isDark) 0.10f else 0.04f
-    val radialEdge  = if (theme.isDark) 0.04f else 0.01f
-    val sweepPeak   = if (theme.isDark) 0.07f else 0.03f
-    val sweepMid    = if (theme.isDark) 0.02f else 0.01f
+    val radialPeak  = if (theme.isDark) 0.055f else 0.012f
+    val radialMid   = if (theme.isDark) 0.022f else 0.005f
+    val radialEdge  = if (theme.isDark) 0.006f else 0.001f
+    val sweepPeak   = if (theme.isDark) 0.015f else 0.003f
+    val sweepMid    = if (theme.isDark) 0.003f else 0.001f
 
     Spacer(
         modifier = modifier

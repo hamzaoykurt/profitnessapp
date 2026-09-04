@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
 import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
+import com.cosmibit.profitness.presentation.components.glassCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -377,9 +378,7 @@ private fun ProgressionSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+            .glassCard(accent, theme, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -501,9 +500,7 @@ private fun AiProgressionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+            .glassCard(accent, theme, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -581,9 +578,7 @@ private fun StatTile(label: String, value: String, accent: Color, modifier: Modi
     val theme = LocalAppTheme.current
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+            .glassCard(accent, theme, RoundedCornerShape(12.dp))
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -6,7 +6,7 @@
 
 Backend: **Supabase** (PostgreSQL + Auth + Storage + Edge Functions)
 AI: **Gemini API**
-Tema: **Neon Forge Dark + Polar Glass Light**
+Tema: **Neon Forge Dark + Mineral Light**
 
 ---
 
@@ -78,7 +78,7 @@ Tema: **Neon Forge Dark + Polar Glass Light**
 
 ## Proje Durumu
 
-- **UI Katmanı:** ✅ Neon Forge Dark + Polar Glass Light ortak premium yüzey sistemi
+- **UI Katmanı:** ✅ Neon Forge Dark + Mineral Light ortak premium yüzey ve tek-accent aksiyon sistemi
 - **Tema Sistemi:** ✅ Kullanıcı seçilebilir dark/light + DataStore persistence
 - **Backend:** 🔄 FAZ 1 — Supabase migration oluşturuluyor
 - **Auth:** 🔄 FAZ 1 — Supabase Auth entegrasyonu

@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -19,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -155,14 +159,19 @@ fun OnboardingScreen(
             .fillMaxSize()
             .background(theme.bg0)
     ) {
-        // Arka plan degrade
+        // Dark mode gets a restrained accent wash. Light mode is a clean,
+        // independently designed paper surface rather than a neon inversion.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(320.dp)
                 .background(
                     Brush.verticalGradient(
-                        listOf(accent.copy(alpha = 0.12f), Color.Transparent)
+                        if (theme.isDark) {
+                            listOf(accent.copy(alpha = 0.10f), Color.Transparent)
+                        } else {
+                            listOf(theme.bg1, theme.bg0.copy(alpha = 0f))
+                        }
                     )
                 )
         )
@@ -262,6 +271,7 @@ private fun StepTheme(
     onThemeChange: (AppThemeState) -> Unit,
     vm           : OnboardingViewModel
 ) {
+    var isDark         by remember { mutableStateOf(current.isDark) }
     var accent       by remember { mutableStateOf(current.accent) }
     var intensity    by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
@@ -282,6 +292,7 @@ private fun StepTheme(
         )
     }
     val preview = current.copy(
+        isDark          = isDark,
         accent           = accent,
         surfaceStyle     = SurfaceStyle.OLED,
         intensity        = intensity,
@@ -307,6 +318,22 @@ private fun StepTheme(
         )
 
         Spacer(Modifier.height(24.dp))
+
+        Text(current.t("GÖRÜNÜM", "APPEARANCE"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Spacer(Modifier.height(8.dp))
+        ThemeSegmentedSelector(
+            options = listOf(
+                true to current.t("KOYU", "DARK"),
+                false to current.t("AÇIK", "LIGHT")
+            ),
+            selected = isDark,
+            accent = previewAccent,
+            onAccent = previewOnAccent,
+            theme = preview,
+            onSelect = { isDark = it }
+        )
+        Spacer(Modifier.height(18.dp))
+
         ThemePreviewCard(preview)
         Spacer(Modifier.height(22.dp))
 
@@ -551,11 +578,11 @@ private fun StepName(
 
         Spacer(Modifier.height(32.dp))
 
-        Button(
+        PremiumOnboardingButton(
             onClick  = { vm.nextStep() },
             modifier = Modifier.fillMaxWidth().height(54.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
+            accent   = accent,
+            theme    = theme
         ) {
             Text(theme.t("Devam Et", "Continue"), fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
             Spacer(Modifier.width(8.dp))
@@ -686,6 +713,13 @@ private fun OnboardingChoiceGrid(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = resolvedHeight)
+                        .shadow(
+                            elevation = if (isSelected) 6.dp else if (theme.isDark) 0.dp else 3.dp,
+                            shape = RoundedCornerShape(14.dp),
+                            clip = false,
+                            ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.08f),
+                            spotColor = if (isSelected) accent.copy(0.20f) else Color(0xFF64748B).copy(0.08f)
+                        )
                         .clip(RoundedCornerShape(14.dp))
                         .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
                         .border(
@@ -1000,12 +1034,12 @@ private fun StepGoal(
         Spacer(Modifier.height(32.dp))
 
         // Program önerisine geç
-        Button(
+        PremiumOnboardingButton(
             onClick  = { vm.nextStep() },
             enabled  = !state.isSaving,
             modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
+            accent   = accent,
+            theme    = theme
         ) {
             if (state.isSaving) {
                 CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
@@ -1082,6 +1116,12 @@ private fun StepPersonalProgram(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(
+                    elevation = if (theme.isDark) 10.dp else 7.dp,
+                    shape = RoundedCornerShape(20.dp),
+                    ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF64748B).copy(0.10f),
+                    spotColor = if (theme.isDark) accent.copy(0.14f) else Color(0xFF64748B).copy(0.12f)
+                )
                 .clip(RoundedCornerShape(20.dp))
                 .background(theme.bg1)
                 .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(20.dp))
@@ -1125,12 +1165,12 @@ private fun StepPersonalProgram(
         Spacer(Modifier.weight(1f))
         Spacer(Modifier.height(36.dp))
 
-        Button(
+        PremiumOnboardingButton(
             onClick  = { vm.saveAndGeneratePersonalProgram() },
             enabled  = !loading,
             modifier = Modifier.fillMaxWidth().height(58.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
+            accent   = accent,
+            theme    = theme
         ) {
             if (loading) {
                 CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
@@ -1265,11 +1305,11 @@ private fun StepNavButtons(
 ) {
     val responsive = rememberResponsiveLayoutInfo()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
+        PremiumOnboardingButton(
             onClick  = onNext,
             modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
+            accent   = accent,
+            theme    = theme
         ) {
             Text(
                 nextLabel,
@@ -1316,6 +1356,12 @@ private fun ThemePreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = if (preview.isDark) 10.dp else 7.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = if (preview.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.10f),
+                spotColor = if (preview.isDark) accent.copy(0.14f) else Color(0xFF64748B).copy(0.12f)
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(preview.bg1)
             .border(1.dp, preview.stroke, RoundedCornerShape(16.dp))
@@ -1427,6 +1473,74 @@ private fun <T> ThemeSegmentedSelector(
                     letterSpacing = 1.4.sp
                 )
             }
+        }
+    }
+}
+
+/**
+ * Primary onboarding action with a tactile forged face. Elevation collapses
+ * under the finger, while light mode uses a conventional slate shadow instead
+ * of a neon halo.
+ */
+@Composable
+private fun PremiumOnboardingButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    accent: Color,
+    theme: AppThemeState,
+    content: @Composable RowScope.() -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.965f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "onboarding_cta_scale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (pressed && enabled) 1.dp else if (theme.isDark) 12.dp else 8.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "onboarding_cta_depth"
+    )
+    val shape = RoundedCornerShape(16.dp)
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = if (pressed && enabled) 2.dp.toPx() else 0f
+                alpha = if (enabled) 1f else 0.48f
+            }
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.13f),
+                spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f)
+            )
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(accent.copy(alpha = 0.92f), accent, accent.copy(alpha = 0.78f))
+                )
+            )
+            .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), shape)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(LocalContentColor provides theme.effectiveOnAccentColor) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
         }
     }
 }

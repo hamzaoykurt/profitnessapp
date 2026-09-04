@@ -4,11 +4,23 @@ _Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
-AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yapıştırılan ayrıntılı programlar artık sabit set/tekrar, başlangıç kilosu, bölüm, hareket/gün notu, süperset-dev set-devre bağlantısı, tur ve tur arası dinlenmeyi saklıyor.
+Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. Koyu ve açık tema birbirinden bağımsız tasarlandı; glass yalnızca yüzen chrome'da, solid yükseltilmiş yüzeyler içerikte, inset yüzeyler girişlerde kullanılıyor.
 
 ---
 
 ## Son Tamamlanan Değişiklikler
+
+### Uygulama Geneli Premium Tasarım Sistemi (2026-09-04)
+
+- Auth, onboarding, şifre sıfırlama, antrenman, program, AI Coach, keşfet, arkadaşlar, liderlik, challenge, mağaza, kilo takibi ve profil akışları aynı premium görsel dilde güncellendi.
+- `premiumSolidSurface`, `floatingGlassSurface` ve `insetControlSurface` rolleri ayrıştırıldı; glass'ın her kartta kullanılması engellendi.
+- `PremiumButton`, `GhostButton`, `PremiumIconButton` ve geri butonuna basma ölçeği, gölge çökmesi, bevel ve kontrollü accent ışığı eklendi.
+- Aksiyon hiyerarşisi tek accent olarak sabitlendi: görünümde yalnız tercih edilen primary renkli/tintli, secondary aksiyonlar nötr; hata/uyarı/başarı/rütbe renkleri semantik istisna.
+- Program Studio'daki lime/cyan CTA çifti kaldırıldı; AI primary, Manuel neutral yapıldı. Spor/kategori filtreleri, hazır program kartları ve program detayları tek tema accent'ine geçirildi.
+- Profil performans kartlarındaki dekoratif gökkuşağı kaldırılarak tek tema accent'i kullanıldı.
+- Açık tema bağımsız Mineral Light paletine (`#F1F3F6`, beyaz yüzeyler, slate metin/gölge) taşındı; mekanik renk tersleme kaldırıldı.
+- Alt navigasyon yalnız ikon olacak şekilde sadeleştirildi; sayfa geneli bloom azaltıldı ve kart/aksiyon derinliğine odaklanıldı.
+- Dark/light emülatör QA'sı auth, dashboard, program, AI, discover, store ve profile akışlarında yapıldı.
 
 ### CosmiBit Marka ve Paket Geçişi (2026-09-04)
 
@@ -67,7 +79,9 @@ AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yap
 - **Extension mapper zorunlu:** `fun Dto.toDomain()` — ayrı mapper class yasak.
 - **Supabase IO dispatcher:** Tüm Supabase çağrıları `withContext(Dispatchers.IO)` + `runCatching`.
 - **BaseViewModel<S,E>:** Navigation/toast için `sendEvent()`, state'e flag ekleme.
-- **Dual-mode tema (2026-09-04):** Koyu Neon Forge korunur; açık tema eski sıcak paleti kullanmaz. Polar Glass açık paleti (`#F5F7FA`, beyaz yüzeyler, slate metin/gölge) ve tema tokenları zorunludur.
+- **Dual-mode tema (2026-09-04):** Koyu Neon Forge korunur; açık tema eski sıcak paleti kullanmaz. Mineral Light açık paleti (`#F1F3F6`, beyaz yüzeyler, slate metin/gölge) ve tema tokenları zorunludur.
+- **Malzeme rolleri (2026-09-04):** İçerik kartı solid/elevated, yüzen chrome kontrollü glass, girişler inset olmalıdır. Sayfa geneline yoğun neon/glass yayılmaz.
+- **Aksiyon rengi (2026-09-04):** Primary marka accent'ini, secondary nötr yüzeyi kullanır. Komşu CTA'lara kategori bazlı ayrı renk verilmez; kırmızı/amber/yeşil yalnız gerçek semantik anlam taşır.
 - **CinematicExerciseCard:** Veri ve etkileşim sözleşmesini koru; kullanıcı yönlendirmesiyle görsel malzeme, glow ve press derinliği geliştirilebilir.
 
 ---

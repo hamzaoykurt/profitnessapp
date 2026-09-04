@@ -1,11 +1,17 @@
 package com.cosmibit.profitness.presentation.program
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +27,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,8 +138,15 @@ fun ExercisePickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
+                    .shadow(
+                        elevation = if (theme.isDark) 0.dp else 3.dp,
+                        shape = RoundedCornerShape(14.dp),
+                        clip = false,
+                        ambientColor = Color(0xFF64748B).copy(0.08f),
+                        spotColor = Color(0xFF64748B).copy(0.08f)
+                    )
                     .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg2)
+                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
                     .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
@@ -223,9 +239,20 @@ fun ExercisePickerSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(
+                                elevation = if (isSelected) 6.dp else if (theme.isDark) 1.dp else 4.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                clip = false,
+                                ambientColor = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.09f),
+                                spotColor = if (isSelected && theme.isDark) accent.copy(0.16f) else Color(0xFF64748B).copy(0.08f)
+                            )
                             .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (isSelected) accent.copy(alpha = 0.08f) else theme.bg2
+                                when {
+                                    isSelected && theme.isDark -> accent.copy(alpha = 0.08f)
+                                    theme.isDark -> theme.bg2
+                                    else -> theme.bg1
+                                }
                             )
                             .border(
                                 1.dp,
@@ -363,7 +390,7 @@ fun ExercisePickerSheet(
 
                                 Spacer(Modifier.height(12.dp))
 
-                                Button(
+                                PickerPrimaryButton(
                                     onClick = {
                                         onConfirm(
                                             exercise.id,
@@ -380,8 +407,7 @@ fun ExercisePickerSheet(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(48.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = accent),
-                                    shape = RoundedCornerShape(12.dp)
+                                    accent = accent
                                 ) {
                                     Icon(
                                         Icons.Rounded.Add,
@@ -408,8 +434,15 @@ fun ExercisePickerSheet(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .shadow(
+                                    elevation = if (theme.isDark) 1.dp else 4.dp,
+                                    shape = RoundedCornerShape(14.dp),
+                                    clip = false,
+                                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.08f),
+                                    spotColor = Color(0xFF64748B).copy(0.08f)
+                                )
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(theme.bg2)
+                                .background(if (theme.isDark) theme.bg2 else theme.bg1)
                                 .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                                 .clickable { showRequestDialog = true }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -520,6 +553,66 @@ private fun formatManualDistance(meters: Int): String =
         "$meters m"
     }
 
+/** Shared tactile action for both exercise pickers. */
+@Composable
+internal fun PickerPrimaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    content: @Composable RowScope.() -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed && enabled) 0.96f else 1f,
+        spring(stiffness = Spring.StiffnessHigh),
+        label = "picker_cta_scale"
+    )
+    val elevation by animateDpAsState(
+        if (pressed && enabled) 1.dp else if (theme.isDark) 10.dp else 7.dp,
+        spring(stiffness = Spring.StiffnessHigh),
+        label = "picker_cta_depth"
+    )
+    val shape = RoundedCornerShape(12.dp)
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = if (pressed && enabled) 2.dp.toPx() else 0f
+                alpha = if (enabled) 1f else 0.45f
+            }
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                clip = false,
+                ambientColor = if (theme.isDark) Color.Black.copy(0.50f) else Color(0xFF64748B).copy(0.12f),
+                spotColor = accent.copy(if (theme.isDark) 0.28f else 0.16f)
+            )
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(accent.copy(0.92f), accent, accent.copy(0.78f))))
+            .border(1.dp, Color.White.copy(if (theme.isDark) 0.22f else 0.36f), shape)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(LocalContentColor provides accent.readableOnAccentColor()) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
+        }
+    }
+}
+
 @Composable
 private fun ExerciseRequestDialog(
     requestLoading: Boolean,
@@ -536,8 +629,16 @@ private fun ExerciseRequestDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(
+                    elevation = if (theme.isDark) 14.dp else 10.dp,
+                    shape = RoundedCornerShape(20.dp),
+                    clip = false,
+                    ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.12f),
+                    spotColor = Color(0xFF64748B).copy(0.10f)
+                )
                 .clip(RoundedCornerShape(20.dp))
                 .background(theme.bg1)
+                .border(1.dp, theme.stroke.copy(0.82f), RoundedCornerShape(20.dp))
                 .padding(20.dp)
         ) {
             Text(
@@ -604,15 +705,14 @@ private fun ExerciseRequestDialog(
                 ) {
                     Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
-                Button(
+                PickerPrimaryButton(
                     onClick = {
                         if (name.isNotBlank()) onSubmit(name.trim(), muscle.trim(), notes.trim())
                     },
                     enabled = name.isNotBlank() && !isCompositeName && !requestLoading,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(12.dp)
+                        .height(44.dp)
                 ) {
                     if (requestLoading) {
                         CircularProgressIndicator(

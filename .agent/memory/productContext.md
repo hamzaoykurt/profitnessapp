@@ -49,11 +49,12 @@ MainActivity (NavHost)
 
 ## Tasarım Prensipleri
 
-1. **Dual Mode:** Neon Forge Dark ve serin nötr Polar Glass Light; açık tema mekanik renk tersleme değildir
-2. **Motion:** Her geçiş animasyonlu; idle animasyonlar hayat katar
-3. **Density:** Bilgi yoğunluğu kontrollü — overload yok
-4. **Tactile Feel:** Dokunuş geri bildirimi, scale/spring efektleri
-5. **Readability:** Her iki temada da WCAG AA kontrastı ve fotoğraf scrim okunabilirliği korunmalı
+1. **Dual Mode:** Neon Forge Dark ve serin nötr Mineral Light; açık tema mekanik renk tersleme değildir
+2. **Tek Accent Hiyerarşisi:** Yalnız tercih edilen primary aksiyon tema rengini taşır; secondary kontroller nötr, ek renkler yalnız semantik durumlar içindir
+3. **Motion:** Her geçiş animasyonlu; idle animasyonlar hayat katar
+4. **Density:** Bilgi yoğunluğu kontrollü — overload yok
+5. **Tactile Feel:** Dokunuş geri bildirimi, scale/spring efektleri
+6. **Readability:** Her iki temada da WCAG AA kontrastı ve fotoğraf scrim okunabilirliği korunmalı
 
 ---
 

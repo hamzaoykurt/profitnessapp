@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.animation.core.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,9 +60,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -93,6 +101,8 @@ import com.cosmibit.profitness.domain.challenges.MovementInput
 import com.cosmibit.profitness.domain.model.ExerciseItem
 import com.cosmibit.profitness.presentation.program.ExerciseMultiPickerSheet
 import com.cosmibit.profitness.presentation.workout.SportType
+import com.cosmibit.profitness.presentation.components.premiumSolidSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.places.api.Places
@@ -334,9 +344,7 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg1.copy(0.72f))
-                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 7.dp)
                     .padding(4.dp)
             ) {
                 KindChip(
@@ -516,13 +524,55 @@ fun CreateChallengeOverlay(
             }
 
             // ── Submit ──
+            val submitSource = remember { MutableInteractionSource() }
+            val submitPressed by submitSource.collectIsPressedAsState()
+            val submitScale by animateFloatAsState(
+                targetValue = if (submitPressed && !inFlight) 0.975f else 1f,
+                animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh),
+                label = "create_challenge_press"
+            )
+            val submitElevation by animateDpAsState(
+                targetValue = if (submitPressed && !inFlight) 3.dp else 17.dp,
+                animationSpec = spring(stiffness = Spring.StiffnessHigh),
+                label = "create_challenge_depth"
+            )
+            val submitShape = RoundedCornerShape(18.dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(accent)
-                    .clickable(enabled = !inFlight) {
+                    .graphicsLayer {
+                        scaleX = submitScale
+                        scaleY = submitScale
+                        translationY = if (submitPressed && !inFlight) 3.dp.toPx() else 0f
+                    }
+                    .shadow(
+                        elevation = submitElevation,
+                        shape = submitShape,
+                        spotColor = accent.copy(if (theme.isDark) 0.52f else 0.20f),
+                        ambientColor = Color.Black.copy(if (theme.isDark) 0.40f else 0.09f)
+                    )
+                    .clip(submitShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                lerp(accent, Color.White, if (theme.isDark) 0.14f else 0.07f),
+                                accent,
+                                lerp(accent, Color.Black, if (theme.isDark) 0.26f else 0.18f)
+                            )
+                        )
+                    )
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawRect(
+                                Brush.verticalGradient(listOf(Color.White.copy(0.28f), Color.Transparent)),
+                                size = Size(size.width, size.height * 0.48f)
+                            )
+                            drawRect(Color.White.copy(0.48f), size = Size(size.width, 1.2.dp.toPx()))
+                        }
+                    }
+                    .border(1.dp, Color.White.copy(if (theme.isDark) 0.22f else 0.44f), submitShape)
+                    .clickable(enabled = !inFlight, interactionSource = submitSource, indication = null) {
                         if (kind == CreateFormKind.Metric) {
                             onSubmit(
                                 title,
@@ -1501,9 +1551,7 @@ private fun TextInputBox(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .heightIn(min = if (minLines == 1) 58.dp else 84.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
@@ -1539,9 +1587,7 @@ private fun TextInputInline(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
@@ -1574,9 +1620,7 @@ private fun NumberInputInline(value: String, onValueChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(

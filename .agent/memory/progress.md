@@ -2,11 +2,25 @@
 
 _Son güncelleme: 2026-09-04_
 
-## Genel Durum: 🟡 Aktif Geliştirme — AI program içe aktarma ayrıntıları tamamlandı
+## Genel Durum: 🟢 Premium çift tema ve tüm ekran görsel yenilemesi tamamlandı
 
 ---
 
 ## ✅ Tamamlananlar
+
+### Uygulama Geneli Premium UI — Dark + Light
+
+- [x] Tüm ana ekran ve alt akışlar ortak premium malzeme rollerine geçirildi
+- [x] İçerik kartları solid/elevated, yüzen chrome kontrollü glass, arama/form alanları inset yapıldı
+- [x] Primary, secondary, icon ve geri kontrollerine tactile 3D basma/elevation tepkisi eklendi
+- [x] Keyfi çok renkli CTA'lar kaldırıldı; primary tek tema accent'i, secondary nötr yüzey kullanıyor
+- [x] Program Studio filtre/kart/aksiyon gökkuşağı tek-accent sistemine geçirildi
+- [x] Profil performans kartlarının dekoratif çok renkli chrome'u tek accent'e indirildi
+- [x] Açık tema mekanik tersleme yerine bağımsız Mineral Light paletiyle yeniden tasarlandı
+- [x] Alt navigasyon tüm form faktörlerinde yalnız ikon olacak şekilde sadeleştirildi
+- [x] Workout metin yoğunluğu azaltıldı; ayrıntılar bilgi panelinde korundu
+- [x] Sayfa geneli neon bloom azaltıldı; kart kenarı ve eylem vurguları kontrollü hale getirildi
+- [x] Auth, dashboard, program, AI, discover, store ve profile dark/light emülatör QA'sı tamamlandı
 
 ### CosmiBit Marka Kimliği
 
@@ -106,10 +120,10 @@ _Son güncelleme: 2026-09-04_
 
 ## Bilinen Sorunlar
 
-### 2026-09-04 — Premium yüzey sistemi + Polar Glass Light
+### 2026-09-04 — Premium yüzey sistemi + Mineral Light
 
 - [x] Görünüm ayarlarına kalıcı Koyu/Açık seçici eklendi
-- [x] Eski sıcak açık palet kaldırıldı; serin nötr Polar Glass paleti tanımlandı
+- [x] Eski sıcak açık palet kaldırıldı; serin nötr Mineral Light paleti tanımlandı
 - [x] `ForgeCard` ve `glassCard` için katmanlı yüzey, iç rim, kontrollü glow ve tema-özel gölge
 - [x] Egzersiz kartlarına içe çöken basma tepkisi ve dinamik elevation
 - [x] Alt navigasyon ve tablet rail yalnız ikon olacak şekilde sadeleştirildi
@@ -119,7 +133,7 @@ _Son güncelleme: 2026-09-04_
 - [x] Kart cam/rim katmanları içerik üstüne taşındı; çift gölge ve görünür nefes alan glow eklendi
 - [x] Gün seçiciye bevel highlight, iç alt gölge ve elevation collapse eklendi
 - [x] AI Chat kullanıcı/Oracle balonları ile mesaj giriş yüzeyi dark/light için yeniden işlendi
-- [x] `:app:compileDebugKotlin` doğrulaması yapıldı
+- [x] `:app:compileDebugKotlin`, `:app:assembleDebug` ve `:app:testDebugUnitTest` doğrulamaları yapıldı
 
 | Sorun | Dosya | Öncelik |
 |-------|-------|---------|

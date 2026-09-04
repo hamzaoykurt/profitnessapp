@@ -36,6 +36,8 @@ import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.data.store.BillingProduct
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.GhostButton
+import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.cosmibit.profitness.presentation.components.glassCard
 
 // ── Domain ────────────────────────────────────────────────────────────────────
@@ -481,25 +483,14 @@ private fun PendingOrderPanel(
                 lineHeight = 14.sp
             )
             Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (canSubmit) accent.copy(0.14f) else theme.bg2)
-                    .border(1.dp, if (canSubmit) accent.copy(0.35f) else theme.stroke, RoundedCornerShape(14.dp))
-                    .clickable(enabled = !state.isLoading && canSubmit) { onSandboxComplete() }
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Rounded.Science, null, tint = accent, modifier = Modifier.size(17.dp))
-                        Text(theme.t("Demo ödemeyi tamamla", "Complete demo payment"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                    }
-                }
-            }
+            PremiumButton(
+                text = theme.t("Demo ödemeyi tamamla", "Complete demo payment"),
+                onClick = onSandboxComplete,
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = !state.isLoading && canSubmit,
+                isLoading = state.isLoading,
+                leadingIcon = Icons.Rounded.Science
+            )
         } else {
             Spacer(Modifier.height(10.dp))
             Text(
@@ -989,37 +980,22 @@ private fun PlanOfferCard(
         }
 
         Spacer(Modifier.height(14.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(
-                    if (isCurrent) Brush.linearGradient(listOf(theme.bg2, theme.bg2))
-                    else Brush.linearGradient(
-                        listOf(accent, accent.copy(0.78f)),
-                        start = Offset(0f, 0f),
-                        end = Offset(720f, 0f)
-                    )
-                )
-                .border(1.dp, if (isCurrent) theme.stroke.copy(0.45f) else Color.White.copy(0.10f), RoundedCornerShape(13.dp))
-                .clickable(enabled = !isCurrent && !isLoading, onClick = onPurchase),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isLoading && selected) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = if (tier.plan == UserPlan.FREE) accent else onAccent,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(
-                    ctaLabel,
-                    color = if (isCurrent) accent else onAccent,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
+        if (isCurrent) {
+            GhostButton(
+                text = ctaLabel,
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = false
+            )
+        } else {
+            PremiumButton(
+                text = ctaLabel,
+                onClick = onPurchase,
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = !isLoading,
+                isLoading = isLoading && selected,
+                leadingIcon = Icons.Rounded.WorkspacePremium
+            )
         }
     }
 }
@@ -2436,6 +2412,11 @@ private fun CtaButton(
         if (isPressed && !isCurrent && !isLoading) 0.97f else 1f,
         spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh), label = "cta"
     )
+    val elevation by animateDpAsState(
+        if (isPressed && !isCurrent && !isLoading) 3.dp else 18.dp,
+        spring(stiffness = Spring.StiffnessHigh), label = "cta_depth"
+    )
+    val shape = RoundedCornerShape(18.dp)
 
     Column(
         modifier            = Modifier
@@ -2446,17 +2427,49 @@ private fun CtaButton(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .scale(scale)
-                .clip(RoundedCornerShape(16.dp))
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationY = if (isPressed && !isCurrent && !isLoading) 3.dp.toPx() else 0f
+                }
+                .shadow(
+                    elevation = if (isCurrent) 5.dp else elevation,
+                    shape = shape,
+                    spotColor = if (isCurrent) Color.Black.copy(if (theme.isDark) 0.28f else 0.08f)
+                                else accentColor.copy(if (theme.isDark) 0.48f else 0.20f),
+                    ambientColor = Color.Black.copy(if (theme.isDark) 0.38f else 0.08f)
+                )
+                .clip(shape)
                 .background(
                     if (isCurrent)
-                        Brush.linearGradient(listOf(theme.bg3, theme.bg3))
+                        Brush.verticalGradient(listOf(theme.bg3, theme.bg2))
                     else
-                        Brush.linearGradient(
-                            listOf(accentColor, accentColor.copy(0.8f)),
-                            start = Offset(0f, 0f),
-                            end   = Offset(720f, 0f)
+                        Brush.verticalGradient(
+                            listOf(
+                                lerp(accentColor, Color.White, if (theme.isDark) 0.14f else 0.07f),
+                                accentColor,
+                                lerp(accentColor, Color.Black, if (theme.isDark) 0.26f else 0.18f)
+                            )
                         )
+                )
+                .drawWithCache {
+                    onDrawBehind {
+                        drawRect(
+                            Brush.verticalGradient(listOf(Color.White.copy(0.26f), Color.Transparent)),
+                            size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.48f)
+                        )
+                        if (!isCurrent) {
+                            drawRect(
+                                Color.White.copy(0.48f),
+                                size = androidx.compose.ui.geometry.Size(size.width, 1.2.dp.toPx())
+                            )
+                        }
+                    }
+                }
+                .border(
+                    1.dp,
+                    if (isCurrent) theme.stroke else Color.White.copy(if (theme.isDark) 0.22f else 0.44f),
+                    shape
                 )
                 .clickable(
                     enabled           = !isCurrent && !isLoading,

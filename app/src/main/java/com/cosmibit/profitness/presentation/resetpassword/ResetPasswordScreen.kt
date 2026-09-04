@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
@@ -95,8 +96,15 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(80.dp)
+                    .shadow(
+                        elevation = if (theme.isDark) 14.dp else 8.dp,
+                        shape = RoundedCornerShape(22.dp),
+                        ambientColor = if (theme.isDark) accent.copy(0.18f) else androidx.compose.ui.graphics.Color(0xFF64748B).copy(0.10f),
+                        spotColor = accent.copy(if (theme.isDark) 0.24f else 0.12f)
+                    )
                     .clip(RoundedCornerShape(22.dp))
-                    .background(accent.copy(alpha = 0.12f)),
+                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
+                    .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(22.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.LinkOff, null, tint = accent, modifier = Modifier.size(40.dp))
@@ -104,7 +112,7 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
             Spacer(Modifier.height(28.dp))
             Text(
                 theme.t("Bağlantı geçersiz", "Invalid link"),
-                color = ObsidianText, fontSize = 22.sp, fontWeight = FontWeight.Black
+                color = theme.text0, fontSize = 22.sp, fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(8.dp))
             Text(
@@ -112,7 +120,7 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
                     "Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.\nLütfen yeni bir bağlantı isteyin.",
                     "This password reset link is invalid or has expired.\nPlease request a new link."
                 ),
-                color = ObsidianSub, fontSize = 14.sp,
+                color = theme.text1, fontSize = 14.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(Modifier.height(32.dp))
@@ -182,8 +190,15 @@ private fun NewPasswordContent(
             Box(
                 modifier = Modifier
                     .size(80.dp)
+                    .shadow(
+                        elevation = if (theme.isDark) 14.dp else 8.dp,
+                        shape = RoundedCornerShape(22.dp),
+                        ambientColor = if (theme.isDark) accent.copy(0.18f) else androidx.compose.ui.graphics.Color(0xFF64748B).copy(0.10f),
+                        spotColor = accent.copy(if (theme.isDark) 0.24f else 0.12f)
+                    )
                     .clip(RoundedCornerShape(22.dp))
-                    .background(accent.copy(alpha = 0.12f)),
+                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
+                    .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(22.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.LockReset, null, tint = accent, modifier = Modifier.size(40.dp))
@@ -192,12 +207,12 @@ private fun NewPasswordContent(
             Spacer(Modifier.height(28.dp))
             Text(
                 theme.t("Yeni şifre belirle", "Set a new password"),
-                color = ObsidianText, fontSize = 24.sp, fontWeight = FontWeight.Black
+                color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 theme.t("Hesabın için güçlü bir şifre seç.", "Choose a strong password for your account."),
-                color = ObsidianSub, fontSize = 14.sp
+                color = theme.text1, fontSize = 14.sp
             )
 
             Spacer(Modifier.height(36.dp))

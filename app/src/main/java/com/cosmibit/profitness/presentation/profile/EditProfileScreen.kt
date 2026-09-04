@@ -297,7 +297,11 @@ fun EditProfileScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
-                .background(Brush.verticalGradient(listOf(accent.copy(0.14f), Color.Transparent)))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(accent.copy(if (theme.isDark) 0.14f else 0.045f), Color.Transparent)
+                    )
+                )
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -325,9 +329,14 @@ fun EditProfileScreen(
                         Box(modifier = Modifier.size(120.dp).align(Alignment.Center).clip(CircleShape).background(accent))
                         Box(
                             modifier = Modifier
-                                .size(110.dp).align(Alignment.Center).clip(CircleShape)
-                                .background(theme.bg2)
-                                .clickable { showAvatarPicker = true },
+                                .size(110.dp)
+                                .align(Alignment.Center)
+                                .profilePremiumAction(
+                                    theme = theme,
+                                    accent = accent,
+                                    onClick = { showAvatarPicker = true },
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             val currentAvatar = state.avatar
@@ -395,9 +404,12 @@ fun EditProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(theme.bg1)
-                                .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                                .profilePremiumSurface(
+                                    theme = theme,
+                                    shape = RoundedCornerShape(14.dp),
+                                    accent = accent,
+                                    elevation = if (theme.isDark) 10.dp else 5.dp
+                                )
                                 .padding(4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
@@ -437,7 +449,8 @@ fun EditProfileScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                    focusedContainerColor = theme.bg1, unfocusedContainerColor = theme.bg1,
+                                    focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
+                                    unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
                                     cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
                                 )
                             )
@@ -454,7 +467,8 @@ fun EditProfileScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                    focusedContainerColor = theme.bg1, unfocusedContainerColor = theme.bg1,
+                                    focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
+                                    unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
                                     cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
                                 )
                             )
@@ -479,7 +493,8 @@ fun EditProfileScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                focusedContainerColor = theme.bg1, unfocusedContainerColor = theme.bg1,
+                                focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
+                                unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
                                 cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
                             )
                         )
@@ -505,9 +520,12 @@ fun EditProfileScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(bmiColor.copy(0.1f))
-                                .border(1.dp, bmiColor.copy(0.3f), RoundedCornerShape(12.dp))
+                                .profilePremiumSurface(
+                                    theme = theme,
+                                    shape = RoundedCornerShape(12.dp),
+                                    accent = bmiColor,
+                                    elevation = if (theme.isDark) 9.dp else 4.dp
+                                )
                                 .padding(12.dp)
                         ) {
                             Row(
@@ -587,7 +605,13 @@ fun EditProfileScreen(
                     onClick  = ::saveAndExit,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp),
                     shape    = RoundedCornerShape(16.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
+                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor),
+                    border   = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = if (theme.isDark) 12.dp else 7.dp,
+                        pressedElevation = 2.dp,
+                        disabledElevation = 0.dp
+                    )
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -640,14 +664,16 @@ fun EditProfileScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(if (isSelected) accent.copy(0.18f) else theme.bg2)
-                                        .border(
-                                            width = if (isSelected) 2.dp else 1.dp,
-                                            color = if (isSelected) accent else theme.stroke,
+                                        .profilePremiumAction(
+                                            theme = theme,
+                                            accent = accent,
+                                            onClick = { avatar = emoji; showAvatarPicker = false },
                                             shape = RoundedCornerShape(14.dp)
                                         )
-                                        .clickable { avatar = emoji; showAvatarPicker = false },
+                                        .background(
+                                            if (isSelected) accent.copy(if (theme.isDark) 0.17f else 0.10f)
+                                            else Color.Transparent
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) { Text(emoji, fontSize = 26.sp) }
                             }
@@ -689,7 +715,8 @@ private fun ProfileTextField(
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                focusedContainerColor = theme.bg1, unfocusedContainerColor = theme.bg1,
+                focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
+                unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
                 cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
             )
         )
@@ -720,14 +747,16 @@ private fun ProfileChoiceSection(
                         modifier = Modifier
                             .weight(1f)
                             .height(itemHeight)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) accent else theme.stroke,
+                            .profilePremiumAction(
+                                theme = theme,
+                                accent = accent,
+                                onClick = { onSelect(option) },
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelect(option) }
+                            .background(
+                                if (isSelected) accent.copy(if (theme.isDark) 0.16f else 0.09f)
+                                else Color.Transparent
+                            )
                             .padding(horizontal = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {

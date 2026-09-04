@@ -5,6 +5,8 @@ package com.cosmibit.profitness.presentation.challenges
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,11 +49,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +87,8 @@ import com.cosmibit.profitness.domain.challenges.EventMode
 import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.social.UserSummary
 import com.cosmibit.profitness.presentation.workout.SportType
+import com.cosmibit.profitness.presentation.components.PremiumIconButton
+import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -119,9 +126,7 @@ fun ChallengesTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 10.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg1.copy(0.6f))
-                    .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(12.dp))
+                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 6.dp)
                     .padding(3.dp)
             ) {
                 ScopeChip(
@@ -263,18 +268,16 @@ fun ChallengesTab(
         }
 
         // ── Create FAB ─────────────────────────────────────────────────
-        Box(
+        PremiumIconButton(
+            icon = Icons.Rounded.Add,
+            contentDescription = theme.t("Yeni challenge", "New challenge"),
+            onClick = { vm.openCreate() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = bottomPadding + 12.dp)
-                .size(54.dp)
-                .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(accent, accent.copy(0.7f))))
-                .clickable { vm.openCreate() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.Add, theme.t("Yeni challenge", "New challenge"), tint = theme.effectiveOnAccentColor, modifier = Modifier.size(26.dp))
-        }
+                .size(54.dp),
+            shape = CircleShape
+        )
 
         // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
         state.openDetailId?.let { id ->
@@ -347,9 +350,7 @@ private fun InviteFriendsDialog(
                     .widthIn(max = 460.dp)
                     .heightIn(max = 560.dp)
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(theme.bg1)
-                    .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(24.dp))
+                    .premiumSolidSurface(accent, theme, RoundedCornerShape(24.dp), elevation = 20.dp)
                     .padding(18.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1066,6 +1067,13 @@ private fun ChallengeCard(
     val isEnded = status == CardStatus.Ended && !c.isCompleted
     val cardAccent = challengeStatusAccent(status, c.isCompleted, accent)
     val isFull = c.maxParticipants?.let { c.participantsCount >= it && !c.isJoined } == true
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.982f else 1f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+        label = "challenge_card_press"
+    )
 
     val borderColor = when {
         c.isCompleted -> cardAccent.copy(0.78f)
@@ -1077,6 +1085,17 @@ private fun ChallengeCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+                translationY = if (isPressed) 2.dp.toPx() else 0f
+            }
+            .shadow(
+                elevation = if (isPressed) 5.dp else 16.dp,
+                shape = RoundedCornerShape(22.dp),
+                spotColor = cardAccent.copy(if (theme.isDark) 0.22f else 0.08f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.42f else 0.07f)
+            )
             .clip(RoundedCornerShape(22.dp))
             .background(
                 Brush.linearGradient(
@@ -1088,8 +1107,21 @@ private fun ChallengeCard(
                 )
             )
             .border(1.dp, borderColor, RoundedCornerShape(22.dp))
-            .clickable(onClick = onTap)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(if (theme.isDark) 0.075f else 0.42f),
+                            Color.Transparent,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         // Subtle accent glow overlay (joined/live için belirgin)
         if (c.isCompleted || (!isEnded && (c.isJoined || status == CardStatus.Live))) {
             Box(
@@ -1414,6 +1446,18 @@ private fun JoinPill(
     theme: com.cosmibit.profitness.core.theme.AppThemeState,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed && canAct && !inFlight) 0.95f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh),
+        label = "challenge_join_press"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed && canAct && !inFlight) 2.dp else if (canAct) 10.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "challenge_join_depth"
+    )
     val bg: Brush = when {
         !canAct  -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2))
         isJoined -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2.copy(0.7f)))
@@ -1423,10 +1467,31 @@ private fun JoinPill(
     Row(
         modifier = Modifier
             .heightIn(min = 46.dp)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+                translationY = if (isPressed && canAct && !inFlight) 2.dp.toPx() else 0f
+            }
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(15.dp),
+                spotColor = if (!isJoined && canAct) accent.copy(if (theme.isDark) 0.42f else 0.18f)
+                            else Color.Black.copy(if (theme.isDark) 0.28f else 0.07f),
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
+            )
             .clip(RoundedCornerShape(15.dp))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(15.dp))
-            .clickable(enabled = !inFlight && canAct, onClick = onClick)
+            .border(
+                1.dp,
+                if (!isJoined && canAct) Color.White.copy(if (theme.isDark) 0.20f else 0.42f) else border,
+                RoundedCornerShape(15.dp)
+            )
+            .clickable(
+                enabled = !inFlight && canAct,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

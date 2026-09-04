@@ -205,9 +205,12 @@ private fun ProfileContent(
         Box(
             modifier = Modifier
                 .size(104.dp)
-                .clip(CircleShape)
-                .background(theme.bg2)
-                .border(2.dp, accent.copy(0.5f), CircleShape),
+                .profilePremiumSurface(
+                    theme = theme,
+                    shape = CircleShape,
+                    accent = accent,
+                    elevation = if (theme.isDark) 18.dp else 9.dp
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (profile.avatarUrl != null) {
@@ -337,9 +340,7 @@ private fun ProfileContent(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(20.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
                 .padding(vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
@@ -382,9 +383,7 @@ private fun ProfileContent(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(20.dp))
+                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
                 .padding(vertical = 14.dp)
         ) {
             FollowCountBlock(profile.followersCount, theme.t("TAKİPÇİ", "FOLLOWERS"), Modifier.weight(1f))
@@ -411,14 +410,13 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(bg)
-            .border(
-                if (isFollowing) 1.dp else 0.dp,
-                if (isFollowing) theme.stroke.copy(0.4f) else Color.Transparent,
-                RoundedCornerShape(50)
+            .profilePremiumAction(
+                theme = theme,
+                accent = accent,
+                onClick = onClick,
+                shape = RoundedCornerShape(50)
             )
-            .clickable(onClick = onClick)
+            .background(bg)
             .padding(horizontal = 22.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -471,9 +469,7 @@ private fun ActivitySection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(theme.bg1)
-                    .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(18.dp))
+                    .profilePremiumSurface(theme, RoundedCornerShape(18.dp), accent)
                     .padding(18.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -558,12 +554,12 @@ private fun ChallengeActivityCard(
     }
     val canOpen = status == ProfileChallengeStatus.Active || status == ProfileChallengeStatus.Upcoming
     Row(
-        modifier = Modifier
+        modifier = (if (canOpen) Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(0.8.dp, color.copy(0.35f), RoundedCornerShape(16.dp))
-            .then(if (canOpen) Modifier.clickable(onClick = onOpen) else Modifier)
+            .profilePremiumAction(theme, color, onOpen, RoundedCornerShape(16.dp))
+        else Modifier
+            .fillMaxWidth()
+            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), color))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -635,12 +631,12 @@ private fun ActivityMiniCard(
 ) {
     val theme = LocalAppTheme.current
     Row(
-        modifier = Modifier
+        modifier = (if (onClick != null) Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .border(0.5.dp, theme.stroke.copy(0.25f), RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .profilePremiumAction(theme, accent, onClick, RoundedCornerShape(16.dp))
+        else Modifier
+            .fillMaxWidth()
+            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

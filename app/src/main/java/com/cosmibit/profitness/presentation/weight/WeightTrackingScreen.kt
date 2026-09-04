@@ -91,7 +91,10 @@ import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.data.local.entity.WeightLogEntity
 import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
+import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.PremiumIconButton
 import com.cosmibit.profitness.presentation.components.glassCard
+import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -133,15 +136,12 @@ fun WeightTrackingScreen(
         contentWindowInsets  = WindowInsets(left = 0.dp, top = 0.dp, right = 0.dp, bottom = 0.dp),
         snackbarHost         = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick        = { viewModel.openAddSheet() },
-                containerColor = accent,
-                contentColor   = theme.bg0,
-                shape          = RoundedCornerShape(18.dp),
-                elevation      = FloatingActionButtonDefaults.elevation(8.dp, 4.dp)
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = theme.t("Ağırlık Ekle", "Add Weight"), modifier = Modifier.size(24.dp))
-            }
+            PremiumIconButton(
+                icon = Icons.Rounded.Add,
+                contentDescription = theme.t("Ağırlık Ekle", "Add Weight"),
+                onClick = { viewModel.openAddSheet() },
+                shape = RoundedCornerShape(18.dp)
+            )
         }
     ) { innerPadding ->
         Box(
@@ -581,8 +581,7 @@ private fun WeightEntryRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg2)
+            .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 6.dp)
             .clickable(onClick = onEdit)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -723,19 +722,14 @@ private fun AddEditWeightSheet(
                 )
             )
 
-            Button(
-                onClick  = { focusManager.clearFocus(); onSave() },
-                enabled  = !state.isSaving,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape    = RoundedCornerShape(14.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.bg0)
-            ) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = theme.bg0, strokeWidth = 2.dp)
-                } else {
-                    Text(if (state.editingEntry == null) theme.t("Kaydet", "Save") else theme.t("Güncelle", "Update"), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                }
-            }
+            PremiumButton(
+                text = if (state.editingEntry == null) theme.t("Kaydet", "Save") else theme.t("Güncelle", "Update"),
+                onClick = { focusManager.clearFocus(); onSave() },
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = !state.isSaving,
+                isLoading = state.isSaving,
+                leadingIcon = Icons.Rounded.CheckCircle
+            )
 
             Spacer(Modifier.height(8.dp))
         }

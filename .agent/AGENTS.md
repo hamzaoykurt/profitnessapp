@@ -34,7 +34,7 @@ The project follows MVVM + Clean Architecture:
 | Fonts       | Google Fonts — Space Grotesk        |
 | Billing     | Google Play Billing Library v6+     |
 
-## Theme System — Neon Forge Dual Mode
+## Theme System — Premium Forge Dual Mode
 
 The app supports **dark and light modes**. Light mode uses a purpose-built cool-neutral palette; it is not a mechanical inversion of dark colors.
 
@@ -42,10 +42,18 @@ The app supports **dark and light modes**. Light mode uses a purpose-built cool-
 - Background: `#0A0A0F` → `#21212A` near-black surface hierarchy
 - Accents: Neon (LIME `#CBFF4D`, PURPLE `#A855F7`, CYAN `#00E5D3`, etc.)
 
-### Light Mode — Polar Glass
-- Background: `#F5F7FA` with white elevated surfaces and cool slate depth
+### Light Mode — Mineral Light
+- Background: `#F1F3F6` with white elevated surfaces and cool slate depth
 - Accents: darker readable variants from `AccentPreset.lightColor`
 - Shadows, borders, and bloom use lower opacity than dark mode
+
+### Material Roles
+- `premiumSolidSurface`: normal content cards; solid, layered, elevated
+- `floatingGlassSurface`: navigation, media chrome, and transient overlays only
+- `insetControlSurface`: recessed search and form controls
+- `PremiumButton` / `PremiumIconButton`: tactile primary controls with press depth and bevel
+- One view uses one interaction accent: only the preferred primary action receives an accent surface; secondary actions stay neutral
+- Extra colors are reserved for semantic meaning such as destructive, warning, success, rank, or distinct chart series
 
 ### Theme State
 ```kotlin
@@ -64,7 +72,8 @@ AppThemeState(isDark: Boolean, accent: AccentPreset, language: AppLanguage, noti
 | `core/theme/PageAccentBloom.kt` | Radial+sweep accent glow overlay |
 | `core/theme/ThemeRepository.kt` | DataStore persistence for appearance settings |
 | `presentation/dashboard/DashboardScreen.kt` | `AppBackground`, `AppNavBar` |
-| `presentation/components/GlassPanel.kt` | `ForgeCard`, `glassCard` Modifier |
+| `presentation/components/GlassPanel.kt` | solid, floating-glass, and inset surface roles |
+| `presentation/components/PremiumButton.kt` | tactile primary, secondary, and icon controls |
 
 ## Repository Pattern (Interface-First)
 
@@ -140,3 +149,5 @@ abstract class BaseViewModel<S : Any, E : Any>(initial: S) : ViewModel() {
 11. **No Mapper Classes:** Extension functions only: `fun ProgramDto.toDomain()`.
 12. **Interface-First:** Every repository has an interface. ViewModel never references `*Impl` directly.
 13. **6 Memory Files Protocol:** See `.agent/memory/` — activeContext, progress, systemPatterns, techContext, productContext, projectbrief.
+14. **Material role discipline:** Do not apply glass to every card. Content is solid/elevated, glass is reserved for floating chrome, and inputs are visually inset.
+15. **Single-accent action hierarchy:** Never assign arbitrary category colors to neighboring buttons or clickable card chrome. Use the theme primary for the preferred action and neutral surfaces for alternatives; semantic status colors are the exception.
