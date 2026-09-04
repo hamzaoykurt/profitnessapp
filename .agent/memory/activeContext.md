@@ -15,7 +15,7 @@ AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yap
 - Program AI ve Oracle → Program JSON şemaları `weightKg`, `section`, `notes`, `groupId`, `groupType`, `groupLabel`, `groupRounds`, `groupRestSeconds` alanlarıyla genişletildi.
 - Aralıklar için ayrı veri alanı açılmadı; AI tek sabit sayı seçiyor.
 - Room 13→14 migration ve Supabase `20260903210108_preserve_ai_program_structure` migration eklendi.
-- Canlı Supabase migration uygulandı; `ai-generate` v6 ve `gemini-generate` v8 deploy edildi.
+- Canlı Supabase migration uygulandı; birleşmiş `ai-generate` v7 ve `gemini-generate` v8 deploy edildi.
 - Uzun metinlerde katalog 72 odaklı harekete indirildi, tek parça 12.000 karakter sınırı kaldırıldı, toplam limit 30.000 ve program çıktısı 8.192 token oldu.
 - Program düzenleyici/antrenman ekranında bölüm, grup/tur/dinlenme, not ve planlı kilo görünür; grup içindeki ara hareketlerde egzersiz arası dinlenme 0, grubun sonunda grup dinlenmesi kullanılır.
 - `:app:compileDebugKotlin` ve `:app:testDebugUnitTest` başarılı (`NO-SOURCE`).
