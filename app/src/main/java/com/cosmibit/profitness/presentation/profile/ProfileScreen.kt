@@ -1311,7 +1311,7 @@ private fun ThemeSettingsSheet(
     strings: AppStrings,
     onApply: (AppThemeState) -> Unit
 ) {
-    val isDark          = current.isDark
+    var isDark          by remember { mutableStateOf(current.isDark) }
     var accent          by remember { mutableStateOf(current.accent) }
     var intensity       by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
@@ -1335,6 +1335,7 @@ private fun ThemeSettingsSheet(
 
     // Live preview state — her değişimde anında güncellenir
     val preview = current.copy(
+        isDark          = isDark,
         accent           = accent,
         surfaceStyle     = SurfaceStyle.OLED,
         intensity        = intensity,
@@ -1358,6 +1359,19 @@ private fun ThemeSettingsSheet(
             color         = previewAccent,
             letterSpacing = 3.sp,
             fontWeight    = FontWeight.Black
+        )
+
+        SectionLabel(current.t("GORUNUM", "APPEARANCE"), theme)
+        SegmentedSelector(
+            options = listOf(
+                true  to current.t("KOYU", "DARK"),
+                false to current.t("ACIK", "LIGHT")
+            ),
+            selected = isDark,
+            accent   = previewAccent,
+            onAccent = previewOnAccent,
+            theme    = theme,
+            onSelect = { isDark = it }
         )
 
         // ── Live Preview Card ─────────────────────────────────────────────────

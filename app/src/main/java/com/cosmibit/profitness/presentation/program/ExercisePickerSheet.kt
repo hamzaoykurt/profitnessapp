@@ -190,7 +190,7 @@ fun ExercisePickerSheet(
                 item {
                     PickerCategoryChip(
                         label = theme.t("TÜMÜ", "ALL"),
-                        color = Snow,
+                        color = theme.text1,
                         selected = selectedCategory == null,
                         onClick = { selectedCategory = null }
                     )
@@ -618,7 +618,7 @@ private fun ExerciseRequestDialog(
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = Snow
+                            color = theme.effectiveOnAccentColor
                         )
                     } else {
                         Text(theme.t("Gönder", "Send"), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
@@ -756,7 +756,7 @@ private fun PickerCategoryChip(
     ) {
         Text(
             label,
-            color = if (selected) Surface0 else color,
+            color = if (selected) color.readableOnAccentColor() else color,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp

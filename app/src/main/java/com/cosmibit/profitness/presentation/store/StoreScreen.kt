@@ -2450,7 +2450,7 @@ private fun CtaButton(
                 .clip(RoundedCornerShape(16.dp))
                 .background(
                     if (isCurrent)
-                        Brush.linearGradient(listOf(Surface3, Surface3))
+                        Brush.linearGradient(listOf(theme.bg3, theme.bg3))
                     else
                         Brush.linearGradient(
                             listOf(accentColor, accentColor.copy(0.8f)),
@@ -2470,7 +2470,7 @@ private fun CtaButton(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier    = Modifier.size(20.dp),
-                    color       = if (isCurrent) TextMuted else LimeText,
+                    color       = if (isCurrent) theme.text2 else accentColor.readableOnAccentColor(),
                     strokeWidth = 2.dp
                 )
             } else if (isCurrent) {
@@ -2486,7 +2486,7 @@ private fun CtaButton(
             } else {
                 Text(
                     theme.t("$price$period ile Başla", "Start with $price$period"),
-                    color      = if (accentColor == Lime) LimeText else Color.White,
+                    color      = accentColor.readableOnAccentColor(),
                     fontWeight = FontWeight.Black,
                     fontSize   = 15.sp
                 )
@@ -2500,7 +2500,7 @@ private fun CtaButton(
                     if (yearlyPerMonth.isNotEmpty()) append("$yearlyPerMonth  ·  ")
                     append(theme.t("İstediğin zaman iptal et  ·  Taahhüt yok", "Cancel anytime  ·  No commitment"))
                 },
-                color     = TextMuted,
+                color     = theme.text2,
                 fontSize  = 10.sp,
                 textAlign = TextAlign.Center
             )

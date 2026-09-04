@@ -27,7 +27,10 @@ fun ProfitnessTheme(
             surface        = themeState.bg1,
             onBackground   = themeState.text0,
             onSurface      = themeState.text0,
-            surfaceVariant = themeState.bg2
+            onSurfaceVariant = themeState.text1,
+            surfaceVariant = themeState.bg2,
+            outline        = themeState.stroke,
+            outlineVariant = themeState.stroke.copy(alpha = 0.65f)
         )
     } else {
         lightColorScheme(
@@ -39,6 +42,7 @@ fun ProfitnessTheme(
             surface        = themeState.bg1,
             onBackground   = themeState.text0,
             onSurface      = themeState.text0,
+            onSurfaceVariant = themeState.text1,
             surfaceVariant = themeState.bg2,
             outline        = themeState.stroke,
             outlineVariant = themeState.stroke.copy(alpha = 0.5f)

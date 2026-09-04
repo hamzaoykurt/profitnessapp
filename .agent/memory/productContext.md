@@ -49,11 +49,11 @@ MainActivity (NavHost)
 
 ## Tasarım Prensipleri
 
-1. **Dark Only:** Sadece Neon Forge Dark — `#0A0A0F` zemin, elektrik neon accent renkler
+1. **Dual Mode:** Neon Forge Dark ve serin nötr Polar Glass Light; açık tema mekanik renk tersleme değildir
 2. **Motion:** Her geçiş animasyonlu; idle animasyonlar hayat katar
 3. **Density:** Bilgi yoğunluğu kontrollü — overload yok
 4. **Tactile Feel:** Dokunuş geri bildirimi, scale/spring efektleri
-5. **Readability:** WCAG AA kontrast oranı dark modda korunmalı
+5. **Readability:** Her iki temada da WCAG AA kontrastı ve fotoğraf scrim okunabilirliği korunmalı
 
 ---
 

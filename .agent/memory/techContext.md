@@ -90,7 +90,7 @@ profitnessapp/
 │       │   ├── aicoach/
 │       │   │   └── AICoachScreen.kt
 │       │   ├── components/
-│       │   │   ├── CinematicExerciseCard.kt  ← LOCKED
+│       │   │   ├── CinematicExerciseCard.kt  ← visual contract + themed material
 │       │   │   ├── GlassPanel.kt             ← ForgeCard + glassCard modifier
 │       │   │   └── PremiumButton.kt          ← ForgeButton + GhostButton
 │       │   ├── dashboard/

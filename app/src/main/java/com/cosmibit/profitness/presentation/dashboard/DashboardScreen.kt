@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -485,7 +486,7 @@ fun AppBackground(modifier: Modifier = Modifier) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
 
-    // Light mode: much subtler bloom — warm earthy bg doesn't need heavy neon glow
+    // Light mode: a restrained bloom preserves the clean neutral canvas.
     val radialPeak = if (theme.isDark) 0.16f else 0.06f
     val radialMid  = if (theme.isDark) 0.10f else 0.03f
     val radialEdge = if (theme.isDark) 0.04f else 0.01f
@@ -553,7 +554,7 @@ private fun AppNavRail(
                     elevation    = 18.dp,
                     shape        = shape,
                     spotColor    = accent.copy(0.20f),
-                    ambientColor = Color.Black.copy(0.45f)
+                    ambientColor = Color.Black.copy(if (theme.isDark) 0.45f else 0.12f)
                 )
                 .clip(shape)
                 .background(
@@ -582,9 +583,21 @@ private fun AppNavRail(
                 val isSelected = tab == selectedTab
                 val itemShape = RoundedCornerShape(24.dp)
                 val tabLabel = tab.label(theme)
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val pressScale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.90f else 1f,
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+                    label = "rail_press"
+                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = pressScale
+                            scaleY = pressScale
+                            translationY = if (isPressed) 1.5.dp.toPx() else 0f
+                        }
                         .clip(itemShape)
                         .then(
                             if (isSelected)
@@ -606,27 +619,19 @@ private fun AppNavRail(
                                 )
                             else Modifier
                         )
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                        .clickable(indication = null, interactionSource = interactionSource) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSelect(tab)
                         }
                         .padding(vertical = 11.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         imageVector        = tab.icon,
                         contentDescription = tabLabel,
                         tint               = if (isSelected) accent else theme.text2.copy(0.45f),
                         modifier           = Modifier.size(23.dp)
-                    )
-                    Text(
-                        text          = tabLabel.take(4),
-                        color         = if (isSelected) accent else theme.text2.copy(0.55f),
-                        fontSize      = 8.sp,
-                        fontWeight    = FontWeight.Bold,
-                        letterSpacing = 0.4.sp,
-                        maxLines      = 1
                     )
                 }
             }
@@ -650,7 +655,6 @@ fun AppNavBar(
     val selectedTab = selected()
     val selectedState by rememberUpdatedState(selectedTab)
     val onSelectState by rememberUpdatedState(onSelect)
-    val showNavLabels = !responsive.isSmallPhone && !responsive.isLargeFont && responsive.screenWidth >= 390.dp
     val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
     var navWidthPx by remember { mutableStateOf(0f) }
     var dragX by remember { mutableStateOf<Float?>(null) }
@@ -664,7 +668,7 @@ fun AppNavBar(
     val visualTab = dragX?.let { nearestTabAt(it) } ?: selectedTab
     val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selectedTab]
     val targetWidth = visualLayout?.width ?: 0f
-    val collapsedIndicatorWidth = with(density) { (if (responsive.isSmallPhone) 52.dp else 56.dp).toPx() }
+    val collapsedIndicatorWidth = with(density) { 52.dp.toPx() }
     val targetCenter = when {
         isDragging && dragX != null && targetWidth > 0f ->
             dragX!!.coerceIn(targetWidth / 2f, (navWidthPx - targetWidth / 2f).coerceAtLeast(targetWidth / 2f))
@@ -706,7 +710,7 @@ fun AppNavBar(
                     elevation    = 20.dp,
                     shape        = shape,
                     spotColor    = accent.copy(0.25f),
-                    ambientColor = Color.Black.copy(0.55f)
+                    ambientColor = Color.Black.copy(if (theme.isDark) 0.55f else 0.14f)
                 )
                 .clip(shape)
                 .background(
@@ -805,7 +809,6 @@ fun AppNavBar(
                         showSelectedChrome = false,
                         accent     = accent,
                         theme      = theme,
-                        showLabel  = showNavLabels,
                         onClick    = { onSelect(tab) },
                         modifier   = Modifier.onGloballyPositioned { coordinates ->
                             val position = coordinates.positionInParent()
@@ -825,12 +828,17 @@ private fun NavCapsuleItem(
     showSelectedChrome: Boolean,
     accent    : Color,
     theme     : AppThemeState,
-    showLabel : Boolean,
     onClick   : () -> Unit,
     modifier  : Modifier = Modifier
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+        label = "nav_press"
+    )
 
     val selectedGlow by animateFloatAsState(
         targetValue   = if (isSelected && showSelectedChrome) 1f else 0f,
@@ -842,13 +850,12 @@ private fun NavCapsuleItem(
 
     Row(
         modifier = modifier
-            .width(
-                when {
-                    showLabel && isSelected -> 124.dp
-                    showLabel -> 56.dp
-                    else -> 52.dp
-                }
-            )
+            .width(52.dp)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+                translationY = if (isPressed) 1.5.dp.toPx() else 0f
+            }
             .drawBehind {
                 if (selectedGlow > 0f) {
                     drawRoundRect(
@@ -883,19 +890,11 @@ private fun NavCapsuleItem(
                 onClick()
             }
             .padding(
-                horizontal = when {
-                    showLabel && isSelected -> 14.dp
-                    showLabel -> 0.dp
-                    else -> 13.dp
-                },
+                horizontal = 13.dp,
                 vertical = 14.dp
             ),
         verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = if (isSelected && showLabel) {
-            Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        } else {
-            Arrangement.Center
-        }
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector        = tab.icon,
@@ -903,25 +902,5 @@ private fun NavCapsuleItem(
             tint               = if (isSelected) accent else theme.text2.copy(0.45f),
             modifier           = Modifier.size(24.dp)
         )
-        AnimatedVisibility(
-            visible = isSelected && showLabel,
-            enter   = expandHorizontally(
-                animationSpec = tween(190, easing = NavIndicatorEaseOut),
-                expandFrom = Alignment.Start
-            ) + fadeIn(tween(150, delayMillis = 35)),
-            exit    = shrinkHorizontally(
-                animationSpec = tween(120, easing = NavIndicatorEaseInOut),
-                shrinkTowards = Alignment.Start
-            ) + fadeOut(tween(90))
-        ) {
-            Text(
-                text          = tabLabel,
-                color         = accent,
-                fontSize      = 12.sp,
-                fontWeight    = FontWeight.Bold,
-                letterSpacing = 0.6.sp,
-                maxLines      = 1
-            )
-        }
     }
 }

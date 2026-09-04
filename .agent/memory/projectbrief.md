@@ -6,7 +6,7 @@
 
 Backend: **Supabase** (PostgreSQL + Auth + Storage + Edge Functions)
 AI: **Gemini API**
-Tema: **Neon Forge Dark (tek tema — light mode kaldırıldı)**
+Tema: **Neon Forge Dark + Polar Glass Light**
 
 ---
 
@@ -22,7 +22,7 @@ Tema: **Neon Forge Dark (tek tema — light mode kaldırıldı)**
 | FAZ 6 | Sosyal özellikler (paylaşım + grup challenge) | ⏳ Bekliyor |
 | FAZ 7 | Abonelik + kredi sistemi + Google Play Billing | ⏳ Bekliyor |
 | FAZ 7.5 | Commitment Mode (Disiplin Modu) | ⏳ Bekliyor |
-| FAZ 8 | Auth redesign + light mode kaldırma + haberler + çeviri | ⏳ Bekliyor |
+| FAZ 8 | Auth redesign + tema iyileştirmeleri + haberler + çeviri | 🔄 Kısmen tamamlandı |
 | FAZ 9 | Optimizasyon (21 bulgu) + güvenlik | ⏳ Bekliyor |
 
 ### Temel Özellikler
@@ -78,8 +78,8 @@ Tema: **Neon Forge Dark (tek tema — light mode kaldırıldı)**
 
 ## Proje Durumu
 
-- **UI Katmanı:** ✅ Tamamlandı — tüm ekranlar Neon Forge Dark tema
-- **Tema Sistemi:** ✅ Dark only (Neon Forge) + DataStore persistence
+- **UI Katmanı:** ✅ Neon Forge Dark + Polar Glass Light ortak premium yüzey sistemi
+- **Tema Sistemi:** ✅ Kullanıcı seçilebilir dark/light + DataStore persistence
 - **Backend:** 🔄 FAZ 1 — Supabase migration oluşturuluyor
 - **Auth:** 🔄 FAZ 1 — Supabase Auth entegrasyonu
 - **AI:** ⏳ FAZ 4 — Gemini API bağlantısı

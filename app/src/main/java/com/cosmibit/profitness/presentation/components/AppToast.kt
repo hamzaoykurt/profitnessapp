@@ -132,8 +132,8 @@ private fun ToastContent(toast: AppToastData) {
             .background(
                 Brush.linearGradient(
                     listOf(
-                        Surface2,
-                        Surface2.copy(alpha = 0.95f)
+                        theme.bg2,
+                        theme.bg1.copy(alpha = 0.96f)
                     )
                 )
             )
@@ -142,7 +142,7 @@ private fun ToastContent(toast: AppToastData) {
                 brush = Brush.horizontalGradient(
                     listOf(
                         accentColor.copy(alpha = 0.45f),
-                        SurfaceStroke.copy(alpha = 0.60f),
+                        theme.stroke.copy(alpha = 0.60f),
                         accentColor.copy(alpha = 0.20f)
                     )
                 ),

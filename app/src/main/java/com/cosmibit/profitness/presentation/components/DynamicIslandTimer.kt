@@ -239,7 +239,7 @@ private fun CompactPill(
                 )
                 Text(
                     "·  ${timer.exerciseName}",
-                    color      = TextSecondary,
+                    color      = theme.text1,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines   = 1,
@@ -347,7 +347,7 @@ private fun ExpandedIsland(
                     }
                     Text(
                         text = if (timer.isPaused) theme.t("DURAKLATILDI", "PAUSED") else theme.t("AKTİF", "ACTIVE"),
-                        color = if (timer.isPaused) Amber else TextMuted,
+                        color = if (timer.isPaused) Amber else theme.text2,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.4.sp
@@ -434,7 +434,7 @@ private fun ExpandedIsland(
                             Text(
                                 text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
                                        else "$displaySeconds",
-                                color      = TextPrimary,
+                                color      = theme.text0,
                                 fontSize   = 38.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -449,14 +449,14 @@ private fun ExpandedIsland(
                             Text(
                                 text = if (min > 0) "${min}:${sec.toString().padStart(2, '0')}"
                                        else "$displaySeconds",
-                                color      = TextPrimary,
+                                color      = theme.text0,
                                 fontSize   = 38.sp,
                                 fontWeight = FontWeight.Black
                             )
                             if (min == 0) {
                                 Text(
                                     theme.t("saniye", "seconds"),
-                                    color      = TextMuted,
+                                    color      = theme.text2,
                                     fontSize   = 10.sp,
                                     fontWeight = FontWeight.Medium,
                                     letterSpacing = 1.sp
@@ -471,7 +471,7 @@ private fun ExpandedIsland(
                 // ── Exercise name ──────────────────────────────────────────────
                 Text(
                     text       = timer.exerciseName,
-                    color      = TextSecondary,
+                    color      = theme.text1,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -485,7 +485,7 @@ private fun ExpandedIsland(
                            else if (timer.isPaused) theme.t("Devam ettirebilir veya durdurup kaydedebilirsin", "Resume or stop to save")
                            else if (timer.purpose == TimerPurpose.Activity || timer.purpose == TimerPurpose.TimedSet) theme.t("Durdurunca süre kaydedilir", "Duration saves when stopped")
                            else theme.t("Durdur veya duraklat", "Stop or pause"),
-                    color      = TextMuted,
+                    color      = theme.text2,
                     fontSize   = 10.sp,
                     letterSpacing = 0.5.sp
                 )
@@ -547,7 +547,7 @@ private fun TimerActionButton(
         Spacer(Modifier.width(7.dp))
         Text(
             text = text,
-            color = TextPrimary,
+            color = theme.text0,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.1.sp

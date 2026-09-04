@@ -34,30 +34,35 @@ The project follows MVVM + Clean Architecture:
 | Fonts       | Google Fonts — Space Grotesk        |
 | Billing     | Google Play Billing Library v6+     |
 
-## Theme System — Neon Forge Dark (ONLY)
+## Theme System — Neon Forge Dual Mode
 
-The app uses **Dark mode only** — light mode has been removed.
+The app supports **dark and light modes**. Light mode uses a purpose-built cool-neutral palette; it is not a mechanical inversion of dark colors.
 
 ### Dark Mode — Neon Forge
 - Background: `#0A0A0F` → `#21212A` near-black surface hierarchy
 - Accents: Neon (LIME `#CBFF4D`, PURPLE `#A855F7`, CYAN `#00E5D3`, etc.)
 
+### Light Mode — Polar Glass
+- Background: `#F5F7FA` with white elevated surfaces and cool slate depth
+- Accents: darker readable variants from `AccentPreset.lightColor`
+- Shadows, borders, and bloom use lower opacity than dark mode
+
 ### Theme State
 ```kotlin
-AppThemeState(accent: AccentPreset, language: AppLanguage, notificationsEnabled: Boolean)
+AppThemeState(isDark: Boolean, accent: AccentPreset, language: AppLanguage, notificationsEnabled: Boolean)
 ```
 - State owned by `MainActivity` via `rememberSaveable(AppThemeStateSaver)`
 - Persisted across full process kills via `ThemeRepository` (DataStore Preferences)
-- **No `isDark` toggle** — always dark
+- `isDark` is user-selectable in Appearance settings and persisted
 
 ### Key Files
 | File | Role |
 |------|------|
 | `core/theme/Color.kt` | Global named color constants (dark-oriented) |
 | `core/theme/AppTheme.kt` | `AppThemeState`, `AccentPreset`, surface/text extensions, `effectiveAccentColor` |
-| `core/theme/Theme.kt` | `ProfitnessTheme` composable — dark only |
+| `core/theme/Theme.kt` | `ProfitnessTheme` composable — dark/light schemes |
 | `core/theme/PageAccentBloom.kt` | Radial+sweep accent glow overlay |
-| `core/theme/ThemeRepository.kt` | DataStore persistence for `accent` only |
+| `core/theme/ThemeRepository.kt` | DataStore persistence for appearance settings |
 | `presentation/dashboard/DashboardScreen.kt` | `AppBackground`, `AppNavBar` |
 | `presentation/components/GlassPanel.kt` | `ForgeCard`, `glassCard` Modifier |
 
@@ -123,13 +128,13 @@ abstract class BaseViewModel<S : Any, E : Any>(initial: S) : ViewModel() {
 ## Agent Guidelines
 
 1. **Memory Bank First:** Always read ALL files in `.agent/memory/` before starting any task. Start with `activeContext.md`.
-2. **Dark Only:** Never add light mode code. No `if (theme.isDark)` branches. No `lightColorScheme`.
+2. **Dual Mode:** All non-image surfaces and text must use `AppThemeState`/Material theme tokens. Keep photo scrims deliberately dark.
 3. **Effective Accent:** Use `theme.effectiveAccentColor` / `theme.effectiveOnAccentColor` for accent references.
 4. **Image Overlays Exception:** `Snow` (`#F8F8F8`) is acceptable **only** on top of dark photo scrim overlays.
 5. **UI Library Discipline:** Never build primitive components from scratch — use Compose Material 3.
 6. **Coroutines:** All async work launched from `ViewModel` using `viewModelScope`. Supabase calls on `Dispatchers.IO`.
 7. **No Placeholders:** Connect to real Supabase data. No hardcoded demo data in new code.
-8. **CinematicExerciseCard is LOCKED:** Do not change its structure. Data binding and extra buttons only.
+8. **CinematicExerciseCard:** Preserve its interaction/data contract; visual material and theme-aware styling may evolve with explicit product direction.
 9. **DataStore Usage:** Theme persistence via `ThemeRepository` only. No SharedPreferences.
 10. **Update Memory Bank:** After each phase, update `.agent/memory/activeContext.md` and `.agent/memory/progress.md`.
 11. **No Mapper Classes:** Extension functions only: `fun ProgramDto.toDomain()`.

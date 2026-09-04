@@ -82,7 +82,7 @@ private fun aiUploadLimitLabel(): String {
 }
 
 enum class ProgramCategory(val trLabel: String, val color: Color, val icon: ImageVector) {
-    ALL("TÜMÜ",          Snow,       Icons.Rounded.GridView),
+    ALL("TÜMÜ",          Color(0xFF94A3B8), Icons.Rounded.GridView),
     MUSCLE("KAS",        CardPurple, Icons.Rounded.FitnessCenter),
     FAT_LOSS("YAĞ YAKIMI", CardCoral, Icons.Rounded.LocalFireDepartment),
     STRENGTH("GÜÇ",     Amber,      Icons.Rounded.Bolt),
@@ -91,7 +91,7 @@ enum class ProgramCategory(val trLabel: String, val color: Color, val icon: Imag
 }
 
 enum class ProgramSportFilter(val trLabel: String, val enLabel: String, val color: Color, val icon: ImageVector) {
-    ALL("TÜM SPORLAR", "ALL SPORTS", Snow, Icons.Rounded.GridView),
+    ALL("TÜM SPORLAR", "ALL SPORTS", Color(0xFF94A3B8), Icons.Rounded.GridView),
     FITNESS("FİTNESS", "FITNESS", CardPurple, Icons.Rounded.FitnessCenter),
     RUNNING("KOŞU", "RUNNING", CardCyan, Icons.Rounded.DirectionsRun),
     CYCLING("BİSİKLET", "CYCLING", CardGreen, Icons.Rounded.DirectionsBike),
@@ -824,7 +824,8 @@ private fun BuilderChooseScreen(
         }
     }
 
-    val sectionStrings = LocalAppTheme.current.strings
+    val theme = LocalAppTheme.current
+    val sectionStrings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
 
     LazyColumn(
@@ -923,7 +924,7 @@ private fun BuilderChooseScreen(
 
         // ── Ready Programs Header ─────────────────────────────────────────────
         item {
-            SectionLabel(sectionStrings.readyPrograms, TextMuted)
+            SectionLabel(sectionStrings.readyPrograms, theme.text2)
         }
 
         item {
@@ -1044,7 +1045,7 @@ private fun SportFilterChip(
     onClick: () -> Unit
 ) {
     val bg = if (selected) sport.color else sport.color.copy(alpha = 0.06f)
-    val textColor = if (selected) Surface0 else sport.color
+    val textColor = if (selected) sport.color.readableOnAccentColor() else sport.color
     val border = if (selected) sport.color else sport.color.copy(alpha = 0.2f)
 
     Box(
@@ -1059,7 +1060,7 @@ private fun SportFilterChip(
             Icon(
                 sport.icon,
                 null,
-                tint = if (selected) Surface0 else sport.color,
+                tint = if (selected) sport.color.readableOnAccentColor() else sport.color,
                 modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(5.dp))
@@ -1083,11 +1084,7 @@ private fun CategoryChip(
     onClick: () -> Unit
 ) {
     val bg = if (selected) category.color else category.color.copy(alpha = 0.06f)
-    val textColor = if (selected) {
-        if (category == ProgramCategory.ALL) Surface0 else Surface0
-    } else {
-        category.color
-    }
+    val textColor = if (selected) category.color.readableOnAccentColor() else category.color
     val border = if (selected) category.color else category.color.copy(alpha = 0.2f)
 
     Box(
@@ -1102,7 +1099,7 @@ private fun CategoryChip(
             Icon(
                 category.icon,
                 null,
-                tint = if (selected) Surface0 else category.color,
+                tint = if (selected) category.color.readableOnAccentColor() else category.color,
                 modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(5.dp))
@@ -1649,7 +1646,7 @@ private fun ProgramDetailDialog(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                        Text(program.localizedLevel(theme), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        Text(program.localizedLevel(theme), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
@@ -1738,15 +1735,15 @@ private fun ProgramDetailDialog(
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = accent,
-                        contentColor = Surface0,
+                        contentColor = accent.readableOnAccentColor(),
                         disabledContainerColor = accent.copy(0.72f),
-                        disabledContentColor = Surface0.copy(0.82f)
+                        disabledContentColor = accent.readableOnAccentColor().copy(0.82f)
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     if (isApplying) {
                         CircularProgressIndicator(
-                            color = Surface0,
+                            color = accent.readableOnAccentColor(),
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
@@ -2106,7 +2103,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = if (responsive.isLargeFont) 72.dp else 64.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (canAnalyze) MaterialTheme.colorScheme.primary else Surface2
+                    containerColor = if (canAnalyze) MaterialTheme.colorScheme.primary else aiTheme.bg2
                 ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = canAnalyze
@@ -2120,7 +2117,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         } else {
                             aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
                         },
-                        color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else TextMuted,
+                        color = if (canAnalyze) MaterialTheme.colorScheme.onPrimary else aiTheme.text2,
                         fontWeight = FontWeight.Black,
                         lineHeight = 18.sp,
                         maxLines = 2,
@@ -2370,7 +2367,7 @@ private fun EditProgramScreen(
                             )
                             Text(
                                 "Programı nasıl değiştireyim?",
-                                color      = Snow,
+                                color      = editTheme.text0,
                                 fontWeight = FontWeight.Black,
                                 fontSize   = 19.sp
                             )

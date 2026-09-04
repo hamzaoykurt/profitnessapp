@@ -441,13 +441,13 @@ private fun NotificationPermissionBanner(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     theme.t("Bildirim izni gerekli", "Notification permission needed"),
-                    color      = TextPrimary,
+                    color      = theme.text0,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     theme.t("Timer sesi + arka plan bildirimleri", "Timer sound + background notifications"),
-                    color    = TextSecondary,
+                    color    = theme.text1,
                     fontSize = 11.sp
                 )
             }
@@ -488,7 +488,7 @@ private fun NotificationPermissionBanner(
                 Icon(
                     Icons.Rounded.Close,
                     null,
-                    tint     = TextMuted,
+                    tint     = theme.text2,
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -765,7 +765,7 @@ private fun WorkoutContent(
                     ) {
                         Text(
                             exercise.section.uppercase(java.util.Locale.forLanguageTag("tr-TR")),
-                            color = TextMuted.copy(alpha = 0.78f),
+                            color = theme.text2.copy(alpha = 0.78f),
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.1.sp
@@ -1048,7 +1048,8 @@ private fun SkippedProgramNotice() {
 private fun StreakBanner(streak: Int) {
     val streakDays = streak
     val accent  = MaterialTheme.colorScheme.primary
-    val strings = LocalAppTheme.current.strings
+    val theme   = LocalAppTheme.current
+    val strings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
     val bgBrush = remember(accent) {
         Brush.horizontalGradient(listOf(accent.copy(0.18f), Amber.copy(0.12f)))
@@ -1072,7 +1073,7 @@ private fun StreakBanner(streak: Int) {
         Spacer(Modifier.width(7.dp))
         Text(
             if (streakDays > 0) strings.streakTitle.format(streakDays) else strings.streakStart,
-            color = TextPrimary,
+            color = theme.text0,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
             maxLines = 1,
@@ -1102,7 +1103,7 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
             Column(modifier = Modifier.weight(1f).padding(end = if (responsive.isLargeFont) 8.dp else 12.dp)) {
                 Text(
                     text = compactWorkoutTitle(day.title, theme),
-                    color = TextPrimary,
+                    color = theme.text0,
                     fontSize = if (responsive.isLargeFont) 17.sp else 18.sp,
                     fontWeight = FontWeight.Black,
                     lineHeight = if (responsive.isLargeFont) 21.sp else 22.sp,
@@ -1133,11 +1134,13 @@ fun CircularProgressRing(
     progress: Float,
     size: Dp,
     label: String,
-    trackColor: Color = Surface3,
+    trackColor: Color = Color.Unspecified,
     ringColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalAppTheme.current
     val resolvedRingColor = if (ringColor == Color.Unspecified) MaterialTheme.colorScheme.primary else ringColor
+    val resolvedTrackColor = if (trackColor == Color.Unspecified) theme.bg3 else trackColor
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -1160,7 +1163,7 @@ fun CircularProgressRing(
             val startAngle = -90f
 
             drawCircle(
-                color = trackColor,
+                color = resolvedTrackColor,
                 radius = radius,
                 style = Stroke(strokeWidth, cap = StrokeCap.Round)
             )
@@ -1181,7 +1184,7 @@ fun CircularProgressRing(
         val responsive = rememberResponsiveLayoutInfo()
         Text(
             text = label,
-            color = if (progress > 0) resolvedRingColor else TextSecondary,
+            color = if (progress > 0) resolvedRingColor else theme.text1,
             fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
             fontWeight = FontWeight.Black,
             maxLines = 1,
@@ -1240,7 +1243,7 @@ private fun DaySelector(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = localizedWorkoutDayLabel(day.day, theme).uppercase(),
-                        color = if (isSelected) onAccent else TextMuted,
+                        color = if (isSelected) onAccent else theme.text2,
                         fontSize = if (responsive.isLargeFont) 7.sp else 9.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = if (responsive.isLargeFont) 0.sp else 1.sp,

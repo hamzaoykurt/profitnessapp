@@ -52,7 +52,7 @@ _Son güncelleme: 2026-09-04_
 - [x] **WorkoutScreen** — dairesel progress halkası (CircularProgressRing), 7-günlük DaySelector, stat pill'leri, kategori renkleri
 - [x] **DashboardScreen** — `AppBackground` (accent bloom + warm glow), `AppNavBar` (floating pill + indicator dot)
 - [x] **ProfileScreen** — ProfileHero (avatar+XP bar+level badge), BigStatCard ×4, WeeklyActivityChart, Settings rows, avatar/isim düzenleme, streak takvimi
-- [x] **CinematicExerciseCard** — kategori badge pill (Lime/Cyan/Purple), Lime complete butonu (yapı korundu, LOCKED)
+- [x] **CinematicExerciseCard** — fotoğraf scrim korunarak premium glow, iç derinlik ve basma tepkisi
 - [x] **GlassPanel** — ForgeCard (tema-aware bg, accent rim light, derin gölge), `glassCard` Modifier, tüm legacy aliases
 - [x] **AICoachScreen** — canned responses (FAZ 4'te Gemini ile değiştirilecek), hızlı öneri chip'leri, Lime gradient mesaj balonları
 - [x] **ProgramBuilderScreen** — AI Builder, şablon detay dialog, Manuel Mimar, snackbar geri bildirim, kaydedilen programlar listesi
@@ -72,7 +72,7 @@ _Son güncelleme: 2026-09-04_
 
 ### Dokümantasyon
 
-- [x] `.agent/AGENTS.md` — güncel (dark-only, Supabase kuralları, 6 memory protokolü)
+- [x] `.agent/AGENTS.md` — güncel (dual-mode tema, Supabase kuralları, 6 memory protokolü)
 - [x] `.agent/memory/projectbrief.md` — 10 faz, Supabase backend, success criteria
 - [x] `.agent/memory/productContext.md` — Commitment Mode, sosyal özellikler, abonelik
 - [x] `.agent/memory/systemPatterns.md` — interface-first repo, extension mapper, BaseViewModel<S,E>
@@ -99,19 +99,29 @@ _Son güncelleme: 2026-09-04_
 | FAZ 6 | Sosyal özellikler (program paylaşma + grup challenge) |
 | FAZ 7 | Abonelik + kredi sistemi + Google Play Billing |
 | FAZ 7.5 | Commitment Mode (Disiplin Modu — sanal ceza sistemi) |
-| FAZ 8 | Auth redesign + light mode kaldırma + haberler + çeviri |
+| FAZ 8 | Auth redesign + tema iyileştirmeleri + haberler + çeviri |
 | FAZ 9 | Optimizasyon (21 bulgu) + güvenlik |
 
 ---
 
 ## Bilinen Sorunlar
 
+### 2026-09-04 — Premium yüzey sistemi + Polar Glass Light
+
+- [x] Görünüm ayarlarına kalıcı Koyu/Açık seçici eklendi
+- [x] Eski sıcak açık palet kaldırıldı; serin nötr Polar Glass paleti tanımlandı
+- [x] `ForgeCard` ve `glassCard` için katmanlı yüzey, iç rim, kontrollü glow ve tema-özel gölge
+- [x] Egzersiz kartlarına içe çöken basma tepkisi ve dinamik elevation
+- [x] Alt navigasyon ve tablet rail yalnız ikon olacak şekilde sadeleştirildi
+- [x] Workout, AI Coach, timer, program picker ve toast yüzeylerindeki eski sabit koyu tokenlar tema-aware hale getirildi
+- [x] `:app:compileDebugKotlin` doğrulaması yapıldı
+
 | Sorun | Dosya | Öncelik |
 |-------|-------|---------|
 | Session persistence in-memory | `AuthRepositoryImpl.kt` | Orta — FAZ 2+ DataStore SessionStorage |
 | AI yanıtları canned | `AICoachScreen.kt` | Düşük — FAZ 4'te Gemini ile değiştirilecek |
 | WorkoutScreen verisi hardcoded | `WorkoutScreen.kt` | Düşük — FAZ 3'te DB bağlanacak |
-| CinematicExerciseCard locked | `CinematicExerciseCard.kt` | Bilinçli karar — yapı değişmez |
+| CinematicExerciseCard veri/etkileşim sözleşmesi | `CinematicExerciseCard.kt` | Korunur; tema ve premium görsel malzeme geliştirilebilir |
 | Release signing eksik | `app/build.gradle.kts` | Düşük — release öncesi |
 
 ---

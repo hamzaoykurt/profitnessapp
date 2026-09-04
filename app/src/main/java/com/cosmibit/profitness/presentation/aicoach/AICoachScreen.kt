@@ -487,7 +487,7 @@ fun AICoachScreen(
                             "\"${ps.name}\" planlarına eklendi! Plan sekmesinden görebilirsin.",
                             "\"${ps.name}\" was added to your plans. You can find it in the Plan tab."
                         ),
-                        color = Snow,
+                        color = theme.text0,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f)
@@ -682,7 +682,7 @@ private fun SanctuaryMessage(
                     SelectionContainer {
                         Text(
                             text          = msg.text,
-                            color         = Snow.copy(0.92f),
+                            color         = theme.text0.copy(0.92f),
                             fontSize      = 15.sp,
                             lineHeight    = 24.sp,
                             fontWeight    = FontWeight.Light,
@@ -887,8 +887,8 @@ private fun SanctuaryInput(
             colors = TextFieldDefaults.colors(
                 focusedContainerColor   = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
-                focusedTextColor        = Snow,
-                unfocusedTextColor      = Snow,
+                focusedTextColor        = theme.text0,
+                unfocusedTextColor      = theme.text0,
                 selectionColors         = TextSelectionColors(handleColor = accent, backgroundColor = accent.copy(0.2f)),
                 focusedIndicatorColor   = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
@@ -918,7 +918,7 @@ private fun SanctuaryInput(
             Icon(
                 Icons.AutoMirrored.Rounded.Send,
                 contentDescription = null,
-                tint     = if (sendActive) accent else TextMuted.copy(0.5f),
+                tint     = if (sendActive) accent else theme.text2.copy(0.5f),
                 modifier = Modifier.size(20.dp)
             )
         }

@@ -137,16 +137,16 @@ class WorkoutViewModel : BaseViewModel<WorkoutScreenState, Nothing>(WorkoutScree
 
 ---
 
-## Tema Sistemi — Dark Only: Neon Forge (GÜNCEL)
+## Tema Sistemi — Neon Forge + Polar Glass (GÜNCEL)
 
-> **NOT:** Light mode FAZ 8B'de tamamen kaldırılacak. Şu an kod içinde hâlâ light palette var ama yeni kod yazan hiç light bileşeni eklememeli.
+> **2026-09-04 kararı:** Light mode ürün kapsamındadır. Eski sıcak/kahverengi palet kullanılmaz; açık mod için serin nötr yüzeyler ve düşük opaklıklı glow/gölgeler kullanılır.
 
 ### Genel Yapı
 
 ```
 ProfitnessTheme(themeState: AppThemeState)
     ↓
-darkColorScheme  (light mode kaldırılıyor — FAZ 8B)
+darkColorScheme / lightColorScheme
     ↓
 MaterialTheme  +  LocalAppTheme (CompositionLocal)
 ```
@@ -162,20 +162,20 @@ MaterialTheme  +  LocalAppTheme (CompositionLocal)
 | PINK   | `#EC4899`   |
 | BLUE   | `#3B82F6`   |
 
-### Surface / Text Token'ları (Dark Only)
+### Surface / Text Token'ları
 
 `LocalAppTheme.current` extension property olarak:
 
-| Token    | Dark       |
-|----------|------------|
-| `bg0`    | `#0A0A0F`  |
-| `bg1`    | `#111117`  |
-| `bg2`    | `#18181F`  |
-| `bg3`    | `#21212A`  |
-| `stroke` | `#2A2A35`  |
-| `text0`  | `#F8F8F8`  |
-| `text1`  | `#9A9AB0`  |
-| `text2`  | `#5A5A72`  |
+| Token    | Dark       | Light      |
+|----------|------------|------------|
+| `bg0`    | `#0A0A0F`  | `#F5F7FA`  |
+| `bg1`    | `#111117`  | `#FFFFFF`  |
+| `bg2`    | `#18181F`  | `#EDF1F6`  |
+| `bg3`    | `#21212A`  | `#E1E7EF`  |
+| `stroke` | `#2A2A35`  | `#C9D2DE`  |
+| `text0`  | `#F8F8F8`  | `#11151C`  |
+| `text1`  | `#9A9AB0`  | `#4F5B6B`  |
+| `text2`  | `#5A5A72`  | `#7E8998`  |
 
 ### Image Overlay İstisnası
 
@@ -254,10 +254,10 @@ Modifier.glassCard(accent, theme, shape)
 
 - `theme.bg1` semi-transparent base (dark: `0.75f`, light: `0.90f`)
 - Accent bleed gradient (light modda %50 daha subtle)
-- Depth shadow: dark → `Color.Black.copy(0.30f)`, light → `Color(0xFF6B4E2A).copy(0.10f)`
+- Depth shadow: dark → `Color.Black.copy(0.30f)`, light → cool slate tint at low opacity
 - Accent + stroke border
 
-### CinematicExerciseCard (**LOCKED — YAPISAL DEĞİŞİKLİK YOK**)
+### CinematicExerciseCard
 
 ```kotlin
 CinematicExerciseCard(exercise: Exercise, index: Int)
@@ -266,7 +266,7 @@ CinematicExerciseCard(exercise: Exercise, index: Int)
 - Gerçek fotoğraf bg + `Color.Black` scrim overlay
 - Kategori pill: Strength=Lime, Bodyweight=CardCyan, Cable=CardPurple
 - Expand animasyonu (set tracker, complete button)
-- **Kullanıcı onaylı — yapı değiştirilemez**
+- Veri/etkileşim sözleşmesi korunur; görsel malzeme, tema uyumu ve tactile efektler ürün yönlendirmesiyle geliştirilebilir
 
 ### CircularProgressRing
 
@@ -344,13 +344,13 @@ val Snow     = TextPrimary   // Color.kt'de sabit — composable'da theme.text0 
 | Glassmorphic → Solid Forge | Render/tutarsızlık sorunları |
 | Solid Forge → Matte Obsidian | Kullanıcı: Apple/Porsche seviye minimallik |
 | Matte Obsidian → Neon Forge | Kullanıcı: Referans fitness uygulamalarına eşleşme |
-| Neon Forge Dark-only → Dual-Mode → Dark-Only | Light mod kaldırılacak (FAZ 8B). Şimdilik kod içinde var ama aktif kullanılmayacak |
+| Neon Forge Dark + Polar Glass Light | Light mod ayrı serin-nötr palette; mekanik renk tersleme yok |
 | `rememberSaveable` + DataStore | Rotation: hızlı state; process kill: kalıcı storage |
 | Interface-first repository | Test edilebilirlik, DI swap, backend bağımsızlığı |
 | Extension mapper, no mapper class | `fun Dto.toDomain()` — boilerplate azaltır |
 | BaseViewModel<S,E> | Typed state + one-time navigation/toast events |
 | AppModule abstract class | `@Binds` abstract method + `@Provides` companion object |
 | Random() yasak | Recomposition'da flicker — deterministik hash kullan |
-| CinematicExerciseCard locked | Kullanıcı onaylı, yapısal değişiklik yasak |
+| CinematicExerciseCard sözleşmesi | Veri/etkileşim korunur; görsel katman ürün yönüne göre gelişebilir |
 | Legacy alias sistemi | Eski ekranlar kırılmasın, zamanı gelince temizlenir |
 | Floating pill nav | Ref. görsele uyum — yüzen pill, accent dot active state |

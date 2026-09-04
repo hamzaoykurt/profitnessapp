@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -146,8 +147,8 @@ fun CinematicExerciseCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
+        targetValue   = if (isPressed) 0.975f else 1f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
         label         = "card_scale"
     )
 
@@ -193,14 +194,22 @@ fun CinematicExerciseCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = responsive.cardHorizontalPadding, vertical = 6.dp)
-            .scale(cardScale)
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+                translationY = if (isPressed) 2.dp.toPx() else 0f
+            }
     ) {
         ForgeCard(
             modifier = Modifier
                 .fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             glowColor = accent,
-            elevation = if (isCompleted) 10.dp else 8.dp,
+            elevation = when {
+                isPressed -> 3.dp
+                isCompleted -> 13.dp
+                else -> 10.dp
+            },
             glowStrength = if (isCompleted) 0.85f else ambientGlowStrength
         ) {
             // animateContentSize gives the same bouncy height expansion as before,
@@ -504,11 +513,11 @@ private fun ActivityMetricsPanel(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val backgroundBrush = remember(isDone, accent) {
+    val backgroundBrush = remember(isDone, accent, theme.bg2, theme.bg3) {
         Brush.verticalGradient(
             listOf(
-                if (isDone) accent.copy(0.18f) else Surface3.copy(0.70f),
-                Surface2.copy(0.48f)
+                if (isDone) accent.copy(0.18f) else theme.bg3.copy(0.70f),
+                theme.bg2.copy(0.48f)
             )
         )
     }
@@ -519,7 +528,7 @@ private fun ActivityMetricsPanel(
             .background(backgroundBrush)
             .border(
                 1.dp,
-                if (isDone) accent.copy(0.42f) else Snow.copy(0.08f),
+                if (isDone) accent.copy(0.42f) else theme.stroke.copy(0.72f),
                 RoundedCornerShape(16.dp)
             )
             .padding(12.dp)
@@ -530,7 +539,7 @@ private fun ActivityMetricsPanel(
                 supportsReps -> theme.t("$specLabel · süre ve sayı", "$specLabel · duration and reps")
                 else -> theme.t("$specLabel · süre", "$specLabel · duration")
             },
-            color = if (isDone) accent else TextPrimary,
+            color = if (isDone) accent else theme.text0,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.2.sp
@@ -617,8 +626,9 @@ private fun MetricDisplayTile(
     isDone: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val backgroundBrush = remember {
-        Brush.verticalGradient(listOf(Surface3.copy(0.86f), Surface2.copy(0.64f)))
+    val theme = LocalAppTheme.current
+    val backgroundBrush = remember(theme.bg2, theme.bg3) {
+        Brush.verticalGradient(listOf(theme.bg3.copy(0.86f), theme.bg2.copy(0.64f)))
     }
     Row(
         modifier = modifier
@@ -627,7 +637,7 @@ private fun MetricDisplayTile(
             .background(backgroundBrush)
             .border(
                 1.dp,
-                if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
+                if (isDone) accent.copy(0.34f) else theme.stroke.copy(0.72f),
                 RoundedCornerShape(13.dp)
             )
             .padding(horizontal = 10.dp, vertical = 7.dp),
@@ -637,14 +647,14 @@ private fun MetricDisplayTile(
             modifier = Modifier
                 .size(30.dp)
                 .clip(CircleShape)
-                .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.76f))
-                .border(1.dp, if (isDone) accent.copy(0.48f) else Snow.copy(0.08f), CircleShape),
+                .background(if (isDone) accent.copy(0.22f) else theme.bg1.copy(0.76f))
+                .border(1.dp, if (isDone) accent.copy(0.48f) else theme.stroke.copy(0.72f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.Timer,
                 null,
-                tint = if (isDone) accent else TextSecondary,
+                tint = if (isDone) accent else theme.text1,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -652,7 +662,7 @@ private fun MetricDisplayTile(
         Column(Modifier.weight(1f)) {
             Text(
                 text = label,
-                color = TextMuted,
+                color = theme.text2,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.7.sp
@@ -660,7 +670,7 @@ private fun MetricDisplayTile(
             Spacer(Modifier.height(3.dp))
             Text(
                 text = value,
-                color = if (isDone) accent else Snow,
+                color = if (isDone) accent else theme.text0,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
@@ -690,7 +700,7 @@ private fun ActivityTimerSetupPanel(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Surface3.copy(0.55f))
+            .background(theme.bg3.copy(0.55f))
             .border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
@@ -758,15 +768,15 @@ private fun TimerModeChip(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) accent.copy(0.22f) else Surface3.copy(0.6f))
-            .border(1.dp, if (selected) accent.copy(0.5f) else Snow.copy(0.08f), RoundedCornerShape(10.dp))
+            .background(if (selected) accent.copy(0.22f) else theme.bg3.copy(0.6f))
+            .border(1.dp, if (selected) accent.copy(0.5f) else theme.stroke.copy(0.72f), RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            color = if (selected) accent else TextMuted,
+            color = if (selected) accent else theme.text2,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.7.sp,
@@ -804,9 +814,9 @@ private fun CompleteActionButton(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val bg = remember(isCompleted, accent) {
+    val bg = remember(isCompleted, accent, theme.bg2, theme.bg3) {
         if (isCompleted) {
-            Brush.horizontalGradient(listOf(Surface3.copy(0.88f), Surface2.copy(0.72f)))
+            Brush.horizontalGradient(listOf(theme.bg3.copy(0.88f), theme.bg2.copy(0.72f)))
         } else {
             Brush.horizontalGradient(listOf(accent, accent.copy(0.86f)))
         }
@@ -819,7 +829,7 @@ private fun CompleteActionButton(
             .background(bg)
             .border(
                 1.dp,
-                if (isCompleted) Snow.copy(0.10f) else Snow.copy(0.18f),
+                if (isCompleted) theme.stroke.copy(0.78f) else Color.White.copy(0.18f),
                 RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
@@ -831,20 +841,20 @@ private fun CompleteActionButton(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(if (isCompleted) Surface1.copy(0.74f) else Color.White.copy(0.22f)),
+                .background(if (isCompleted) theme.bg1.copy(0.74f) else Color.White.copy(0.22f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.CheckCircle,
                 null,
-                tint = if (isCompleted) TextSecondary else onAccent,
+                tint = if (isCompleted) theme.text1 else onAccent,
                 modifier = Modifier.size(16.dp)
             )
         }
         Spacer(Modifier.width(8.dp))
         Text(
             text = if (isCompleted) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
-            color = if (isCompleted) TextSecondary else onAccent,
+            color = if (isCompleted) theme.text1 else onAccent,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.2.sp,
@@ -871,11 +881,11 @@ private fun TimedSetRow(
         tween(250),
         label = "timed_set_bg"
     )
-    val backgroundBrush = remember(isDone, accent, bgAlpha) {
+    val backgroundBrush = remember(isDone, accent, bgAlpha, theme.bg2, theme.bg3) {
         Brush.horizontalGradient(
             listOf(
-                if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
-                Surface2.copy(0.48f)
+                if (isDone) accent.copy(bgAlpha) else theme.bg3.copy(0.68f),
+                theme.bg2.copy(0.48f)
             )
         )
     }
@@ -885,7 +895,7 @@ private fun TimedSetRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundBrush)
-            .border(1.dp, if (isDone) accent.copy(0.50f) else Snow.copy(0.08f), RoundedCornerShape(16.dp))
+            .border(1.dp, if (isDone) accent.copy(0.50f) else theme.stroke.copy(0.72f), RoundedCornerShape(16.dp))
             .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -902,9 +912,9 @@ private fun TimedSetRow(
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
-                Text("Set $setNumber", color = if (isDone) accent else TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text("Set $setNumber", color = if (isDone) accent else theme.text0, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(2.dp))
-                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(8.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
@@ -918,6 +928,7 @@ private fun SetToggleButton(
     accent: Color,
     onToggle: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val haptic = LocalHapticFeedback.current
     Box(
         modifier = Modifier
@@ -933,14 +944,14 @@ private fun SetToggleButton(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(if (isDone) accent.copy(0.22f) else Surface1.copy(0.75f))
-                .border(1.dp, if (isDone) accent.copy(0.65f) else TextMuted.copy(0.42f), CircleShape),
+                .background(if (isDone) accent.copy(0.22f) else theme.bg1.copy(0.75f))
+                .border(1.dp, if (isDone) accent.copy(0.65f) else theme.text2.copy(0.42f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = if (isDone) accent else TextMuted,
+                tint = if (isDone) accent else theme.text2,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -966,11 +977,11 @@ private fun SetRow(
         tween(250),
         label = "set_bg"
     )
-    val backgroundBrush = remember(isDone, accent, bgAlpha) {
+    val backgroundBrush = remember(isDone, accent, bgAlpha, theme.bg2, theme.bg3) {
         Brush.horizontalGradient(
             listOf(
-                if (isDone) accent.copy(bgAlpha) else Surface3.copy(0.68f),
-                Surface2.copy(0.48f)
+                if (isDone) accent.copy(bgAlpha) else theme.bg3.copy(0.68f),
+                theme.bg2.copy(0.48f)
             )
         )
     }
@@ -982,7 +993,7 @@ private fun SetRow(
             .background(backgroundBrush)
             .border(
                 1.dp,
-                if (isDone) accent.copy(0.50f) else Snow.copy(0.08f),
+                if (isDone) accent.copy(0.50f) else theme.stroke.copy(0.72f),
                 RoundedCornerShape(16.dp)
             )
             .padding(10.dp)
@@ -1009,14 +1020,14 @@ private fun SetRow(
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
                 Text(
                     text = "Set $setNumber",
-                    color = if (isDone) accent else TextPrimary,
+                    color = if (isDone) accent else theme.text0,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = theme.t("$reps tekrar", "$reps reps"),
-                    color = TextMuted,
+                    color = theme.text2,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1038,7 +1049,7 @@ private fun SetRow(
             }
             Text(
                 text = lastText,
-                color = TextMuted,
+                color = theme.text2,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 12.dp)
@@ -1059,8 +1070,9 @@ private fun WeightInputField(
     keyboardType: KeyboardType,
     modifier: Modifier = Modifier
 ) {
-    val backgroundBrush = remember {
-        Brush.verticalGradient(listOf(Surface3.copy(0.86f), Surface2.copy(0.64f)))
+    val theme = LocalAppTheme.current
+    val backgroundBrush = remember(theme.bg2, theme.bg3) {
+        Brush.verticalGradient(listOf(theme.bg3.copy(0.86f), theme.bg2.copy(0.64f)))
     }
     Column(
         modifier = modifier
@@ -1069,7 +1081,7 @@ private fun WeightInputField(
             .background(backgroundBrush)
             .border(
                 1.dp,
-                if (isDone) accent.copy(0.34f) else Snow.copy(0.08f),
+                if (isDone) accent.copy(0.34f) else theme.stroke.copy(0.72f),
                 RoundedCornerShape(13.dp)
             )
             .padding(horizontal = 10.dp, vertical = 7.dp)
@@ -1077,7 +1089,7 @@ private fun WeightInputField(
         if (label != null) {
             Text(
                 text = label,
-                color = TextMuted,
+                color = theme.text2,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.7.sp
@@ -1093,7 +1105,7 @@ private fun WeightInputField(
                     onValueChange(filtered)
                 },
                 textStyle = TextStyle(
-                    color = if (isDone) accent else Snow,
+                    color = if (isDone) accent else theme.text0,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Start
@@ -1106,7 +1118,7 @@ private fun WeightInputField(
                         if (value.isEmpty()) {
                             Text(
                                 text = placeholder,
-                                color = TextMuted.copy(0.82f),
+                                color = theme.text2.copy(0.82f),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Black,
                                 textAlign = TextAlign.Start
@@ -1118,7 +1130,7 @@ private fun WeightInputField(
             )
             Text(
                 text = suffix,
-                color = if (isDone) accent.copy(0.72f) else TextMuted,
+                color = if (isDone) accent.copy(0.72f) else theme.text2,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(start = 6.dp)
@@ -1139,6 +1151,7 @@ private fun RestTimerChip(
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val pulseScale = remember { Animatable(1f) }
     LaunchedEffect(isRunning) {
         if (isRunning) {
@@ -1159,7 +1172,7 @@ private fun RestTimerChip(
         isRunning -> accent
         else      -> accent
     }
-    val chipBackground = remember(isDone, isRunning, accent) {
+    val chipBackground = remember(isDone, isRunning, accent, theme.bg3) {
         when {
             isDone -> Brush.horizontalGradient(
                 listOf(Amber.copy(0.28f), Amber.copy(0.12f))
@@ -1168,7 +1181,7 @@ private fun RestTimerChip(
                 listOf(accent.copy(0.34f), accent.copy(0.18f))
             )
             else -> Brush.horizontalGradient(
-                listOf(accent.copy(0.20f), Surface3.copy(0.62f))
+                listOf(accent.copy(0.20f), theme.bg3.copy(0.62f))
             )
         }
     }
@@ -1214,7 +1227,7 @@ private fun RestTimerChip(
                 isRunning -> "${seconds}s"
                 else      -> idleLabel
             },
-            color = if (isIdle) Snow else chipColor,
+            color = if (isIdle) theme.text0 else chipColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = if (isIdle) 0.5.sp else 0.2.sp,

@@ -14,13 +14,13 @@ import androidx.compose.ui.graphics.Color
  * Sağ üst köşeden tema vurgu rengiyle ışıma efekti.
  * Radial + diyagonal sweep kombinasyonu sayfa sonuna kadar uzanır.
  * Tüm ekranlarda arka plan üzerine katman olarak kullanılır.
- * Light modda daha subtle — warm-earthy arka plan rengini bozmaz.
+ * Light modda daha subtle — nötr arka planın temizliğini bozmaz.
  */
 @Composable
 fun PageAccentBloom(modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
-    // Light modda bloom çok daha subtle — neon glow warm bg üzerinde garip durur
+    // Light modda bloom çok daha subtle; vurgu rengi yalnızca derinlik verir.
     val radialPeak  = if (theme.isDark) 0.16f else 0.07f
     val radialMid   = if (theme.isDark) 0.10f else 0.04f
     val radialEdge  = if (theme.isDark) 0.04f else 0.01f

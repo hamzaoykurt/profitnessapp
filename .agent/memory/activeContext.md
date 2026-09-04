@@ -67,8 +67,8 @@ AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yap
 - **Extension mapper zorunlu:** `fun Dto.toDomain()` — ayrı mapper class yasak.
 - **Supabase IO dispatcher:** Tüm Supabase çağrıları `withContext(Dispatchers.IO)` + `runCatching`.
 - **BaseViewModel<S,E>:** Navigation/toast için `sendEvent()`, state'e flag ekleme.
-- **Dark-only tema:** Light mode FAZ 8B'de kaldırılacak. Yeni kod yazarken light bileşeni ekleme.
-- **CinematicExerciseCard LOCKED:** Yapısal değişiklik yasak, sadece veri bağlantısı yapılacak.
+- **Dual-mode tema (2026-09-04):** Koyu Neon Forge korunur; açık tema eski sıcak paleti kullanmaz. Polar Glass açık paleti (`#F5F7FA`, beyaz yüzeyler, slate metin/gölge) ve tema tokenları zorunludur.
+- **CinematicExerciseCard:** Veri ve etkileşim sözleşmesini koru; kullanıcı yönlendirmesiyle görsel malzeme, glow ve press derinliği geliştirilebilir.
 
 ---
 

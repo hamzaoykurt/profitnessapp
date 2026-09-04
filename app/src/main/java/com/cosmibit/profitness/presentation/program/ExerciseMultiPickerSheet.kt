@@ -205,7 +205,7 @@ fun ExerciseMultiPickerSheet(
                 item {
                     MultiPickerCategoryChip(
                         label = theme.t("TÜMÜ", "ALL"),
-                        color = Snow,
+                        color = theme.text1,
                         selected = selectedCategory == null,
                         onClick = { selectedCategory = null }
                     )
@@ -273,7 +273,7 @@ fun ExerciseMultiPickerSheet(
                                 if (isSelected) {
                                     Icon(
                                         Icons.Rounded.Check, null,
-                                        tint = Surface0,
+                                        tint = theme.effectiveOnAccentColor,
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
@@ -548,7 +548,7 @@ private fun MultiPickerCategoryChip(
     ) {
         Text(
             label,
-            color = if (selected) Surface0 else color,
+            color = if (selected) color.readableOnAccentColor() else color,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
