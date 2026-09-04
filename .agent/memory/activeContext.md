@@ -1,14 +1,24 @@
 # Active Context — Profitness
 
-_Son güncelleme: 2026-03-15_
+_Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
-FAZ 1 tamamlandı. Sıradaki: **FAZ 2 — Program Sistemi** (Hazır şablonlar + Manuel builder + Düzenleme)
+AI program içe aktarma yapısı genişletildi ve canlı backend'e alındı. Yapıştırılan ayrıntılı programlar artık sabit set/tekrar, başlangıç kilosu, bölüm, hareket/gün notu, süperset-dev set-devre bağlantısı, tur ve tur arası dinlenmeyi saklıyor.
 
 ---
 
 ## Son Tamamlanan Değişiklikler
+
+### AI Program Ayrıntılarını Koruma (2026-09-04)
+
+- Program AI ve Oracle → Program JSON şemaları `weightKg`, `section`, `notes`, `groupId`, `groupType`, `groupLabel`, `groupRounds`, `groupRestSeconds` alanlarıyla genişletildi.
+- Aralıklar için ayrı veri alanı açılmadı; AI tek sabit sayı seçiyor.
+- Room 13→14 migration ve Supabase `20260903210108_preserve_ai_program_structure` migration eklendi.
+- Canlı Supabase migration uygulandı; `ai-generate` v6 ve `gemini-generate` v8 deploy edildi.
+- Uzun metinlerde katalog 72 odaklı harekete indirildi, tek parça 12.000 karakter sınırı kaldırıldı, toplam limit 30.000 ve program çıktısı 8.192 token oldu.
+- Program düzenleyici/antrenman ekranında bölüm, grup/tur/dinlenme, not ve planlı kilo görünür; grup içindeki ara hareketlerde egzersiz arası dinlenme 0, grubun sonunda grup dinlenmesi kullanılır.
+- `:app:compileDebugKotlin` ve `:app:testDebugUnitTest` başarılı (`NO-SOURCE`).
 
 ### FAZ 1 — Veritabanı Şeması + Auth + Exercise Seed (2026-03-15)
 

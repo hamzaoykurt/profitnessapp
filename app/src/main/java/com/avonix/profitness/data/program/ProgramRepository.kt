@@ -77,6 +77,7 @@ interface ProgramRepository {
 data class ManualDayInput(
     val title: String,
     val isRestDay: Boolean = false,
+    val notes: String = "",
     val exercises: List<ManualExerciseInput> = emptyList()
 )
 
@@ -86,6 +87,14 @@ data class ManualExerciseInput(
     val reps: Int,
     val restSeconds: Int = 90,
     val orderIndex: Int,
+    val weightKg: Float = 0f,
     val targetDurationSeconds: Int? = null,
-    val targetDistanceMeters: Float? = null
+    val targetDistanceMeters: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null
 )

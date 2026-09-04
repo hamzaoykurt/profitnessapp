@@ -38,7 +38,8 @@ data class ProgramDayDto(
     val program_id: String,
     val day_index: Int,
     val title: String,
-    val is_rest_day: Boolean
+    val is_rest_day: Boolean,
+    val notes: String = ""
 )
 
 fun ProgramDayDto.toDomain() = ProgramDay(
@@ -46,7 +47,8 @@ fun ProgramDayDto.toDomain() = ProgramDay(
     programId = program_id,
     dayIndex = day_index,
     title = title,
-    isRestDay = is_rest_day
+    isRestDay = is_rest_day,
+    notes = notes
 )
 
 @Serializable
@@ -63,6 +65,13 @@ data class ProgramExerciseWithNameDto(
     val target_distance_meters: Float? = null,
     val target_elevation_meters: Float? = null,
     val target_incline_percent: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val group_id: String? = null,
+    val group_type: String = "straight",
+    val group_label: String = "",
+    val group_rounds: Int? = null,
+    val group_rest_seconds: Int? = null,
     // joined from exercises table
     val exercises: ExerciseNameDto? = null
 )
@@ -95,7 +104,14 @@ fun ProgramExerciseWithNameDto.toDomain() = ProgramExercise(
     targetDurationSeconds = target_duration_seconds,
     targetDistanceMeters = target_distance_meters,
     targetElevationMeters = target_elevation_meters,
-    targetInclinePercent = target_incline_percent
+    targetInclinePercent = target_incline_percent,
+    section = section,
+    notes = notes,
+    groupId = group_id,
+    groupType = group_type,
+    groupLabel = group_label,
+    groupRounds = group_rounds,
+    groupRestSeconds = group_rest_seconds
 )
 
 @Serializable

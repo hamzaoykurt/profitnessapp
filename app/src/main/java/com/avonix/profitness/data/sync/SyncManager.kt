@@ -440,7 +440,8 @@ class SyncManager @Inject constructor(
         programId = program_id,
         dayIndex = day_index,
         title = title,
-        isRestDay = is_rest_day
+        isRestDay = is_rest_day,
+        notes = notes
     )
 
     private fun ProgramExerciseWithNameDto.toEntity() = ProgramExerciseEntity(
@@ -455,7 +456,14 @@ class SyncManager @Inject constructor(
         targetDurationSeconds = target_duration_seconds,
         targetDistanceMeters = target_distance_meters,
         targetElevationMeters = target_elevation_meters,
-        targetInclinePercent = target_incline_percent
+        targetInclinePercent = target_incline_percent,
+        section = section,
+        notes = notes,
+        groupId = group_id,
+        groupType = group_type,
+        groupLabel = group_label,
+        groupRounds = group_rounds,
+        groupRestSeconds = group_rest_seconds
     )
 
     private fun ExerciseDto.toEntity() = ExerciseEntity(

@@ -29,7 +29,7 @@ import com.avonix.profitness.data.local.entity.WorkoutLogEntity
         SetCompletionEntity::class,
         WeightLogEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -244,6 +244,19 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.normalizeExercisesCreatedBySchema()
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE program_days ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN section TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_id TEXT DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_type TEXT NOT NULL DEFAULT 'straight'")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_label TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_rounds INTEGER DEFAULT NULL")
+                database.execSQL("ALTER TABLE program_exercises ADD COLUMN group_rest_seconds INTEGER DEFAULT NULL")
             }
         }
 

@@ -2140,6 +2140,7 @@ private class MutableManualDay(
 ) {
     var title    by mutableStateOf("")
     var isRestDay by mutableStateOf(false)
+    var notes by mutableStateOf("")
     val exercises = mutableStateListOf<DraftExercise>()
 }
 
@@ -2151,7 +2152,15 @@ private data class DraftExercise(
     val reps        : Int,
     val restSeconds : Int,
     val targetDurationSeconds: Int? = null,
-    val targetDistanceMeters: Float? = null
+    val targetDistanceMeters: Float? = null,
+    val weightKg: Float = 0f,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null
 )
 
 // ── Edit Program Screen ───────────────────────────────────────────────────────
@@ -2184,6 +2193,7 @@ private fun EditProgramScreen(
                 val m = MutableManualDay()
                 m.title    = day.title
                 m.isRestDay = day.isRestDay
+                m.notes = day.notes
                 day.exercises.sortedBy { it.orderIndex }.forEach { ex ->
                     m.exercises.add(
                         DraftExercise(
@@ -2194,7 +2204,15 @@ private fun EditProgramScreen(
                             reps         = ex.reps,
                             restSeconds  = ex.restSeconds,
                             targetDurationSeconds = ex.targetDurationSeconds,
-                            targetDistanceMeters = ex.targetDistanceMeters
+                            targetDistanceMeters = ex.targetDistanceMeters,
+                            weightKg = ex.weightKg,
+                            section = ex.section,
+                            notes = ex.notes,
+                            groupId = ex.groupId,
+                            groupType = ex.groupType,
+                            groupLabel = ex.groupLabel,
+                            groupRounds = ex.groupRounds,
+                            groupRestSeconds = ex.groupRestSeconds
                         )
                     )
                 }
@@ -2210,13 +2228,15 @@ private fun EditProgramScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                onConfirm = { newSets, newReps, newRest, newWeight, targetDuration, targetDistance, newNotes ->
                     days[dayIdx].exercises[exIdx] = ex.copy(
                         sets = newSets,
                         reps = newReps,
                         restSeconds = newRest,
+                        weightKg = newWeight,
                         targetDurationSeconds = targetDuration,
-                        targetDistanceMeters = targetDistance
+                        targetDistanceMeters = targetDistance,
+                        notes = newNotes
                     )
                     editingExercise = null
                 }
@@ -2253,6 +2273,7 @@ private fun EditProgramScreen(
                 val m = MutableManualDay()
                 m.title    = dayResult.title
                 m.isRestDay = dayResult.isRestDay
+                m.notes = dayResult.notes
                 dayResult.exercises.forEach { ex ->
                     m.exercises.add(
                         DraftExercise(
@@ -2263,7 +2284,15 @@ private fun EditProgramScreen(
                             reps = ex.reps,
                             restSeconds = ex.restSeconds,
                             targetDurationSeconds = ex.targetDurationSeconds,
-                            targetDistanceMeters = ex.targetDistanceMeters
+                            targetDistanceMeters = ex.targetDistanceMeters,
+                            weightKg = ex.weightKg,
+                            section = ex.section,
+                            notes = ex.notes,
+                            groupId = ex.groupId,
+                            groupType = ex.groupType,
+                            groupLabel = ex.groupLabel,
+                            groupRounds = ex.groupRounds,
+                            groupRestSeconds = ex.groupRestSeconds
                         )
                     )
                 }
@@ -2448,15 +2477,24 @@ private fun EditProgramScreen(
                                     ManualDayDraft(
                                         title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
                                         isRestDay = d.isRestDay,
+                                        notes     = d.notes,
                                         selectedExercises = d.exercises.mapIndexed { ei, ex ->
                                             com.avonix.profitness.data.program.ManualExerciseInput(
                                                 exerciseId  = ex.exerciseId,
                                                 sets        = ex.sets,
                                                 reps        = ex.reps,
                                                 restSeconds = ex.restSeconds,
+                                                weightKg    = ex.weightKg,
                                                 orderIndex  = ei,
                                                 targetDurationSeconds = ex.targetDurationSeconds,
-                                                targetDistanceMeters = ex.targetDistanceMeters
+                                                targetDistanceMeters = ex.targetDistanceMeters,
+                                                section = ex.section,
+                                                notes = ex.notes,
+                                                groupId = ex.groupId,
+                                                groupType = ex.groupType,
+                                                groupLabel = ex.groupLabel,
+                                                groupRounds = ex.groupRounds,
+                                                groupRestSeconds = ex.groupRestSeconds
                                             )
                                         }
                                     )
@@ -2679,15 +2717,24 @@ private fun EditProgramScreen(
                             ManualDayDraft(
                                 title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
                                 isRestDay = d.isRestDay,
+                                notes     = d.notes,
                                 selectedExercises = d.exercises.mapIndexed { ei, ex ->
                                     com.avonix.profitness.data.program.ManualExerciseInput(
                                         exerciseId  = ex.exerciseId,
                                         sets        = ex.sets,
                                         reps        = ex.reps,
                                         restSeconds = ex.restSeconds,
+                                        weightKg    = ex.weightKg,
                                         orderIndex  = ei,
                                         targetDurationSeconds = ex.targetDurationSeconds,
-                                        targetDistanceMeters = ex.targetDistanceMeters
+                                        targetDistanceMeters = ex.targetDistanceMeters,
+                                        section = ex.section,
+                                        notes = ex.notes,
+                                        groupId = ex.groupId,
+                                        groupType = ex.groupType,
+                                        groupLabel = ex.groupLabel,
+                                        groupRounds = ex.groupRounds,
+                                        groupRestSeconds = ex.groupRestSeconds
                                     )
                                 }
                             )
@@ -2750,13 +2797,15 @@ private fun ManualBuilderScreen(
             ExerciseEditDialog(
                 exercise  = ex,
                 onDismiss = { editingExercise = null },
-                onConfirm = { newSets, newReps, newRest, targetDuration, targetDistance ->
+                onConfirm = { newSets, newReps, newRest, newWeight, targetDuration, targetDistance, newNotes ->
                     days[dayIdx].exercises[exIdx] = ex.copy(
                         sets = newSets,
                         reps = newReps,
                         restSeconds = newRest,
+                        weightKg = newWeight,
                         targetDurationSeconds = targetDuration,
-                        targetDistanceMeters = targetDistance
+                        targetDistanceMeters = targetDistance,
+                        notes = newNotes
                     )
                     editingExercise = null
                 }
@@ -2867,15 +2916,24 @@ private fun ManualBuilderScreen(
                     ManualDayDraft(
                         title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
                         isRestDay = d.isRestDay,
+                        notes     = d.notes,
                         selectedExercises = d.exercises.mapIndexed { ei, ex ->
                             ManualExerciseInput(
                                 exerciseId  = ex.exerciseId,
                                 sets        = ex.sets,
                                 reps        = ex.reps,
                                 restSeconds = ex.restSeconds,
+                                weightKg    = ex.weightKg,
                                 orderIndex  = ei,
                                 targetDurationSeconds = ex.targetDurationSeconds,
-                                targetDistanceMeters = ex.targetDistanceMeters
+                                targetDistanceMeters = ex.targetDistanceMeters,
+                                section = ex.section,
+                                notes = ex.notes,
+                                groupId = ex.groupId,
+                                groupType = ex.groupType,
+                                groupLabel = ex.groupLabel,
+                                groupRounds = ex.groupRounds,
+                                groupRestSeconds = ex.groupRestSeconds
                             )
                         }
                     )
@@ -3004,6 +3062,25 @@ private fun ManualDayCard(
             }
         }
 
+        BasicTextField(
+            value = day.notes,
+            onValueChange = { day.notes = it.take(600) },
+            textStyle = MaterialTheme.typography.bodySmall.copy(color = theme.text1),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            decorationBox = { inner ->
+                if (day.notes.isBlank()) {
+                    Text(
+                        theme.t("Gün notu (isteğe bağlı)", "Day note (optional)"),
+                        color = theme.text2,
+                        fontSize = 11.sp
+                    )
+                }
+                inner()
+            }
+        )
+
         // Exercises section (hidden when rest day)
         if (!day.isRestDay) {
             if (day.exercises.isNotEmpty()) {
@@ -3017,6 +3094,37 @@ private fun ManualDayCard(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     day.exercises.forEachIndexed { i, ex ->
+                        val previous = day.exercises.getOrNull(i - 1)
+                        if (ex.section.isNotBlank() && !ex.section.equals(previous?.section, ignoreCase = true)) {
+                            Text(
+                                ex.section.uppercase(java.util.Locale.forLanguageTag("tr-TR")),
+                                color = accent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.sp,
+                                modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                            )
+                        }
+                        if (!ex.groupId.isNullOrBlank() && ex.groupId != previous?.groupId) {
+                            val groupName = ex.groupLabel.ifBlank {
+                                when (ex.groupType) {
+                                    "giant_set" -> theme.t("Dev Set", "Giant Set")
+                                    "circuit" -> theme.t("Devre", "Circuit")
+                                    else -> theme.t("Süperset", "Superset")
+                                }
+                            }
+                            val groupDetails = buildList {
+                                ex.groupRounds?.let { add("$it ${theme.t("tur", "rounds")}") }
+                                ex.groupRestSeconds?.let { add("$it sn ${theme.t("dinlenme", "rest")}") }
+                            }.joinToString(" · ")
+                            Text(
+                                listOf(groupName, groupDetails).filter { it.isNotBlank() }.joinToString(" · "),
+                                color = accent,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -3062,6 +3170,16 @@ private fun ManualDayCard(
                                             )
                                         }
                                     }
+                                }
+                                if (ex.notes.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        ex.notes,
+                                        color = theme.text2,
+                                        fontSize = 10.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
@@ -3117,7 +3235,14 @@ private fun ManualDayCard(
 private fun manualDraftBadges(exercise: DraftExercise, theme: AppThemeState): List<String> {
     val spec = draftTrackingSpec(exercise)
     return when (spec.metric) {
-        ExerciseMetric.Strength -> listOf("${exercise.sets} SET", "${exercise.reps} ${theme.t("TEK", "REP")}")
+        ExerciseMetric.Strength -> buildList {
+            add("${exercise.sets} SET")
+            add("${exercise.reps} ${theme.t("TEK", "REP")}")
+            if (exercise.weightKg > 0f) {
+                val weight = if (exercise.weightKg % 1f == 0f) exercise.weightKg.toInt().toString() else exercise.weightKg.toString()
+                add("$weight KG")
+            }
+        }
         ExerciseMetric.Duration -> listOf(formatDraftDuration(defaultDraftDurationSeconds(exercise), theme))
         ExerciseMetric.DurationDistance -> listOf(
             formatDraftDuration(defaultDraftDurationSeconds(exercise), theme),
@@ -3173,12 +3298,14 @@ private fun formatDraftDistance(meters: Float): String =
 private fun ExerciseEditDialog(
     exercise : DraftExercise,
     onDismiss: () -> Unit,
-    onConfirm: (sets: Int, reps: Int, restSeconds: Int, targetDurationSeconds: Int?, targetDistanceMeters: Float?) -> Unit
+    onConfirm: (sets: Int, reps: Int, restSeconds: Int, weightKg: Float, targetDurationSeconds: Int?, targetDistanceMeters: Float?, notes: String) -> Unit
 ) {
     var sets by remember { mutableIntStateOf(exercise.sets) }
     var reps by remember { mutableIntStateOf(exercise.reps) }
     var targetDurationSec by remember(exercise) { mutableIntStateOf(defaultDraftDurationSeconds(exercise)) }
     var targetDistanceM by remember(exercise) { mutableIntStateOf(defaultDraftDistanceMeters(exercise)) }
+    var weightTenths by remember(exercise) { mutableIntStateOf((exercise.weightKg * 10).toInt()) }
+    var notes by remember(exercise) { mutableStateOf(exercise.notes) }
     val spec = remember(exercise) { draftTrackingSpec(exercise) }
     val theme  = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
@@ -3248,6 +3375,15 @@ private fun ExerciseEditDialog(
                         onIncrement = { if (reps < 100) reps++ },
                         accent      = accent
                     )
+                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                    EditCounterField(
+                        label       = theme.t("BAŞLANGIÇ KİLOSU", "STARTING WEIGHT"),
+                        value       = weightTenths,
+                        onDecrement = { weightTenths = (weightTenths - 5).coerceAtLeast(0) },
+                        onIncrement = { weightTenths = (weightTenths + 5).coerceAtMost(5000) },
+                        accent      = accent,
+                        displayOverride = if (weightTenths == 0) "—" else "%.1f KG".format(weightTenths / 10f)
+                    )
                 } else {
                     EditCounterField(
                         label       = theme.t("SÜRE", "DURATION"),
@@ -3271,6 +3407,26 @@ private fun ExerciseEditDialog(
                 }
             }
 
+            BasicTextField(
+                value = notes,
+                onValueChange = { notes = it.take(600) },
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = theme.text0),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(theme.bg2)
+                    .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                decorationBox = { inner ->
+                    if (notes.isBlank()) Text(
+                        theme.t("Hareket notu / uygulama talimatı", "Exercise note / instruction"),
+                        color = theme.text2,
+                        fontSize = 12.sp
+                    )
+                    inner()
+                }
+            )
+
             // Action buttons
             Row(
                 modifier              = Modifier.fillMaxWidth(),
@@ -3290,8 +3446,10 @@ private fun ExerciseEditDialog(
                             sets,
                             reps,
                             exercise.restSeconds,
+                            weightTenths / 10f,
                             targetDurationSec.takeIf { spec.metric != ExerciseMetric.Strength },
-                            targetDistanceM.toFloat().takeIf { spec.metric == ExerciseMetric.DurationDistance }
+                            targetDistanceM.toFloat().takeIf { spec.metric == ExerciseMetric.DurationDistance },
+                            notes.trim()
                         )
                     },
                     modifier = Modifier.weight(1f).height(48.dp),

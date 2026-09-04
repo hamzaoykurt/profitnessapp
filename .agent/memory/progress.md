@@ -1,12 +1,22 @@
 # Progress — Profitness
 
-_Son güncelleme: 2026-03-15_
+_Son güncelleme: 2026-09-04_
 
-## Genel Durum: 🟡 Aktif Geliştirme — FAZ 2 başlayacak
+## Genel Durum: 🟡 Aktif Geliştirme — AI program içe aktarma ayrıntıları tamamlandı
 
 ---
 
 ## ✅ Tamamlananlar
+
+### AI Program İçe Aktarma ve Yapısal Alanlar
+
+- [x] Başlangıç kilosu AI çıktısından Supabase/Room/program/antrenman ekranına uçtan uca bağlandı
+- [x] Süperset, dev set ve devreler ortak grup kimliğiyle saklanıyor
+- [x] Grup turu ve tur arası dinlenme saklanıp gösteriliyor
+- [x] Isınma/ana antrenman/core/finisher/aktif toparlanma bölümleri korunuyor
+- [x] Gün ve hareket uygulama notları korunuyor
+- [x] Uzun program girişlerinde istek ve çıktı limitleri genişletildi; katalog boyutu odaklı hale getirildi
+- [x] Canlı Supabase şeması ve AI Edge Functions güncellendi
 
 ### Altyapı & Kurulum
 

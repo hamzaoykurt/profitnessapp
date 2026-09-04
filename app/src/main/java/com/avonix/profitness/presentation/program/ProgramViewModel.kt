@@ -39,13 +39,22 @@ data class AiEditExerciseResult(
     val sets        : Int,
     val reps        : Int,
     val restSeconds : Int,
+    val weightKg    : Float = 0f,
     val targetDurationSeconds: Int? = null,
-    val targetDistanceMeters: Float? = null
+    val targetDistanceMeters: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null
 )
 
 data class AiEditDayResult(
     val title    : String,
     val isRestDay: Boolean,
+    val notes    : String = "",
     val exercises: List<AiEditExerciseResult> = emptyList()
 )
 
@@ -80,6 +89,7 @@ sealed class ProgramEvent {
 data class ManualDayDraft(
     val title             : String                  = "",
     val isRestDay         : Boolean                 = false,
+    val notes             : String                  = "",
     val selectedExercises : List<ManualExerciseInput> = emptyList()
 )
 
@@ -472,8 +482,12 @@ class ProgramViewModel @Inject constructor(
             }
 
             // 2. Metin tabanlı dosyalar (HTML, TXT vb.) inline_data yerine text olarak gönderilmeli
-            val exerciseCatalog = exerciseCatalogPrompt(baseExercises)
-            val focusedExerciseCatalog = exerciseCatalog
+            val focusedExerciseCatalog = focusedExerciseCatalogPrompt(
+                exercises = baseExercises,
+                userInstruction = userPrompt,
+                currentDays = emptyList(),
+                exerciseNameMap = emptyMap()
+            )
 
             val isTextFile = mimeType?.startsWith("text/") == true
             var textFileContent: String? = null
@@ -521,10 +535,16 @@ $focusedExerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
+Aralık verilmişse tek bir uygulanabilir sabit sayı seç. Yeni aralık alanı veya "10-12" gibi metin döndürme.
+Kaynakta ağırlık varsa "weightKg" alanına mutlaka sayı olarak kaydet; vücut ağırlığı hareketlerinde 0 kullan.
+Isınma, ana antrenman, core/postür, finisher, gün içi veya aktif toparlanma bilgisini "section" alanında kısa biçimde koru.
+Hareketin uygulanışına ilişkin ayrıntıları "notes" alanında koru. Günün genel açıklamasını gün düzeyindeki "notes" alanına yaz.
+Süperset/dev set/devre üyelerine aynı "groupId" değerini ver. "groupType" yalnızca straight, superset, giant_set veya circuit olabilir. Grup için tur sayısını "groupRounds", tur arası dinlenmeyi saniye olarak "groupRestSeconds", görünen adı "groupLabel" alanına yaz. Grup dışındaki hareketlerde groupId null ve groupType straight olsun.
+Hafif aktivite içeren toparlanma gününü boş dinlenme günü yapma; isRestDay false kullan ve bölümünü "Aktif Toparlanma" olarak belirt.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
-{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"notes":"","exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"weightKg":20,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null,"section":"Ana Antrenman","notes":"Kontrollü indir.","groupId":"gun1-ss1","groupType":"superset","groupLabel":"Süper Set 1","groupRounds":2,"groupRestSeconds":90}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"notes":"Tam dinlenme","exercises":[]}]}
             """.trimIndent()
 
             val systemPrompt = "Sen bir fitness programı oluşturucusun. Dosya veya görsel verildiğinde içeriği titizlikle analiz et ve set/tekrar/dinlenme değerlerini orijinal kaynaktaki gibi aynen aktar. SADECE ham JSON döndür, başka hiçbir şey yazma. Markdown veya kod bloğu kullanma."
@@ -548,7 +568,9 @@ FORMAT:
                     sendEvent(ProgramEvent.ShowPaywall)
                     return@launch
                 }
-                updateState { it.copy(aiLoading = false, aiError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
+                val message = result.exceptionOrNull()?.message.orEmpty()
+                    .ifBlank { "AI hizmeti şu anda yanıt vermiyor." }
+                updateState { it.copy(aiLoading = false, aiError = "Program oluşturulamadı: $message") }
                 return@launch
             }
             planRepository.refresh()
@@ -588,9 +610,10 @@ FORMAT:
                 val dayObj = dayEl.jsonObject
                 val title  = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
                 val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
+                val dayNotes = jsonText(dayObj, "notes")
 
                 if (isRest) {
-                    ManualDayInput(title = title, isRestDay = true)
+                    ManualDayInput(title = title, isRestDay = true, notes = dayNotes)
                 } else {
                     val exArray = dayObj["exercises"] as? JsonArray
                     val matched = exArray?.mapIndexedNotNull { exIdx, exEl ->
@@ -600,6 +623,7 @@ FORMAT:
                         val sets   = flexInt(exObj, "sets", 3)
                         val reps   = flexInt(exObj, "reps", 10)
                         val rest   = flexInt(exObj, "restSeconds", 90)
+                        val weight = flexFloatOrNull(exObj, "weightKg")?.coerceAtLeast(0f) ?: 0f
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
                         val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")
@@ -635,13 +659,21 @@ FORMAT:
                                 sets = sets,
                                 reps = reps,
                                 restSeconds = rest,
+                                weightKg = weight,
                                 orderIndex = exIdx,
                                 targetDurationSeconds = defaultAiDurationSeconds(it, reps, explicitDuration),
-                                targetDistanceMeters = explicitDistance
+                                targetDistanceMeters = explicitDistance,
+                                section = jsonText(exObj, "section"),
+                                notes = jsonText(exObj, "notes"),
+                                groupId = jsonText(exObj, "groupId").ifBlank { null },
+                                groupType = normalizedGroupType(jsonText(exObj, "groupType")),
+                                groupLabel = jsonText(exObj, "groupLabel"),
+                                groupRounds = flexIntOrNull(exObj, "groupRounds")?.coerceIn(1, 20),
+                                groupRestSeconds = flexIntOrNull(exObj, "groupRestSeconds")?.coerceIn(0, 3600)
                             )
                         }
                     } ?: emptyList()
-                    ManualDayInput(title = title, isRestDay = false, exercises = matched)
+                    ManualDayInput(title = title, isRestDay = false, notes = dayNotes, exercises = matched)
                 }
             }
 
@@ -716,7 +748,7 @@ FORMAT:
                 append("{\"name\":${jsonString(currentName)},\"days\":[")
                 currentDays.forEachIndexed { i, day ->
                     if (i > 0) append(",")
-                    append("{\"title\":${jsonString(day.title)},\"isRestDay\":${day.isRestDay}")
+                    append("{\"title\":${jsonString(day.title)},\"isRestDay\":${day.isRestDay},\"notes\":${jsonString(day.notes)}")
                     if (!day.isRestDay && day.selectedExercises.isNotEmpty()) {
                         append(",\"exercises\":[")
                         day.selectedExercises.forEachIndexed { j, ex ->
@@ -725,7 +757,7 @@ FORMAT:
                             val exName = catalogExercise?.name ?: ex.exerciseId
                             val targetMuscle = catalogExercise?.targetMuscle ?: "Genel"
                             val category = catalogExercise?.category ?: "Serbest Ağırlık"
-                            append("{\"exerciseName\":${jsonString(exName)},\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds},\"targetMuscle\":${jsonString(targetMuscle)},\"category\":${jsonString(category)},\"targetDurationSeconds\":${ex.targetDurationSeconds ?: "null"},\"targetDistanceMeters\":${ex.targetDistanceMeters ?: "null"}}")
+                            append("{\"exerciseName\":${jsonString(exName)},\"sets\":${ex.sets},\"reps\":${ex.reps},\"restSeconds\":${ex.restSeconds},\"weightKg\":${ex.weightKg},\"targetMuscle\":${jsonString(targetMuscle)},\"category\":${jsonString(category)},\"targetDurationSeconds\":${ex.targetDurationSeconds ?: "null"},\"targetDistanceMeters\":${ex.targetDistanceMeters ?: "null"},\"section\":${jsonString(ex.section)},\"notes\":${jsonString(ex.notes)},\"groupId\":${ex.groupId?.let(::jsonString) ?: "null"},\"groupType\":${jsonString(normalizedGroupType(ex.groupType))},\"groupLabel\":${jsonString(ex.groupLabel)},\"groupRounds\":${ex.groupRounds ?: "null"},\"groupRestSeconds\":${ex.groupRestSeconds ?: "null"}}")
                         }
                         append("]")
                     }
@@ -761,11 +793,14 @@ $focusedExerciseCatalog
 "targetMuscle" değerleri: Göğüs / Sırt / Omuz / Bacak / Kol / Karın / Genel
 "category" değerleri: Serbest Ağırlık / Makine / Kardiyo / Vücut Ağırlığı
 Süre bazlı hareketlerde "targetDurationSeconds" alanını saniye olarak döndür. Mesafe bazlı hareketlerde "targetDistanceMeters" alanını metre olarak döndür. Jump Rope / İp Atlama için "reps" ip atlama sayısı, "targetDurationSeconds" süre olmalı.
+Aralık verilmişse tek bir uygulanabilir sabit sayı seç. Kaynaktaki ağırlığı "weightKg" alanında koru.
+"section" ve "notes" alanlarını koru. Süperset/dev set/devre üyelerinde aynı "groupId" kullan; "groupType" straight, superset, giant_set veya circuit olmalı. "groupRounds", "groupRestSeconds" ve "groupLabel" alanlarını koru.
+Hafif aktivite içeren toparlanma gününü boş dinlenme günü yapma.
 Yanıt vermeden önce talepteki işlemleri sessizce tek tek kontrol et. Ardından değiştirilmeyen her alanı birebir koruyarak tüm programı güncellenmiş haliyle döndür.
 
 ÇIKTI KURALI: Yalnızca geçerli JSON döndür. Markdown, açıklama, kod bloğu YASAK.
 FORMAT:
-{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null}]},{"title":"Gün 2 - Dinlenme","isRestDay":true,"exercises":[]}]}
+{"name":"...","days":[{"title":"Gün 1 - Göğüs","isRestDay":false,"notes":"","exercises":[{"exerciseName":"Bench Press","sets":4,"reps":10,"restSeconds":60,"weightKg":20,"targetMuscle":"Göğüs","category":"Serbest Ağırlık","targetDurationSeconds":null,"targetDistanceMeters":null,"section":"Ana Antrenman","notes":"","groupId":"gun1-ss1","groupType":"superset","groupLabel":"Süper Set 1","groupRounds":2,"groupRestSeconds":90}]}]}
             """.trimIndent()
 
             val systemPrompt = """
@@ -780,7 +815,9 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                     sendEvent(ProgramEvent.ShowPaywall)
                     return@launch
                 }
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Bağlantı hatası: ${result.exceptionOrNull()?.message}") }
+                val message = result.exceptionOrNull()?.message.orEmpty()
+                    .ifBlank { "AI hizmeti şu anda yanıt vermiyor." }
+                updateState { it.copy(aiEditLoading = false, aiEditError = "Program düzenlenemedi: $message") }
                 return@launch
             }
             planRepository.refresh()
@@ -824,9 +861,10 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                 val dayObj = dayEl.jsonObject
                 val title  = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
                 val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
+                val dayNotes = jsonText(dayObj, "notes")
 
                 if (isRest) {
-                    AiEditDayResult(title = title, isRestDay = true)
+                    AiEditDayResult(title = title, isRestDay = true, notes = dayNotes)
                 } else {
                     val exArray = dayObj["exercises"] as? JsonArray
                     val matched = exArray?.mapNotNull { exEl ->
@@ -841,6 +879,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                         val sets         = flexInt(exObj, "sets", 3)
                         val reps         = flexInt(exObj, "reps", 10)
                         val rest         = flexInt(exObj, "restSeconds", 90)
+                        val weight       = flexFloatOrNull(exObj, "weightKg")?.coerceAtLeast(0f) ?: 0f
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
                         val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")
@@ -878,12 +917,20 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                                 sets         = sets,
                                 reps         = reps,
                                 restSeconds  = rest,
+                                weightKg     = weight,
                                 targetDurationSeconds = defaultAiDurationSeconds(it, reps, explicitDuration),
-                                targetDistanceMeters = explicitDistance
+                                targetDistanceMeters = explicitDistance,
+                                section = jsonText(exObj, "section"),
+                                notes = jsonText(exObj, "notes"),
+                                groupId = jsonText(exObj, "groupId").ifBlank { null },
+                                groupType = normalizedGroupType(jsonText(exObj, "groupType")),
+                                groupLabel = jsonText(exObj, "groupLabel"),
+                                groupRounds = flexIntOrNull(exObj, "groupRounds")?.coerceIn(1, 20),
+                                groupRestSeconds = flexIntOrNull(exObj, "groupRestSeconds")?.coerceIn(0, 3600)
                             )
                         }
                     } ?: emptyList()
-                    AiEditDayResult(title = title, isRestDay = false, exercises = matched)
+                    AiEditDayResult(title = title, isRestDay = false, notes = dayNotes, exercises = matched)
                 }
             }
 
@@ -936,6 +983,16 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             ?.replace(',', '.')
             ?.toFloatOrNull()
 
+    private fun jsonText(obj: kotlinx.serialization.json.JsonObject, key: String): String =
+        obj[key]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().take(600)
+
+    private fun normalizedGroupType(raw: String): String = when (raw.trim().lowercase()) {
+        "superset" -> "superset"
+        "giant_set", "giantset", "dev set" -> "giant_set"
+        "circuit", "devre" -> "circuit"
+        else -> "straight"
+    }
+
     fun selectTemplate(templateKey: String) {
         if (templateApplyInFlight || uiState.value.applyingTemplateKey != null) return
         val uid = currentUserId() ?: run {
@@ -976,6 +1033,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             ManualDayInput(
                 title     = d.title.ifBlank { "GÜN ${i + 1}" },
                 isRestDay = d.isRestDay,
+                notes     = d.notes,
                 exercises = d.selectedExercises
             )
         }
@@ -1025,6 +1083,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             ManualDayInput(
                 title     = d.title.ifBlank { "GÜN ${i + 1}" },
                 isRestDay = d.isRestDay,
+                notes     = d.notes,
                 exercises = d.selectedExercises
             )
         }

@@ -23,5 +23,6 @@ data class ProgramDayEntity(
     @ColumnInfo(name = "program_id") val programId: String,
     @ColumnInfo(name = "day_index") val dayIndex: Int,
     val title: String,
-    @ColumnInfo(name = "is_rest_day") val isRestDay: Boolean
+    @ColumnInfo(name = "is_rest_day") val isRestDay: Boolean,
+    val notes: String = ""
 )

@@ -36,5 +36,12 @@ data class ProgramExerciseEntity(
     @ColumnInfo(name = "target_duration_seconds") val targetDurationSeconds: Int? = null,
     @ColumnInfo(name = "target_distance_meters") val targetDistanceMeters: Float? = null,
     @ColumnInfo(name = "target_elevation_meters") val targetElevationMeters: Float? = null,
-    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float? = null
+    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    @ColumnInfo(name = "group_id") val groupId: String? = null,
+    @ColumnInfo(name = "group_type") val groupType: String = "straight",
+    @ColumnInfo(name = "group_label") val groupLabel: String = "",
+    @ColumnInfo(name = "group_rounds") val groupRounds: Int? = null,
+    @ColumnInfo(name = "group_rest_seconds") val groupRestSeconds: Int? = null
 )

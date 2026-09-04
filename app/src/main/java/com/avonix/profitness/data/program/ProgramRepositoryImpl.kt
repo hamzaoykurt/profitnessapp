@@ -215,6 +215,7 @@ class ProgramRepositoryImpl @Inject constructor(
                             put("day_index", dayIdx)
                             put("title", dayInput.title)
                             put("is_rest_day", dayInput.isRestDay)
+                            put("notes", dayInput.notes)
                         })
 
                     val dayDto = supabase.postgrest["program_days"]
@@ -230,10 +231,18 @@ class ProgramRepositoryImpl @Inject constructor(
                                 put("exercise_id", exInput.exerciseId)
                                 put("sets", exInput.sets)
                                 put("reps", exInput.reps)
+                                put("weight_kg", exInput.weightKg)
                                 put("rest_seconds", exInput.restSeconds)
                                 put("order_index", exInput.orderIndex)
                                 exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
                                 exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
+                                put("section", exInput.section)
+                                put("notes", exInput.notes)
+                                exInput.groupId?.let { put("group_id", it) }
+                                put("group_type", exInput.groupType)
+                                put("group_label", exInput.groupLabel)
+                                exInput.groupRounds?.let { put("group_rounds", it) }
+                                exInput.groupRestSeconds?.let { put("group_rest_seconds", it) }
                             })
                     }
                 }
@@ -337,6 +346,7 @@ class ProgramRepositoryImpl @Inject constructor(
                         put("day_index", dayIdx)
                         put("title", dayInput.title)
                         put("is_rest_day", dayInput.isRestDay)
+                        put("notes", dayInput.notes)
                     })
 
                 dayInput.exercises.forEach { exInput ->
@@ -347,10 +357,18 @@ class ProgramRepositoryImpl @Inject constructor(
                             put("exercise_id", exInput.exerciseId)
                             put("sets", exInput.sets)
                             put("reps", exInput.reps)
+                            put("weight_kg", exInput.weightKg)
                             put("rest_seconds", exInput.restSeconds)
                             put("order_index", exInput.orderIndex)
                             exInput.targetDurationSeconds?.let { put("target_duration_seconds", it) }
                             exInput.targetDistanceMeters?.let { put("target_distance_meters", it) }
+                            put("section", exInput.section)
+                            put("notes", exInput.notes)
+                            exInput.groupId?.let { put("group_id", it) }
+                            put("group_type", exInput.groupType)
+                            put("group_label", exInput.groupLabel)
+                            exInput.groupRounds?.let { put("group_rounds", it) }
+                            exInput.groupRestSeconds?.let { put("group_rest_seconds", it) }
                         })
                 }
             }
@@ -540,6 +558,7 @@ class ProgramRepositoryImpl @Inject constructor(
                     dayIndex = dwe.day.dayIndex,
                     title = dwe.day.title,
                     isRestDay = dwe.day.isRestDay,
+                    notes = dwe.day.notes,
                     exercises = (exerciseMap[dwe.day.id] ?: emptyList()).mapNotNull { pe ->
                         if (ExerciseNameRules.isCompositeName(pe.exerciseName)) return@mapNotNull null
                         ProgramExercise(
@@ -560,7 +579,14 @@ class ProgramRepositoryImpl @Inject constructor(
                             targetDurationSeconds = pe.targetDurationSeconds,
                             targetDistanceMeters = pe.targetDistanceMeters,
                             targetElevationMeters = pe.targetElevationMeters,
-                            targetInclinePercent = pe.targetInclinePercent
+                            targetInclinePercent = pe.targetInclinePercent,
+                            section = pe.section,
+                            notes = pe.notes,
+                            groupId = pe.groupId,
+                            groupType = pe.groupType,
+                            groupLabel = pe.groupLabel,
+                            groupRounds = pe.groupRounds,
+                            groupRestSeconds = pe.groupRestSeconds
                         )
                     }.toImmutableList()
                 )

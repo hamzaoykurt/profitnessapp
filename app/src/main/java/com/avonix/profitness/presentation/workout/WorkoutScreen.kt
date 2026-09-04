@@ -117,6 +117,13 @@ data class Exercise(
     val targetDistanceMeters: Float? = null,
     val targetElevationMeters: Float? = null,
     val targetInclinePercent: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null,
     val challengeId: String? = null
 )
 
@@ -125,6 +132,7 @@ data class WorkoutDay(
     val title: String,
     val exercises: ImmutableList<Exercise>,
     val isRestDay: Boolean = false,
+    val notes: String = "",
     val totalKcal: Int = 0,
     val durationMin: Int = 0,
     val programDayId: String = ""   // program_days tablosundaki ID — workout log için
@@ -762,6 +770,18 @@ private fun WorkoutContent(
             }
         }
 
+        if (currentDay.notes.isNotBlank() && !skipProgramToday) {
+            item(key = "day_notes", contentType = "day_notes") {
+                Text(
+                    currentDay.notes,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                )
+            }
+        }
+
         // ── Content: Rest day or exercise cards ──────────────────────────
         if (currentDay.isRestDay && visibleExercises.isEmpty()) {
             item(key = "rest_day", contentType = "rest") { RestDayView() }
@@ -773,6 +793,53 @@ private fun WorkoutContent(
                 key = { _, ex -> ex.id },
                 contentType = { _, _ -> "exercise_card" }
             ) { idx, exercise ->
+                val previousExercise = visibleExercises.getOrNull(idx - 1)
+                if (exercise.section.isNotBlank() && !exercise.section.equals(previousExercise?.section, ignoreCase = true)) {
+                    Text(
+                        exercise.section.uppercase(java.util.Locale.forLanguageTag("tr-TR")),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.2.sp,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                    )
+                }
+                if (!exercise.groupId.isNullOrBlank() && exercise.groupId != previousExercise?.groupId) {
+                    val groupTitle = exercise.groupLabel.ifBlank {
+                        when (exercise.groupType) {
+                            "giant_set" -> theme.t("Dev Set", "Giant Set")
+                            "circuit" -> theme.t("Devre", "Circuit")
+                            else -> theme.t("Süperset", "Superset")
+                        }
+                    }
+                    val details = buildList {
+                        exercise.groupRounds?.let { add("$it ${theme.t("tur", "rounds")}") }
+                        exercise.groupRestSeconds?.let { add("$it sn ${theme.t("tur arası", "between rounds")}") }
+                    }.joinToString(" · ")
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(0.10f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.30f)),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            listOf(groupTitle, details).filter { it.isNotBlank() }.joinToString(" · "),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+                if (exercise.notes.isNotBlank()) {
+                    Text(
+                        exercise.notes,
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    )
+                }
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
                 val completionKey = exercise.exerciseTableId.ifBlank { exercise.id }

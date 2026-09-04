@@ -124,7 +124,7 @@ function cleanText(value: unknown, maxChars: number): string {
 
 function sanitizePart(part: GeminiPart, textBudget: { remaining: number }): GeminiPart {
   if (part.text != null) {
-    const text = cleanText(part.text, Math.min(12000, textBudget.remaining));
+    const text = cleanText(part.text, textBudget.remaining);
     textBudget.remaining -= text.length;
     return { text };
   }
@@ -162,7 +162,7 @@ function sanitizeRequest(body: GeminiRequest): GeminiRequest {
   const contents = sanitizeContents(body.contents ?? [], textBudget);
   const systemParts = body.system_instruction?.parts?.map((part) => {
     if (part.text == null) throw new Error("invalid_system_instruction");
-    return { text: cleanText(part.text, Math.min(12000, textBudget.remaining)) };
+    return { text: cleanText(part.text, textBudget.remaining) };
   });
 
   const temperature = Number(body.generationConfig?.temperature ?? 0.7);
@@ -177,7 +177,7 @@ function sanitizeRequest(body: GeminiRequest): GeminiRequest {
     generationConfig: {
       temperature: Number.isFinite(temperature) ? Math.min(Math.max(temperature, 0), 1) : 0.7,
       maxOutputTokens: Number.isFinite(maxOutputTokens)
-        ? Math.min(Math.max(Math.floor(maxOutputTokens), 128), 4096)
+        ? Math.min(Math.max(Math.floor(maxOutputTokens), 128), 8192)
         : 600,
       responseMimeType,
     },
@@ -298,7 +298,10 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(401, { code: "unauthorized", message: "Oturum gerekli." });
     }
     if (code.startsWith("invalid_") || code.endsWith("_too_large") || code === "unsupported_media_type") {
-      return jsonResponse(400, { code, message: "AI isteği geçersiz." });
+      const message = code === "text_too_large"
+        ? "Program metni işleme sınırını aşıyor. Daha kısa bir metin veya dosya deneyin."
+        : "AI isteği geçersiz.";
+      return jsonResponse(400, { code, message });
     }
     if (code === "ai_quota_exhausted") {
       return jsonResponse(429, { code, message: "AI kotası doldu. Bir süre sonra tekrar dene." });

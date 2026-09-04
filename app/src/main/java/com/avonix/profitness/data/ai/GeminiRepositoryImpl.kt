@@ -56,7 +56,7 @@ class GeminiRepositoryImpl(
                     contents = contents,
                     generationConfig = GeminiGenerationConfig(
                         temperature = if (tool == AiToolType.PROGRAM_EDIT) 0.15 else if (expectsJson) 0.3 else 0.7,
-                        maxOutputTokens = 4096,
+                        maxOutputTokens = if (tool in PROGRAM_OUTPUT_TOOLS) 8192 else 4096,
                         responseMimeType = if (expectsJson) "application/json" else null
                     )
                 )
@@ -84,7 +84,7 @@ class GeminiRepositoryImpl(
                     contents = listOf(GeminiContent(role = "user", parts = parts)),
                     generationConfig = GeminiGenerationConfig(
                         temperature = 0.25,
-                        maxOutputTokens = 4096,
+                        maxOutputTokens = 8192,
                         responseMimeType = "application/json"
                     )
                 )
@@ -128,6 +128,13 @@ class GeminiRepositoryImpl(
             ?: error("Gemini boş yanıt döndürdü.")
     }
 }
+
+private val PROGRAM_OUTPUT_TOOLS = setOf(
+    AiToolType.PROGRAM_GENERATE_TEXT,
+    AiToolType.PROGRAM_GENERATE_MEDIA,
+    AiToolType.PROGRAM_EDIT,
+    AiToolType.ORACLE_TO_PROGRAM
+)
 
 @Serializable
 private data class AiGenerateRequest(

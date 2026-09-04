@@ -363,7 +363,7 @@ class AICoachViewModel @Inject constructor(
                 updateState { it.copy(programStatus = ProgramStatus.Error("Egzersizler yüklenemedi")) }
                 return@launch
             }
-            val exerciseList = exercises.take(120).joinToString(", ") { ex ->
+            val exerciseList = exercises.take(72).joinToString(", ") { ex ->
                 if (ex.nameEn.isNotBlank() && ex.nameEn != ex.name) "${ex.name} (${ex.nameEn})" else ex.name
             }
 
@@ -378,8 +378,13 @@ $messageText
 Egzersiz adları için önce şu listeden en uygun tam adı kullan; karşılığı yoksa yeni hareket adını aynen yaz:
 $exerciseList
 
+Aralık varsa tek bir sabit sayı seç. Kaynakta yazan başlangıç kilosunu weightKg alanına kaydet.
+Isınma, ana antrenman, core/postür, finisher, gün içi ve aktif toparlanma bilgisini section alanında koru; uygulama ayrıntılarını notes alanına yaz.
+Süperset/dev set/devre üyelerine aynı groupId değerini ver. groupType yalnızca straight, superset, giant_set veya circuit olabilir. Tur sayısını groupRounds, tur arası dinlenmeyi saniye olarak groupRestSeconds alanına yaz.
+Hafif aktivite içeren toparlanma gününü boş dinlenme günü yapma.
+
 Çıktı olarak SADECE şu JSON formatını ver, başka hiçbir şey yazma:
-{"name":"$programName","days":[{"title":"Gün 1 - Alt Vücut","isRestDay":false,"exercises":[{"exerciseName":"Squat","sets":3,"reps":10,"restSeconds":60,"targetMuscle":"Bacak","category":"Serbest Ağırlık"}]},{"title":"Gün 2","isRestDay":true,"exercises":[]}]}
+{"name":"$programName","days":[{"title":"Gün 1 - Alt Vücut","isRestDay":false,"notes":"","exercises":[{"exerciseName":"Squat","sets":3,"reps":10,"restSeconds":60,"weightKg":20,"targetMuscle":"Bacak","category":"Serbest Ağırlık","section":"Ana Antrenman","notes":"Kontrollü uygula.","groupId":"gun1-ss1","groupType":"superset","groupLabel":"Süper Set 1","groupRounds":2,"groupRestSeconds":90}]},{"title":"Gün 2","isRestDay":true,"notes":"Tam dinlenme","exercises":[]}]}
             """.trimIndent()
 
             val result = geminiRepository.chat(
@@ -457,9 +462,10 @@ $exerciseList
                 val dayObj = dayEl.jsonObject
                 val title  = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
                 val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
+                val dayNotes = dayObj["notes"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().take(600)
 
                 if (isRest) {
-                    ManualDayInput(title = title, isRestDay = true)
+                    ManualDayInput(title = title, isRestDay = true, notes = dayNotes)
                 } else {
                     val exArray = dayObj["exercises"] as? JsonArray
                     val matched = exArray?.mapIndexedNotNull { exIdx, exEl ->
@@ -470,6 +476,8 @@ $exerciseList
                         val sets = flexInt(exObj, "sets", 3)
                         val reps = flexInt(exObj, "reps", 10)
                         val rest = flexInt(exObj, "restSeconds", 90)
+                        val weight = exObj["weightKg"]?.jsonPrimitive?.contentOrNull
+                            ?.replace(',', '.')?.toFloatOrNull()?.coerceAtLeast(0f) ?: 0f
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
 
@@ -487,11 +495,24 @@ $exerciseList
                                 sets        = sets,
                                 reps        = reps,
                                 restSeconds = rest,
-                                orderIndex  = exIdx
+                                weightKg    = weight,
+                                orderIndex  = exIdx,
+                                section     = exObj["section"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().take(80),
+                                notes       = exObj["notes"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().take(600),
+                                groupId     = exObj["groupId"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null },
+                                groupType   = when (exObj["groupType"]?.jsonPrimitive?.contentOrNull?.trim()?.lowercase()) {
+                                    "superset" -> "superset"
+                                    "giant_set", "giantset", "dev set" -> "giant_set"
+                                    "circuit", "devre" -> "circuit"
+                                    else -> "straight"
+                                },
+                                groupLabel  = exObj["groupLabel"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().take(80),
+                                groupRounds = flexIntOrNull(exObj, "groupRounds")?.coerceIn(1, 20),
+                                groupRestSeconds = flexIntOrNull(exObj, "groupRestSeconds")?.coerceIn(0, 3600)
                             )
                         } else null
                     } ?: emptyList()
-                    ManualDayInput(title = title, isRestDay = false, exercises = matched)
+                    ManualDayInput(title = title, isRestDay = false, notes = dayNotes, exercises = matched)
                 }
             }
 
@@ -648,6 +669,12 @@ $profileContext
             ?: default
     }
 
+    private fun flexIntOrNull(obj: JsonObject, key: String): Int? {
+        val el = obj[key]?.jsonPrimitive ?: return null
+        return el.intOrNull
+            ?: el.contentOrNull?.split("-", "/", "–")?.firstOrNull()?.trim()?.toIntOrNull()
+    }
+
     private suspend fun buildProgramContext(userId: String): String {
         val program = programRepository.getActiveProgram(userId).getOrNull() ?: return ""
 
@@ -661,8 +688,19 @@ $profileContext
         if (trainingDays.isNotEmpty()) {
             sb.append("\nProgram İçeriği:")
             trainingDays.forEach { day ->
-                val exercises = day.exercises.joinToString(", ") { it.exerciseName }
-                sb.append("\n  • ${day.title}: $exercises")
+                sb.append("\n  • ${day.title}${day.notes.takeIf { it.isNotBlank() }?.let { " — $it" }.orEmpty()}:")
+                day.exercises.forEach { exercise ->
+                    val details = buildList {
+                        add("${exercise.sets}x${exercise.reps}")
+                        if (exercise.weightKg > 0f) add("${exercise.weightKg} kg")
+                        add("${exercise.restSeconds} sn dinlenme")
+                        exercise.section.takeIf { it.isNotBlank() }?.let(::add)
+                        exercise.groupLabel.takeIf { it.isNotBlank() }?.let(::add)
+                        exercise.groupRounds?.let { add("$it tur") }
+                        exercise.notes.takeIf { it.isNotBlank() }?.let(::add)
+                    }.joinToString(" · ")
+                    sb.append("\n    - ${exercise.exerciseName}: $details")
+                }
             }
         }
 

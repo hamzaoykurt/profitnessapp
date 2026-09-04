@@ -33,6 +33,8 @@ interface ProgramDao {
                pe.weight_kg, pe.rest_seconds, pe.order_index,
                pe.target_duration_seconds, pe.target_distance_meters,
                pe.target_elevation_meters, pe.target_incline_percent,
+               pe.section, pe.notes, pe.group_id, pe.group_type, pe.group_label,
+               pe.group_rounds, pe.group_rest_seconds,
                e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
                e.sport_type, e.tracking_mode
         FROM program_exercises pe
@@ -47,6 +49,8 @@ interface ProgramDao {
                pe.weight_kg, pe.rest_seconds, pe.order_index,
                pe.target_duration_seconds, pe.target_distance_meters,
                pe.target_elevation_meters, pe.target_incline_percent,
+               pe.section, pe.notes, pe.group_id, pe.group_type, pe.group_label,
+               pe.group_rounds, pe.group_rest_seconds,
                e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
                e.sport_type, e.tracking_mode
         FROM program_exercises pe
@@ -61,6 +65,8 @@ interface ProgramDao {
                pe.weight_kg, pe.rest_seconds, pe.order_index,
                pe.target_duration_seconds, pe.target_distance_meters,
                pe.target_elevation_meters, pe.target_incline_percent,
+               pe.section, pe.notes, pe.group_id, pe.group_type, pe.group_label,
+               pe.group_rounds, pe.group_rest_seconds,
                e.name AS exercise_name, e.target_muscle, e.category, e.image_url,
                e.sport_type, e.tracking_mode
         FROM program_exercises pe

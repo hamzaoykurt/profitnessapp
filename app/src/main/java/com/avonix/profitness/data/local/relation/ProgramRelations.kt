@@ -29,7 +29,14 @@ data class ProgramExerciseWithName(
     @ColumnInfo(name = "target_duration_seconds") val targetDurationSeconds: Int?,
     @ColumnInfo(name = "target_distance_meters") val targetDistanceMeters: Float?,
     @ColumnInfo(name = "target_elevation_meters") val targetElevationMeters: Float?,
-    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float?
+    @ColumnInfo(name = "target_incline_percent") val targetInclinePercent: Float?,
+    val section: String,
+    val notes: String,
+    @ColumnInfo(name = "group_id") val groupId: String?,
+    @ColumnInfo(name = "group_type") val groupType: String,
+    @ColumnInfo(name = "group_label") val groupLabel: String,
+    @ColumnInfo(name = "group_rounds") val groupRounds: Int?,
+    @ColumnInfo(name = "group_rest_seconds") val groupRestSeconds: Int?
 )
 
 /** ProgramDay + child ProgramExercise'lar (basit @Relation — exercise join olmadan). */

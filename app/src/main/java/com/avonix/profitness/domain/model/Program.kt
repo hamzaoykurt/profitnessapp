@@ -29,6 +29,7 @@ data class ProgramDay(
     val dayIndex: Int,
     val title: String,
     val isRestDay: Boolean,
+    val notes: String = "",
     val exercises: ImmutableList<ProgramExercise> = persistentListOf()
 )
 
@@ -52,7 +53,14 @@ data class ProgramExercise(
     val targetDurationSeconds: Int? = null,
     val targetDistanceMeters: Float? = null,
     val targetElevationMeters: Float? = null,
-    val targetInclinePercent: Float? = null
+    val targetInclinePercent: Float? = null,
+    val section: String = "",
+    val notes: String = "",
+    val groupId: String? = null,
+    val groupType: String = "straight",
+    val groupLabel: String = "",
+    val groupRounds: Int? = null,
+    val groupRestSeconds: Int? = null
 )
 
 @Serializable

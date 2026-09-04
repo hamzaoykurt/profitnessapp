@@ -1683,8 +1683,10 @@ class WorkoutViewModel @Inject constructor(
                     day = DAY_LABELS[weekdayIdx],
                     title = day.title,
                     isRestDay = day.isRestDay,
+                    notes = day.notes,
                     programDayId = day.id,
-                    exercises = day.exercises.map { pe ->
+                    exercises = day.exercises.mapIndexed { index, pe ->
+                        val next = day.exercises.getOrNull(index + 1)
                         Exercise(
                             id = pe.id,
                             name = pe.exerciseName,
@@ -1694,7 +1696,11 @@ class WorkoutViewModel @Inject constructor(
                             image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
                             category = pe.category.ifBlank { "Strength" },
                             restSeconds = pe.restSeconds,
-                            exerciseRestSeconds = pe.exerciseRestSeconds,
+                            exerciseRestSeconds = if (!pe.groupId.isNullOrBlank() && pe.groupId == next?.groupId) {
+                                0
+                            } else {
+                                pe.groupRestSeconds ?: pe.exerciseRestSeconds
+                            },
                             exerciseTableId = pe.exerciseId,
                             weightKg = pe.weightKg,
                             sportType = pe.sportType,
@@ -1702,7 +1708,14 @@ class WorkoutViewModel @Inject constructor(
                             targetDurationSeconds = pe.targetDurationSeconds,
                             targetDistanceMeters = pe.targetDistanceMeters,
                             targetElevationMeters = pe.targetElevationMeters,
-                            targetInclinePercent = pe.targetInclinePercent
+                            targetInclinePercent = pe.targetInclinePercent,
+                            section = pe.section,
+                            notes = pe.notes,
+                            groupId = pe.groupId,
+                            groupType = pe.groupType,
+                            groupLabel = pe.groupLabel,
+                            groupRounds = pe.groupRounds,
+                            groupRestSeconds = pe.groupRestSeconds
                         )
                     }.toImmutableList()
                 )
