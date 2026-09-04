@@ -114,6 +114,8 @@ _Son güncelleme: 2026-09-04_
 - [x] Egzersiz kartlarına içe çöken basma tepkisi ve dinamik elevation
 - [x] Alt navigasyon ve tablet rail yalnız ikon olacak şekilde sadeleştirildi
 - [x] Workout, AI Coach, timer, program picker ve toast yüzeylerindeki eski sabit koyu tokenlar tema-aware hale getirildi
+- [x] Discover, challenge, profil düzenleme, onboarding ve sosyal aksiyonlarda accent üstü metin/ikon kontrastı dinamik hale getirildi
+- [x] Discover açık mod arka planındaki sabit siyah gradient kaldırıldı
 - [x] `:app:compileDebugKotlin` doğrulaması yapıldı
 
 | Sorun | Dosya | Öncelik |

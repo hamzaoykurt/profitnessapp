@@ -84,6 +84,7 @@ import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
 import com.cosmibit.profitness.domain.challenges.ChallengeVisibility
 import com.cosmibit.profitness.domain.challenges.CreateEventChallengeRequest
@@ -568,11 +569,11 @@ fun CreateChallengeOverlay(
                 contentAlignment = Alignment.Center
             ) {
                 if (inFlight) {
-                    CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                    CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                 } else {
                     Text(
                         strings.challengeCreateBtn,
-                        color         = Color.Black,
+                        color         = theme.effectiveOnAccentColor,
                         fontSize      = 14.sp,
                         fontWeight    = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -1013,7 +1014,7 @@ private fun LazySportTypeRow(
             ) {
                 Text(
                     sport.displayLabel(theme).uppercase(),
-                    color = if (active) Color.Black else theme.text1,
+                    color = if (active) theme.effectiveOnAccentColor else theme.text1,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.8.sp
@@ -1128,7 +1129,7 @@ private fun ParticipantLimitSection(
                     .border(1.dp, if (enabled) accent else theme.stroke, RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                if (enabled) Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(13.dp))
+                if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(13.dp))
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

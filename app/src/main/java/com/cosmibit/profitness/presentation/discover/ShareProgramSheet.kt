@@ -45,6 +45,7 @@ import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text2
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.presentation.components.glassCard
@@ -288,7 +289,7 @@ fun ShareProgramSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(theme.t("PAYLAŞ", "SHARE"),
-                            color = if (canSubmit) Color.Black else theme.text2.copy(0.4f),
+                            color = if (canSubmit) theme.effectiveOnAccentColor else theme.text2.copy(0.4f),
                             fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                     }
                 }

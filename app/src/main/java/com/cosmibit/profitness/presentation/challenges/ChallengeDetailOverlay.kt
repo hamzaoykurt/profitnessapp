@@ -92,6 +92,7 @@ import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeEventInfo
 import com.cosmibit.profitness.domain.challenges.ChallengeDetail
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
@@ -308,14 +309,14 @@ fun ChallengeDetailOverlay(
                         ) {
                             if (state.inFlight) {
                                 CircularProgressIndicator(
-                                    color = if (c.isJoined) accent else Color.Black,
+                                    color = if (c.isJoined) accent else theme.effectiveOnAccentColor,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(18.dp)
                                 )
                             } else {
                                 Text(
                                     if (c.isJoined) strings.leaveLabel else strings.joinLabel,
-                                    color = if (c.isJoined) theme.text0 else Color.Black,
+                                    color = if (c.isJoined) theme.text0 else theme.effectiveOnAccentColor,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 2.sp
@@ -648,7 +649,7 @@ private fun PrivateJoinPasswordDialog(
                 ) {
                     Text(
                         strings.joinLabel,
-                        color = Color.Black,
+                        color = theme.effectiveOnAccentColor,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -1024,7 +1025,7 @@ private fun SkipProgramToggle(
             contentAlignment = Alignment.Center
         ) {
             if (enabled) {
-                Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(14.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -1093,7 +1094,7 @@ private fun MovementRow(
                 pending -> CircularProgressIndicator(
                     color = accent, strokeWidth = 2.dp, modifier = Modifier.size(14.dp)
                 )
-                done -> Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                done -> Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -1789,7 +1790,7 @@ private fun AddProgressDialog(
                         ) {
                             Text(
                                 theme.t("AKTAR", "APPLY"),
-                                color = Color.Black,
+                                color = theme.effectiveOnAccentColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp
@@ -1834,7 +1835,7 @@ private fun AddProgressDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("KAYDET", "SAVE"), color = theme.effectiveOnAccentColor, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -1937,9 +1938,9 @@ private fun EditMetricChallengeOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         if (inFlight) {
-                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
-                            Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                            Text(theme.t("KAYDET", "SAVE"), color = theme.effectiveOnAccentColor, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                         }
                     }
                 }
@@ -2178,9 +2179,9 @@ private fun EditEventChallengeOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         if (inFlight) {
-                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
-                            Text(theme.t("KAYDET", "SAVE"), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                            Text(theme.t("KAYDET", "SAVE"), color = theme.effectiveOnAccentColor, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                         }
                     }
                 }

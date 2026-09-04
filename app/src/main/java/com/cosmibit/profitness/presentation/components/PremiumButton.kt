@@ -44,6 +44,7 @@ fun PremiumButton(
     isLoading: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
+    val theme = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -89,7 +90,7 @@ fun PremiumButton(
                         end    = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
                 else
-                    Brush.linearGradient(listOf(Depth2, Depth2))
+                    Brush.linearGradient(listOf(theme.bg2, theme.bg2))
             )
             .drawWithContent {
                 drawContent()
@@ -140,7 +141,7 @@ fun PremiumButton(
         } else {
             Text(
                 text          = text,
-                color         = if (isEnabled) Color.Black else Fog,
+                color         = if (isEnabled) Color.Black else theme.text2,
                 fontWeight    = FontWeight.ExtraBold,
                 fontSize      = 14.sp,
                 letterSpacing = 0.5.sp,

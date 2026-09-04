@@ -73,6 +73,7 @@ import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
@@ -272,7 +273,7 @@ fun ChallengesTab(
                 .clickable { vm.openCreate() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Add, theme.t("Yeni challenge", "New challenge"), tint = Color.Black, modifier = Modifier.size(26.dp))
+            Icon(Icons.Rounded.Add, theme.t("Yeni challenge", "New challenge"), tint = theme.effectiveOnAccentColor, modifier = Modifier.size(26.dp))
         }
 
         // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
@@ -445,10 +446,10 @@ private fun InviteFriendsDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         if (inFlight) {
-                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.Send, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.Send, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     if (selected.isEmpty()) {
@@ -456,7 +457,7 @@ private fun InviteFriendsDialog(
                                     } else {
                                         theme.t("${selected.size} DAVET GÖNDER", "SEND ${selected.size} INVITES")
                                     },
-                                    color = Color.Black,
+                                    color = theme.effectiveOnAccentColor,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 1.sp
@@ -509,7 +510,7 @@ private fun InviteFriendRow(
                 .border(1.dp, if (selected) accent else theme.stroke, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+            if (selected) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -663,11 +664,11 @@ private fun ChallengeInviteRow(
             contentAlignment = Alignment.Center
         ) {
             if (inFlight) {
-                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(color = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
             } else {
                 Text(
                     theme.t("KATIL", "JOIN"),
-                    color = Color.Black,
+                    color = theme.effectiveOnAccentColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.9.sp
@@ -1431,7 +1432,7 @@ private fun JoinPill(
     ) {
         if (inFlight) {
             CircularProgressIndicator(
-                color = if (isJoined) accent else Color.Black,
+                color = if (isJoined) accent else theme.effectiveOnAccentColor,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(14.dp)
             )
@@ -1451,7 +1452,7 @@ private fun JoinPill(
             val fg = when {
                 !canAct  -> theme.text2
                 isJoined -> accent
-                else     -> Color.Black
+                else     -> theme.effectiveOnAccentColor
             }
             Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))

@@ -354,7 +354,7 @@ fun EditProfileScreen(
                                 .background(theme.bg0).padding(3.dp).clip(CircleShape)
                                 .background(accent).clickable { photoPickerLauncher.launch("image/*") },
                             contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Rounded.CameraAlt, null, tint = Color.Black, modifier = Modifier.size(15.dp)) }
+                        ) { Icon(Icons.Rounded.CameraAlt, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp)) }
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
@@ -414,7 +414,7 @@ fun EditProfileScreen(
                                 ) {
                                     Text(
                                         theme.genderLabel(dbValue, label),
-                                        color      = if (selected) Color.Black else theme.text2,
+                                        color      = if (selected) theme.effectiveOnAccentColor else theme.text2,
                                         fontSize   = 12.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -587,7 +587,7 @@ fun EditProfileScreen(
                     onClick  = ::saveAndExit,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp),
                     shape    = RoundedCornerShape(16.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
+                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor)
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))

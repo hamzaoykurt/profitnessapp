@@ -69,6 +69,8 @@ import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.PageAccentBloom
 import com.cosmibit.profitness.core.theme.bg1
 import com.cosmibit.profitness.core.theme.bg2
+import com.cosmibit.profitness.core.theme.bg0
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseDisplayName
 import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.t
@@ -805,7 +807,7 @@ private fun SharedProgramDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(theme.bg1, Color.Black)))
+            .background(Brush.verticalGradient(listOf(theme.bg1, theme.bg0)))
     ) {
         PageAccentBloom()
 
@@ -1253,7 +1255,7 @@ private fun ApplyButton(
         enabled -> Brush.linearGradient(listOf(accent, accent.copy(0.75f)))
         else -> Brush.linearGradient(listOf(accent.copy(0.45f), accent.copy(0.35f)))
     }
-    val textColor = if (applied) accent else Color.Black
+    val textColor = if (applied) accent else MaterialTheme.colorScheme.onPrimary
     Row(
         modifier = Modifier
             .heightIn(min = if (responsive.isLargeFont) 48.dp else 44.dp)
@@ -1445,7 +1447,7 @@ private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Icon(Icons.Rounded.Share, theme.t("Programı paylaş", "Share program"),
-            tint = Color.Black, modifier = Modifier.size(24.dp))
+            tint = theme.effectiveOnAccentColor, modifier = Modifier.size(24.dp))
     }
 }
 
@@ -1586,9 +1588,9 @@ private fun MySharedProgramsList(
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Share, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Share, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(theme.t("PROGRAM PAYLAŞ", "SHARE PROGRAM"), color = Color.Black,
+                    Text(theme.t("PROGRAM PAYLAŞ", "SHARE PROGRAM"), color = theme.effectiveOnAccentColor,
                         fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                 }
             }

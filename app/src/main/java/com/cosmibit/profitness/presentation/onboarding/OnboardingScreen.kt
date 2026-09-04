@@ -769,7 +769,7 @@ private fun StepGenderBirth(
                 ) {
                     Text(
                         theme.genderLabel(dbValue, label),
-                        color      = if (selected) Color.Black else theme.text2,
+                        color      = if (selected) theme.effectiveOnAccentColor else theme.text2,
                         fontSize   = 13.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )

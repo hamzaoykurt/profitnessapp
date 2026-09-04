@@ -63,6 +63,7 @@ import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.t
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.discover.SharedProgram
@@ -406,7 +407,7 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val bg = if (isFollowing) theme.bg2 else accent
-    val fg = if (isFollowing) theme.text0 else Color.Black
+    val fg = if (isFollowing) theme.text0 else theme.effectiveOnAccentColor
 
     Row(
         modifier = Modifier
