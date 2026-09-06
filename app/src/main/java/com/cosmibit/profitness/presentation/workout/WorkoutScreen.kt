@@ -1044,32 +1044,143 @@ private fun SkippedProgramNotice() {
 @Composable
 private fun StreakBanner(streak: Int) {
     val streakDays = streak
-    val accent  = MaterialTheme.colorScheme.primary
-    val theme   = LocalAppTheme.current
-    val strings = theme.strings
+    val accent = MaterialTheme.colorScheme.primary
+    val theme = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
+
+    val shape = RoundedCornerShape(22.dp)
+    val title = if (streakDays > 0) {
+        theme.t("$streakDays günlük serin aktif", "$streakDays-day streak")
+    } else {
+        theme.t("Serini başlat", "Start your streak")
+    }
+    val supportingText = if (streakDays > 0) {
+        theme.t("Ritmi bugün de koru", "Keep your rhythm today")
+    } else {
+        theme.t("Bugün ilk adımı tamamla", "Complete today's first step")
+    }
+
     Row(
         modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
             .padding(
                 start = responsive.horizontalPadding,
-                top = if (responsive.isShortScreen) 24.dp else 32.dp,
+                top = if (responsive.isShortScreen) 6.dp else 10.dp,
                 end = responsive.horizontalPadding,
-                bottom = 0.dp
+                bottom = 8.dp
             )
-            .padding(vertical = 4.dp),
+            .shadow(
+                elevation = if (theme.isDark) 10.dp else 6.dp,
+                shape = shape,
+                spotColor = Color.Black.copy(alpha = if (theme.isDark) 0.42f else 0.12f),
+                ambientColor = Color.Transparent
+            )
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0f to accent.copy(alpha = if (theme.isDark) 0.16f else 0.09f),
+                        0.34f to theme.bg2,
+                        1f to theme.bg1
+                    ),
+                    start = Offset.Zero,
+                    end = Offset.Infinite
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        accent.copy(alpha = if (theme.isDark) 0.42f else 0.28f),
+                        theme.stroke.copy(alpha = 0.78f),
+                        theme.stroke.copy(alpha = 0.28f)
+                    )
+                ),
+                shape = shape
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
-        Spacer(Modifier.width(9.dp))
-        Text(
-            if (streakDays > 0) strings.streakTitle.format(streakDays) else strings.streakStart,
-            color = theme.text1,
-            fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
-            letterSpacing = 0.8.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .shadow(
+                    elevation = 5.dp,
+                    shape = RoundedCornerShape(14.dp),
+                    spotColor = accent.copy(alpha = 0.28f),
+                    ambientColor = Color.Transparent
+                )
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            accent.copy(alpha = if (theme.isDark) 0.34f else 0.22f),
+                            accent.copy(alpha = if (theme.isDark) 0.13f else 0.10f)
+                        )
+                    )
+                )
+                .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.LocalFireDepartment,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(23.dp)
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = theme.text0,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = supportingText,
+                color = theme.text2,
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                lineHeight = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(13.dp))
+                .background(accent.copy(alpha = if (theme.isDark) 0.12f else 0.09f))
+                .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(13.dp))
+                .padding(horizontal = 11.dp, vertical = 7.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = streakDays.coerceAtLeast(0).toString(),
+                color = accent,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.sp,
+                lineHeight = 14.sp
+            )
+            Text(
+                text = theme.t("GÜN", "DAYS"),
+                color = accent.copy(alpha = 0.78f),
+                fontWeight = FontWeight.Bold,
+                fontSize = 7.sp,
+                letterSpacing = 0.8.sp,
+                lineHeight = 9.sp
+            )
+        }
     }
 }
 

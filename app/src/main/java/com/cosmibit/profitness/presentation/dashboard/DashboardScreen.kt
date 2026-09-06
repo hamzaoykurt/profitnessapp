@@ -742,13 +742,13 @@ fun AppNavBar(
                         launch {
                             sourceSplitProgress.animateTo(
                                 1f,
-                                tween(190, easing = NavIndicatorEaseInOut)
+                                tween(240, easing = NavIndicatorEaseInOut)
                             )
                         }
                         launch {
                             sourceGhostAlpha.animateTo(
                                 0f,
-                                tween(160, delayMillis = 55, easing = NavIndicatorEaseOut)
+                                tween(175, delayMillis = 95, easing = NavIndicatorEaseOut)
                             )
                         }
                     }
@@ -794,7 +794,7 @@ fun AppNavBar(
                 launch {
                     targetMergeProgress.animateTo(
                         1f,
-                        tween(125, easing = NavIndicatorEaseInOut)
+                        tween(155, easing = NavIndicatorEaseInOut)
                     )
                 }
             }
@@ -880,13 +880,13 @@ fun AppNavBar(
                                         launch {
                                             sourceSplitProgress.animateTo(
                                                 1f,
-                                                tween(220, easing = NavIndicatorEaseInOut)
+                                                tween(260, easing = NavIndicatorEaseInOut)
                                             )
                                         }
                                         launch {
                                             sourceGhostAlpha.animateTo(
                                                 0f,
-                                                tween(185, delayMillis = 60, easing = NavIndicatorEaseOut)
+                                                tween(185, delayMillis = 105, easing = NavIndicatorEaseOut)
                                             )
                                         }
                                     }
@@ -1027,43 +1027,68 @@ private fun SplitNavSelectionSurface(
     elevation: Dp = 8.dp
 ) {
     val progress = splitProgress.coerceIn(0f, 1f)
-    val seamGap = 10.dp * progress
+    val easedProgress = progress * progress * (3f - 2f * progress)
+    val seamGap = 14.dp * easedProgress
+    val fullSurfaceAlpha = 1f - easedProgress
+    val lobeAlpha = easedProgress
+    val innerRadius = 3.dp + (19.dp * easedProgress)
     BoxWithConstraints(
         modifier = modifier.graphicsLayer { this.alpha = alpha }
     ) {
+        if (fullSurfaceAlpha > 0.01f) {
+            NavSelectionSurface(
+                accent = accent,
+                theme = theme,
+                alpha = fullSurfaceAlpha,
+                elevation = elevation,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         val halfWidth = maxWidth / 2f
-        NavSelectionSurface(
-            accent = accent,
-            theme = theme,
-            elevation = elevation,
-            shape = RoundedCornerShape(
-                topStart = 22.dp,
-                bottomStart = 22.dp,
-                topEnd = 3.dp,
-                bottomEnd = 3.dp
-            ),
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = -seamGap / 2f)
-                .width(halfWidth)
-                .fillMaxHeight()
-        )
-        NavSelectionSurface(
-            accent = accent,
-            theme = theme,
-            elevation = elevation,
-            shape = RoundedCornerShape(
-                topStart = 3.dp,
-                bottomStart = 3.dp,
-                topEnd = 22.dp,
-                bottomEnd = 22.dp
-            ),
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = seamGap / 2f)
-                .width(halfWidth)
-                .fillMaxHeight()
-        )
+        if (lobeAlpha > 0.01f) {
+            NavSelectionSurface(
+                accent = accent,
+                theme = theme,
+                alpha = lobeAlpha,
+                elevation = elevation,
+                shape = RoundedCornerShape(
+                    topStart = 22.dp,
+                    bottomStart = 22.dp,
+                    topEnd = innerRadius,
+                    bottomEnd = innerRadius
+                ),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = -seamGap / 2f)
+                    .width(halfWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = 1f - 0.035f * easedProgress
+                        scaleY = 1f - 0.06f * easedProgress
+                    }
+            )
+            NavSelectionSurface(
+                accent = accent,
+                theme = theme,
+                alpha = lobeAlpha,
+                elevation = elevation,
+                shape = RoundedCornerShape(
+                    topStart = innerRadius,
+                    bottomStart = innerRadius,
+                    topEnd = 22.dp,
+                    bottomEnd = 22.dp
+                ),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = seamGap / 2f)
+                    .width(halfWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = 1f - 0.035f * easedProgress
+                        scaleY = 1f - 0.06f * easedProgress
+                    }
+            )
+        }
     }
 }
 

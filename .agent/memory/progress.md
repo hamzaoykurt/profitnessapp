@@ -15,8 +15,10 @@ _Son güncelleme: 2026-09-05_
 - [x] Drag sırasında görünmez etiketin ayırdığı genişlik tamamen kaldırıldı
 - [x] Dock 292–312dp responsive genişliğe ve 64dp sabit gövdeye geçirildi; sürüklemedeki etiketsiz ikonlar 32dp aralıkla merkeze toplandı
 - [x] Drag indicator eski geniş seçimden 52dp kompakt moda yumuşakça daralırken parmağı kontrollü gecikmeyle izliyor
-- [x] Tek dokunma ve drag başlangıcında kaynak pill ortadan iki yarıya ayrılıp dışa açılıyor; hedefte iki yarım yüzey içe kayarak gerçek birleşme dikişi oluşturuyor
+- [x] Split/merge sert merkez çizgisi yerine tam yüzeyden iki yuvarlak loba crossfade + pinch ile dönüşüyor; kaynakta kademeli ayrılıp hedefte dikişsiz birleşiyor
 - [x] Workout status bar üzerindeki opak kapak kaldırıldı; kamera alanındaki sert siyah kesinti giderildi
+- [x] `Serini başlat` alanı status bar inset'inin altındaki premium hero kapsüle dönüştürüldü; ateş plakası, motivasyon metni ve gün sayacı eklendi
+- [x] Son split/merge geçişi emulator ekran kaydı kareleriyle doğrulandı; merkezde sert dikey dikiş yerine ayrılan iki yuvarlak lobe görünüyor
 - [x] Tek dokunma indicator animasyonunun layout değişirken sürekli yeniden başlaması kaldırıldı; x 190ms ve genişlik 175ms tek-shot hale getirildi
 - [x] Pill hedef genişliği gerçek tema fontuyla önceden ölçülüyor; uç slotlarda içerik pill clamp merkeziyle eşit kaydırılıyor
 - [x] Beş seçili durum emulator üzerinde tek tek doğrulandı (`build/nav-optical-0.png` … `build/nav-optical-4.png`); son dock yüksekliği profil/program ekranlarında tekrar kontrol edildi

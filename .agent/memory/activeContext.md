@@ -14,8 +14,9 @@ _Son güncelleme: 2026-09-04_
 - Drag sırasında seçili etiket artık görünmez bırakılarak alan ayırmıyor; bütün sekmeler gerçekten kompakt moda geçiyor.
 - Dock ekran genişliğine göre 292–312dp aralığında ve 64dp sabit gövde yüksekliğinde. Etiket açıkken görünür içerik boşlukları optik dağıtılıyor; sürüklemede etiketsiz ikonlar sabit 32dp aralıkla merkeze toplanıyor.
 - Drag başında geniş pill eski seçimden koparak kompakt moda daralıyor; x konumu parmağı kontrollü gecikmeyle izliyor, eşiklerde ekran seçimi güncelleniyor ve bırakınca yeni etikete genişliyor.
-- Tek dokunma ve drag başlangıcında kaynak pill dikey merkez dikişinden iki ayrı yarım yüzeye ayrılıyor; yarımlar dışa açılıp sönerken canlı kompakt parça hedefe akıyor. Hedefte ayrık iki yarım yüzey içe yaklaşarak birleşiyor ve etiket açılıyor.
+- Split/merge ilk karede sert dikey kesik oluşturmuyor: tam yüzey smoothstep ile çözülürken merkez iç köşeleri 3→22dp yuvarlanan iki lobe kademeli görünür, 14dp boşluğa açılır ve hafif küçülür. Hedefte süreç tersine çalışarak dikişsiz tek yüzeye dönüşür.
 - Workout ekranında status bar yüksekliğine çizilen opak `bg0` kapağı kaldırıldı; ortak ambient arka plan kamera/status bar alanına kesintisiz uzanıyor.
+- Workout seri alanı kamera/status bar inset'inin altına taşındı ve nokta + metin görünümünden çıkarıldı. Accent yansımalı hero kapsül, ayrı ateş plakası, motivasyon alt metni ve gün sayacıyla ana bağlılık bileşeni olarak yeniden tasarlandı.
 - Indicator hedefleri gerçek tema fontuyla önceden ölçülen etiket genişliğinden hesaplanıyor; x 190ms, genişlik 175ms tek-shot geçiş kullanıyor ve layout sırasında yeniden başlamıyor.
 - Uç sekmelerde indicator kenara clamp edildiğinde ikon+etiket içeriği de aynı merkez farkıyla kaydırılıyor. 9dp iç padding, 5dp gap ve 22dp glyph ile komşu ikonlara güvenli mesafe korunuyor.
 - Eski etiket hareket başında 20ms'de söner, yeni etiket pill hedefe yaklaşırken açılır; yazının seçili yüzeyden kopuk veya kırpılmış göründüğü ara kare kaldırıldı.
