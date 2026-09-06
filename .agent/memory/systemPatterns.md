@@ -300,20 +300,20 @@ GhostButton(text, onClick, modifier, isEnabled)
 PremiumIconButton(onClick, icon, contentDescription)
 ```
 
-- Primary ve icon kontroller: spring scale/translation, press sırasında elevation collapse, üst bevel ve alt depth shade
-- `GhostButton`: solid katmanlı secondary yüzey; glass değildir
-- Koyu mod primary: tam neon dolgu yerine koyu yüzeye karıştırılmış accent tint + accent metin/rim
-- Açık mod primary: okunaklı koyu accent yüzey; komşu secondary daima nötr
+- Primary: solid brand accent; secondary/icon: opak nötr tonal yüzey
+- Press: `scale(0.98)`, yaklaşık 120ms; bevel, ledge, glow ve bounce kullanılmaz
 - `PremiumButton` ve `PremiumIconButton` keyfi renk override kabul etmez; tek interaction accent tema tarafından belirlenir
+- Kontroller ayrı alt kaide, rim veya üst specular çizgi kullanmaz
+- Kaydırılan yüzeylerde shadow zinciri ve sürekli dekoratif glow kullanılmaz
 
 ---
 
 ## Tipografi
 
-- **Display/Headline:** `displayLarge/headlineMedium`, `FontWeight.Black`
-- **Stat Sayıları:** `28sp`, `FontWeight.Black` — bold minimalist data display
-- **Labels:** `9–11sp`, `ExtraBold`, `letterSpacing=1.5–2sp`, UPPERCASE
-- **Body:** `16sp`, `FontWeight.Light` / `Normal`, `lineHeight=27sp`
+- **Display/Headline:** `40–48sp` / `28–32sp`, `Bold`
+- **Stat Sayıları:** `28–42sp`, `SemiBold/Bold`, tabular hierarchy
+- **Labels:** `11–12sp`, `SemiBold`, sınırlı letter spacing; uppercase yalnız gerçek label'larda
+- **Body:** `14–16sp`, `Normal/Medium`
 - **Font:** Space Grotesk (Google Fonts — `ui-text-google-fonts`)
 
 ---
@@ -351,7 +351,7 @@ val Snow     = TextPrimary   // Color.kt'de sabit — composable'da theme.text0 
 | Glassmorphic → Solid Forge | Render/tutarsızlık sorunları |
 | Solid Forge → Matte Obsidian | Kullanıcı: Apple/Porsche seviye minimallik |
 | Matte Obsidian → Neon Forge | Kullanıcı: Referans fitness uygulamalarına eşleşme |
-| Neon Forge Dark + Mineral Light | Light mod ayrı serin-nötr palette; mekanik renk tersleme yok |
+| Performance Luxury Dark + Mineral Light | Nötr near-black / mineral canvas; mekanik renk tersleme yok |
 | Solid / floating glass / inset yüzey rolleri | Glass her yerde kullanılmaz; içerik, chrome ve girişler farklı derinlik modeli taşır |
 | Tek-accent aksiyon hiyerarşisi | Bir görünümde yalnız preferred primary renkli; secondary nötr, renkli istisnalar semantik |
 | `rememberSaveable` + DataStore | Rotation: hızlı state; process kill: kalıcı storage |
@@ -362,4 +362,4 @@ val Snow     = TextPrimary   // Color.kt'de sabit — composable'da theme.text0 
 | Random() yasak | Recomposition'da flicker — deterministik hash kullan |
 | CinematicExerciseCard sözleşmesi | Veri/etkileşim korunur; görsel katman ürün yönüne göre gelişebilir |
 | Legacy alias sistemi | Eski ekranlar kırılmasın, zamanı gelince temizlenir |
-| Floating pill nav | Ref. görsele uyum — yüzen pill, accent dot active state |
+| Restrained glass nav | 64px sınıfında, yüksek opaklık, minimal blur hissi, küçük accent active state |

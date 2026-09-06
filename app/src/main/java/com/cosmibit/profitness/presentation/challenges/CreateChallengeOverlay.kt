@@ -103,6 +103,7 @@ import com.cosmibit.profitness.presentation.program.ExerciseMultiPickerSheet
 import com.cosmibit.profitness.presentation.workout.SportType
 import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 import com.cosmibit.profitness.presentation.components.insetControlSurface
+import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.places.api.Places
@@ -266,11 +267,6 @@ fun CreateChallengeOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(accent.copy(0.10f), Color.Transparent)
-                        )
-                    )
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
@@ -279,9 +275,7 @@ fun CreateChallengeOverlay(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg1.copy(0.85f))
-                            .border(1.dp, theme.stroke.copy(0.6f), CircleShape)
+                            .insetControlSurface(accent, theme, CircleShape)
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center
                     ) {
@@ -299,13 +293,7 @@ fun CreateChallengeOverlay(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(accent.copy(0.32f), accent.copy(0.14f))
-                                )
-                            )
-                            .border(1.dp, accent.copy(0.45f), CircleShape),
+                            .insetControlSurface(accent, theme, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -322,16 +310,15 @@ fun CreateChallengeOverlay(
                         Text(
                             headerTitle,
                             color         = theme.text0,
-                            fontSize      = 16.sp,
-                            fontWeight    = FontWeight.Black,
-                            letterSpacing = 1.5.sp,
+                            fontSize      = 18.sp,
+                            fontWeight    = FontWeight.Bold,
                             maxLines      = 1
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             headerSubtitle,
                             color    = theme.text2,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1
                         )
@@ -461,9 +448,7 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg1.copy(0.72f))
-                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 3.dp)
                     .padding(4.dp)
             ) {
                 VisibilityChip(
@@ -516,7 +501,6 @@ fun CreateChallengeOverlay(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFFFF5252).copy(0.14f))
-                        .border(1.dp, Color(0xFFFF5252).copy(0.4f), RoundedCornerShape(10.dp))
                         .padding(12.dp)
                 ) {
                     Text(it, color = Color(0xFFFF8A80), fontSize = 12.sp)
@@ -524,55 +508,15 @@ fun CreateChallengeOverlay(
             }
 
             // ── Submit ──
-            val submitSource = remember { MutableInteractionSource() }
-            val submitPressed by submitSource.collectIsPressedAsState()
-            val submitScale by animateFloatAsState(
-                targetValue = if (submitPressed && !inFlight) 0.975f else 1f,
-                animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh),
-                label = "create_challenge_press"
-            )
-            val submitElevation by animateDpAsState(
-                targetValue = if (submitPressed && !inFlight) 3.dp else 17.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessHigh),
-                label = "create_challenge_depth"
-            )
-            val submitShape = RoundedCornerShape(18.dp)
-            Box(
+            PremiumButton(
+                text = strings.challengeCreateBtn,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .graphicsLayer {
-                        scaleX = submitScale
-                        scaleY = submitScale
-                        translationY = if (submitPressed && !inFlight) 3.dp.toPx() else 0f
-                    }
-                    .shadow(
-                        elevation = submitElevation,
-                        shape = submitShape,
-                        spotColor = accent.copy(if (theme.isDark) 0.52f else 0.20f),
-                        ambientColor = Color.Black.copy(if (theme.isDark) 0.40f else 0.09f)
-                    )
-                    .clip(submitShape)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                lerp(accent, Color.White, if (theme.isDark) 0.14f else 0.07f),
-                                accent,
-                                lerp(accent, Color.Black, if (theme.isDark) 0.26f else 0.18f)
-                            )
-                        )
-                    )
-                    .drawWithCache {
-                        onDrawBehind {
-                            drawRect(
-                                Brush.verticalGradient(listOf(Color.White.copy(0.28f), Color.Transparent)),
-                                size = Size(size.width, size.height * 0.48f)
-                            )
-                            drawRect(Color.White.copy(0.48f), size = Size(size.width, 1.2.dp.toPx()))
-                        }
-                    }
-                    .border(1.dp, Color.White.copy(if (theme.isDark) 0.22f else 0.44f), submitShape)
-                    .clickable(enabled = !inFlight, interactionSource = submitSource, indication = null) {
+                    .padding(16.dp),
+                isEnabled = !inFlight,
+                isLoading = inFlight,
+                leadingIcon = Icons.Rounded.Check,
+                onClick = {
                         if (kind == CreateFormKind.Metric) {
                             onSubmit(
                                 title,
@@ -614,22 +558,8 @@ fun CreateChallengeOverlay(
                             )
                             onSubmitEvent(req)
                         }
-                    }
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (inFlight) {
-                    CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                } else {
-                    Text(
-                        strings.challengeCreateBtn,
-                        color         = theme.effectiveOnAccentColor,
-                        fontSize      = 14.sp,
-                        fontWeight    = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
                 }
-            }
+            )
 
             // Floating navbar (capsule) için boşluk + system nav bar insets
             Spacer(
@@ -1160,9 +1090,7 @@ private fun ParticipantLimitSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+            .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 3.dp)
             .padding(14.dp)
     ) {
         Row(
@@ -1186,14 +1114,13 @@ private fun ParticipantLimitSection(
                 Text(
                     theme.t("KİŞİ SAYISINI SINIRLA", "LIMIT PARTICIPANTS"),
                     color = theme.text0,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     theme.t("Limit dolunca yeni katılım kapanır", "Joining closes when the limit is reached"),
                     color = theme.text2,
-                    fontSize = 10.sp
+                    fontSize = 12.sp
                 )
             }
         }
@@ -1215,9 +1142,8 @@ private fun FieldLabel(text: String, padded: Boolean = true) {
     Text(
         text,
         color      = theme.text1,
-        fontSize   = 10.5.sp,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 1.25.sp,
+        fontSize   = 12.sp,
+        fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(
             start = if (padded) 20.dp else 0.dp,
             top = 14.dp,
@@ -1648,9 +1574,7 @@ private fun PickerField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.70f), RoundedCornerShape(14.dp))
+            .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1757,17 +1681,9 @@ private fun TargetTypeOption(
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (isActive) Brush.horizontalGradient(
-                    listOf(accent.copy(0.18f), accent.copy(0.08f))
-                ) else Brush.horizontalGradient(
-                    listOf(theme.bg1.copy(0.72f), theme.bg1.copy(0.54f))
-                )
-            )
-            .border(
-                1.dp,
-                if (isActive) accent.copy(0.58f) else theme.stroke.copy(0.55f),
-                RoundedCornerShape(14.dp)
+            .then(
+                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
+                else Modifier.background(theme.bg1)
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1780,11 +1696,7 @@ private fun TargetTypeOption(
                 .background(
                     if (isActive) accent.copy(0.22f) else theme.bg2.copy(0.64f)
                 )
-                .border(
-                    1.dp,
-                    if (isActive) accent.copy(0.5f) else theme.stroke.copy(0.5f),
-                    CircleShape
-                ),
+                ,
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -1851,11 +1763,7 @@ private fun KindChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(
-                    Brush.horizontalGradient(
-                        listOf(accent.copy(0.24f), accent.copy(0.12f))
-                    )
-                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
+                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
@@ -1886,11 +1794,7 @@ private fun EventModeChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(
-                    Brush.horizontalGradient(
-                        listOf(accent.copy(0.24f), accent.copy(0.12f))
-                    )
-                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
+                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
@@ -1924,11 +1828,7 @@ private fun VisibilityChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.background(
-                    Brush.horizontalGradient(
-                        listOf(accent.copy(0.24f), accent.copy(0.12f))
-                    )
-                ).border(1.dp, accent.copy(0.40f), RoundedCornerShape(10.dp))
+                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)

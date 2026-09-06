@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 @Composable
 fun LeaderboardScreen(
@@ -62,11 +63,10 @@ fun LeaderboardScreen(
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column(Modifier.weight(1f)) {
                         Text(
-                            theme.t("SIRALAMA", "LEADERBOARD"),
+                            theme.t("Sıralama", "Leaderboard"),
                             color         = theme.text0,
-                            fontSize      = 18.sp,
-                            fontWeight    = FontWeight.Black,
-                            letterSpacing = 2.sp
+                            style         = MaterialTheme.typography.headlineSmall,
+                            fontWeight    = FontWeight.SemiBold
                         )
                         Text(
                             theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
@@ -78,15 +78,8 @@ fun LeaderboardScreen(
                         onClick = { viewModel.refresh() },
                         modifier = Modifier
                             .size(42.dp)
-                            .shadow(
-                                if (theme.isDark) 8.dp else 5.dp,
-                                CircleShape,
-                                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.07f),
-                                spotColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.09f)
-                            )
                             .clip(CircleShape)
-                            .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                            .border(1.dp, theme.stroke.copy(0.72f), CircleShape)
+                            .background(theme.bg2)
                     ) {
                         Icon(
                             Icons.Rounded.Refresh, null,
@@ -191,15 +184,7 @@ fun LeaderboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 20.dp)
-                            .shadow(
-                                if (theme.isDark) 12.dp else 8.dp,
-                                RoundedCornerShape(20.dp),
-                                ambientColor = Color.Black.copy(if (theme.isDark) 0.32f else 0.07f),
-                                spotColor = Color.Black.copy(if (theme.isDark) 0.38f else 0.09f)
-                            )
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(20.dp))
+                            .performanceElevatedSurface(theme, RoundedCornerShape(20.dp))
                             .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -273,15 +258,8 @@ private fun TabSwitcher(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                if (theme.isDark) 10.dp else 6.dp,
-                RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.06f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.08f)
-            )
             .clip(RoundedCornerShape(16.dp))
-            .background(if (theme.isDark) theme.bg2 else theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.78f), RoundedCornerShape(16.dp))
+            .background(theme.bg1)
             .padding(4.dp)
     ) {
         TabButton(
@@ -330,8 +308,7 @@ private fun ScopeSwitcher(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (theme.isDark) theme.bg1 else theme.bg2.copy(0.72f))
-            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(12.dp))
+            .background(theme.bg1)
             .padding(3.dp)
     ) {
         TabButton(
@@ -369,8 +346,8 @@ private fun TabButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = 760f, dampingRatio = 0.78f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(120),
         label = "leaderboard_tab_scale"
     )
     Row(
@@ -378,27 +355,11 @@ private fun TabButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed) 1.5.dp.toPx() else 0f
             }
             .then(
-                if (isActive) Modifier.shadow(
-                    elevation = if (pressed) 1.dp else 5.dp,
-                    shape = RoundedCornerShape(10.dp),
-                    ambientColor = accent.copy(if (theme.isDark) 0.18f else 0.08f),
-                    spotColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.08f)
-                ) else Modifier
+                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                else Modifier.clip(RoundedCornerShape(10.dp))
             )
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isActive) Modifier.background(
-                    if (theme.isDark) {
-                        Brush.verticalGradient(listOf(accent.copy(0.26f), accent.copy(0.12f)))
-                    } else {
-                        Brush.verticalGradient(listOf(Color.White, accent.copy(0.10f)))
-                    }
-                ) else Modifier
-            )
-            .then(if (isActive) Modifier.border(1.dp, accent.copy(if (theme.isDark) 0.46f else 0.30f), RoundedCornerShape(10.dp)) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.Center,
@@ -442,25 +403,7 @@ private fun MyPositionCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (theme.isDark) 16.dp else 10.dp,
-                shape = RoundedCornerShape(22.dp),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.07f),
-                spotColor = accent.copy(if (theme.isDark) 0.16f else 0.035f)
-            )
-            .clip(RoundedCornerShape(22.dp))
-            .background(
-                if (theme.isDark) {
-                    Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                } else {
-                    Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.48f)))
-                }
-            )
-            .border(
-                1.dp,
-                if (theme.isDark) accent.copy(0.28f) else theme.stroke.copy(0.82f),
-                RoundedCornerShape(22.dp)
-            )
+            .performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -468,12 +411,7 @@ private fun MyPositionCard(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(accent.copy(0.30f), accent.copy(0.08f))
-                        )
-                    )
-                    .border(1.dp, accent.copy(0.45f), CircleShape),
+                    .background(accent.copy(0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -540,28 +478,9 @@ private fun LeaderboardRowItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (highlight || row.position in 1L..3L) {
-                    if (theme.isDark) 9.dp else 6.dp
-                } else 2.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.24f else 0.055f),
-                spotColor = if (highlight) accent.copy(0.12f) else Color.Black.copy(if (theme.isDark) 0.28f else 0.07f)
-            )
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (highlight) {
-                    if (theme.isDark) Brush.verticalGradient(listOf(accent.copy(0.15f), theme.bg1))
-                    else Brush.verticalGradient(listOf(Color.White, accent.copy(0.055f)))
-                } else {
-                    if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                    else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.34f)))
-                }
-            )
-            .border(
-                1.dp,
-                if (highlight) accent.copy(0.42f) else theme.stroke.copy(0.68f),
-                RoundedCornerShape(16.dp)
+            .then(
+                if (highlight) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -594,8 +513,7 @@ private fun LeaderboardRowItem(
             modifier = Modifier
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(theme.bg2)
-                .border(1.dp, theme.stroke, CircleShape),
+                .background(theme.bg2),
             contentAlignment = Alignment.Center
         ) {
             if (row.avatar.startsWith("http")) {

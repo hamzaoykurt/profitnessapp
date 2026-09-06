@@ -58,6 +58,7 @@ import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.cosmibit.profitness.presentation.components.GhostButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.cosmibit.profitness.presentation.dashboard.ChallengeTodayBanner
 import com.cosmibit.profitness.presentation.dashboard.DashboardViewModel
@@ -106,7 +107,12 @@ private val WorkoutTitlePrefix = Regex(
 
 private fun compactWorkoutTitle(value: String, theme: AppThemeState): String {
     val localized = localizedWorkoutTitle(value, theme).trim()
-    return localized.replaceFirst(WorkoutTitlePrefix, "").trim().ifBlank { localized }
+    val compact = localized.replaceFirst(WorkoutTitlePrefix, "").trim().ifBlank { localized }
+    if (compact.any { it.isLowerCase() }) return compact
+    val locale = if (theme.language == AppLanguage.TURKISH) java.util.Locale.forLanguageTag("tr-TR") else java.util.Locale.ENGLISH
+    return compact.lowercase(locale).split(" ").joinToString(" ") { word ->
+        if (word == "&") word else word.replaceFirstChar { it.titlecase(locale) }
+    }
 }
 
 @Stable
@@ -338,6 +344,17 @@ fun WorkoutScreen(
                 )
             }
         }
+
+        // Scrolled/auto-expanded cards must stop below the system status bar.
+        // This opaque cap prevents list content from visually colliding with
+        // the clock and system icons while preserving the edge-to-edge page.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(statusBarPad)
+                .background(theme.bg0)
+        )
 
         // ── Dynamic Island — rest timer overlay ──────────────────────────────
         DynamicIslandTimer(
@@ -756,15 +773,15 @@ private fun WorkoutContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            exercise.section.uppercase(java.util.Locale.forLanguageTag("tr-TR")),
-                            color = theme.text2.copy(alpha = 0.78f),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.1.sp
+                            exercise.section.lowercase(java.util.Locale.forLanguageTag("tr-TR")).replaceFirstChar { it.titlecase(java.util.Locale.forLanguageTag("tr-TR")) },
+                            color = theme.text1,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.2.sp
                         )
                         Spacer(Modifier.width(10.dp))
                         HorizontalDivider(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                            color = theme.stroke.copy(alpha = 0.35f),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -778,16 +795,15 @@ private fun WorkoutContent(
                         }
                     }
                     Surface(
-                        color = MaterialTheme.colorScheme.primary.copy(0.07f),
-                        shape = RoundedCornerShape(999.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.20f)),
+                        color = theme.bg2,
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp)
                     ) {
                         Text(
                             groupTitle,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
+                            color = theme.text1,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                         )
                     }
@@ -1043,44 +1059,25 @@ private fun StreakBanner(streak: Int) {
     val theme   = LocalAppTheme.current
     val strings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
-    val bgBrush = remember(accent) {
-        Brush.horizontalGradient(listOf(accent.copy(0.13f), Amber.copy(0.06f)))
-    }
-
     Row(
         modifier = Modifier
             .padding(
                 start = responsive.horizontalPadding,
-                top = if (responsive.isShortScreen) 28.dp else 40.dp,
+                top = if (responsive.isShortScreen) 24.dp else 32.dp,
                 end = responsive.horizontalPadding,
-                bottom = 4.dp
+                bottom = 0.dp
             )
-            .shadow(
-                elevation = if (theme.isDark) 8.dp else 6.dp,
-                shape = RoundedCornerShape(999.dp),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.52f else 0.10f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
-            )
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (theme.isDark) theme.bg2 else Color.White)
-            .background(bgBrush)
-            .border(
-                1.dp,
-                Brush.horizontalGradient(
-                    listOf(Color.White.copy(if (theme.isDark) 0.12f else 0.84f), accent.copy(0.20f))
-                ),
-                RoundedCornerShape(999.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("🔥", fontSize = 14.sp)
-        Spacer(Modifier.width(7.dp))
+        Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
+        Spacer(Modifier.width(9.dp))
         Text(
             if (streakDays > 0) strings.streakTitle.format(streakDays) else strings.streakStart,
-            color = theme.text0,
+            color = theme.text1,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
+            letterSpacing = 0.8.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -1092,43 +1089,54 @@ private fun StreakBanner(streak: Int) {
 private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
     val theme = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 horizontal = responsive.horizontalPadding,
-                vertical = 8.dp
-            )
+                vertical = 12.dp
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = if (responsive.isLargeFont) 8.dp else 12.dp)) {
-                Text(
-                    text = compactWorkoutTitle(day.title, theme),
-                    color = theme.text0,
-                    fontSize = if (responsive.isLargeFont) 17.sp else 18.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = if (responsive.isLargeFont) 21.sp else 22.sp,
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-
-            // Right: Circular progress ring (only if not rest day and has exercises)
+        Column(Modifier.weight(1f).padding(end = 16.dp)) {
+            Text(
+                text = theme.t("BUGÜNÜN PROTOKOLÜ", "TODAY'S PROTOCOL"),
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.45.sp
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = compactWorkoutTitle(day.title, theme),
+                color = theme.text0,
+                fontSize = if (responsive.isLargeFont) 19.sp else 22.sp,
+                lineHeight = if (responsive.isLargeFont) 23.sp else 27.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.35).sp,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             if (!day.isRestDay && day.exercises.isNotEmpty()) {
-                CircularProgressRing(
-                    progress = progress,
-                    size = when {
-                        responsive.isVeryLargeFont -> 66.dp
-                        responsive.isLargeFont -> 62.dp
-                        else -> 66.dp
-                    },
-                    label = "${(progress * 100).toInt()}%"
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = theme.t(
+                        "${day.exercises.size} hareket  ·  ${(progress * day.exercises.size).toInt()} tamamlandı",
+                        "${day.exercises.size} exercises  ·  ${(progress * day.exercises.size).toInt()} completed"
+                    ),
+                    color = theme.text1,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
+        }
+        if (!day.isRestDay && day.exercises.isNotEmpty()) {
+            CircularProgressRing(
+                progress = progress,
+                size = if (responsive.isLargeFont) 62.dp else 66.dp,
+                label = "${(progress * 100).toInt()}%"
+            )
         }
     }
 }
@@ -1161,32 +1169,30 @@ fun CircularProgressRing(
         modifier = modifier
             .size(size)
             .shadow(
-                elevation = if (progress > 0f) 12.dp else 7.dp,
+                elevation = if (progress > 0f) 10.dp else 6.dp,
                 shape = CircleShape,
-                spotColor = if (progress > 0f) resolvedRingColor.copy(if (theme.isDark) 0.30f else 0.10f)
+                spotColor = if (progress > 0f) resolvedRingColor.copy(if (theme.isDark) 0.22f else 0.08f)
                             else Color.Black.copy(if (theme.isDark) 0.40f else 0.08f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.05f)
+                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
             )
             .clip(CircleShape)
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        if (theme.isDark) theme.bg3 else Color.White,
-                        if (theme.isDark) theme.bg1 else theme.bg1
+                        if (theme.isDark) Color(0xFF252A31) else Color.White,
+                        if (theme.isDark) Color(0xFF111419) else Color(0xFFE7EBEE)
                     )
                 )
             )
             .border(
                 1.dp,
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(if (theme.isDark) 0.14f else 0.88f), theme.stroke)
-                ),
+                Brush.verticalGradient(listOf(Color.White.copy(if (theme.isDark) 0.13f else 0.82f), theme.stroke)),
                 CircleShape
             ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
-            val strokeWidth = (if (size <= 80.dp) 7.dp else 8.dp).toPx()
+        Canvas(modifier = Modifier.fillMaxSize().padding(7.dp)) {
+            val strokeWidth = 6.dp.toPx()
             val radius = (this.size.minDimension - strokeWidth) / 2f
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val startAngle = -90f
@@ -1230,15 +1236,34 @@ private fun DaySelector(
     onSelect: (Int) -> Unit
 ) {
     val accent   = MaterialTheme.colorScheme.primary
-    val onAccent = MaterialTheme.colorScheme.onPrimary
     val theme    = LocalAppTheme.current
     val haptic   = LocalHapticFeedback.current
     val responsive = rememberResponsiveLayoutInfo()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 4.dp else 5.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        if (theme.isDark) Color(0xFF090C10) else Color(0xFFE4E9EC),
+                        if (theme.isDark) Color(0xFF11151A) else Color(0xFFF4F6F7)
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Black.copy(if (theme.isDark) 0.52f else 0.10f),
+                        Color.White.copy(if (theme.isDark) 0.055f else 0.70f)
+                    )
+                ),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         days.forEachIndexed { idx, state ->
             val day        = state.day
@@ -1246,55 +1271,49 @@ private fun DaySelector(
             val iSource    = remember { MutableInteractionSource() }
             val isPressed  by iSource.collectIsPressedAsState()
             val scale by animateFloatAsState(
-                if (isPressed) 0.92f else 1f,
-                spring(Spring.DampingRatioMediumBouncy),
+                if (isPressed) 0.98f else 1f,
+                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh),
                 label = "scale"
             )
             val hasProgress = state.progress > 0f && !day.isRestDay
-            val dayShape = RoundedCornerShape(16.dp)
+            val dayShape = RoundedCornerShape(14.dp)
 
             Box(
                 modifier = Modifier
                     .scale(scale)
                     .weight(1f)
-                    .height(if (responsive.isLargeFont) 48.dp else 44.dp)
-                    .shadow(
-                        elevation = if (isSelected) 12.dp else 5.dp,
-                        shape = dayShape,
-                        spotColor = if (isSelected) accent.copy(0.34f)
-                                    else Color.Black.copy(if (theme.isDark) 0.24f else 0.08f),
-                        ambientColor = Color.Black.copy(if (theme.isDark) 0.20f else 0.06f)
-                    )
+                    .height(if (responsive.isLargeFont) 46.dp else 43.dp)
                     .then(
                         if (isSelected)
                             Modifier
+                                .shadow(
+                                    elevation = if (isPressed) 2.dp else 7.dp,
+                                    shape = dayShape,
+                                    spotColor = accent.copy(if (theme.isDark) 0.24f else 0.08f),
+                                    ambientColor = Color.Black.copy(if (theme.isDark) 0.18f else 0.06f)
+                                )
                                 .clip(dayShape)
-                                .background(Brush.verticalGradient(listOf(accent, accent.copy(0.78f))))
-                                .drawWithCache {
-                                    val lowerDepth = Brush.verticalGradient(
-                                        colorStops = arrayOf(
-                                            0.48f to Color.Transparent,
-                                            1.00f to Color.Black.copy(0.15f)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            accent.copy(if (theme.isDark) 0.30f else 0.16f),
+                                            if (theme.isDark) Color(0xFF1B1F25) else Color.White,
+                                            if (theme.isDark) Color(0xFF101319) else Color(0xFFE9EDF0)
                                         )
                                     )
-                                    onDrawWithContent {
-                                        drawContent()
-                                        drawRect(lowerDepth)
-                                        drawRect(
-                                            color = Color.White.copy(0.34f),
-                                            size = Size(size.width, 1.dp.toPx())
-                                        )
-                                    }
-                                }
+                                )
                                 .border(
                                     1.dp,
                                     Brush.verticalGradient(
-                                        listOf(Color.White.copy(0.55f), accent.copy(0.40f))
+                                        listOf(
+                                            Color.White.copy(if (theme.isDark) 0.18f else 0.82f),
+                                            accent.copy(if (theme.isDark) 0.30f else 0.16f)
+                                        )
                                     ),
                                     dayShape
                                 )
                         else
-                            Modifier.glassCard(accent, theme, dayShape)
+                            Modifier
                     )
                     .clickable(iSource, null) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1304,11 +1323,11 @@ private fun DaySelector(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = localizedWorkoutDayLabel(day.day, theme).uppercase(),
-                        color = if (isSelected) onAccent else theme.text2,
-                        fontSize = if (responsive.isLargeFont) 7.sp else 9.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = if (responsive.isLargeFont) 0.sp else 1.sp,
+                        text = localizedWorkoutDayLabel(day.day, theme),
+                        color = if (isSelected) accent else theme.text2,
+                        fontSize = if (responsive.isLargeFont) 8.sp else 10.sp,
+                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                        letterSpacing = if (isSelected) 0.35.sp else 0.sp,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
@@ -1318,7 +1337,7 @@ private fun DaySelector(
                             modifier = Modifier
                                 .size(3.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) onAccent else accent)
+                                .background(accent)
                         )
                     }
                 }

@@ -39,6 +39,7 @@ import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.cosmibit.profitness.presentation.components.glassCard
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
@@ -354,10 +355,8 @@ fun StoreScreen(
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 28.dp)
-                        .shadow(12.dp, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .background(theme.bg2)
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -403,7 +402,6 @@ private fun PendingOrderPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(16.dp, RoundedCornerShape(18.dp))
             .glassCard(accent, theme, RoundedCornerShape(18.dp))
             .clickable(
                 indication = null,
@@ -639,7 +637,6 @@ private fun StoreTopBar(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(chipColor)
-                    .border(1.dp, accent.copy(0.3f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -675,8 +672,7 @@ private fun StoreTopBar(
                         .weight(1f)
                         .height(40.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isActive) accent.copy(0.16f) else Color.Transparent)
-                        .border(1.dp, if (isActive) accent.copy(0.32f) else Color.Transparent, RoundedCornerShape(10.dp))
+                        .then(if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp)) else Modifier)
                         .clickable(
                             indication        = null,
                             interactionSource = remember { MutableInteractionSource() }
@@ -855,8 +851,7 @@ private fun BillingCycleOption(
         modifier = modifier
             .height(54.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) accent.copy(0.14f) else Color.Transparent)
-            .border(1.dp, if (selected) accent.copy(0.30f) else Color.Transparent, RoundedCornerShape(10.dp))
+            .then(if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp)) else Modifier)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -892,11 +887,6 @@ private fun PlanOfferCard(
         isYearly -> theme.t("/yıl", "/yr")
         else -> theme.t("/ay", "/mo")
     }
-    val borderColor = when {
-        isCurrent -> accent.copy(0.48f)
-        selected -> accent.copy(0.48f)
-        else -> theme.stroke.copy(0.40f)
-    }
     val ctaLabel = when {
         isCurrent -> theme.t("Aktif mod", "Current mode")
         tier.plan == UserPlan.FREE && hasPaidPlan -> theme.t("Ücretsiz moda dön", "Return to Free mode")
@@ -911,8 +901,10 @@ private fun PlanOfferCard(
         modifier = Modifier
             .scale(cardScale)
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(22.dp))
-            .border(if (selected || isCurrent) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(22.dp))
+            .then(
+                if (selected || isCurrent) Modifier.performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
+                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(22.dp), elevated = !theme.isDark)
+            )
             .clickable(
                 indication = null,
                 interactionSource = interaction,
@@ -1492,15 +1484,7 @@ private fun SimpleEnergyBalanceCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(22.dp))
-            .drawWithCache {
-                val glow = Brush.radialGradient(
-                    colors = listOf(accent.copy(alpha = 0.10f), Color.Transparent),
-                    center = Offset(size.width * 0.88f, size.height * 0.06f),
-                    radius = size.width * 0.56f
-                )
-                onDrawBehind { drawRect(glow) }
-            }
+            .performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
             .padding(18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1544,7 +1528,6 @@ private fun SimpleEnergyBalanceCard(
                 .height(12.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(theme.bg0.copy(0.52f))
-                .border(1.dp, accent.copy(0.18f), RoundedCornerShape(999.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -1624,15 +1607,7 @@ private fun SimpleEnergyPackageRow(
         modifier = Modifier
             .scale(rowScale)
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(18.dp))
-            .drawWithCache {
-                val glow = Brush.radialGradient(
-                    colors = listOf(accent.copy(alpha = 0.07f + intensity * 0.035f), Color.Transparent),
-                    center = Offset(size.width * 0.10f, size.height * 0.50f),
-                    radius = size.width * (0.18f + intensity * 0.08f)
-                )
-                onDrawBehind { drawRect(glow) }
-            }
+            .performanceElevatedSurface(theme, RoundedCornerShape(18.dp), elevated = !theme.isDark)
             .clickable(
                 enabled = !isLoading,
                 indication = null,
@@ -1647,8 +1622,7 @@ private fun SimpleEnergyPackageRow(
             modifier = Modifier
                 .size(42.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(0.12f))
-                .border(1.dp, accent.copy(0.20f), RoundedCornerShape(12.dp)),
+                .background(theme.bg2),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(22.dp))
@@ -1677,7 +1651,6 @@ private fun SimpleEnergyPackageRow(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
                     .background(accent.copy(0.10f))
-                    .border(1.dp, accent.copy(0.20f), RoundedCornerShape(999.dp))
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -2603,7 +2576,6 @@ private fun CancelPlanDialog(
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.error.copy(0.1f))
-                        .border(1.dp, MaterialTheme.colorScheme.error.copy(0.4f), RoundedCornerShape(12.dp))
                         .clickable { onConfirm() }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
@@ -2642,11 +2614,6 @@ fun PaywallDialog(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                 .background(theme.bg1)
-                .border(
-                    1.dp,
-                    Brush.verticalGradient(listOf(theme.stroke.copy(0.5f), Color.Transparent)),
-                    RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
-                )
                 .clickable(
                     indication = null, interactionSource = remember { MutableInteractionSource() }
                 ) {}
@@ -2667,8 +2634,7 @@ fun PaywallDialog(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(accent.copy(0.1f))
-                    .border(1.dp, accent.copy(0.25f), CircleShape),
+                    .background(theme.bg2),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.Lock, null,
@@ -2692,18 +2658,11 @@ fun PaywallDialog(
 
             Spacer(Modifier.height(24.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(accent.copy(0.12f))
-                    .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
-                    .clickable { onGoToStore() }
-                    .padding(vertical = 15.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(theme.t("Planları Gör", "View Plans"), color = accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
-            }
+            PremiumButton(
+                text = theme.t("Planları gör", "View plans"),
+                onClick = onGoToStore,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(Modifier.height(10.dp))
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {

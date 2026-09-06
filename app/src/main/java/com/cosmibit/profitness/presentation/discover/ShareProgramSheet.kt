@@ -54,6 +54,8 @@ import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
+import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.domain.model.Program
 
@@ -108,13 +110,9 @@ fun ShareProgramSheet(
     val confirmInteraction = remember { MutableInteractionSource() }
     val confirmPressed by confirmInteraction.collectIsPressedAsState()
     val confirmScale by animateFloatAsState(
-        targetValue = if (confirmPressed) 0.94f else 1f,
-        animationSpec = spring(stiffness = 780f, dampingRatio = 0.76f),
+        targetValue = if (confirmPressed) 0.98f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(120),
         label = "share_confirm_scale"
-    )
-    val confirmElevation by animateDpAsState(
-        targetValue = if (confirmPressed) 1.dp else if (canSubmit) 9.dp else 0.dp,
-        label = "share_confirm_elevation"
     )
 
     ModalBottomSheet(
@@ -294,30 +292,9 @@ fun ShareProgramSheet(
                             .graphicsLayer {
                                 scaleX = confirmScale
                                 scaleY = confirmScale
-                                translationY = if (confirmPressed) 2.dp.toPx() else 0f
                             }
-                            .shadow(
-                                elevation = confirmElevation,
-                                shape = RoundedCornerShape(14.dp),
-                                ambientColor = accent.copy(0.24f),
-                                spotColor = accent.copy(0.34f)
-                            )
                             .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                if (canSubmit) Brush.verticalGradient(
-                                    listOf(
-                                        lerp(accent, Color.White, if (theme.isDark) 0.08f else 0.15f),
-                                        accent,
-                                        lerp(accent, Color.Black, if (theme.isDark) 0.20f else 0.12f)
-                                    )
-                                )
-                                else           Brush.linearGradient(listOf(theme.bg2.copy(0.4f), theme.bg2.copy(0.4f)))
-                            )
-                            .border(
-                                1.dp,
-                                if (canSubmit) Color.White.copy(if (theme.isDark) 0.20f else 0.32f) else theme.stroke.copy(0.35f),
-                                RoundedCornerShape(14.dp)
-                            )
+                            .background(if (canSubmit) accent else theme.bg2.copy(0.42f))
                             .clickable(
                                 enabled = canSubmit,
                                 interactionSource = confirmInteraction,
@@ -368,16 +345,9 @@ private fun ProgramPickerRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(78.dp)
-            .clip(shape)
-            .background(theme.bg2.copy(if (alreadyShared) 0.25f else 0.45f))
-            .border(
-                1.dp,
-                when {
-                    alreadyShared -> accent.copy(0.28f)
-                    program.isActive -> accent.copy(0.45f)
-                    else -> theme.stroke.copy(0.4f)
-                },
-                shape
+            .then(
+                if (program.isActive && !alreadyShared) Modifier.insetControlSurface(accent, theme, shape)
+                else Modifier.performanceElevatedSurface(theme, shape)
             )
             .clickable(enabled = !alreadyShared) { onClick() }
             .padding(horizontal = 14.dp),

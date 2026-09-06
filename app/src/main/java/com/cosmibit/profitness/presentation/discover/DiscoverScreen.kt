@@ -80,6 +80,7 @@ import com.cosmibit.profitness.core.theme.exerciseDisplayName
 import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
+import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.domain.discover.DiscoverSort
@@ -89,6 +90,9 @@ import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.AppToast
 import com.cosmibit.profitness.presentation.components.AppToastData
 import com.cosmibit.profitness.presentation.components.AppToastType
+import com.cosmibit.profitness.presentation.components.insetControlSurface
+import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.core.theme.performanceSignatureSurface
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.toImmutableSet
@@ -334,20 +338,17 @@ private fun DiscoverHeader(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text       = theme.t("KEŞFET", "DISCOVER"),
+                text       = theme.t("Keşfet", "Discover"),
                 color      = theme.text0,
-                fontSize   = if (responsive.isLargeFont) 20.sp else 22.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.4.sp,
+                style = MaterialTheme.typography.headlineLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text     = theme.t("Topluluk programları ve challenge'lar", "Community programs and challenges"),
-                color    = theme.text2.copy(alpha = 0.7f),
-                fontSize = if (responsive.isLargeFont) 10.sp else 9.sp,
-                lineHeight = 14.sp,
+                color    = theme.text1,
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = if (responsive.isLargeFont) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -408,7 +409,7 @@ private fun DiscoverTabBar(
         horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 8.dp else 10.dp)
     ) {
         DiscoverTabPill(
-            label    = theme.t("PROGRAMLAR", "PROGRAMS"),
+            label    = theme.t("Programlar", "Programs"),
             icon     = Icons.Rounded.FitnessCenter,
             selected = selected == DiscoverTab.Programs,
             accent   = accent,
@@ -416,7 +417,7 @@ private fun DiscoverTabBar(
             onClick  = { onSelect(DiscoverTab.Programs) }
         )
         DiscoverTabPill(
-            label    = theme.t("ARKADAŞLAR", "FRIENDS"),
+            label    = theme.t("Topluluk", "Community"),
             icon     = Icons.Rounded.Person,
             selected = selected == DiscoverTab.Friends,
             accent   = accent,
@@ -424,7 +425,7 @@ private fun DiscoverTabBar(
             onClick  = { onSelect(DiscoverTab.Friends) }
         )
         DiscoverTabPill(
-            label    = theme.t("CHALLENGE", "CHALLENGES"),
+            label    = theme.t("Challenge", "Challenges"),
             icon     = Icons.Rounded.EmojiEvents,
             selected = selected == DiscoverTab.Challenges,
             accent   = accent,
@@ -441,41 +442,24 @@ private fun DiscoverTabPill(
 ) {
     val theme = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(13.dp)
+    val shape = RoundedCornerShape(12.dp)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = 760f, dampingRatio = 0.78f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = tween(120),
         label = "discover_tab_scale"
     )
     Row(
         modifier = modifier
-            .heightIn(min = if (responsive.isLargeFont) 54.dp else 48.dp)
+            .heightIn(min = if (responsive.isLargeFont) 48.dp else 44.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
                 translationY = if (pressed) 1.5.dp.toPx() else 0f
             }
-            .then(
-                if (selected) Modifier.shadow(
-                    if (pressed) 1.dp else if (theme.isDark) 7.dp else 5.dp,
-                    shape,
-                    ambientColor = accent.copy(if (theme.isDark) 0.18f else 0.05f),
-                    spotColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.08f)
-                ) else Modifier
-            )
             .clip(shape)
-            .background(
-                if (selected) {
-                    if (theme.isDark) Brush.verticalGradient(listOf(accent.copy(0.24f), accent.copy(0.10f)))
-                    else Brush.verticalGradient(listOf(Color.White, accent.copy(0.075f)))
-                } else {
-                    if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                    else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.52f)))
-                }
-            )
-            .border(1.dp, if (selected) accent.copy(0.42f) else theme.stroke.copy(0.68f), shape)
+            .background(if (selected) theme.bg2 else Color.Transparent)
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(vertical = 10.dp, horizontal = if (responsive.isSmallPhone) 5.dp else 8.dp),
         horizontalArrangement = Arrangement.Center,
@@ -485,10 +469,10 @@ private fun DiscoverTabPill(
         Spacer(Modifier.width(6.dp))
         Text(
             text = label,
-            color = if (selected) accent else theme.text2.copy(0.7f),
-            fontSize = if (responsive.isLargeFont) 9.sp else 9.5.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.15.sp,
+            color = if (selected) theme.text0 else theme.text1,
+            fontSize = if (responsive.isLargeFont) 11.sp else 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.sp,
             lineHeight = 11.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -684,8 +668,8 @@ private fun SharedProgramCard(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue = if (pressed) 0.985f else 1f,
-        animationSpec = spring(stiffness = 720f, dampingRatio = 0.84f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = tween(120),
         label = "shared_program_card_scale"
     )
 
@@ -696,27 +680,8 @@ private fun SharedProgramCard(
             .graphicsLayer {
                 scaleX = cardScale
                 scaleY = cardScale
-                translationY = if (pressed) 2.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = if (pressed) 2.dp else if (theme.isDark) 14.dp else 9.dp,
-                shape = shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.07f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.40f else 0.09f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) {
-                    Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                } else {
-                    Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.42f)))
-                }
-            )
-            .border(
-                1.dp,
-                if (theme.isDark) theme.text0.copy(0.10f) else theme.stroke.copy(0.76f),
-                shape
-            )
+            .performanceElevatedSurface(theme, shape)
             .clickable(interactionSource = interaction, indication = null) { onOpenDetails() }
             .padding(if (responsive.isSmallPhone) 14.dp else 16.dp)
     ) {
@@ -939,18 +904,7 @@ private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                if (theme.isDark) 14.dp else 8.dp,
-                shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.32f else 0.06f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.38f else 0.08f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.34f)))
-            )
-            .border(1.dp, if (theme.isDark) accent.copy(0.22f) else theme.stroke.copy(0.76f), shape)
+            .performanceSignatureSurface(theme, accent, shape)
             .padding(18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -958,8 +912,7 @@ private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
                 modifier = Modifier
                     .size(46.dp)
                     .clip(RoundedCornerShape(13.dp))
-                    .background(accent.copy(0.14f))
-                    .border(1.dp, accent.copy(0.22f), RoundedCornerShape(13.dp)),
+                    .background(accent.copy(0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = accent, modifier = Modifier.size(22.dp))
@@ -1001,18 +954,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                if (theme.isDark) 12.dp else 7.dp,
-                shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.055f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.36f else 0.075f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.30f)))
-            )
-            .border(1.dp, theme.stroke.copy(if (theme.isDark) 0.82f else 0.72f), shape)
+            .performanceElevatedSurface(theme, shape)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1020,8 +962,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(accent.copy(0.16f))
-                    .border(1.dp, accent.copy(0.25f), CircleShape),
+                    .background(accent.copy(0.16f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1314,11 +1255,6 @@ private fun ActionChip(
                 if (active) activeColor.copy(if (theme.isDark) 0.14f else 0.09f)
                 else if (theme.isDark) theme.bg2 else theme.bg1
             )
-            .border(
-                1.dp,
-                if (active) activeColor.copy(0.26f) else theme.stroke.copy(0.35f),
-                RoundedCornerShape(999.dp)
-            )
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 8.dp, vertical = if (responsive.isLargeFont) 7.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1355,20 +1291,14 @@ private fun ApplyButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.94f else 1f,
-        animationSpec = spring(stiffness = 780f, dampingRatio = 0.76f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = tween(120),
         label = "apply_button_scale"
     )
-    val elevation by animateDpAsState(
-        targetValue = if (pressed) 1.dp else if (enabled && !applied) 8.dp else 2.dp,
-        label = "apply_button_elevation"
-    )
-    val topAccent = lerp(accent, Color.White, if (theme.isDark) 0.07f else 0.14f)
-    val bottomAccent = lerp(accent, Color.Black, if (theme.isDark) 0.20f else 0.12f)
     val background = when {
-        applied -> Brush.linearGradient(listOf(accent.copy(0.18f), accent.copy(0.10f)))
-        enabled -> Brush.verticalGradient(listOf(topAccent, accent, bottomAccent))
-        else -> Brush.linearGradient(listOf(accent.copy(0.45f), accent.copy(0.35f)))
+        applied -> accent.copy(0.14f)
+        enabled -> accent
+        else -> accent.copy(0.42f)
     }
     val textColor = if (applied) accent else theme.effectiveOnAccentColor
     Row(
@@ -1377,21 +1307,9 @@ private fun ApplyButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed) 2.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                ambientColor = if (enabled && !applied) accent.copy(0.22f) else Color.Black.copy(0.10f),
-                spotColor = if (enabled && !applied) accent.copy(0.30f) else Color.Black.copy(0.14f)
-            )
             .clip(shape)
             .background(background)
-            .border(
-                width = 1.dp,
-                color = if (applied) accent.copy(0.35f) else Color.White.copy(if (theme.isDark) 0.18f else 0.30f),
-                shape = shape
-            )
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,
@@ -1429,8 +1347,7 @@ private fun AvatarBubble(url: String?, size: Dp) {
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(theme.bg2)
-            .border(1.dp, accent.copy(0.4f), CircleShape),
+            .background(theme.bg2),
         contentAlignment = Alignment.Center
     ) {
         if (!url.isNullOrBlank()) {
@@ -1675,27 +1592,13 @@ private fun SubTabChip(
         modifier = modifier
             .heightIn(min = if (responsive.isLargeFont) 52.dp else 40.dp)
             .graphicsLayer {
-                scaleX = if (pressed) 0.95f else 1f
-                scaleY = if (pressed) 0.95f else 1f
-                translationY = if (pressed) 1.dp.toPx() else 0f
+                scaleX = if (pressed) 0.98f else 1f
+                scaleY = if (pressed) 0.98f else 1f
             }
             .then(
-                if (selected) Modifier.shadow(
-                    if (pressed) 1.dp else 5.dp,
-                    shape,
-                    ambientColor = accent.copy(0.12f),
-                    spotColor = Color.Black.copy(if (theme.isDark) 0.25f else 0.07f)
-                ) else Modifier
+                if (selected) Modifier.insetControlSurface(accent, theme, shape)
+                else Modifier.clip(shape).background(theme.bg1)
             )
-            .clip(shape)
-            .background(
-                if (selected) {
-                    if (theme.isDark) accent.copy(0.18f) else Color.White
-                } else {
-                    if (theme.isDark) theme.bg1 else theme.bg2.copy(0.70f)
-                }
-            )
-            .border(1.dp, if (selected) accent.copy(0.40f) else theme.stroke.copy(0.58f), shape)
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 5.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
@@ -1836,18 +1739,7 @@ private fun MySharedCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                if (theme.isDark) 12.dp else 7.dp,
-                shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.055f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.36f else 0.075f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.34f)))
-            )
-            .border(1.dp, theme.stroke.copy(0.72f), shape)
+            .performanceElevatedSurface(theme, shape)
             .padding(16.dp)
     ) {
         Text(

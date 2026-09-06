@@ -24,23 +24,25 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .drawWithCache {
+                // Both sources sit well outside the viewport so the user sees
+                // ambient falloff, never a literal coloured circle.
                 val accentAtmosphere = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f  to accent.copy(alpha = if (theme.isDark) 0.085f else 0.028f),
-                        0.34f to accent.copy(alpha = if (theme.isDark) 0.030f else 0.010f),
+                        0.0f  to accent.copy(alpha = if (theme.isDark) 0.22f else 0.085f),
+                        0.28f to accent.copy(alpha = if (theme.isDark) 0.075f else 0.025f),
                         1.0f  to Color.Transparent
                     ),
-                    center = Offset(size.width, 0f),
-                    radius = size.width * 1.45f
+                    center = Offset(size.width * 1.38f, -size.height * 0.16f),
+                    radius = size.width * 2.15f
                 )
                 val mineralAtmosphere = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f to if (theme.isDark) Color(0xFF746688).copy(0.045f) else Color(0xFFB8A8CA).copy(0.16f),
-                        0.48f to if (theme.isDark) Color(0xFF746688).copy(0.012f) else Color(0xFFE8DDF0).copy(0.055f),
+                        0.0f to if (theme.isDark) Color(0xFF315D8A).copy(0.16f) else Color(0xFF6887A7).copy(0.075f),
+                        0.42f to if (theme.isDark) Color(0xFF315D8A).copy(0.035f) else Color(0xFFB7C7D7).copy(0.018f),
                         1.0f to Color.Transparent,
                     ),
-                    center = Offset(0f, size.height * 0.16f),
-                    radius = size.width * 1.15f
+                    center = Offset(-size.width * 0.48f, size.height * 0.72f),
+                    radius = size.width * 2.05f
                 )
                 onDrawBehind {
                     drawRect(mineralAtmosphere)

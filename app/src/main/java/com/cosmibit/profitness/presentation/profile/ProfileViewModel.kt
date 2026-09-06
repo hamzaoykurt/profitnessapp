@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.cache.DiskCache
 import com.cosmibit.profitness.data.leaderboard.LeaderboardRepository
+import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationRepository
+import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationState
 import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.profile.dto.AchievementDto
 import com.cosmibit.profitness.data.store.UserPlan
@@ -90,13 +92,15 @@ data class ProfileState(
     val isLoading            : Boolean              = true,
     val isSaving             : Boolean              = false,
     val userPlan             : UserPlan             = UserPlan.FREE,
-    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
+    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
+    val orbitIntegration     : OrbitIntegrationState = OrbitIntegrationState()
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
 sealed class ProfileEvent {
     data class ShowSnackbar(val message: String) : ProfileEvent()
+    data class OpenOrbitUrl(val url: String) : ProfileEvent()
     data class AchievementUnlocked(val name: String, val icon: String, val description: String = "") : ProfileEvent()
 }
 
@@ -108,6 +112,7 @@ class ProfileViewModel @Inject constructor(
     private val leaderboardRepository: LeaderboardRepository,
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
+    private val orbitRepository   : OrbitIntegrationRepository,
     private val disk              : DiskCache,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
@@ -124,6 +129,11 @@ class ProfileViewModel @Inject constructor(
                 .collect { (plan, credits) ->
                     updateState { it.copy(userPlan = plan, aiCredits = credits) }
                 }
+        }
+        viewModelScope.launch {
+            orbitRepository.state.collect { orbit ->
+                updateState { it.copy(orbitIntegration = orbit) }
+            }
         }
     }
 
@@ -151,6 +161,39 @@ class ProfileViewModel @Inject constructor(
             delay(1_500L)
             profileRepository.invalidateStatsCache()
             loadProfile()
+        }
+    }
+
+    fun refreshOrbitStatus() {
+        viewModelScope.launch { orbitRepository.refresh() }
+    }
+
+    fun connectOrbit() {
+        viewModelScope.launch {
+            orbitRepository.beginConnection()
+                .onSuccess { sendEvent(ProfileEvent.OpenOrbitUrl(it)) }
+                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit bağlantısı başlatılamadı.")) }
+        }
+    }
+
+    fun disconnectOrbit() {
+        viewModelScope.launch {
+            orbitRepository.disconnect()
+                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit bağlantısı kaldırılamadı.")) }
+        }
+    }
+
+    fun setOrbitSyncEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            orbitRepository.setSyncEnabled(enabled)
+                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Senkron ayarı güncellenemedi.")) }
+        }
+    }
+
+    fun syncOrbitNow() {
+        viewModelScope.launch {
+            orbitRepository.requestSync(java.time.ZoneId.systemDefault().id)
+                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit senkronu şu anda kullanılamıyor.")) }
         }
     }
 

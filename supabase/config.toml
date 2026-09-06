@@ -1,0 +1,2 @@
+[functions.orbit-fitness-callback]
+verify_jwt = false

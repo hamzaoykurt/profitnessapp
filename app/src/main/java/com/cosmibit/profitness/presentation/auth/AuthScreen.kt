@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 // ── Entry composable — routes between auth screens ────────────────────────────
@@ -703,7 +704,7 @@ private fun AuthScaffold(
     val yAnim     = remember { Animatable(28f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(500, easing = EaseOutCubic))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
+        yAnim.animateTo(0f, tween(260, easing = EaseOutCubic))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
@@ -771,7 +772,6 @@ private fun AuthBrandHeader() {
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .border(1.dp, if (theme.isDark) Color.White.copy(0.10f) else theme.stroke, RoundedCornerShape(13.dp))
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -787,7 +787,6 @@ private fun AuthBrandHeader() {
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
                 .background(accent.copy(0.12f))
-                .border(1.dp, accent.copy(0.26f), RoundedCornerShape(999.dp))
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Text(
@@ -815,7 +814,6 @@ private fun AuthHeroQuickSwitch(mode: AuthMode, onModeChange: (AuthMode) -> Unit
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(theme.bg2.copy(0.58f))
-            .border(1.dp, theme.stroke.copy(0.55f), RoundedCornerShape(999.dp))
             .clickable { onModeChange(target) }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -845,7 +843,7 @@ private fun AuthCenteredScaffold(
     val yAnim     = remember { Animatable(30f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(500))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
+        yAnim.animateTo(0f, tween(260, easing = EaseOutCubic))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
@@ -888,43 +886,10 @@ private fun GlassCard(
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(22.dp)
-    val cardBrush = if (theme.isDark) {
-        Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-    } else {
-        Brush.verticalGradient(listOf(theme.bg1, theme.bg2.copy(alpha = 0.58f)))
-    }
-    val borderColor = if (theme.isDark) Color.White.copy(alpha = 0.10f) else theme.stroke.copy(alpha = 0.80f)
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (theme.isDark) 18.dp else 12.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.54f) else Color(0xFF64748B).copy(0.10f),
-                spotColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.14f)
-            )
-            .clip(shape)
-            .background(cardBrush)
-            .border(
-                1.dp,
-                Brush.verticalGradient(
-                    listOf(accent.copy(0.34f), borderColor, borderColor.copy(0.42f))
-                ),
-                shape
-            )
-            .drawWithCache {
-                onDrawBehind {
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color.Transparent, accent.copy(0.24f), Color.Transparent)
-                        ),
-                        topLeft = Offset(24.dp.toPx(), 0f),
-                        size = Size((size.width - 48.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx())
-                    )
-                }
-            }
+            .performanceSignatureSurface(theme, accent, shape)
             .padding(horizontal = 18.dp, vertical = 22.dp),
         horizontalAlignment = horizontalAlignment,
         content = content
@@ -940,7 +905,6 @@ private fun AuthModeTabs(selected: AuthMode, onSelected: (AuthMode) -> Unit) {
             .height(48.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(if (theme.isDark) theme.bg2 else theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.52f), RoundedCornerShape(16.dp))
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -980,12 +944,7 @@ private fun AuthModeTab(
         modifier = modifier
             .fillMaxHeight()
             .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .border(
-                1.dp,
-                if (selected) accent.copy(0.50f) else Color.Transparent,
-                RoundedCornerShape(12.dp)
-            )
+            .then(if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(12.dp)) else Modifier.background(bg))
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -1017,7 +976,6 @@ private fun AuthTrustRow(items: List<Pair<ImageVector, String>>) {
                     .heightIn(min = 34.dp)
                     .clip(RoundedCornerShape(11.dp))
                     .background(theme.bg2.copy(0.42f))
-                    .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(11.dp))
                     .padding(horizontal = 9.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -1099,16 +1057,9 @@ fun GlassInputField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 54.dp)
-            .shadow(
-                elevation = if (isFocused) 8.dp else if (theme.isDark) 0.dp else 3.dp,
-                shape = RoundedCornerShape(16.dp),
-                clip = false,
-                ambientColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.08f),
-                spotColor = if (theme.isDark) accent.copy(0.08f) else Color(0xFF64748B).copy(0.10f)
-            )
             .clip(RoundedCornerShape(16.dp))
-            .background(fieldBg)
-            .border(if (isFocused) 1.4.dp else 1.dp, borderColor, RoundedCornerShape(16.dp))
+            .insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+            .then(if (isFocused) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier)
             .then(modifier),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -1178,45 +1129,18 @@ fun AccentGradientButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        if (isPressed) 0.965f else 1f,
-        spring(Spring.DampingRatioMediumBouncy),
+        if (isPressed) 0.98f else 1f,
+        tween(120),
         label = "btn_scale"
     )
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed) 2.dp else if (theme.isDark) 12.dp else 8.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "btn_elevation"
-    )
     val shape = RoundedCornerShape(16.dp)
-
-    val gradientBrush = Brush.horizontalGradient(
-        listOf(
-            resolvedAccent,
-            resolvedAccent.copy(alpha = 0.85f)
-        )
-    )
 
     Box(
         modifier = modifier
             .scale(scale)
-            .graphicsLayer { translationY = if (isPressed) 2.dp.toPx() else 0f }
             .heightIn(min = 54.dp)
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.48f) else Color(0xFF64748B).copy(0.12f),
-                spotColor = resolvedAccent.copy(if (theme.isDark) 0.34f else 0.20f)
-            )
             .clip(shape)
-            .background(gradientBrush)
-            .drawWithCache {
-                val bevel = Brush.verticalGradient(
-                    listOf(Color.White.copy(if (theme.isDark) 0.26f else 0.34f), Color.Transparent, Color.Black.copy(0.16f))
-                )
-                onDrawBehind { drawRect(bevel) }
-            }
-            .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), shape)
+            .background(resolvedAccent)
             .clickable(interactionSource, null, enabled = !isLoading, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -1239,7 +1163,7 @@ fun AccentGradientButton(
                     text          = text,
                     color         = resolvedOnAccent,
                     fontSize      = 14.sp,
-                    fontWeight    = FontWeight.Black,
+                    fontWeight    = FontWeight.SemiBold,
                     letterSpacing = 0.4.sp
                 )
             }

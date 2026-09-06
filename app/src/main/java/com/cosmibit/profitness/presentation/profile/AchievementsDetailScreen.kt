@@ -97,11 +97,11 @@ fun AchievementsDetailScreen(
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column(Modifier.weight(1f)) {
                         Text(
-                            theme.t("BAŞARIMLAR", "ACHIEVEMENTS"),
+                            theme.t("Başarımlar", "Achievements"),
                             color         = theme.text0,
-                            fontSize      = 18.sp,
-                            fontWeight    = FontWeight.Black,
-                            letterSpacing = 2.sp
+                            fontSize      = 22.sp,
+                            fontWeight    = FontWeight.SemiBold,
+                            letterSpacing = (-0.3).sp
                         )
                         Text(theme.t("Tüm başarımlar ve rank yol haritası", "All achievements and rank roadmap"), color = theme.text2, fontSize = 11.sp)
                     }
@@ -110,7 +110,6 @@ fun AchievementsDetailScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(accent.copy(0.12f))
-                            .border(1.dp, accent.copy(0.3f), RoundedCornerShape(12.dp))
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(

@@ -30,6 +30,7 @@ import com.cosmibit.profitness.data.ai.AICoachPrefs
 import com.cosmibit.profitness.data.ai.CommunicationStyle
 import com.cosmibit.profitness.data.ai.ResponseLength
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 private const val TOTAL_STEPS = 3
 
@@ -159,14 +160,9 @@ fun AICoachOnboardingScreen(
             val actionInteraction = remember { MutableInteractionSource() }
             val actionPressed by actionInteraction.collectIsPressedAsState()
             val actionScale by animateFloatAsState(
-                if (actionPressed) 0.965f else 1f,
-                spring(stiffness = Spring.StiffnessHigh),
+                if (actionPressed) 0.98f else 1f,
+                tween(120),
                 label = "oracle_setup_cta_scale"
-            )
-            val actionElevation by animateDpAsState(
-                if (actionPressed) 1.dp else if (theme.isDark) 12.dp else 8.dp,
-                spring(stiffness = Spring.StiffnessHigh),
-                label = "oracle_setup_cta_depth"
             )
             val actionShape = RoundedCornerShape(16.dp)
             Box(
@@ -178,18 +174,9 @@ fun AICoachOnboardingScreen(
                     .graphicsLayer {
                         scaleX = actionScale
                         scaleY = actionScale
-                        translationY = if (actionPressed) 2.dp.toPx() else 0f
                     }
-                    .shadow(
-                        elevation = actionElevation,
-                        shape = actionShape,
-                        clip = false,
-                        ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.13f),
-                        spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f)
-                    )
                     .clip(actionShape)
-                    .background(Brush.verticalGradient(listOf(accent.copy(0.92f), accent, accent.copy(0.78f))))
-                    .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), actionShape)
+                    .background(accent)
                     .clickable(interactionSource = actionInteraction, indication = null) {
                         if (step < TOTAL_STEPS - 1) {
                             step++
@@ -379,27 +366,14 @@ private fun CenteredOptionCard(
     onClick    : () -> Unit
 ) {
     val responsive = rememberResponsiveLayoutInfo()
-    val borderColor = if (selected) accent.copy(0.65f) else theme.stroke.copy(0.2f)
-    val bgBrush = when {
-        selected && theme.isDark -> Brush.horizontalGradient(listOf(accent.copy(0.14f), theme.bg1))
-        selected -> Brush.horizontalGradient(listOf(theme.bg1, accent.copy(0.055f)))
-        else -> Brush.horizontalGradient(listOf(theme.bg1, theme.bg1))
-    }
-
     Row(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .shadow(
-                elevation = if (selected) 7.dp else if (theme.isDark) 2.dp else 4.dp,
-                shape = RoundedCornerShape(14.dp),
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.09f),
-                spotColor = if (selected && theme.isDark) accent.copy(0.18f) else Color(0xFF64748B).copy(0.09f)
+            .then(
+                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
+                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
             )
-            .clip(RoundedCornerShape(14.dp))
-            .background(bgBrush)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
         verticalAlignment     = Alignment.CenterVertically,
@@ -435,16 +409,7 @@ private fun PermissionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .shadow(
-                elevation = if (theme.isDark) 2.dp else 4.dp,
-                shape = RoundedCornerShape(14.dp),
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.09f),
-                spotColor = Color(0xFF64748B).copy(0.08f)
-            )
-            .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.2f), RoundedCornerShape(14.dp))
+            .performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
         verticalAlignment     = Alignment.Top,

@@ -60,7 +60,9 @@ import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
+import com.cosmibit.profitness.core.theme.performanceElevatedSurface
 import com.cosmibit.profitness.domain.social.UserSummary
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.profile.PublicProfileOverlay
 
 /**
@@ -183,22 +185,7 @@ private fun SearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .shadow(
-                elevation = if (theme.isDark) 10.dp else 7.dp,
-                shape = shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.07f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.09f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.48f)))
-            )
-            .border(
-                1.dp,
-                if (theme.isDark) theme.text0.copy(0.10f) else theme.stroke.copy(0.78f),
-                shape
-            )
+            .insetControlSurface(accent, theme, shape)
             .padding(horizontal = 15.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -243,13 +230,9 @@ private fun UserRow(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.985f else 1f,
-        animationSpec = spring(stiffness = 700f, dampingRatio = 0.82f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(120),
         label = "friend_row_scale"
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (pressed) 1.dp else if (theme.isDark) 9.dp else 6.dp,
-        label = "friend_row_elevation"
     )
     val shape = RoundedCornerShape(18.dp)
 
@@ -260,24 +243,8 @@ private fun UserRow(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed) 1.5.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.06f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.08f)
-            )
-            .clip(shape)
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.38f)))
-            )
-            .border(
-                1.dp,
-                if (theme.isDark) theme.text0.copy(0.085f) else theme.stroke.copy(0.72f),
-                shape
-            )
+            .performanceElevatedSurface(theme, shape)
             .clickable(interactionSource = interaction, indication = null) { onTap() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -288,8 +255,7 @@ private fun UserRow(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (theme.isDark) theme.bg1 else theme.bg2)
-                .border(1.dp, if (user.isMutual) accent.copy(0.42f) else theme.stroke.copy(0.55f), CircleShape),
+                .background(if (theme.isDark) theme.bg1 else theme.bg2),
             contentAlignment = Alignment.Center
         ) {
             if (user.avatarUrl != null) {
@@ -341,49 +307,22 @@ private fun FollowButton(isFollowing: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.93f else 1f,
-        animationSpec = spring(stiffness = 760f, dampingRatio = 0.76f),
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(120),
         label = "follow_button_scale"
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (pressed) 1.dp else if (isFollowing) 3.dp else 8.dp,
-        label = "follow_button_elevation"
     )
     val textColor = if (isFollowing) theme.text1 else theme.effectiveOnAccentColor
     val shape = RoundedCornerShape(50)
-    val fill = if (isFollowing) {
-        if (theme.isDark) Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-        else Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.72f)))
-    } else {
-        Brush.verticalGradient(
-            listOf(
-                lerp(accent, Color.White, if (theme.isDark) 0.08f else 0.14f),
-                accent,
-                lerp(accent, Color.Black, if (theme.isDark) 0.20f else 0.12f)
-            )
-        )
-    }
+    val fill = if (isFollowing) theme.bg2 else accent
 
     Row(
         modifier = Modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed) 2.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                ambientColor = if (isFollowing) Color.Black.copy(0.10f) else accent.copy(0.26f),
-                spotColor = if (isFollowing) Color.Black.copy(0.14f) else accent.copy(0.34f)
-            )
             .clip(shape)
             .background(fill)
-            .border(
-                1.dp,
-                if (isFollowing) theme.stroke.copy(0.68f) else Color.White.copy(if (theme.isDark) 0.20f else 0.34f),
-                shape
-            )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

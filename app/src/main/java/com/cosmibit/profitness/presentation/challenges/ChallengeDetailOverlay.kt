@@ -93,6 +93,7 @@ import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
+import com.cosmibit.profitness.core.theme.performanceSignatureSurface
 import com.cosmibit.profitness.domain.challenges.ChallengeEventInfo
 import com.cosmibit.profitness.domain.challenges.ChallengeDetail
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
@@ -108,6 +109,7 @@ import com.cosmibit.profitness.domain.challenges.normalizeOnlineEventUrl
 import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 import java.time.LocalDate
 import kotlinx.coroutines.delay
@@ -171,9 +173,8 @@ fun ChallengeDetailOverlay(
                     Text(
                         if (state.detail?.summary?.kind == ChallengeKind.Event) strings.eventLabel else strings.challengeLabel,
                         color      = theme.text0,
-                        fontSize   = 14.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
+                        fontSize   = 18.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier   = Modifier.weight(1f)
                     )
                     if (state.isOwner) {
@@ -181,9 +182,7 @@ fun ChallengeDetailOverlay(
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
-                                    .clip(CircleShape)
-                                    .background(theme.bg1)
-                                    .border(1.dp, theme.stroke, CircleShape)
+                                    .insetControlSurface(accent, theme, CircleShape)
                                     .clickable { showOwnerMenu = true },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -217,7 +216,6 @@ fun ChallengeDetailOverlay(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFFFF5252).copy(0.14f))
-                            .border(1.dp, Color(0xFFFF5252).copy(0.4f), RoundedCornerShape(12.dp))
                             .padding(16.dp)
                     ) {
                         Text(state.error ?: "", color = Color(0xFFFF8A80), fontSize = 12.sp)
@@ -325,38 +323,16 @@ fun ChallengeDetailOverlay(
                         && c.targetValue > 0
                     ) {
                         item {
-                            Box(
+                            PremiumButton(
+                                text = theme.t("İlerleme ekle", "Add progress"),
+                                onClick = { showProgressDialog = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(accent.copy(0.16f))
-                                    .border(1.dp, accent.copy(0.4f), RoundedCornerShape(14.dp))
-                                    .clickable(enabled = !state.submittingProgress) {
-                                        showProgressDialog = true
-                                    }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (state.submittingProgress) {
-                                    CircularProgressIndicator(
-                                        color = accent, strokeWidth = 2.dp,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                } else {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            theme.t("İLERLEME EKLE", "ADD PROGRESS"),
-                                            color = accent,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Black,
-                                            letterSpacing = 2.sp
-                                        )
-                                    }
-                                }
-                            }
+                                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                                isEnabled = !state.submittingProgress,
+                                isLoading = state.submittingProgress,
+                                leadingIcon = Icons.Rounded.Add
+                            )
                         }
                     }
 
@@ -377,11 +353,10 @@ fun ChallengeDetailOverlay(
                     ) {
                         item {
                             Text(
-                                theme.t("HAREKETLER", "MOVEMENTS"),
+                                theme.t("Hareketler", "Movements"),
                                 color = theme.text0,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Bold,
                                 modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, bottom = 6.dp)
                             )
                         }
@@ -406,11 +381,10 @@ fun ChallengeDetailOverlay(
                     // ── Participants header ─────────────────────────
                     item {
                         Text(
-                            theme.t("KATILIMCILAR", "PARTICIPANTS"),
+                            theme.t("Katılımcılar", "Participants"),
                             color      = theme.text0,
                             fontSize   = 12.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp,
+                            fontWeight = FontWeight.Bold,
                             modifier   = Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, bottom = 6.dp)
                         )
                     }
@@ -678,12 +652,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(accent.copy(0.28f), accent.copy(0.14f))
-                        )
-                    )
-                    .border(1.dp, accent.copy(0.45f), RoundedCornerShape(10.dp))
+                    .insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -878,8 +847,7 @@ private fun EventMetaChip(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2.copy(0.55f))
-            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
+            .background(theme.bg2)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -918,8 +886,7 @@ private fun LocationRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2.copy(0.5f))
-            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
+            .background(theme.bg2)
             .then(if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -988,11 +955,9 @@ private fun SkipProgramToggle(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (enabled) accent.copy(0.12f) else theme.bg1.copy(0.6f))
-            .border(
-                1.dp,
-                if (enabled) accent.copy(0.4f) else theme.stroke.copy(0.5f),
-                RoundedCornerShape(12.dp)
+            .then(
+                if (enabled) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
+                else Modifier.background(theme.bg1)
             )
             .clickable(onClick = onToggle)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -1054,11 +1019,9 @@ private fun MovementRow(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (done) accent.copy(0.10f) else theme.bg1.copy(0.6f))
-            .border(
-                1.dp,
-                if (done) accent.copy(0.35f) else theme.stroke.copy(0.5f),
-                RoundedCornerShape(12.dp)
+            .then(
+                if (done) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
+                else Modifier.background(theme.bg1)
             )
             .clickable(enabled = !pending, onClick = onToggle)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1170,15 +1133,6 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
                     else -> theme.bg1.copy(0.5f)
                 }
             )
-            .border(
-                1.dp,
-                when {
-                    highlight -> accent.copy(0.4f)
-                    isMedal && medalColor != null -> medalColor.copy(0.35f)
-                    else -> theme.stroke.copy(0.4f)
-                },
-                RoundedCornerShape(12.dp)
-            )
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1190,8 +1144,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(theme.bg2)
-                .border(1.dp, theme.stroke, CircleShape),
+                .background(theme.bg2),
             contentAlignment = Alignment.Center
         ) {
             val av = entry.avatarUrl
@@ -1263,20 +1216,8 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 18.dp)
+            .performanceSignatureSurface(theme, accent, RoundedCornerShape(20.dp))
     ) {
-        // Subtle radial accent overlay
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(0.18f), Color.Transparent),
-                        radius = 700f
-                    )
-                )
-        )
         Column(Modifier.padding(18.dp)) {
             // Üst row: kategori + status pill
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1293,7 +1234,6 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(statusColor.copy(0.18f))
-                        .border(1.dp, statusColor.copy(0.45f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1381,7 +1321,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
                         .fillMaxWidth(c.progressPct)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(5.dp))
-                        .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.6f))))
+                        .background(accent)
                 )
             }
         }
@@ -1501,9 +1441,7 @@ private fun DeleteConfirmDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .premiumSolidSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -1511,11 +1449,10 @@ private fun DeleteConfirmDialog(
                 Icon(Icons.Rounded.Delete, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    theme.t("ETKİNLİĞİ SİL", "DELETE EVENT"),
+                    theme.t("Etkinliği sil", "Delete event"),
                     color = theme.text0,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
+                    fontWeight = FontWeight.Bold
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -1536,14 +1473,12 @@ private fun DeleteConfirmDialog(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(theme.bg2)
-                        .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                        .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(12.dp))
                         .clickable(enabled = !inFlight, onClick = onCancel)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("Vazgeç", "Cancel"), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
@@ -1557,7 +1492,7 @@ private fun DeleteConfirmDialog(
                     if (inFlight) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                     } else {
-                        Text(theme.t("SİL", "DELETE"), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(theme.t("Sil", "Delete"), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1605,9 +1540,7 @@ private fun AddProgressDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(20.dp))
+                .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -1615,11 +1548,10 @@ private fun AddProgressDialog(
                 Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    theme.t("İLERLEMENİ GİR", "ENTER PROGRESS"),
+                    theme.t("İlerlemeni gir", "Enter progress"),
                     color = theme.text0,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
+                    fontWeight = FontWeight.Bold
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -1632,9 +1564,7 @@ private fun AddProgressDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                    .insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 BasicTextField(
@@ -1668,9 +1598,7 @@ private fun AddProgressDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(accent.copy(0.10f))
-                        .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp))
+                        .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
                         .padding(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1705,11 +1633,6 @@ private fun AddProgressDialog(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (swRunning) Color(0xFFFF5252).copy(0.22f) else accent.copy(0.22f))
-                                .border(
-                                    1.dp,
-                                    if (swRunning) Color(0xFFFF5252).copy(0.5f) else accent.copy(0.5f),
-                                    RoundedCornerShape(10.dp)
-                                )
                                 .clickable {
                                     if (swRunning) {
                                         // Durdur — biriken süreyi accum'a kaydet
@@ -1736,9 +1659,7 @@ private fun AddProgressDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(theme.bg2)
-                                .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+                                .insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
                                 .clickable(enabled = !swRunning && swElapsedMs > 0L) {
                                     swAccumMs = 0L
                                     swStartMs = 0L
@@ -1797,14 +1718,12 @@ private fun AddProgressDialog(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(theme.bg2)
-                        .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
+                        .insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
                         .clickable(onClick = onCancel)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(theme.t("İPTAL", "CANCEL"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
@@ -1815,7 +1734,7 @@ private fun AddProgressDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(theme.t("KAYDET", "SAVE"), color = theme.effectiveOnAccentColor, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("Kaydet", "Save"), color = theme.effectiveOnAccentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

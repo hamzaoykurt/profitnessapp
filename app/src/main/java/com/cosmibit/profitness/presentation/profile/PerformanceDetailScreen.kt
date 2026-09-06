@@ -75,11 +75,11 @@ fun PerformanceDetailScreen(
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            theme.t("VERİ ANALİZİ", "DATA ANALYSIS"),
+                            theme.t("Veri analizi", "Data analysis"),
                             color         = theme.text0,
-                            fontSize      = 18.sp,
-                            fontWeight    = FontWeight.Black,
-                            letterSpacing = 2.sp
+                            fontSize      = 22.sp,
+                            fontWeight    = FontWeight.SemiBold,
+                            letterSpacing = (-0.3).sp
                         )
                         Text(theme.t("Trendler, metrikler ve hesaplamalar", "Trends, metrics and calculations"), color = theme.text2, fontSize = 11.sp)
                     }

@@ -239,19 +239,9 @@ fun ExerciseMultiPickerSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(
-                                elevation = if (isSelected) 11.dp else 6.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                spotColor = if (isSelected) accent.copy(if (theme.isDark) 0.24f else 0.09f)
-                                            else Color.Black.copy(if (theme.isDark) 0.36f else 0.07f),
-                                ambientColor = Color.Black.copy(if (theme.isDark) 0.24f else 0.04f)
-                            )
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) accent.copy(alpha = 0.08f) else theme.bg2)
-                            .border(
-                                1.dp,
-                                if (isSelected) accent.copy(alpha = 0.4f) else theme.stroke,
-                                RoundedCornerShape(16.dp)
+                            .then(
+                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
                             )
                     ) {
                         Row(
@@ -422,7 +412,6 @@ private fun MovementConfigPanel(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
                 .background(theme.bg2)
-                .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp)
         ) {
             if (activityBased) {
@@ -545,17 +534,20 @@ private fun MultiPickerCategoryChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(if (selected) color else color.copy(alpha = 0.06f))
-            .border(1.dp, if (selected) color else color.copy(0.2f), RoundedCornerShape(50))
+            .then(
+                if (selected) Modifier.insetControlSurface(color, theme, RoundedCornerShape(50))
+                else Modifier.background(theme.bg2)
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 11.dp)
     ) {
         Text(
             label,
-            color = if (selected) color.readableOnAccentColor() else color,
+            color = if (selected) color else theme.text1,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp

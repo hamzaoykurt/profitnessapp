@@ -43,13 +43,13 @@ class ThemeRepository @Inject constructor(
         }
         .map { prefs ->
             val isDark        = prefs[Keys.IS_DARK]       ?: true
-            val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: 0
-            val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: 0
+            val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: AccentPreset.ORANGE.ordinal
+            val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: AccentIntensity.SOFT.ordinal
             val languageOrd   = prefs[Keys.LANGUAGE_ORD]  ?: 0
             val notifications = prefs[Keys.NOTIFICATIONS] ?: true
             val customAccent  = prefs[Keys.CUSTOM_ACCENT]?.toSafeAccentArgb()
-            val accent        = AccentPreset.entries.getOrElse(accentOrd)    { AccentPreset.LIME }
-            val intensity     = AccentIntensity.entries.getOrElse(intensityOrd) { AccentIntensity.NEON }
+            val accent        = AccentPreset.entries.getOrElse(accentOrd)    { AccentPreset.ORANGE }
+            val intensity     = AccentIntensity.entries.getOrElse(intensityOrd) { AccentIntensity.SOFT }
             val language      = AppLanguage.entries.getOrElse(languageOrd) { AppLanguage.TURKISH }
             AppThemeState(
                 isDark               = isDark,

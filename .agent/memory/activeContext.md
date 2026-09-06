@@ -4,11 +4,75 @@ _Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
-Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. İkinci kalite geçişinde gerçek iki katmanlı 3D kontroller, çift gölgeli porselen/grafit kartlar ve atmosferik açık tema devreye alındı; glass yalnızca yüzen chrome'da kullanılıyor.
+### Optional Orbit Personal OS Fitness Sync (2026-09-06)
+
+- Profil Ayarları içine ayrı ve isteğe bağlı `Entegrasyonlar → Orbit Personal OS` akışı eklendi; onboarding ve workout UI değiştirilmedi.
+- `data/integration/orbit` altında interface-first repository, güvenli Edge Function istemcisi, sunucu durumundan türeyen entitlement kapıları ve Fitness yazımlarını engellemeyen coalesced arka plan coordinator bulunuyor.
+- Fitness kaynak veri olmaya devam ediyor. Orbit özeti aktif program ile gerçek `workout_logs` + `exercise_logs` kayıtlarından timezone-aware olarak yeniden hesaplanıyor; bağımsız sayaç tutulmuyor.
+- Supabase migration owner-only SELECT RLS, istemciye kapalı delivery/webhook/link-attempt tabloları, service-role-only summary RPC ve tek kullanımlık imzalı link state ekliyor. Orbit entitlement yalnız HMAC doğrulanmış Orbit callback'inden yazılıyor.
+- Edge Functions: `orbit-fitness-integration` (status/connect/manage flags/disconnect/sync) ve JWT doğrulaması kapalı fakat HMAC + süre + one-time state ile korunan `orbit-fitness-callback`.
+- Android `compileDebugKotlin`, `assembleDebug`, 15 Orbit policy testi + mevcut 3 Oracle testi başarılı. Deno/Supabase CLI yerel makinede kurulu olmadığı için Edge Function typecheck ve migration staging uygulaması henüz yapılmadı.
+- Son APK veri silmeden `emulator-5554` üzerine kuruldu. Profilde Entegrasyonlar satırı ve bağlantı sheet'i mobilde görsel/erişilebilirlik ağacıyla doğrulandı; kanıtlar `build/orbit-row.png` ve `build/orbit-sheet-final.png`.
+- Kurulum, secret sözleşmesi ve 15 maddelik doğrulama matrisi `ORBIT_INTEGRATION.md` içinde.
+
+Kullanıcının üç ayrıntılı brifi yeniden tam olarak okundu. Yenileme sürüyor; aşağıdaki geçmiş denemeler güncel tasarım kararı veya tamamlanma kanıtı değildir. Güncel kapsam ve eksikler `UI_REDESIGN_AUDIT.md` içinde takip edilir. Hedef sakin utility / hacimli elevated / sınırlı signature yüzey ayrımıdır; her yere glass veya düz siyah kart değil.
+
+### Premium gradient/material convergence (2026-09-06)
+
+- `v17.9`, `v17.8` ve eski `279f108` premium navigasyon yaklaşımı karşılaştırıldı. Kör geri dönüş yapılmadı; eski yüzen kapsül ve seçili sekmenin etiketle genişlemesi güncel gesture/veri sözleşmesiyle birleştirildi.
+- Bottom navigation artık ekran genişliğini kaplayan etiketli blok değildir. Kompakt yüzen gövde, koyu tonal gradient, üst yansıma, tek shadow ve accent-tinted genişleyen seçili pill kullanır. Pasif sekmeler yalnız ikon olarak kalır.
+- Sayfa glow kaynakları viewport dışına taşındı. Accent ve soğuk mineral ışık geniş falloff olarak çizilir; ekranda dekoratif daire ve animasyonlu glow bulunmaz.
+- Elevated yüzeyler tek cached paint pass içinde graphite/opal face, dışarıda başlayan soft key light, alt derinlik ve ince üst yansıma kullanır. `ForgeCard` glow parametresi yalnız dışarıdan gelen düşük alfa accent yansıması üretir.
+- Workout dairesel progress ringini korur. Gün seçici düz accent blok yerine inset rail üzerinde koyu/opal, kenardan accent yansımalı seçili kontrol kullanır. Exercise kartları 20dp sculpted face, kontrollü elevation ve fiziksel index plaque aldı.
+- Emulator QA: dark workout, Program Studio, Oracle ve profile; light profile incelendi. Kanıtlar `build/profitness-premium-v3.png`, `build/profitness-program-v3.png`, `build/profitness-ai-v3.png`, `build/profitness-profile-v3.png`, `build/profitness-light-v3.png`.
+- `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:testDebugUnitTest` ve `:app:lintDebug` başarılı.
+
+### Contrast, icon and action affordance revision (2026-09-06)
+
+- Kullanıcının altı ekran görüntüsündeki geri bildirime göre dark palette gri ağırlığından blue-black/near-black katmanlara çekildi; `text2` okunurluğu artırıldı. Elevated kartlara sürekli tonal yüzeyin yanında tek ince gradient rim eklendi, böylece kart/canvas ayrımı yalnız renk farkına bırakılmıyor.
+- Global Typography daha tok ve sıkı hale getirildi: display/headline ağırlıkları ExtraBold, title ağırlıkları Bold, body ağırlıkları Medium; negatif headline tracking ve daha sıkı line-height kullanılıyor.
+- Ana bottom navigation ve görünür profil metrikleri `Icons.Filled` ailesine geçirildi. Profilde çıplak küçük ikon yerine accent-tinted 40dp icon plate kullanılıyor; hero stat ikonları büyütülüp kendi anlam rengiyle gösteriliyor.
+- Oracle top bar history/new/settings kontrolleri 42dp sculpted yüzey oldu; enerji göstergesi büyütüldü. Composer inset yüzey, solda Oracle icon plate ve sağda her durumda görünür 44dp filled send control aldı.
+- Saved program kartlarında `MANUEL` badge kaldırıldı. `Aktif et` gerçek filled CTA oldu; aktif status pill'e, edit/share/more ise 40dp sculpted icon button'lara dönüştü.
+- Exercise kartındaki küçük info aksiyonu 46dp filled play control oldu; expanded alanda ayrıca full-width `Hareketi gör` butonu yer alıyor.
+- `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:testDebugUnitTest` ve `:app:lintDebug` başarılı. Yeni görsel QA, Windows WHPX `0x80070005` hatası nedeniyle bu turda tamamlanamadı; önceki screenshot'lar yeni revizyonun kanıtı sayılmaz.
+
+### Soft Glass Hardware yönü (2026-09-05)
+
+> Düzeltme: Kullanıcı `9daf7d1` küreli cam navigasyonun aradığı premium sürüm olmadığını ve sahte cam hissi verdiğini belirtti. Bu yön artık kabul edilmiş tasarım değildir. Navigasyon `2bd8570` çizgisindeki kayan seçili yüzeye uyarlandı; zemin ve içerik yüzeyleri şeffaflık taklidi yerine opak hacimli malzeme kullanır. Workout dairesel ilerleme göstergesi geri getirildi.
+
+- Kullanıcının yeni referansı, arka planda ayrı dairesel objeler yerine viewport dışından yayılan geniş ışık; yüzeylerde yarı geçirgen soft-glass ve kontrollere basıldığında içe çöken yumuşak 3D malzeme istediğini netleştirdi.
+- Git geçmişindeki `9daf7d1` (`iOS-quality tab transitions, 3D glass navbar`) incelendi. Alt navigasyonun frosted gövde, üst cam yansıması, alt iç gölge, accent bleed, 3D orb ve açılan seçili etiket yaklaşımı güncel veri/gesture sözleşmesine uyarlandı.
+- Ana bilgi hiyerarşisi eskiye döndürülmedi: workout başlığı kompakt editoryal protokol düzeni, doğrusal ilerleme ve numaralı egzersiz sıraları kullanıyor; Program Studio ve profil daha sıkı dikey ritme sahip.
+- Ortak elevated yüzeyler düşük alfa metal/cam katmanına, butonlar diffuse key-light + pressed inner-depth renderer'ına geçirildi. Arka plan ışıkları görünür olacak kadar güçlendirildi ve merkezleri ekran dışına taşındı; dairesel obje görünümü oluşmuyor.
+- Son `compileDebugKotlin`, `assembleDebug`, `testDebugUnitTest` ve `lintDebug` başarılı. APK emulator-5554 üzerinde doğrulandı; son kanıt `build/profitness-glass-nav2.png`.
 
 ---
 
 ## Son Tamamlanan Değişiklikler
+
+### Matte Editorial Yön Değişimi (2026-09-04)
+
+- Görsel QA sonrasında glass ana tasarım dili olmaktan çıkarıldı; tekrarlanan ince rim, üst çizgi ve diagonal specular katmanları kartlardan kaldırıldı.
+- Workout/program/profile kartları borderless near-black tonal yüzeylere geçti; accent geniş turuncu yıkama yerine küçük ikon ve seçili aksiyonlarda kalıyor.
+- Alt navigasyon transparan/glass pill yerine opak near-black dock ve solid seçili hücre oldu; mevcut sürükleme ve indicator animasyonu korundu.
+- AI chat kök arka planı ile app bar birleştirildi; üstteki ani siyah kesim kaldırıldı.
+- Oracle ve kullanıcı balonları outline/sol accent çizgisi olmadan ayrı matte yüzeylere geçti; composer ve hızlı chip'ler solid hale getirildi.
+- AI enerji bilgi kartı borderless nötr yüzeye geçirildi; global sayfa accent bloom'u azaltıldı.
+- `:app:compileDebugKotlin` başarılı.
+
+### Quiet Glass Premium UI Düzeltmesi (2026-09-04)
+
+- İkinci görsel QA turunda dark yüzeyler gri yerine near-black/cool-blue katmanlara alındı; turuncu/accent geniş dolgulardan çekilip ikon, kenar ve lokal glow'a sınırlandı.
+- 3D hacim dış gölgeye bırakılmadı: kart/buton gövdesine üst-sol specular gradient, alt derinlik ve alt-sağ accent pool eklendi. Bu katmanlar tek cached draw pass içinde çalışıyor.
+- Light yüzey ayrımı güçlendirildi: canvas metalik mavi-griye, kartlar yarı saydam beyaz → cool-slate gradient'e geçirildi.
+- Dışa taşan kaideli/neumorphic CTA sistemi kaldırıldı; primary, secondary, icon ve geri kontrolleri içe çöken sakin yüzeylere geçirildi.
+- Ortak kart yüzeylerindeki üst üste 2–3 shadow, yoğun beyaz shimmer ve sürekli glow katmanları tek sınırlı shadow + tek `drawWithCache` geçişine indirildi.
+- Light tema lila/porselen parlamadan temiz soğuk-nötr gri/beyaz sisteme taşındı; metin ve pasif ikon kontrastı artırıldı.
+- Ana antrenman kartları image-free özet kart oldu; büyük `HAREKETİ GÖR` aksiyonu gerçek görseli `ContentScale.Fit` ile detay ekranında açıyor.
+- Kart listesindeki her öğe için çalışan sonsuz ambient glow animasyonu ve görünür listedeki Coil görsel istekleri kaldırıldı; expand/progress/timer gibi işlevsel animasyonlar korundu.
+- Chat balonları ve mesaj composer'ı aynı sakin cam/inset malzeme diline geçirildi; alt nav camı ve gölgeleri hafifletildi.
+- `:app:compileDebugKotlin` başarılı.
 
 ### Katmanlı Premium Malzeme Geçişi (2026-09-04)
 
@@ -25,12 +89,12 @@ Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. İkinci
 
 - Auth, onboarding, şifre sıfırlama, antrenman, program, AI Coach, keşfet, arkadaşlar, liderlik, challenge, mağaza, kilo takibi ve profil akışları aynı premium görsel dilde güncellendi.
 - `premiumSolidSurface`, `floatingGlassSurface` ve `insetControlSurface` rolleri ayrıştırıldı; glass'ın her kartta kullanılması engellendi.
-- `PremiumButton`, `GhostButton`, `PremiumIconButton` ve geri butonuna basma ölçeği, gölge çökmesi, bevel ve kontrollü accent ışığı eklendi.
+- `PremiumButton`, `GhostButton`, `PremiumIconButton` ve geri butonu 0.98 ölçekli hızlı press tepkisine geçirildi; bevel/glow kaldırıldı.
 - Aksiyon hiyerarşisi tek accent olarak sabitlendi: görünümde yalnız tercih edilen primary renkli/tintli, secondary aksiyonlar nötr; hata/uyarı/başarı/rütbe renkleri semantik istisna.
 - Program Studio'daki lime/cyan CTA çifti kaldırıldı; AI primary, Manuel neutral yapıldı. Spor/kategori filtreleri, hazır program kartları ve program detayları tek tema accent'ine geçirildi.
 - Profil performans kartlarındaki dekoratif gökkuşağı kaldırılarak tek tema accent'i kullanıldı.
-- Açık tema bağımsız Mineral Light paletine (`#F1F3F6`, beyaz yüzeyler, slate metin/gölge) taşındı; mekanik renk tersleme kaldırıldı.
-- Alt navigasyon yalnız ikon olacak şekilde sadeleştirildi; sayfa geneli bloom azaltıldı ve kart/aksiyon derinliğine odaklanıldı.
+- Açık tema bağımsız Mineral Light paletine (`#F2F4F6`, opal beyaz yüzeyler, slate metin) taşındı; mekanik renk tersleme kaldırıldı.
+- Alt navigasyon yalnız ikon, 64px sınıfında ve yüksek opaklıklı hafif glass olarak sadeleştirildi; sayfa geneli bloom azaltıldı.
 - Dark/light emülatör QA'sı auth, dashboard, program, AI, discover, store ve profile akışlarında yapıldı.
 
 ### CosmiBit Marka ve Paket Geçişi (2026-09-04)
@@ -86,17 +150,52 @@ Uygulamanın tüm ekranları ortak premium malzeme sistemiyle yenilendi. İkinci
 
 ## Aktif Kararlar & Öğrenmeler
 
+### Performance Luxury UI Refactor (2026-09-04)
+
+- Yeni ortak token sistemi `PerformanceDesignSystem.kt`: 8pt spacing, 14/16/20/26dp radius, 120/240ms motion ve opak tonal `performanceSurface`.
+- Ana palet brife sabitlendi: dark `#090A0B → #171A1E`, light `#F2F4F6 / #FFFFFF / #E9EDF1`, marka aksanı `#F36A21`.
+- Normal içerik kartlarında gradient/glow/rim/border kaldırıldı; glass yalnız bottom navigation ve overlay rollerinde yüksek opaklıkla kullanılabilir.
+- `PremiumButton` primary accent dolgu, `GhostButton` nötr yüzey ve 0.98/120ms press tepkisi kullanır; bevel, üst çizgi ve glow yoktur.
+- Workout kartları image-free kompakt satırdır; tam kart detail/expand için tıklanabilir, teknik bilgisi küçük secondary aksiyondur. Görsel yalnız how-to detail içinde yüklenir.
+- Program Studio tek `Yeni program` CTA + oluşturma sheet'i kullanır. Aktif programlar önde, silme overflow menüsündedir; filtreler tek satır + filter sheet'tedir.
+- Oracle ilk girişte Performance Intelligence özeti ve danışman aksiyonları gösterir; kredi maliyeti feed'de büyük kart olarak tekrarlanmaz.
+- Discover başlık/tabları doğal case kullanır. Challenge filtreleri tek `Filtreler` kontrolünde birleşir.
+- Profil hero'da XP/rütbe/seri aynı yüzeyde üç kolon; kart içinde kart ve dekoratif glow azaltıldı.
+- Bottom navigation 64px sınıfında, yüksek opaklıklı çok hafif glass; seçili durum küçük accent tint'tir.
+- `:app:compileDebugKotlin` başarılı. Görsel cihaz QA'sı bağlı emulator/device olmadığı için bekliyor.
+
 - **Interface-first repository:** ViewModel her zaman interface'e inject edilir. `AuthRepositoryImpl` direkt kullanılmaz.
 - **Extension mapper zorunlu:** `fun Dto.toDomain()` — ayrı mapper class yasak.
 - **Supabase IO dispatcher:** Tüm Supabase çağrıları `withContext(Dispatchers.IO)` + `runCatching`.
 - **BaseViewModel<S,E>:** Navigation/toast için `sendEvent()`, state'e flag ekleme.
-- **Dual-mode tema (2026-09-04):** Koyu tema Graphite katman hiyerarşisini kullanır; açık tema porselen yüzey + soft-lila mineral atmosferdir. İki tema mekanik olarak terslenmez.
-- **Fiziksel kontrol derinliği (2026-09-04):** Önemli CTA'larda yalnız shadow/scale yetmez; ayrı alt kaide ve basıldığında kaideye yaklaşan ön yüz kullanılmalıdır.
+- **Dual-mode tema (2026-09-04):** Dark tema nötr near-black tonal katman, light tema mineral gri canvas + opal beyaz surface kullanır; mekanik invert yapılmaz.
+- **Fiziksel kontrol derinliği (2026-09-04):** 3D/bevel yerine hızlı 0.98 scale ve tonal state değişimi kullanılır.
 - **Malzeme rolleri (2026-09-04):** İçerik kartı solid/elevated, yüzen chrome kontrollü glass, girişler inset olmalıdır. Sayfa geneline yoğun neon/glass yayılmaz.
 - **Aksiyon rengi (2026-09-04):** Primary marka accent'ini, secondary nötr yüzeyi kullanır. Komşu CTA'lara kategori bazlı ayrı renk verilmez; kırmızı/amber/yeşil yalnız gerçek semantik anlam taşır.
-- **CinematicExerciseCard:** Veri ve etkileşim sözleşmesini koru; kullanıcı yönlendirmesiyle görsel malzeme, glow ve press derinliği geliştirilebilir.
+- **CinematicExerciseCard:** Veri ve etkileşim sözleşmesini koru; listede görsel/glow yok, teknik medya yalnız detail yüzeyinde.
 
 ---
+
+## UI doğrulama notu — 2026-09-05
+
+- Son ek referanslar birebir şablon değil: içe dönük kontrol derinliği ve sınırlı geniş ışık geçişi hedefleniyor. Genel listelerde blur/animasyonlu glow yok.
+- Tema sheet'inde çift tutamak ve yüksek CTA gölgesi kaldırıldı; gün/tema seçimleri inset ortak yüzeye taşındı. Alt yansıma yatay sönümlenir.
+- Oracle başlangıcındaki veriyle beslenmeyen readiness/metric yer tutucuları kaldırıldı. İlk giriş otomatik kaydırması ve tekrar eden hızlı öneriler düzeltildi. Yüklenen primary butonun spinner kontrastı düzeltildi.
+- Program AI girişindeki 24dp gölge ve yükleme butonundaki glow kaldırıldı; düzenleme dialog çerçevesi ve CTA gradient rim temizlendi.
+- Son assembleDebug ve lintDebug başarılı; lint raporunda hata yok, 98 uyarı/10 hint var. testDebugUnitTest NO-SOURCE: mevcut birim test yok.
+- Sanal cihaz yeniden açıldı, son APK veriler korunarak kuruldu. Açık workout/profil ve koyu profil/Oracle gözle kontrol edildi. Bu kontrolden sonra text2 kontrastı artırıldı, floating chrome opaklaştırıldı ve çerçevesi kaldırıldı; Oracle ilk welcome balonu overview varken gizlendi. Son assembleDebug/lintDebug tekrar başarılı.
+- Debug emülatör profil kaydırma örneği: 102 frame, 5 deadline miss (%4.90), p50 25ms/p90 34ms. Bu küçük örnek gerçek cihaz 60fps doğrulaması veya eski sürüme göre iyileşme kanıtı değildir. Diğer alt akışların kapsamlı cihaz QA'sı ve release performans ölçümü açık kalır.
+
+## Alt navigasyon rötuşu — 2026-09-06
+
+- Alt navigasyon adları `Antrenman` ve `Programlar` olarak ayrıştırıldı; tekrarlayan `Programım / Program` dili kaldırıldı.
+- Ana navigasyon ve görünür profil/ayar aksiyonları daha tok `Filled` ikon ailesine geçirildi.
+- Seçili kapsül tek parça sürekli çizilen yuvarlatılmış accent yüzeye taşındı; sağdaki dik kesilme ve beyaz gradient durağı kaldırıldı.
+- Kapsül genişleme/renk/elevation animasyonları 300–360ms `FastOutSlowInEasing` ile yumuşatıldı; sayfa geçiş mesafesi azaltılıp süre dengelendi.
+- Dark `Antrenman` ve `Programlar` ekranları emulator-5554 üzerinde doğrulandı. `compileDebugKotlin`, `assembleDebug`, `testDebugUnitTest` ve `lintDebug` başarılı.
+- Takip eden gesture revizyonunda seçili arka plan sekme hücresinden ayrılarak tek bir hareketli kapsül katmanına taşındı. Basılı sürüklemede kapsül pointer merkezini sürekli izler; hover ikonu eşiklerde değişir, ekran/etiket seçimi yalnız bırakıldığında tek seferde commit edilir. Böylece ara karedeki dik kesilme, yarım label ve ardışık layout sıçramaları kaldırıldı.
+- Presentation katmanındaki karışık `Filled` kullanımlar temizlendi; tüm Material ikonları yuvarlatılmış `Icons.Rounded` ailesinde birleştirildi. Bottom nav profil glyph'i dolu `AccountCircle` yerine kompakt `Person` oldu.
+- Sürükleme başlangıç, ara ve yerleşmiş kareleri emulator üzerinde doğrulandı (`build/nav-drag-start.png`, `build/nav-drag-mid-final2.png`, `build/nav-drag-settled-final.png`). Son assemble, unit test ve lint başarılı.
 
 ## Bir Sonraki Adımlar
 

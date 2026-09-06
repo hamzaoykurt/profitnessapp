@@ -38,10 +38,14 @@ import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Straighten
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -79,6 +83,7 @@ import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
+import com.cosmibit.profitness.core.theme.performanceElevatedSurface
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
@@ -89,6 +94,7 @@ import com.cosmibit.profitness.domain.social.UserSummary
 import com.cosmibit.profitness.presentation.workout.SportType
 import com.cosmibit.profitness.presentation.components.PremiumIconButton
 import com.cosmibit.profitness.presentation.components.premiumSolidSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -485,8 +491,10 @@ private fun InviteFriendRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) accent.copy(0.14f) else theme.bg2.copy(0.55f))
-            .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), RoundedCornerShape(16.dp))
+            .then(
+                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                else Modifier.background(theme.bg2)
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -694,141 +702,115 @@ private fun ChallengeFilterBar(
     accent: Color
 ) {
     val theme = LocalAppTheme.current
-    var showKindPicker by remember { mutableStateOf(false) }
-    var showSportPicker by remember { mutableStateOf(false) }
-    var showTargetPicker by remember { mutableStateOf(false) }
-    val selectedKindLabel = kindFilter.label(theme)
-    val selectedSportLabel = SportType.challengeChoices
-        .firstOrNull { it.raw == sportFilterRaw }
-        ?.displayLabel(theme)
-        ?.uppercase()
-        ?: theme.t("TÜMÜ", "ALL")
-    val selectedTargetLabel = ChallengeTargetType.entries
-        .firstOrNull { it.raw == targetFilterRaw }
-        ?.displayLabel(theme)
-        ?.uppercase()
-        ?: theme.t("TÜMÜ", "ALL")
+    var showFilters by remember { mutableStateOf(false) }
     val hasSecondaryFilter = kindFilter != ChallengeKindFilter.All || sportFilterRaw != null || targetFilterRaw != null
+    val activeFilterCount = listOf(
+        kindFilter != ChallengeKindFilter.All,
+        sportFilterRaw != null,
+        targetFilterRaw != null,
+        scope == ChallengesScope.Mine && mineStatusFilter != MyChallengeStatusFilter.All
+    ).count { it }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 6.dp)
     ) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
-                FilterChip(
-                    label = theme.t("TÜR: $selectedKindLabel", "TYPE: $selectedKindLabel"),
-                    active = kindFilter != ChallengeKindFilter.All,
-                    accent = accent,
-                    onClick = { showKindPicker = true }
+            Row(
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(theme.bg1)
+                    .clickable { showFilters = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Tune, null, tint = if (activeFilterCount > 0) accent else theme.text1, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (activeFilterCount > 0) theme.t("Filtreler · $activeFilterCount", "Filters · $activeFilterCount") else theme.t("Filtreler", "Filters"),
+                    color = theme.text0,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            item {
-                FilterChip(
-                    label = theme.t("AKTİVİTE: $selectedSportLabel", "ACTIVITY: $selectedSportLabel"),
-                    active = sportFilterRaw != null,
-                    accent = accent,
-                    onClick = { showSportPicker = true }
-                )
-            }
-            item {
-                FilterChip(
-                    label = theme.t("METRİK: $selectedTargetLabel", "METRIC: $selectedTargetLabel"),
-                    active = targetFilterRaw != null,
-                    accent = accent,
-                    onClick = { showTargetPicker = true }
-                )
-            }
-            if (scope == ChallengesScope.Mine) {
-                item {
-                    FilterChip(
-                        label = theme.t(
-                            "DURUM: ${mineStatusFilter.label(theme)}",
-                            "STATUS: ${mineStatusFilter.label(theme)}"
-                        ),
-                        active = mineStatusFilter != MyChallengeStatusFilter.All,
-                        accent = accent,
-                        onClick = {
-                            val next = when (mineStatusFilter) {
-                                MyChallengeStatusFilter.All -> MyChallengeStatusFilter.Active
-                                MyChallengeStatusFilter.Active -> MyChallengeStatusFilter.Completed
-                                MyChallengeStatusFilter.Completed -> MyChallengeStatusFilter.Ended
-                                MyChallengeStatusFilter.Ended -> MyChallengeStatusFilter.All
-                            }
-                            onMineStatusFilter(next)
-                        }
-                    )
-                }
-            }
-            if (hasSecondaryFilter) {
-                item {
-                    FilterChip(
-                        label = theme.t("SIFIRLA", "RESET"),
-                        active = false,
-                        accent = accent,
-                        onClick = {
-                            onKindFilter(ChallengeKindFilter.All)
-                            onSportFilter(null)
-                            onTargetFilter(null)
-                        }
-                    )
-                }
+            if (hasSecondaryFilter || mineStatusFilter != MyChallengeStatusFilter.All) {
+                TextButton(onClick = {
+                    onKindFilter(ChallengeKindFilter.All); onSportFilter(null); onTargetFilter(null); onMineStatusFilter(MyChallengeStatusFilter.All)
+                }) { Text(theme.t("Sıfırla", "Reset"), color = theme.text1) }
             }
         }
-
-        Box(
-            modifier = Modifier
-                .padding(top = 12.dp)
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(theme.stroke.copy(0.22f))
-        )
     }
 
-    if (showKindPicker) {
-        FilterPickerDialog(
-            title = theme.t("TÜR", "TYPE"),
-            options = ChallengeKindFilter.entries.map { it.name to it.label(theme) },
-            selectedRaw = kindFilter.name,
+    if (showFilters) {
+        ChallengeFiltersDialog(
+            scope = scope,
+            kindFilter = kindFilter,
+            sportFilterRaw = sportFilterRaw,
+            targetFilterRaw = targetFilterRaw,
+            mineStatusFilter = mineStatusFilter,
             accent = accent,
-            onDismiss = { showKindPicker = false },
-            onSelect = { raw ->
-                onKindFilter(ChallengeKindFilter.entries.firstOrNull { it.name == raw } ?: ChallengeKindFilter.All)
-                showKindPicker = false
-            }
+            onKindFilter = onKindFilter,
+            onSportFilter = onSportFilter,
+            onTargetFilter = onTargetFilter,
+            onMineStatusFilter = onMineStatusFilter,
+            onDismiss = { showFilters = false }
         )
     }
+}
 
-    if (showSportPicker) {
-        FilterPickerDialog(
-            title = theme.t("AKTİVİTE", "ACTIVITY"),
-            options = listOf(null to theme.t("TÜMÜ", "ALL")) + SportType.challengeChoices.map { it.raw to it.displayLabel(theme).uppercase() },
-            selectedRaw = sportFilterRaw,
-            accent = accent,
-            onDismiss = { showSportPicker = false },
-            onSelect = {
-                onSportFilter(it)
-                showSportPicker = false
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChallengeFiltersDialog(
+    scope: ChallengesScope,
+    kindFilter: ChallengeKindFilter,
+    sportFilterRaw: String?,
+    targetFilterRaw: String?,
+    mineStatusFilter: MyChallengeStatusFilter,
+    accent: Color,
+    onKindFilter: (ChallengeKindFilter) -> Unit,
+    onSportFilter: (String?) -> Unit,
+    onTargetFilter: (String?) -> Unit,
+    onMineStatusFilter: (MyChallengeStatusFilter) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(theme.bg1).padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(theme.t("Challenge filtreleri", "Challenge filters"), style = MaterialTheme.typography.headlineSmall, color = theme.text0, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, null, tint = theme.text1) }
             }
-        )
-    }
-
-    if (showTargetPicker) {
-        FilterPickerDialog(
-            title = theme.t("METRİK", "METRIC"),
-            options = listOf(null to theme.t("TÜMÜ", "ALL")) + ChallengeTargetType.entries.map { it.raw to it.displayLabel(theme).uppercase() },
-            selectedRaw = targetFilterRaw,
-            accent = accent,
-            onDismiss = { showTargetPicker = false },
-            onSelect = {
-                onTargetFilter(it)
-                showTargetPicker = false
+            Text(theme.t("Tür", "Type"), style = MaterialTheme.typography.labelMedium, color = theme.text1)
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChallengeKindFilter.entries.forEach { value -> FilterChip(value.label(theme), value == kindFilter, accent) { onKindFilter(value) } }
             }
-        )
+            Spacer(Modifier.height(18.dp))
+            Text(theme.t("Aktivite", "Activity"), style = MaterialTheme.typography.labelMedium, color = theme.text1)
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(theme.t("Tümü", "All"), sportFilterRaw == null, accent) { onSportFilter(null) }
+                SportType.challengeChoices.forEach { value -> FilterChip(value.displayLabel(theme), value.raw == sportFilterRaw, accent) { onSportFilter(value.raw) } }
+            }
+            Spacer(Modifier.height(18.dp))
+            Text(theme.t("Metrik", "Metric"), style = MaterialTheme.typography.labelMedium, color = theme.text1)
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(theme.t("Tümü", "All"), targetFilterRaw == null, accent) { onTargetFilter(null) }
+                ChallengeTargetType.entries.forEach { value -> FilterChip(value.displayLabel(theme), value.raw == targetFilterRaw, accent) { onTargetFilter(value.raw) } }
+            }
+            if (scope == ChallengesScope.Mine) {
+                Spacer(Modifier.height(18.dp))
+                Text(theme.t("Durum", "Status"), style = MaterialTheme.typography.labelMedium, color = theme.text1)
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MyChallengeStatusFilter.entries.forEach { value -> FilterChip(value.label(theme), value == mineStatusFilter, accent) { onMineStatusFilter(value) } }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Text(theme.t("Sonuçları göster", "Show results")) }
+        }
     }
 }
 
@@ -1088,68 +1070,11 @@ private fun ChallengeCard(
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
-                translationY = if (isPressed) 2.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = if (isPressed) 5.dp else 16.dp,
-                shape = RoundedCornerShape(22.dp),
-                spotColor = cardAccent.copy(if (theme.isDark) 0.22f else 0.08f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.42f else 0.07f)
-            )
-            .clip(RoundedCornerShape(22.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        if (isEnded) theme.bg2.copy(0.52f) else theme.bg2.copy(0.92f),
-                        if (isEnded) theme.bg1.copy(0.46f) else theme.bg1.copy(0.70f),
-                        if (isEnded) theme.bg1.copy(0.36f) else theme.bg1.copy(0.56f)
-                    )
-                )
-            )
-            .border(1.dp, borderColor, RoundedCornerShape(22.dp))
+            .performanceElevatedSurface(theme, RoundedCornerShape(22.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(if (theme.isDark) 0.075f else 0.42f),
-                            Color.Transparent,
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-        // Subtle accent glow overlay (joined/live için belirgin)
-        if (c.isCompleted || (!isEnded && (c.isJoined || status == CardStatus.Live))) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(cardAccent.copy(0.16f), cardAccent.copy(0.04f), Color.Transparent),
-                            radius = 520f
-                        )
-                    )
-            )
-        }
-
         Row(Modifier.fillMaxWidth()) {
-            // Sol kenar accent strip (joined ise)
-            if (c.isJoined) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.verticalGradient(listOf(cardAccent, cardAccent.copy(0.4f)))
-                        )
-                )
-            }
-
             Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
                 // ── Header chips + status ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1196,22 +1121,14 @@ private fun ChallengeCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(cardAccent.copy(0.20f), theme.bg2.copy(0.58f))
-                            )
-                        )
-                        .border(1.dp, cardAccent.copy(0.34f), RoundedCornerShape(18.dp))
-                        .padding(12.dp),
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(cardAccent.copy(0.20f))
-                            .border(1.dp, cardAccent.copy(0.42f), RoundedCornerShape(12.dp)),
+                            .background(cardAccent.copy(0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1449,43 +1366,24 @@ private fun JoinPill(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed && canAct && !inFlight) 0.95f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh),
+        targetValue = if (isPressed && canAct && !inFlight) 0.98f else 1f,
+        animationSpec = tween(120),
         label = "challenge_join_press"
     )
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed && canAct && !inFlight) 2.dp else if (canAct) 10.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "challenge_join_depth"
-    )
-    val bg: Brush = when {
-        !canAct  -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2))
-        isJoined -> Brush.horizontalGradient(listOf(theme.bg2, theme.bg2.copy(0.7f)))
-        else     -> Brush.horizontalGradient(listOf(accent, accent.copy(0.7f)))
+    val bg: Color = when {
+        !canAct  -> theme.bg2
+        isJoined -> theme.bg2
+        else     -> accent
     }
-    val border = if (isJoined && canAct) accent.copy(0.5f) else Color.Transparent
     Row(
         modifier = Modifier
             .heightIn(min = 46.dp)
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
-                translationY = if (isPressed && canAct && !inFlight) 2.dp.toPx() else 0f
             }
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(15.dp),
-                spotColor = if (!isJoined && canAct) accent.copy(if (theme.isDark) 0.42f else 0.18f)
-                            else Color.Black.copy(if (theme.isDark) 0.28f else 0.07f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
-            )
             .clip(RoundedCornerShape(15.dp))
             .background(bg)
-            .border(
-                1.dp,
-                if (!isJoined && canAct) Color.White.copy(if (theme.isDark) 0.20f else 0.42f) else border,
-                RoundedCornerShape(15.dp)
-            )
             .clickable(
                 enabled = !inFlight && canAct,
                 interactionSource = interactionSource,
@@ -1550,7 +1448,7 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
                 .fillMaxWidth(pct)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(3.dp))
-                .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.6f))))
+                .background(accent)
         )
     }
 }

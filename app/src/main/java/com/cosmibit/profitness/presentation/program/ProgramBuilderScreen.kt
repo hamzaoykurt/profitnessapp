@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.cosmibit.profitness.presentation.program
 
 import android.util.Base64
@@ -61,7 +63,9 @@ import com.cosmibit.profitness.presentation.components.AppToastType
 import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.PremiumCreationControl
 import com.cosmibit.profitness.presentation.components.insetControlSurface
+import com.cosmibit.profitness.presentation.components.premiumSolidSurface
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.activityTrackingSpec
 import com.cosmibit.profitness.presentation.workout.defaultDurationSecondsForExercise
@@ -794,6 +798,8 @@ private fun BuilderChooseScreen(
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
     var activeSport by remember { mutableStateOf(ProgramSportFilter.ALL) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
+    var showCreateSheet by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
     var closeDialogAfterApply by remember { mutableStateOf(false) }
     val isApplyingTemplate = applyingTemplateKey != null
 
@@ -830,6 +836,54 @@ private fun BuilderChooseScreen(
     val sectionStrings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
 
+    if (showCreateSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCreateSheet = false },
+            containerColor = theme.bg1,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = theme.text2.copy(0.45f)) }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
+                Text(theme.t("Yeni program", "New program"), style = MaterialTheme.typography.headlineMedium, color = theme.text0)
+                Spacer(Modifier.height(8.dp))
+                Text(theme.t("Nasıl oluşturmak istediğini seç.", "Choose how you want to build it."), style = MaterialTheme.typography.bodyMedium, color = theme.text1)
+                Spacer(Modifier.height(24.dp))
+                QuickCreateButton(Modifier.fillMaxWidth(), Icons.Rounded.AutoAwesome, sectionStrings.createWithAI, true) {
+                    showCreateSheet = false; onMode(BuilderMode.AI)
+                }
+                Spacer(Modifier.height(12.dp))
+                QuickCreateButton(Modifier.fillMaxWidth(), Icons.Rounded.Draw, sectionStrings.createManually, false) {
+                    showCreateSheet = false; onMode(BuilderMode.Manual)
+                }
+            }
+        }
+    }
+
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            containerColor = theme.bg1,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = theme.text2.copy(0.45f)) }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
+                Text(theme.t("Program odağı", "Program focus"), style = MaterialTheme.typography.headlineMedium, color = theme.text0)
+                Spacer(Modifier.height(16.dp))
+                ProgramCategory.values().forEach { category ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                            activeCategory = category; showFilterSheet = false
+                        }.padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(category.icon, null, tint = if (category == activeCategory) MaterialTheme.colorScheme.primary else theme.text1)
+                        Spacer(Modifier.width(12.dp))
+                        Text(category.localizedLabel(), color = theme.text0, modifier = Modifier.weight(1f))
+                        if (category == activeCategory) Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = responsive.bottomNavHeight + 48.dp + timerExtraPad)
@@ -845,61 +899,33 @@ private fun BuilderChooseScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.widthIn(max = 110.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "PROGRAM",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 2.sp,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.ExtraLight,
+                        "Program Studio",
+                        color = theme.text0,
+                        style = MaterialTheme.typography.headlineMedium,
                         maxLines = 1
                     )
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "STUDIO",
-                        color = LocalAppTheme.current.text0,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1
+                        LocalAppTheme.current.strings.programStudioSub,
+                        color = theme.text1,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2
                     )
                 }
-                Text(
-                    LocalAppTheme.current.strings.programStudioSub,
-                    color = LocalAppTheme.current.text1.copy(alpha = 0.76f),
-                    fontSize = 9.sp,
-                    lineHeight = 11.sp,
-                    fontWeight = FontWeight.Light,
-                    textAlign = TextAlign.End,
-                    maxLines = 2,
-                    modifier = Modifier.widthIn(max = 122.dp)
-                )
             }
         }
 
         // ── Quick Create Buttons ──────────────────────────────────────────────
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = responsive.horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val chooseStrings = LocalAppTheme.current.strings
-                QuickCreateButton(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.AutoAwesome,
-                    label = chooseStrings.createWithAI,
-                    prominent = true,
-                    onClick = { onMode(BuilderMode.AI) }
-                )
-                QuickCreateButton(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.Draw,
-                    label = chooseStrings.createManually,
-                    prominent = false,
-                    onClick = { onMode(BuilderMode.Manual) }
-                )
-            }
+            PremiumCreationControl(
+                title = theme.t("Yeni program", "New program"),
+                supportingText = theme.t("AI ile oluştur veya kendin tasarla", "Build with AI or design it yourself"),
+                onClick = { showCreateSheet = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = responsive.horizontalPadding),
+                icon = Icons.Rounded.Add
+            )
         }
 
         // ── My Programs ───────────────────────────────────────────────────────
@@ -935,29 +961,23 @@ private fun BuilderChooseScreen(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                item {
+                    Box(
+                        Modifier.clip(RoundedCornerShape(14.dp)).background(theme.bg2)
+                            .clickable { showFilterSheet = true }.padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Tune, null, tint = if (activeCategory == ProgramCategory.ALL) theme.text1 else MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(theme.t("Filtreler", "Filters"), color = theme.text0, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
                 items(ProgramSportFilter.values()) { sport ->
                     SportFilterChip(
                         sport = sport,
                         selected = sport == activeSport,
                         onClick = { activeSport = sport }
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        // ── Category Tabs ─────────────────────────────────────────────────────
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = responsive.horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(ProgramCategory.values()) { cat ->
-                    CategoryChip(
-                        category = cat,
-                        selected = cat == activeCategory,
-                        onClick = { activeCategory = cat }
                     )
                 }
             }
@@ -983,13 +1003,14 @@ private fun SectionLabel(text: String, color: Color) {
         text,
         style = MaterialTheme.typography.labelSmall,
         color = color,
-        fontSize = 9.sp,
-        letterSpacing = 1.6.sp,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.4.sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(
             start = responsive.horizontalPadding,
-            top = 28.dp,
+            top = 24.dp,
             end = responsive.horizontalPadding,
             bottom = 12.dp
         )
@@ -1034,15 +1055,15 @@ private fun SportFilterChip(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val bg = if (selected) accent.copy(alpha = if (theme.isDark) 0.15f else 0.10f) else theme.bg2
     val textColor = if (selected) accent else theme.text1
-    val border = if (selected) accent.copy(alpha = 0.34f) else theme.stroke.copy(alpha = 0.72f)
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(bg)
-            .border(1.dp, border, RoundedCornerShape(50))
+            .then(
+                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(50))
+                else Modifier.background(theme.bg2)
+            )
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
@@ -1075,15 +1096,15 @@ private fun CategoryChip(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val bg = if (selected) accent.copy(alpha = if (theme.isDark) 0.15f else 0.10f) else theme.bg2
     val textColor = if (selected) accent else theme.text1
-    val border = if (selected) accent.copy(alpha = 0.34f) else theme.stroke.copy(alpha = 0.72f)
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(bg)
-            .border(1.dp, border, RoundedCornerShape(50))
+            .then(
+                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(50))
+                else Modifier.background(theme.bg2)
+            )
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
@@ -1124,38 +1145,20 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
             .scale(scale)
-            .glassCard(accent, theme, RoundedCornerShape(18.dp))
+            .performanceElevatedSurface(theme, shape = RoundedCornerShape(14.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
-        // Left accent bar
-        Box(
-            modifier = Modifier
-                .width(2.dp)
-                .fillMaxHeight()
-                .background(
-                    Brush.verticalGradient(listOf(accent.copy(0.66f), Color.Transparent))
-                )
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 14.dp, top = 15.dp, bottom = 15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Nested icon tile: a second material layer, not another colored button.
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .insetControlSurface(accent, theme, RoundedCornerShape(13.dp)),
+                Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(theme.bg3),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    program.category.icon,
-                    null,
-                    tint = accent,
-                    modifier = Modifier.size(19.dp)
-                )
+                Icon(program.category.icon, null, tint = accent, modifier = Modifier.size(18.dp))
             }
 
             Spacer(Modifier.width(12.dp))
@@ -1164,8 +1167,8 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
                 Text(
                     program.localizedTitle(theme),
                     color = theme.text0,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
                     lineHeight = 18.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -1228,11 +1231,10 @@ private fun LevelBadge(level: String, label: String = level) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(theme.bg3.copy(alpha = if (theme.isDark) 0.70f else 0.52f))
-            .border(1.dp, theme.stroke.copy(alpha = 0.62f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .background(theme.bg3)
+            .padding(horizontal = 7.dp, vertical = 3.dp)
     ) {
-        Text(label, color = theme.text1, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp, maxLines = 1)
+        Text(label, color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -1260,6 +1262,7 @@ private fun SavedProgramTile(
     val primary = MaterialTheme.colorScheme.primary
     val responsive = rememberResponsiveLayoutInfo()
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showActionsMenu by remember { mutableStateOf(false) }
 
     val typeIcon = when (program.type) {
         ProgramType.TEMPLATE -> Icons.Rounded.ViewList
@@ -1271,6 +1274,7 @@ private fun SavedProgramTile(
         ProgramType.AI       -> "AI"
         ProgramType.MANUAL   -> "MANUEL"
     }
+    val showTypeBadge = program.type != ProgramType.MANUAL
 
     // ── Silme Onayı ───────────────────────────────────────────────────────────
     if (showDeleteConfirm) {
@@ -1316,47 +1320,22 @@ private fun SavedProgramTile(
     val totalExercises = program.days.sumOf { it.exercises.size }
     val dayLabels    = listOf("M", "S", "Ç", "P", "C", "C", "P")
 
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(14.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
     ) {
-        // ── Glow shadow for active program ────────────────────────────────
-        if (program.isActive) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(shape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(primary.copy(0.18f), Color.Transparent),
-                            radius = 600f
-                        )
-                    )
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(shape)
-                .background(
-                    if (program.isActive)
-                        Brush.linearGradient(
-                            listOf(primary.copy(0.10f), theme.bg1.copy(0.95f))
-                        )
-                    else Brush.linearGradient(
-                        listOf(theme.bg1.copy(0.95f), theme.bg1.copy(0.95f))
-                    )
-                )
-                .border(
-                    width = if (program.isActive) 1.5.dp else 1.dp,
-                    brush = if (program.isActive)
-                        Brush.linearGradient(listOf(primary.copy(0.6f), primary.copy(0.2f)))
-                    else Brush.linearGradient(listOf(theme.stroke, theme.stroke)),
-                    shape = shape
+                .then(
+                    if (program.isActive) {
+                        Modifier.performanceSignatureSurface(theme, primary, shape)
+                    } else {
+                        Modifier.performanceElevatedSurface(theme, shape)
+                    }
                 )
         ) {
             // ── Main content (tappable → edit) ────────────────────────────
@@ -1367,19 +1346,7 @@ private fun SavedProgramTile(
                     .padding(start = 0.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Left accent bar
-                Box(
-                    modifier = Modifier
-                        .width(5.dp)
-                        .height(104.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(accentColor, accentColor.copy(0.25f))
-                            )
-                        )
-                )
-
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(16.dp))
 
                 Column(
                     modifier = Modifier
@@ -1387,34 +1354,36 @@ private fun SavedProgramTile(
                         .padding(top = 12.dp, bottom = 12.dp)
                 ) {
                     // ── Top: badge + active indicator ─────────────────────
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showTypeBadge || program.isActive) Row(verticalAlignment = Alignment.CenterVertically) {
                         // Type badge
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(accentColor.copy(0.15f))
-                                .padding(horizontal = 7.dp, vertical = 2.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    typeIcon, null,
-                                    tint     = accentColor,
-                                    modifier = Modifier.size(10.dp)
-                                )
-                                Spacer(Modifier.width(3.dp))
-                                Text(
-                                    typeLabel,
-                                    color         = accentColor,
-                                    fontSize      = 8.sp,
-                                    fontWeight    = FontWeight.ExtraBold,
-                                    letterSpacing = 0.6.sp,
-                                    maxLines      = 1
-                                )
+                        if (showTypeBadge) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(accentColor.copy(0.14f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        typeIcon, null,
+                                        tint     = accentColor,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        typeLabel,
+                                        color         = accentColor,
+                                        fontSize      = 9.sp,
+                                        fontWeight    = FontWeight.ExtraBold,
+                                        letterSpacing = 0.55.sp,
+                                        maxLines      = 1
+                                    )
+                                }
                             }
                         }
 
                         if (program.isActive) {
-                            Spacer(Modifier.width(8.dp))
+                            if (showTypeBadge) Spacer(Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
@@ -1433,7 +1402,7 @@ private fun SavedProgramTile(
                         }
                     }
 
-                    Spacer(Modifier.height(7.dp))
+                    if (showTypeBadge || program.isActive) Spacer(Modifier.height(9.dp))
 
                     // ── Program name ──────────────────────────────────────
                     Text(
@@ -1503,91 +1472,80 @@ private fun SavedProgramTile(
                 }
             }
 
-            // ── Divider ───────────────────────────────────────────────────
-            HorizontalDivider(color = theme.stroke.copy(0.4f), thickness = 0.5.dp)
-
-            // ── Action strip ──────────────────────────────────────────────
-            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (!program.isActive) {
-                    Row(
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
+                            .performanceControlSurface(
+                                theme,
+                                primary,
+                                false,
+                                RoundedCornerShape(12.dp)
+                            )
                             .clickable(onClick = onSetActive)
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment     = Alignment.CenterVertically
+                            .padding(horizontal = 13.dp, vertical = 10.dp)
                     ) {
-                        Icon(Icons.Rounded.PlayArrow, null, tint = primary, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            theme.t("AKTİF ET", "ACTIVATE"),
-                            color      = primary,
-                            fontSize   = 10.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Rounded.PlayArrow,
+                                null,
+                                tint = theme.effectiveOnAccentColor,
+                                modifier = Modifier.size(19.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                theme.t("Aktif et", "Activate"),
+                                color = theme.effectiveOnAccentColor,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(primary.copy(0.13f))
+                            .padding(horizontal = 11.dp, vertical = 8.dp)
+                    ) {
+                        Text(theme.t("Aktif program", "Active program"), color = primary, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
+                ) {
+                    Icon(Icons.Rounded.Edit, theme.t("Düzenle", "Edit"), tint = theme.text0, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(7.dp))
+                IconButton(
+                    onClick = onShare,
+                    modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
+                ) {
+                    Icon(Icons.Rounded.Share, theme.t("Paylaş", "Share"), tint = theme.text0, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(7.dp))
+                Box {
+                    IconButton(
+                        onClick = { showActionsMenu = true },
+                        modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
+                    ) {
+                        Icon(Icons.Rounded.MoreVert, theme.t("Diğer", "More"), tint = theme.text0, modifier = Modifier.size(21.dp))
+                    }
+                    DropdownMenu(
+                        expanded = showActionsMenu,
+                        onDismissRequest = { showActionsMenu = false },
+                        containerColor = theme.bg2
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(theme.t("Programı sil", "Delete program"), color = CardCoral) },
+                            leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral) },
+                            onClick = { showActionsMenu = false; showDeleteConfirm = true }
                         )
                     }
-                    VerticalDivider(color = theme.stroke.copy(0.4f), thickness = 0.5.dp)
-                }
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(onClick = onEdit)
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Edit, null, tint = theme.text1.copy(0.8f), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        theme.t("DÜZENLE", "EDIT"),
-                        color      = theme.text1.copy(0.8f),
-                        fontSize   = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-                VerticalDivider(color = theme.stroke.copy(0.4f), thickness = 0.5.dp)
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(onClick = onShare)
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Share, null, tint = primary, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        theme.t("PAYLAŞ", "SHARE"),
-                        color      = primary,
-                        fontSize   = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-                VerticalDivider(color = theme.stroke.copy(0.4f), thickness = 0.5.dp)
-                Row(
-                    modifier = Modifier
-                        .weight(if (program.isActive) 0.6f else 0.8f)
-                        .fillMaxHeight()
-                        .clickable(onClick = { showDeleteConfirm = true })
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral.copy(0.85f), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        theme.t("SİL", "DELETE"),
-                        color      = CardCoral.copy(0.85f),
-                        fontSize   = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
                 }
             }
         }
@@ -1637,7 +1595,7 @@ private fun ProgramDetailDialog(
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Text(program.localizedTitle(theme), style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Black)
+                Text(program.localizedTitle(theme), style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Bold)
                 Text(program.localizedSubtitle(theme), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Light)
 
                 Spacer(Modifier.height(20.dp))
@@ -1703,9 +1661,7 @@ private fun ProgramDetailDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(theme.bg2.copy(0.6f))
-                        .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                        .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
                         .padding(16.dp)
                 ) {
                     Text(program.localizedSchedule(theme), color = theme.text1, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
@@ -1867,12 +1823,6 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .shadow(
-                        elevation = 24.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
-                        ambientColor = Color.Black.copy(alpha = if (aiTheme.isDark) 0.55f else 0.12f)
-                    )
                     .glassCard(MaterialTheme.colorScheme.primary, aiTheme, RoundedCornerShape(24.dp))
                     .padding(24.dp)
             ) {
@@ -1921,12 +1871,6 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
                     modifier = Modifier
                         .weight(1f)
-                        .shadow(
-                            elevation = if (selectedBase64 != null) 16.dp else 8.dp,
-                            shape = RoundedCornerShape(12.dp),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = if (selectedBase64 != null) 0.24f else 0.10f),
-                            ambientColor = Color.Black.copy(alpha = if (aiTheme.isDark) 0.34f else 0.08f)
-                        )
                 ) {
                     Icon(
                         imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
@@ -1995,7 +1939,6 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         .padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(CardCoral.copy(alpha = 0.15f))
-                        .border(1.dp, CardCoral.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     Text(errMsg, color = CardCoral, fontSize = 13.sp)
@@ -2261,26 +2204,11 @@ private fun EditProgramScreen(
                     .widthIn(max = 520.dp)
                     .clip(modalShape)
                     .background(editTheme.bg1)
-                    .border(
-                        1.dp,
-                        Brush.linearGradient(
-                            listOf(editAccent.copy(0.65f), editTheme.stroke, editAccent.copy(0.22f))
-                        ),
-                        modalShape
-                    )
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(editTheme.bg2)
-                        .drawWithCache {
-                            val glow = Brush.radialGradient(
-                                listOf(editAccent.copy(0.20f), Color.Transparent),
-                                center = Offset(size.width, 0f),
-                                radius = size.width * 0.9f
-                            )
-                            onDrawBehind { drawRect(glow) }
-                        }
+                        .performanceSignatureSurface(editTheme, editAccent)
                         .padding(horizontal = 18.dp, vertical = 18.dp)
                 ) {
                     Row(
@@ -2289,10 +2217,9 @@ private fun EditProgramScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(editAccent.copy(0.13f))
-                                .border(1.dp, editAccent.copy(0.36f), RoundedCornerShape(14.dp)),
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(editAccent.copy(0.13f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -2519,9 +2446,7 @@ private fun EditProgramScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(editTheme.bg1.copy(alpha = 0.92f))
-                    .border(1.dp, editAccent.copy(0.26f), RoundedCornerShape(16.dp))
+                    .insetControlSurface(editAccent, editTheme, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2623,14 +2548,11 @@ private fun EditProgramScreen(
                     shape           = RoundedCornerShape(16.dp),
                     contentPadding  = PaddingValues(horizontal = 16.dp),
                     colors          = ButtonDefaults.outlinedButtonColors(
-                        containerColor = editAccent.copy(0.10f),
+                        containerColor = editTheme.bg2,
                         contentColor = editAccent,
                         disabledContentColor = editTheme.text2
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Brush.linearGradient(listOf(editAccent.copy(0.85f), editAccent.copy(0.28f)))
-                    )
+                    border = null
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2786,9 +2708,7 @@ private fun ManualBuilderScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 12.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(manTheme.bg1)
-                .border(1.dp, manTheme.stroke, RoundedCornerShape(16.dp))
+                .insetControlSurface(manAccent, manTheme, RoundedCornerShape(16.dp))
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             BasicTextField(
@@ -3059,13 +2979,7 @@ private fun ManualDayCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(accent.copy(0.10f), theme.bg2.copy(0.82f))
-                                    )
-                                )
-                                .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(12.dp))
+                                .premiumSolidSurface(accent, theme, RoundedCornerShape(12.dp), elevation = 3.dp)
                                 .clickable { onEditExercise(i) }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -3246,9 +3160,7 @@ private fun ExerciseEditDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(24.dp))
+                .premiumSolidSurface(accent, theme, RoundedCornerShape(24.dp), elevation = 8.dp)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -3285,9 +3197,7 @@ private fun ExerciseEditDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, RoundedCornerShape(16.dp))
+                    .insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp)
             ) {
                 if (spec.metric == ExerciseMetric.Strength) {
@@ -3344,9 +3254,7 @@ private fun ExerciseEditDialog(
                 textStyle = MaterialTheme.typography.bodySmall.copy(color = theme.text0),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg2)
-                    .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                    .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
                     .padding(14.dp),
                 decorationBox = { inner ->
                     if (notes.isBlank()) Text(

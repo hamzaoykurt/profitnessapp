@@ -295,7 +295,6 @@ private fun WeightHeader(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(chipColor.copy(0.15f))
-                        .border(1.dp, chipColor.copy(0.3f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -513,7 +512,6 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .background(accent.copy(alpha = 0.12f))
-                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
                         .padding(horizontal = 7.dp, vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

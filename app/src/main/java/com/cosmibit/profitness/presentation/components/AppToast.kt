@@ -123,10 +123,10 @@ private fun ToastContent(toast: AppToastData) {
             .statusBarsPadding()
             .padding(top = 8.dp)
             .shadow(
-                elevation = 20.dp,
+                elevation = 8.dp,
                 shape = RoundedCornerShape(18.dp),
-                spotColor = accentColor.copy(alpha = 0.35f),
-                ambientColor = accentColor.copy(alpha = 0.12f)
+                spotColor = Color.Black.copy(alpha = if (theme.isDark) 0.38f else 0.10f),
+                ambientColor = Color.Transparent
             )
             .clip(RoundedCornerShape(18.dp))
             .background(

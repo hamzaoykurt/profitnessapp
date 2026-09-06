@@ -1,7 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,8 +47,7 @@ fun AiCreditInfoRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(badgeColor.copy(alpha = 0.08f))
-            .border(1.dp, badgeColor.copy(alpha = 0.28f), RoundedCornerShape(14.dp))
+            .background(if (theme.isDark) Color(0xFF10131A) else Color(0xFFF5F7FA))
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,8 +92,7 @@ private fun EnergyBadge(text: String, color: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.14f))
-            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.12f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {

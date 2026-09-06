@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,7 +42,10 @@ import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AccentColorSwatch
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.data.store.UserPlan
+import com.cosmibit.profitness.data.integration.orbit.OrbitConnectionStatus
+import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationState
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,10 +65,12 @@ fun ProfileScreen(
     val accent  = MaterialTheme.colorScheme.primary
     val strings = theme.strings
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
 
     var showAppearance       by remember { mutableStateOf(false) }
     var showNotifications    by remember { mutableStateOf(false) }
     var showLanguagePicker   by remember { mutableStateOf(false) }
+    var showIntegrations     by remember { mutableStateOf(false) }
     var achievementPopup     by remember { mutableStateOf<Triple<String, String, String>?>(null) } // icon, name, description
 
     // Achievement unlock bildirimi
@@ -72,7 +79,8 @@ fun ProfileScreen(
             when (event) {
                 is ProfileEvent.AchievementUnlocked ->
                     achievementPopup = Triple(event.icon, event.name, event.description)
-                is ProfileEvent.ShowSnackbar -> {} // snackbar handled elsewhere
+                is ProfileEvent.ShowSnackbar -> {} // global snackbar host handles other profile events
+                is ProfileEvent.OpenOrbitUrl -> uriHandler.openUri(event.url)
             }
         }
     }
@@ -81,6 +89,7 @@ fun ProfileScreen(
     LaunchedEffect(Unit) {
         delay(16)
         viewModel.initLoad()
+        viewModel.refreshOrbitStatus()
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -88,6 +97,7 @@ fun ProfileScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.reloadIfStale()
+                viewModel.refreshOrbitStatus()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -152,6 +162,8 @@ fun ProfileScreen(
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
+                    onIntegrationsClick  = { showIntegrations = true },
+                    orbit                = state.orbitIntegration,
                     displayName          = state.displayName.ifBlank { theme.t("Kullanıcı", "User") },
                     avatar               = state.avatar
                 )
@@ -309,11 +321,31 @@ fun ProfileScreen(
             )
         }
     }
+
+    if (showIntegrations) {
+        ModalBottomSheet(
+            onDismissRequest = { showIntegrations = false },
+            containerColor = theme.bg1,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            OrbitIntegrationSheet(
+                orbit = state.orbitIntegration,
+                theme = theme,
+                accent = accent,
+                onConnect = viewModel::connectOrbit,
+                onDisconnect = viewModel::disconnectOrbit,
+                onSyncEnabled = viewModel::setOrbitSyncEnabled,
+                onSyncNow = viewModel::syncOrbitNow,
+                onManage = { state.orbitIntegration.manageUrl?.let(uriHandler::openUri) }
+            )
+        }
+    }
 }
 
 // ── Profile Hero Banner ───────────────────────────────────────────────────────
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ProfileHeroBanner(
     name           : String,
     avatar         : String,
@@ -337,7 +369,7 @@ private fun ProfileHeroBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(190.dp)
+                .height(124.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -352,13 +384,13 @@ private fun ProfileHeroBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 8.dp),
+                .padding(top = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
@@ -366,36 +398,29 @@ private fun ProfileHeroBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Text(
+                        theme.t("Profil", "Profile"),
+                        color = theme.text0,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp,
+                        maxLines = 1
+                    )
                     Row(
                         modifier = Modifier
-                            .height(34.dp)
+                            .size(34.dp)
                             .profilePremiumAction(
                                 theme = theme,
                                 accent = accent,
                                 onClick = onSettingsClick,
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .padding(horizontal = 10.dp),
+                                recessed = true,
+                                shape = RoundedCornerShape(10.dp)
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
-                        Text(
-                            theme.t("TEMA", "THEME"),
-                            color      = accent,
-                            fontSize   = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
                     }
-                    Text(
-                        theme.t("PROFİL", "PROFILE"),
-                        color = theme.text0,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
-                        maxLines = 1
-                    )
                 }
 
                 // Enerji / Plan chip — sağ üst köşe, tıklanınca store'a gider
@@ -411,6 +436,7 @@ private fun ProfileHeroBanner(
                             theme = theme,
                             accent = chipTint,
                             onClick = onNavigateToStore,
+                            recessed = true,
                             shape = RoundedCornerShape(20.dp)
                         )
                         .padding(horizontal = 10.dp),
@@ -435,80 +461,33 @@ private fun ProfileHeroBanner(
             val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
             val rankColor = rankColor(rank)
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .profilePremiumSurface(
-                        theme = theme,
-                        shape = RoundedCornerShape(28.dp),
-                        accent = accent,
-                        elevation = if (theme.isDark) 14.dp else 8.dp
-                    )
+                    .padding(horizontal = 16.dp)
+                    .performanceSignatureSurface(theme, accent, RoundedCornerShape(18.dp))
             ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accent.copy(if (theme.isDark) 0.10f else 0.045f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(520f, 80f),
-                                radius = 520f
-                            )
-                        )
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    rankColor.copy(if (theme.isDark) 0.08f else 0.04f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(20f, 440f),
-                                radius = 460f
-                            )
-                        )
-                )
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(modifier = Modifier.size(122.dp), contentAlignment = Alignment.Center) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(68.dp), contentAlignment = Alignment.Center) {
                         Box(
                             modifier = Modifier
-                                .matchParentSize()
+                                .size(68.dp)
                                 .clip(CircleShape)
-                                .background(
-                                    Brush.radialGradient(
-                                        listOf(
-                                            accent.copy(if (theme.isDark) 0.17f else 0.09f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                )
+                                .background(accent)
                         )
                         Box(
                             modifier = Modifier
-                                .size(106.dp)
+                                .size(64.dp)
                                 .clip(CircleShape)
-                                .background(Brush.sweepGradient(listOf(accent, rankColor, accent)))
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(94.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg0)
-                                .border(1.dp, theme.stroke.copy(0.55f), CircleShape),
+                                .background(theme.bg0),
                             contentAlignment = Alignment.Center
                         ) {
                             if (avatar.startsWith("http")) {
@@ -519,41 +498,39 @@ private fun ProfileHeroBanner(
                                     modifier = Modifier.fillMaxSize().clip(CircleShape)
                                 )
                             } else {
-                                Text(avatar, fontSize = 42.sp)
+                                Text(avatar, fontSize = 34.sp)
                             }
                         }
                     }
 
-                    Spacer(Modifier.height(10.dp))
-
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
                     Text(
-                        name.uppercase(),
+                        name,
                         color = theme.text0,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        maxLines = 1
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                    Row(
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         BadgeChip("★ ${rank.uppercase()}", rankColor)
                         BadgeChip("LVL $level", accent)
                     }
+                    }
+                    }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(theme.bg0.copy(0.46f))
-                            .border(1.dp, theme.stroke.copy(0.38f), RoundedCornerShape(18.dp))
-                            .padding(14.dp)
+                            .padding(horizontal = 2.dp, vertical = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -562,33 +539,32 @@ private fun ProfileHeroBanner(
                         ) {
                             Column {
                                 Text(
-                                    "LEVEL $level → ${level + 1}",
+                                    theme.t("Seviye $level → ${level + 1}", "Level $level → ${level + 1}"),
                                     color = theme.text2,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 1.sp
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 0.sp
                                 )
                                 Spacer(Modifier.height(3.dp))
                                 Text(
                                     "$xpInLevel / $xpPerLevel XP",
                                     color = theme.text0,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             Text(
                                 if (xpLeft == 0) theme.t("SEVİYE HAZIR", "LEVEL READY") else theme.t("$xpLeft XP KALDI", "$xpLeft XP LEFT"),
                                 color = accent,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(8.dp))
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
+                                .height(4.dp)
                                 .clip(CircleShape)
                                 .background(theme.stroke.copy(0.32f))
                         ) {
@@ -597,18 +573,18 @@ private fun ProfileHeroBanner(
                                     .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
                                     .fillMaxHeight()
                                     .clip(CircleShape)
-                                    .background(Brush.horizontalGradient(listOf(rankColor, accent)))
+                                    .background(accent)
                             )
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 54.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         HeroMiniStat(
                             label = theme.t("TOPLAM XP", "TOTAL XP"),
@@ -628,21 +604,16 @@ private fun ProfileHeroBanner(
                             modifier = Modifier.weight(1f),
                             onClick = onOpenRankRanking
                         )
+                        HeroMiniStat(
+                            label = theme.t("SERİ", "STREAK"),
+                            value = theme.t("$currentStreak gün", "$currentStreak days"),
+                            icon = Icons.Rounded.LocalFireDepartment,
+                            color = accent,
+                            theme = theme,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpenStreakRanking
+                        )
                     }
-                    Spacer(Modifier.height(10.dp))
-                    HeroMiniStat(
-                        label = theme.t("SERİ SIRALAMASI", "STREAK RANKING"),
-                        value = if (streakRankPosition > 0L) {
-                            theme.t("#$streakRankPosition · $currentStreak gün", "#$streakRankPosition · $currentStreak days")
-                        } else {
-                            theme.t("$currentStreak gün", "$currentStreak days")
-                        },
-                        icon = Icons.Rounded.LocalFireDepartment,
-                        color = Color(0xFFFF6B4A),
-                        theme = theme,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onOpenStreakRanking
-                    )
                 }
             }
         }
@@ -659,50 +630,16 @@ private fun HeroMiniStat(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    Row(
-        modifier = (if (onClick != null) modifier
-            .profilePremiumAction(
-                theme = theme,
-                accent = color,
-                onClick = onClick,
-                shape = RoundedCornerShape(16.dp)
-            )
-        else modifier.profilePremiumSurface(
-            theme = theme,
-            shape = RoundedCornerShape(16.dp),
-            accent = color,
-            elevation = if (theme.isDark) 9.dp else 4.dp
-        ))
-            .padding(horizontal = 11.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = modifier
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(color.copy(0.18f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
-        }
-        Spacer(Modifier.width(9.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                value,
-                color = theme.text0,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
-            Text(
-                label,
-                color = theme.text2,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.8.sp,
-                maxLines = 1
-            )
-        }
+        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(value, color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -720,15 +657,13 @@ private fun BadgeChip(label: String, color: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(color.copy(0.12f))
-            .border(1.dp, color.copy(0.4f), RoundedCornerShape(20.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Text(
             label,
             color         = color,
-            fontSize      = 9.sp,
-            fontWeight    = FontWeight.Black,
-            letterSpacing = 1.sp
+            fontSize      = 10.sp,
+            fontWeight    = FontWeight.Bold
         )
     }
 }
@@ -765,14 +700,14 @@ private fun PerformanceMetricsSection(
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = buildList {
-        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.Whatshot,      CardCoral))
-        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents,   CardGreen))
-        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.FitnessCenter, CardCyan))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, CardCoral))
+        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, CardGreen))
+        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, CardCyan))
         if (totalDurationSeconds > 0) {
-            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, CardGreen))
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, CardGreen))
         }
         if (totalDistanceMeters > 0f) {
-            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, Color(0xFF64D2FF)))
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, Color(0xFF64D2FF)))
         }
     }
 
@@ -785,10 +720,10 @@ private fun PerformanceMetricsSection(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                strings.performanceMetrics,
-                style         = MaterialTheme.typography.labelSmall,
-                color         = accent,
-                letterSpacing = 2.sp
+                theme.t("Performans", "Performance"),
+                style         = MaterialTheme.typography.titleLarge,
+                color         = theme.text0,
+                letterSpacing = (-0.2).sp
             )
             Row(
                 modifier          = Modifier
@@ -840,7 +775,7 @@ private fun MetricCard(
     val visualAccent = theme.effectiveAccentColor
     Box(
         modifier = Modifier
-            .width(130.dp)
+            .width(140.dp)
             .height(160.dp)
             .profilePremiumAction(
                 theme = theme,
@@ -855,13 +790,13 @@ private fun MetricCard(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
-                modifier         = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(visualAccent.copy(0.12f)),
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(visualAccent.copy(if (theme.isDark) 0.14f else 0.09f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(metric.icon, null, tint = visualAccent, modifier = Modifier.size(20.dp))
+                Icon(metric.icon, null, tint = visualAccent, modifier = Modifier.size(22.dp))
             }
 
             Column {
@@ -885,9 +820,8 @@ private fun MetricCard(
                 Text(
                     metric.label,
                     color         = theme.text2,
-                    fontSize      = 8.sp,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    fontSize      = 10.sp,
+                    fontWeight    = FontWeight.SemiBold
                 )
             }
 
@@ -896,11 +830,7 @@ private fun MetricCard(
                     .fillMaxWidth()
                     .height(3.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(visualAccent, visualAccent.copy(0.2f))
-                        )
-                    )
+                    .background(theme.stroke.copy(0.35f))
             )
         }
     }
@@ -1022,10 +952,10 @@ private fun TrophyGallery(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                strings.achievements,
-                style         = MaterialTheme.typography.labelSmall,
-                color         = accent,
-                letterSpacing = 2.sp
+                theme.t("Başarımlar", "Achievements"),
+                style         = MaterialTheme.typography.titleLarge,
+                color         = theme.text0,
+                letterSpacing = (-0.2).sp
             )
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
@@ -1035,7 +965,7 @@ private fun TrophyGallery(
                 Text(
                     "$unlockedCount/${achievements.size}",
                     color    = theme.text2,
-                    fontSize = 10.sp
+                    fontSize = 11.sp
                 )
                 Row(
                     modifier = Modifier
@@ -1046,7 +976,7 @@ private fun TrophyGallery(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(strings.seeAll, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(strings.seeAll, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent, modifier = Modifier.size(10.dp))
                 }
             }
@@ -1107,19 +1037,18 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                localizedAchievementText(achievement.name, theme).uppercase().take(10),
+                localizedAchievementText(achievement.name, theme).take(18),
                 color         = if (achievement.isUnlocked) colorFrom else theme.text2,
-                fontSize      = 9.sp,
-                fontWeight    = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
+                fontSize      = 11.sp,
+                fontWeight    = FontWeight.Bold
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                localizedAchievementText(achievement.description, theme).take(28),
+                localizedAchievementText(achievement.description, theme).take(42),
                 color      = theme.text2.copy(alpha),
-                fontSize   = 7.sp,
+                fontSize   = 9.sp,
                 fontWeight = FontWeight.Medium,
-                lineHeight = 10.sp
+                lineHeight = 12.sp
             )
         }
     }
@@ -1136,6 +1065,8 @@ private fun SettingsSection(
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
+    onIntegrationsClick : () -> Unit = {},
+    orbit               : OrbitIntegrationState = OrbitIntegrationState(),
     displayName         : String     = "",
     avatar              : String     = "🏋️"
 ) {
@@ -1242,6 +1173,39 @@ private fun SettingsSection(
 
         Spacer(Modifier.height(12.dp))
 
+        Text(
+            theme.t("ENTEGRASYONLAR", "INTEGRATIONS"),
+            style = MaterialTheme.typography.labelSmall,
+            color = theme.text1,
+            letterSpacing = 2.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
+        ) {
+            SettingsRow(
+                icon = Icons.Rounded.Hub,
+                label = "Orbit Personal OS",
+                sub = when {
+                    orbit.isLoading -> theme.t("Kontrol ediliyor", "Checking")
+                    orbit.status == OrbitConnectionStatus.CONNECTED && orbit.fitnessSyncEntitled ->
+                        theme.t("Bağlı · Fitness Sync", "Connected · Fitness Sync")
+                    orbit.status == OrbitConnectionStatus.CONNECTED ->
+                        theme.t("Bağlı · Orbit yetkisi gerekli", "Connected · Orbit entitlement required")
+                    orbit.status == OrbitConnectionStatus.RECONNECT_REQUIRED ->
+                        theme.t("Yeniden bağlantı gerekli", "Reconnect required")
+                    else -> theme.t("Bağlı değil", "Not connected")
+                },
+                theme = theme,
+                accent = accent,
+                onClick = onIntegrationsClick
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1262,7 +1226,7 @@ private fun SettingsSection(
                     .background(CardCoral.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Logout, null, tint = CardCoral, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.Logout, null, tint = CardCoral, modifier = Modifier.size(21.dp))
             }
             Text(
                 strings.logoutLabel,
@@ -1312,7 +1276,145 @@ private fun SettingsRow(
             Text(label, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(sub,   color = theme.text2, fontSize = 11.sp)
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = accent.copy(0.55f), modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = accent.copy(0.62f), modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun OrbitIntegrationSheet(
+    orbit: OrbitIntegrationState,
+    theme: AppThemeState,
+    accent: Color,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
+    onSyncEnabled: (Boolean) -> Unit,
+    onSyncNow: () -> Unit,
+    onManage: () -> Unit
+) {
+    val connected = orbit.status == OrbitConnectionStatus.CONNECTED
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(
+                Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(Brush.linearGradient(listOf(accent.copy(.28f), accent.copy(.08f))))
+                    .border(1.dp, accent.copy(.42f), RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Hub, null, tint = accent, modifier = Modifier.size(26.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Orbit Personal OS", color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(
+                    theme.t("Fitness özetini güvenli ve isteğe bağlı paylaş", "Securely share your Fitness summary when you choose"),
+                    color = theme.text2,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            }
+        }
+
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val statusText = when (orbit.status) {
+                OrbitConnectionStatus.CONNECTED -> orbit.accountLabel?.let { theme.t("$it bağlı", "$it connected") }
+                    ?: theme.t("Orbit hesabı bağlı", "Orbit account connected")
+                OrbitConnectionStatus.RECONNECT_REQUIRED -> theme.t("Yeniden bağlantı gerekli", "Reconnect required")
+                OrbitConnectionStatus.TEMPORARILY_UNAVAILABLE -> theme.t("Geçici olarak kullanılamıyor", "Temporarily unavailable")
+                OrbitConnectionStatus.NOT_CONNECTED -> theme.t("Bağlı değil", "Not connected")
+            }
+            Text(statusText, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                theme.t(
+                    "Haftalık hedef, bu haftaki tamamlamalar, bugünkü antrenman ve son tamamlanma zamanı paylaşılır. Fitness verileri burada kalır.",
+                    "Weekly target, this week's completions, today's workout and last completion time are shared. Fitness remains the source of truth."
+                ),
+                color = theme.text2,
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+
+            if (connected) {
+                HorizontalDivider(color = theme.stroke)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(theme.t("Fitness Sync", "Fitness Sync"), color = theme.text0, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (orbit.fitnessSyncEntitled) theme.t("Orbit tarafından yetkilendirildi", "Authorized by Orbit")
+                            else theme.t("Orbit üyeliğinde bu özellik açık değil", "Not enabled by your Orbit membership"),
+                            color = if (orbit.fitnessSyncEntitled) accent else theme.text2,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = orbit.syncEnabled && orbit.fitnessSyncEntitled,
+                        onCheckedChange = onSyncEnabled,
+                        enabled = orbit.fitnessSyncEntitled
+                    )
+                }
+            }
+            if (orbit.lastErrorCode != null) {
+                Text(
+                    theme.t("Orbit geçici olarak kullanılamıyor. Fitness normal çalışmaya devam eder.", "Orbit is temporarily unavailable. Fitness continues to work normally."),
+                    color = CardCoral,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+
+        if (!connected || orbit.status == OrbitConnectionStatus.RECONNECT_REQUIRED) {
+            Button(
+                onClick = onConnect,
+                enabled = !orbit.isLoading,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(17.dp)
+            ) {
+                Icon(Icons.Rounded.Link, null)
+                Spacer(Modifier.width(8.dp))
+                Text(theme.t("Orbit'e Bağlan", "Connect Orbit"), fontWeight = FontWeight.Black)
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = if (orbit.manageUrl != null) onManage else onSyncNow,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(15.dp)
+                ) {
+                    Text(if (orbit.manageUrl != null) theme.t("Yönet", "Manage") else theme.t("Şimdi Eşitle", "Sync now"))
+                }
+                OutlinedButton(
+                    onClick = onDisconnect,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CardCoral)
+                ) {
+                    Text(theme.t("Bağlantıyı Kes", "Disconnect"))
+                }
+            }
+        }
+        Text(
+            theme.t(
+                "Orbit premium durumu bu uygulamada oluşturulmaz; her zaman Orbit sunucusundan doğrulanır.",
+                "Orbit premium status is never created in this app; it is always verified by Orbit."
+            ),
+            color = theme.text2,
+            fontSize = 10.sp,
+            lineHeight = 15.sp,
+            modifier = Modifier.padding(bottom = 28.dp)
+        )
     }
 }
 
@@ -1365,21 +1467,18 @@ private fun ThemeSettingsSheet(
             .padding(24.dp, 8.dp, 24.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
-        SheetHandle(theme)
-
         Text(
             strings.appearanceTitle,
-            style         = MaterialTheme.typography.labelSmall,
-            color         = previewAccent,
-            letterSpacing = 3.sp,
-            fontWeight    = FontWeight.Black
+            style         = MaterialTheme.typography.titleLarge,
+            color         = theme.text0,
+            fontWeight    = FontWeight.SemiBold
         )
 
-        SectionLabel(current.t("GORUNUM", "APPEARANCE"), theme)
+        SectionLabel(current.t("Görünüm", "Appearance"), theme)
         SegmentedSelector(
             options = listOf(
-                true  to current.t("KOYU", "DARK"),
-                false to current.t("ACIK", "LIGHT")
+                true  to current.t("Koyu", "Dark"),
+                false to current.t("Açık", "Light")
             ),
             selected = isDark,
             accent   = previewAccent,
@@ -1451,13 +1550,12 @@ private fun ThemeSettingsSheet(
                 containerColor = previewAccent,
                 contentColor   = previewOnAccent
             ),
-            border = BorderStroke(1.dp, Color.White.copy(if (preview.isDark) 0.28f else 0.42f)),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = if (preview.isDark) 12.dp else 7.dp,
-                pressedElevation = 2.dp
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
     }
 
@@ -1567,17 +1665,17 @@ private fun <T> SegmentedSelector(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(if (isSel) accent else Color.Transparent)
+                    .then(if (isSel) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(9.dp)) else Modifier)
                     .clickable { onSelect(value) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     label,
-                    color         = if (isSel) onAccent else theme.text1,
+                    color         = if (isSel) theme.text0 else theme.text1,
                     fontSize      = 11.sp,
-                    fontWeight    = FontWeight.Black,
-                    letterSpacing = 2.sp
+                    fontWeight    = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp
                 )
             }
         }

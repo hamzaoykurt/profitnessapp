@@ -16,7 +16,7 @@ enum class AccentPreset(
     LIME  (Color(0xFFCBFF4D), "LIME",   Color.Black, Color(0xFF5C8A00), Color.White),
     PURPLE(Color(0xFFA855F7), "PURPLE", Color.White, Color(0xFF7C3AED), Color.White),
     CYAN  (Color(0xFF00E5D3), "CYAN",   Color.Black, Color(0xFF0891B2), Color.White),
-    ORANGE(Color(0xFFF97316), "ORANGE", Color.Black, Color(0xFFEA580C), Color.White),
+    ORANGE(Color(0xFFF36A21), "ORANGE", Color.Black, Color(0xFFE85F1B), Color.White),
     PINK  (Color(0xFFEC4899), "PINK",   Color.White, Color(0xFFDB2777), Color.White),
     BLUE  (Color(0xFF3B82F6), "BLUE",   Color.White, Color(0xFF2563EB), Color.White),
     RED   (Color(0xFFEF4444), "RED",    Color.White, Color(0xFFDC2626), Color.White),
@@ -42,9 +42,9 @@ enum class AppLanguage { TURKISH, ENGLISH }
 @Immutable
 data class AppThemeState(
     val isDark              : Boolean         = true,
-    val accent              : AccentPreset    = AccentPreset.LIME,
+    val accent              : AccentPreset    = AccentPreset.ORANGE,
     val surfaceStyle        : SurfaceStyle    = SurfaceStyle.GRAPHITE,
-    val intensity           : AccentIntensity = AccentIntensity.NEON,
+    val intensity           : AccentIntensity = AccentIntensity.SOFT,
     val language            : AppLanguage     = AppLanguage.TURKISH,
     val notificationsEnabled: Boolean         = true,
     val customAccentArgb    : Int?            = null
@@ -59,38 +59,32 @@ data class AppThemeState(
 // stroke ile sağlanır. Bu, "near-black gri" kartların oluşturduğu "kirli"
 // OLED hissini önler.
 val AppThemeState.bg0: Color get() = when {
-    !isDark                               -> Color(0xFFF2F0F5)
-    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF030405)
-    surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF0C0D11)
-    else                                  -> Color(0xFF0A0A0F)
+    !isDark                               -> Color(0xFFF1F3F4)
+    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF010203)
+    else                                  -> Color(0xFF050608)
 }
 val AppThemeState.bg1: Color get() = when {
-    !isDark                               -> Color(0xFFF8F6FA)
-    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF07080A)
-    surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF131419)
-    else                                  -> Color(0xFF111117)
+    !isDark                               -> Color(0xFFFAFBFB)
+    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF050609)
+    else                                  -> Color(0xFF090B0F)
 }
 val AppThemeState.bg2: Color get() = when {
-    !isDark                               -> Color(0xFFFFFDFF)
-    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF101116)
-    surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF1B1C23)
-    else                                  -> Color(0xFF18181F)
+    !isDark                               -> Color(0xFFE5E9EC)
+    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF0C0F14)
+    else                                  -> Color(0xFF11151B)
 }
 val AppThemeState.bg3: Color get() = when {
-    !isDark                               -> Color(0xFFEAE7EF)
-    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF191A20)
-    surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF25262E)
-    else                                  -> Color(0xFF21212A)
+    !isDark                               -> Color(0xFFD8DEE2)
+    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF151A21)
+    else                                  -> Color(0xFF19202A)
 }
 val AppThemeState.stroke: Color get() = when {
-    !isDark                               -> Color(0xFFDAD6E0)
-    surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF30313A)
-    surfaceStyle == SurfaceStyle.GRAPHITE -> Color(0xFF3B3C47)
-    else                                  -> Color(0xFF2A2A35)
+    !isDark                               -> Color(0xFFCBD2D8)
+    else                                  -> Color(0xFF343D49)
 }
-val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF7F6FA) else Color(0xFF1C1A22)
-val AppThemeState.text1: Color get() = if (isDark) Color(0xFFAAA8B6) else Color(0xFF5E5967)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFF6E6C7A) else Color(0xFF898390)
+val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF7F7F4) else Color(0xFF101419)
+val AppThemeState.text1: Color get() = if (isDark) Color(0xFFB0B5BC) else Color(0xFF4C5863)
+val AppThemeState.text2: Color get() = if (isDark) Color(0xFF858E9A) else Color(0xFF6C7883)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {
@@ -201,11 +195,11 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
     restore = { values ->
         AppThemeState(
             isDark               = values.getOrNull(0) as? Boolean ?: true,
-            accent               = AccentPreset.entries.getOrElse(values.getOrNull(1) as? Int ?: 0) { AccentPreset.LIME },
+            accent               = AccentPreset.entries.getOrElse(values.getOrNull(1) as? Int ?: AccentPreset.ORANGE.ordinal) { AccentPreset.ORANGE },
             language             = AppLanguage.entries.getOrElse(values.getOrNull(2) as? Int ?: 0) { AppLanguage.TURKISH },
             notificationsEnabled = values.getOrNull(3) as? Boolean ?: true,
             surfaceStyle         = SurfaceStyle.GRAPHITE,
-            intensity            = AccentIntensity.entries.getOrElse(values.getOrNull(4) as? Int ?: 0) { AccentIntensity.NEON },
+            intensity            = AccentIntensity.entries.getOrElse(values.getOrNull(4) as? Int ?: AccentIntensity.SOFT.ordinal) { AccentIntensity.SOFT },
             customAccentArgb     = (values.getOrNull(5) as? Int)?.toSafeAccentArgb()
         )
     }

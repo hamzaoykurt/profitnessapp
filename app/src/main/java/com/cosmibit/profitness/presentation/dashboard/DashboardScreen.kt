@@ -16,10 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.gestures.Orientation
@@ -68,13 +70,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
-import com.cosmibit.profitness.presentation.components.floatingGlassSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.workout.RestTimerState
 import com.cosmibit.profitness.presentation.workout.WorkoutScreen
 import com.cosmibit.profitness.presentation.workout.WorkoutViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Immutable
 sealed class DashboardTab(
@@ -83,9 +86,9 @@ sealed class DashboardTab(
     private val trLabel: String,
     private val enLabel: String
 ) {
-    object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "Programım", "My Plan")
-    object Program  : DashboardTab("program",  Icons.Rounded.CalendarMonth, "Program", "Plan")
-    object AICoach  : DashboardTab("ai_coach", Icons.Rounded.AutoAwesome,   "AI Koç", "AI Coach")
+    object Workout  : DashboardTab("workout",  Icons.Rounded.FitnessCenter, "Antrenman", "Workout")
+    object Program  : DashboardTab("program",  Icons.Rounded.Dashboard,     "Programlar", "Programs")
+    object AICoach  : DashboardTab("ai_coach", Icons.Rounded.PsychologyAlt, "AI Koç", "AI Coach")
     object Discover : DashboardTab("discover", Icons.Rounded.Explore,       "Keşfet", "Discover")
     object Profile  : DashboardTab("profile",  Icons.Rounded.Person,        "Profil", "Profile")
 
@@ -243,16 +246,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     // Short durations keep the double-render window minimal.
                     val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
                     val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                    val enterSlide = tween<IntOffset>(180, easing = easeOut)
-                    val enterFade  = tween<Float>(150, easing = easeOut)
-                    val exitSlide  = tween<IntOffset>(120, easing = easeIn)
-                    val exitFade   = tween<Float>(90)
+                    val enterSlide = tween<IntOffset>(320, easing = easeOut)
+                    val enterFade  = tween<Float>(280, easing = easeOut)
+                    val exitSlide  = tween<IntOffset>(240, easing = easeIn)
+                    val exitFade   = tween<Float>(190, easing = FastOutSlowInEasing)
                     if (toIdx > fromIdx) {
-                        (slideInHorizontally(enterSlide) { it } + fadeIn(enterFade)) togetherWith
-                        (slideOutHorizontally(exitSlide) { -it / 4 } + fadeOut(exitFade))
+                        (slideInHorizontally(enterSlide) { it / 7 } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { -it / 11 } + fadeOut(exitFade))
                     } else {
-                        (slideInHorizontally(enterSlide) { -it } + fadeIn(enterFade)) togetherWith
-                        (slideOutHorizontally(exitSlide) { it / 4 } + fadeOut(exitFade))
+                        (slideInHorizontally(enterSlide) { -it / 7 } + fadeIn(enterFade)) togetherWith
+                        (slideOutHorizontally(exitSlide) { it / 11 } + fadeOut(exitFade))
                     }
                 }
             },
@@ -299,10 +302,21 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                         onProgramShared   = { discoverRefreshSignal++ }
                     )
                 }
-                DashboardTab.AICoach -> AICoachScreen(
+                DashboardTab.AICoach -> {
+                    val trainingState by workoutViewModel.uiState.collectAsStateWithLifecycle()
+                    val summary = remember(trainingState.dayStates, trainingState.hasProgramLoaded, trainingState.isLoading) {
+                        com.cosmibit.profitness.presentation.aicoach.summarizeOracleTraining(
+                            days = trainingState.dayStates,
+                            hasProgramLoaded = trainingState.hasProgramLoaded,
+                            isLoading = trainingState.isLoading
+                        )
+                    }
+                    AICoachScreen(
                     bottomPadding      = contentPadWithTimer,
-                    onNavigateToStore  = { showStore = true }
+                    onNavigateToStore  = { showStore = true },
+                    trainingSummary = summary
                 )
+                }
                 DashboardTab.Discover -> DiscoverScreen(
                     bottomPadding         = contentPad,
                     timerExtraPad         = timerExtraPad,
@@ -490,21 +504,21 @@ fun AppBackground(modifier: Modifier = Modifier) {
     Box(modifier = modifier.drawWithCache {
         val radial = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f  to accent.copy(alpha = if (theme.isDark) 0.09f else 0.025f),
-                0.34f to accent.copy(alpha = if (theme.isDark) 0.035f else 0.008f),
+                0.0f  to accent.copy(alpha = if (theme.isDark) 0.16f else 0.075f),
+                0.38f to accent.copy(alpha = if (theme.isDark) 0.045f else 0.018f),
                 1.0f  to Color.Transparent
             ),
-            center = Offset(size.width, 0f),
-            radius = size.width * 1.5f
+            center = Offset(size.width * 1.28f, -size.height * 0.10f),
+            radius = size.width * 1.85f
         )
         val mineral = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f to if (theme.isDark) Color(0xFF756787).copy(0.05f) else Color(0xFFBEADCD).copy(0.16f),
-                0.46f to if (theme.isDark) Color(0xFF756787).copy(0.012f) else Color(0xFFEADFF1).copy(0.05f),
+                0.0f to if (theme.isDark) Color(0xFF315D8A).copy(0.20f) else Color(0xFF6887A7).copy(0.09f),
+                0.48f to if (theme.isDark) Color(0xFF315D8A).copy(0.045f) else Color(0xFFB7C7D7).copy(0.025f),
                 1.0f to Color.Transparent
             ),
-            center = Offset(0f, size.height * 0.15f),
-            radius = size.width * 1.2f
+            center = Offset(-size.width * 0.16f, size.height * 0.66f),
+            radius = size.width * 1.75f
         )
         onDrawBehind {
             drawRect(theme.bg0)
@@ -543,7 +557,14 @@ private fun AppNavRail(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(68.dp)
-                .floatingGlassSurface(accent, theme, shape, elevation = 18.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = shape,
+                    spotColor = Color.Black.copy(if (theme.isDark) 0.46f else 0.12f),
+                    ambientColor = Color.Transparent
+                )
+                .clip(shape)
+                .background(if (theme.isDark) Color(0xFF090B10) else Color(0xFFF5F7FA))
                 .padding(vertical = 14.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
@@ -570,23 +591,11 @@ private fun AppNavRail(
                         .clip(itemShape)
                         .then(
                             if (isSelected)
-                                Modifier.background(
-                                    Brush.linearGradient(
-                                        listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
-                                    )
-                                )
+                                Modifier.background(if (theme.isDark) Color(0xFF171B23) else Color(0xFFE1E7EE))
                             else Modifier
                         )
                         .then(
-                            if (isSelected)
-                                Modifier.border(
-                                    width = 1.dp,
-                                    brush = Brush.linearGradient(
-                                        listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
-                                    ),
-                                    shape = itemShape
-                                )
-                            else Modifier
+                            Modifier
                         )
                         .clickable(indication = null, interactionSource = interactionSource) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -599,7 +608,7 @@ private fun AppNavRail(
                     Icon(
                         imageVector        = tab.icon,
                         contentDescription = tabLabel,
-                        tint               = if (isSelected) accent else theme.text2.copy(0.45f),
+                        tint               = if (isSelected) accent else theme.text2.copy(0.72f),
                         modifier           = Modifier.size(23.dp)
                     )
                 }
@@ -615,150 +624,223 @@ fun AppNavBar(
     onSelect: (DashboardTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val responsive = rememberResponsiveLayoutInfo()
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val haptic = LocalHapticFeedback.current
-    val shape  = RoundedCornerShape(40.dp)
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    val shape  = RoundedCornerShape(36.dp)
     val selectedTab = selected()
     val selectedState by rememberUpdatedState(selectedTab)
     val onSelectState by rememberUpdatedState(onSelect)
-    val itemLayouts = remember(tabs) { mutableStateMapOf<DashboardTab, NavItemLayout>() }
-    var navWidthPx by remember { mutableStateOf(0f) }
-    var dragX by remember { mutableStateOf<Float?>(null) }
-    var isDragging by remember { mutableStateOf(false) }
+    val itemLayouts = remember { mutableStateMapOf<String, NavItemLayout>() }
+    val indicatorX = remember { Animatable(0f) }
+    val indicatorWidth = remember { Animatable(0f) }
+    var indicatorReady by remember { mutableStateOf(false) }
+    var isIndicatorDragging by remember { mutableStateOf(false) }
+    var settleIndicatorFromDrag by remember { mutableStateOf(false) }
+    var draggedIndicatorX by remember { mutableFloatStateOf(0f) }
+    var draggedIndicatorWidth by remember { mutableFloatStateOf(0f) }
+    var dragHoveredRoute by remember { mutableStateOf<String?>(null) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val horizontalInsetPx = with(density) { 6.dp.toPx() }
+    val selectedLayout = itemLayouts[selectedTab.route]
 
-    fun nearestTabAt(x: Float): DashboardTab? =
-        itemLayouts.entries.minByOrNull { (_, layout) -> abs(layout.center - x) }?.key
-
-    val indicatorEaseOut = NavIndicatorEaseOut
-    val indicatorEaseInOut = NavIndicatorEaseInOut
-    val visualTab = dragX?.let { nearestTabAt(it) } ?: selectedTab
-    val visualLayout = itemLayouts[visualTab] ?: itemLayouts[selectedTab]
-    val targetWidth = visualLayout?.width ?: 0f
-    val collapsedIndicatorWidth = with(density) { 52.dp.toPx() }
-    val targetCenter = when {
-        isDragging && dragX != null && targetWidth > 0f ->
-            dragX!!.coerceIn(targetWidth / 2f, (navWidthPx - targetWidth / 2f).coerceAtLeast(targetWidth / 2f))
-        visualLayout != null -> visualLayout.center
-        else -> 0f
-    }
-    val indicatorCenter by animateFloatAsState(
-        targetValue = targetCenter,
-        animationSpec = if (isDragging) snap() else spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-        label = "nav_drag_center"
-    )
-    val indicatorWidthAnim = remember { Animatable(0f) }
-    LaunchedEffect(selectedTab, targetWidth, isDragging) {
-        if (targetWidth <= 0f) return@LaunchedEffect
-        if (isDragging || indicatorWidthAnim.value == 0f) {
-            indicatorWidthAnim.snapTo(targetWidth)
-            return@LaunchedEffect
+    LaunchedEffect(
+        selectedTab.route,
+        selectedLayout?.x,
+        selectedLayout?.width,
+        isIndicatorDragging,
+        settleIndicatorFromDrag
+    ) {
+        val target = selectedLayout ?: return@LaunchedEffect
+        if (isIndicatorDragging) return@LaunchedEffect
+        if (settleIndicatorFromDrag) {
+            indicatorX.snapTo(draggedIndicatorX)
+            indicatorWidth.snapTo(draggedIndicatorWidth)
+            settleIndicatorFromDrag = false
         }
-        indicatorWidthAnim.animateTo(
-            targetValue = collapsedIndicatorWidth.coerceAtMost(targetWidth),
-            animationSpec = tween(110, easing = indicatorEaseInOut)
-        )
-        indicatorWidthAnim.animateTo(
-            targetValue = targetWidth,
-            animationSpec = tween(220, easing = indicatorEaseOut)
-        )
+        if (!indicatorReady) {
+            indicatorX.snapTo(target.x)
+            indicatorWidth.snapTo(target.width)
+            indicatorReady = true
+        } else {
+            kotlinx.coroutines.coroutineScope {
+                launch {
+                    indicatorX.animateTo(
+                        target.x,
+                        tween(420, easing = NavIndicatorEaseOut)
+                    )
+                }
+                launch {
+                    indicatorWidth.animateTo(
+                        target.width,
+                        tween(420, easing = NavIndicatorEaseInOut)
+                    )
+                }
+            }
+        }
     }
-    val indicatorWidth = indicatorWidthAnim.value
-
 
     Box(
-        modifier        = modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(bottom = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .wrapContentWidth()
-                .floatingGlassSurface(accent, theme, shape, elevation = 20.dp)
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-                .onSizeChanged { navWidthPx = it.width.toFloat() }
+                .shadow(
+                    elevation = 22.dp,
+                    shape = shape,
+                    spotColor = accent.copy(if (theme.isDark) 0.18f else 0.07f),
+                    ambientColor = Color.Black.copy(if (theme.isDark) 0.62f else 0.12f)
+                )
+                .clip(shape)
+                .drawWithCache {
+                    val base = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to if (theme.isDark) Color(0xFF20242B) else Color.White,
+                            0.36f to if (theme.isDark) Color(0xFF12161B) else Color(0xFFF6F8F9),
+                            1f to if (theme.isDark) Color(0xFF090C10) else Color(0xFFE6EAED)
+                        )
+                    )
+                    onDrawBehind {
+                        drawRect(base)
+                        drawRect(
+                            color = Color.White.copy(if (theme.isDark) 0.10f else 0.72f),
+                            size = Size(size.width, 1.dp.toPx())
+                        )
+                    }
+                }
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(if (theme.isDark) 0.14f else 0.82f),
+                            theme.stroke.copy(0.46f)
+                        )
+                    ),
+                    shape
+                )
                 .pointerInput(tabs) {
                     awaitEachGesture {
-                        // Initial pass: child clickable'lardan ÖNCE down eventı yakala
                         val downEvent = awaitPointerEvent(PointerEventPass.Initial)
                         val downChange = downEvent.changes.firstOrNull { it.pressed }
                             ?: return@awaitEachGesture
+                        val activeLeft = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorX else indicatorX.value
+                        val activeWidth = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorWidth else indicatorWidth.value
+                        val activeRight = activeLeft + activeWidth
+                        if (!indicatorReady || downChange.position.x !in activeLeft..activeRight) {
+                            return@awaitEachGesture
+                        }
                         val pointerId = downChange.id
-
                         var dragAccum = 0f
                         var gestureDragging = false
                         var lastSentTab = selectedState
-
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
                             if (!change.pressed) break
-
                             dragAccum += change.positionChange().x
-
-                            // Parmak yeterince kaydıysa drag moduna gir ve child click'i iptal et
                             if (!gestureDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
                                 gestureDragging = true
-                                isDragging = true
+                                draggedIndicatorX = indicatorX.value
+                                draggedIndicatorWidth = indicatorWidth.value
+                                dragHoveredRoute = selectedState.route
+                                isIndicatorDragging = true
                             }
                             if (gestureDragging) {
-                                val x = change.position.x.coerceIn(0f, navWidthPx)
-                                dragX = x
-                                nearestTabAt(x)?.let { target ->
-                                    if (target != lastSentTab) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onSelectState(target)
-                                        lastSentTab = target
-                                    }
+                                val layouts = tabs.mapNotNull { tab ->
+                                    itemLayouts[tab.route]?.let { tab to it }
+                                }
+                                if (layouts.isEmpty()) continue
+                                val minCenter = layouts.first().second.center
+                                val maxCenter = layouts.last().second.center
+                                val fingerCenter = change.position.x.coerceIn(minCenter, maxCenter)
+                                val nearest = layouts.minBy { (_, layout) -> abs(layout.center - fingerCenter) }
+                                val target = nearest.first
+                                val trackedWidth = nearest.second.width
+                                draggedIndicatorWidth = trackedWidth
+                                draggedIndicatorX = (fingerCenter - trackedWidth / 2f)
+                                    .coerceIn(horizontalInsetPx, size.width - horizontalInsetPx - trackedWidth)
+                                if (target != lastSentTab) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    lastSentTab = target
+                                    dragHoveredRoute = target.route
                                 }
                                 change.consume()
                             }
                         }
-
-                        isDragging = false
-                        dragX = null
+                        if (gestureDragging) {
+                            if (lastSentTab != selectedState) onSelectState(lastSentTab)
+                            settleIndicatorFromDrag = true
+                            isIndicatorDragging = false
+                            dragHoveredRoute = null
+                        }
                     }
-                },
+                }
         ) {
-            if (indicatorWidth > 0f) {
+            if (indicatorReady) {
                 Box(
                     modifier = Modifier
-                        .offset { IntOffset((indicatorCenter - indicatorWidth / 2f).roundToInt(), 0) }
-                        .width(with(density) { indicatorWidth.toDp() })
+                        .offset {
+                            val x = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorX else indicatorX.value
+                            IntOffset(x.roundToInt(), with(density) { 6.dp.roundToPx() })
+                        }
+                        .width(
+                            with(density) {
+                                val width = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorWidth else indicatorWidth.value
+                                width.toDp()
+                            }
+                        )
                         .height(52.dp)
-                        .clip(RoundedCornerShape(32.dp))
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(22.dp),
+                            spotColor = accent.copy(if (theme.isDark) 0.28f else 0.10f),
+                            ambientColor = Color.Transparent
+                        )
+                        .clip(RoundedCornerShape(22.dp))
                         .background(
-                            Brush.linearGradient(
-                                listOf(accent.copy(0.30f), accent.copy(0.13f), Color.White.copy(0.06f))
+                            Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0f to accent.copy(if (theme.isDark) 0.30f else 0.18f),
+                                    0.68f to accent.copy(if (theme.isDark) 0.17f else 0.10f),
+                                    1f to accent.copy(if (theme.isDark) 0.07f else 0.04f)
+                                )
                             )
                         )
                         .border(
-                            width = 1.dp,
-                            brush = Brush.linearGradient(
-                                listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
-                            ),
-                            shape = RoundedCornerShape(32.dp)
+                            1.dp,
+                            Color.White.copy(if (theme.isDark) 0.15f else 0.58f),
+                            RoundedCornerShape(22.dp)
                         )
                 )
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 2.dp else 4.dp),
-                verticalAlignment     = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 tabs.forEach { tab ->
                     NavCapsuleItem(
-                        tab        = tab,
+                        tab = tab,
                         isSelected = tab == selectedTab,
-                        showSelectedChrome = false,
-                        accent     = accent,
-                        theme      = theme,
-                        onClick    = { onSelect(tab) },
-                        modifier   = Modifier.onGloballyPositioned { coordinates ->
-                            val position = coordinates.positionInParent()
-                            itemLayouts[tab] = NavItemLayout(position.x, coordinates.size.width.toFloat())
-                        }
+                        isHighlighted = if (isIndicatorDragging) {
+                            tab.route == dragHoveredRoute
+                        } else {
+                            tab == selectedTab
+                        },
+                        isDragging = isIndicatorDragging,
+                        accent = accent,
+                        theme = theme,
+                        onClick = { onSelect(tab) },
+                        onLayout = { layout ->
+                            itemLayouts[tab.route] = layout.copy(x = layout.x + horizontalInsetPx)
+                        },
+                        modifier = Modifier
                     )
                 }
             }
@@ -770,82 +852,81 @@ fun AppNavBar(
 private fun NavCapsuleItem(
     tab       : DashboardTab,
     isSelected: Boolean,
-    showSelectedChrome: Boolean,
+    isHighlighted: Boolean,
+    isDragging: Boolean,
     accent    : Color,
     theme     : AppThemeState,
     onClick   : () -> Unit,
+    onLayout  : (NavItemLayout) -> Unit,
     modifier  : Modifier = Modifier
 ) {
     val haptic            = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 0.86f else 1f,
         animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
         label = "nav_press"
     )
-
-    val selectedGlow by animateFloatAsState(
-        targetValue   = if (isSelected && showSelectedChrome) 1f else 0f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
-        label         = "item_glow"
+    val iconTint by animateColorAsState(
+        targetValue = if (isHighlighted) accent else theme.text2.copy(alpha = 0.74f),
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "nav_icon_tint"
     )
-    val itemShape = RoundedCornerShape(32.dp)
+
     val tabLabel = tab.label(theme)
+    val itemShape = RoundedCornerShape(22.dp)
 
     Row(
         modifier = modifier
-            .width(52.dp)
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-                translationY = if (isPressed) 1.5.dp.toPx() else 0f
-            }
-            .drawBehind {
-                if (selectedGlow > 0f) {
-                    drawRoundRect(
-                        color = accent.copy(alpha = 0.22f * selectedGlow),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-            }
+            .scale(pressScale)
+            .animateContentSize(
+                animationSpec = tween(420, easing = NavIndicatorEaseInOut)
+            )
             .clip(itemShape)
-            .then(
-                if (isSelected && showSelectedChrome)
-                    Modifier.background(
-                        Brush.linearGradient(
-                            listOf(accent.copy(0.28f), accent.copy(0.12f), Color.White.copy(0.06f))
-                        )
+            .onGloballyPositioned { coordinates ->
+                onLayout(
+                    NavItemLayout(
+                        x = coordinates.positionInParent().x,
+                        width = coordinates.size.width.toFloat()
                     )
-                else Modifier
-            )
-            .then(
-                if (isSelected && showSelectedChrome)
-                    Modifier.border(
-                        width = 1.dp,
-                        brush = Brush.linearGradient(
-                            listOf(accent.copy(0.62f), Color.White.copy(0.20f), accent.copy(0.24f))
-                        ),
-                        shape = itemShape
-                    )
-                else Modifier
-            )
+                )
+            }
             .clickable(interactionSource = interactionSource, indication = null) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(
-                horizontal = 13.dp,
-                vertical = 14.dp
-            ),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            .height(52.dp)
+            .padding(horizontal = if (isSelected) 14.dp else 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Icon(
-            imageVector        = tab.icon,
+            imageVector = tab.icon,
             contentDescription = tabLabel,
-            tint               = if (isSelected) accent else theme.text2.copy(0.45f),
-            modifier           = Modifier.size(24.dp)
+            tint = iconTint,
+            modifier = Modifier.size(23.dp)
         )
+        AnimatedVisibility(
+            visible = isSelected,
+            enter = expandHorizontally(
+                animationSpec = tween(340, easing = FastOutSlowInEasing)
+            ) + fadeIn(tween(260, delayMillis = 35, easing = FastOutSlowInEasing)),
+            exit = shrinkHorizontally(
+                animationSpec = tween(300, easing = FastOutSlowInEasing)
+            ) + fadeOut(tween(190, easing = FastOutSlowInEasing))
+        ) {
+            Text(
+                text = tabLabel,
+                color = theme.text0,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.15.sp,
+                maxLines = 1,
+                modifier = Modifier.graphicsLayer {
+                    alpha = if (isDragging) 0f else 1f
+                }
+            )
+        }
     }
 }

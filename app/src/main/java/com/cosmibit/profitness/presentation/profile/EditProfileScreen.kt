@@ -315,7 +315,7 @@ fun EditProfileScreen(
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Text(theme.t("PROFİLİ DÜZENLE", "EDIT PROFILE"), color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text(theme.t("Profili düzenle", "Edit profile"), color = theme.text0, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
                     Spacer(Modifier.size(48.dp))
                 }
             }
@@ -615,7 +615,7 @@ fun EditProfileScreen(
                 ) {
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(theme.t("KAYDET", "SAVE"), fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 14.sp)
+                    Text(theme.t("Kaydet", "Save"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
             }
 
@@ -642,7 +642,7 @@ fun EditProfileScreen(
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(Modifier.height(20.dp))
-                Text(theme.t("AVATAR SEÇ", "CHOOSE AVATAR"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+                Text(theme.t("Avatar seç", "Choose avatar"), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(20.dp))
 
                 AVATAR_CATEGORIES.forEach { category ->

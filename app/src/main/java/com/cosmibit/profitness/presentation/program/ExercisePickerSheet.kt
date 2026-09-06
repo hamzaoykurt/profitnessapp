@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -41,6 +42,8 @@ import com.cosmibit.profitness.domain.model.ExerciseNameRules
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.activityTrackingSpec
 import com.cosmibit.profitness.presentation.workout.defaultDurationSecondsForExercise
+import com.cosmibit.profitness.presentation.components.floatingGlassSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 private val categoryColors = mapOf(
     "Göğüs"     to CardCoral,
@@ -138,16 +141,7 @@ fun ExercisePickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .shadow(
-                        elevation = if (theme.isDark) 0.dp else 3.dp,
-                        shape = RoundedCornerShape(14.dp),
-                        clip = false,
-                        ambientColor = Color(0xFF64748B).copy(0.08f),
-                        spotColor = Color(0xFF64748B).copy(0.08f)
-                    )
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                    .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -239,25 +233,9 @@ fun ExercisePickerSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(
-                                elevation = if (isSelected) 6.dp else if (theme.isDark) 1.dp else 4.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                clip = false,
-                                ambientColor = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.09f),
-                                spotColor = if (isSelected && theme.isDark) accent.copy(0.16f) else Color(0xFF64748B).copy(0.08f)
-                            )
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                when {
-                                    isSelected && theme.isDark -> accent.copy(alpha = 0.08f)
-                                    theme.isDark -> theme.bg2
-                                    else -> theme.bg1
-                                }
-                            )
-                            .border(
-                                1.dp,
-                                if (isSelected) accent.copy(alpha = 0.4f) else theme.stroke,
-                                RoundedCornerShape(16.dp)
+                            .then(
+                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
                             )
                     ) {
                         // Exercise row
@@ -343,7 +321,6 @@ fun ExercisePickerSheet(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(14.dp))
                                         .background(theme.bg2)
-                                        .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
                                         .padding(horizontal = 14.dp)
                                 ) {
                                     val selectedSpec = manualTrackingSpec(exercise)
@@ -434,16 +411,7 @@ fun ExercisePickerSheet(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .shadow(
-                                    elevation = if (theme.isDark) 1.dp else 4.dp,
-                                    shape = RoundedCornerShape(14.dp),
-                                    clip = false,
-                                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.08f),
-                                    spotColor = Color(0xFF64748B).copy(0.08f)
-                                )
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                                .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
+                                .performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
                                 .clickable { showRequestDialog = true }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                         ) {
@@ -566,14 +534,9 @@ internal fun PickerPrimaryButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        if (pressed && enabled) 0.96f else 1f,
-        spring(stiffness = Spring.StiffnessHigh),
+        if (pressed && enabled) 0.98f else 1f,
+        tween(120),
         label = "picker_cta_scale"
-    )
-    val elevation by animateDpAsState(
-        if (pressed && enabled) 1.dp else if (theme.isDark) 10.dp else 7.dp,
-        spring(stiffness = Spring.StiffnessHigh),
-        label = "picker_cta_depth"
     )
     val shape = RoundedCornerShape(12.dp)
 
@@ -582,19 +545,10 @@ internal fun PickerPrimaryButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed && enabled) 2.dp.toPx() else 0f
                 alpha = if (enabled) 1f else 0.45f
             }
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.50f) else Color(0xFF64748B).copy(0.12f),
-                spotColor = accent.copy(if (theme.isDark) 0.28f else 0.16f)
-            )
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(accent.copy(0.92f), accent, accent.copy(0.78f))))
-            .border(1.dp, Color.White.copy(if (theme.isDark) 0.22f else 0.36f), shape)
+            .background(accent)
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,
@@ -629,16 +583,7 @@ private fun ExerciseRequestDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(
-                    elevation = if (theme.isDark) 14.dp else 10.dp,
-                    shape = RoundedCornerShape(20.dp),
-                    clip = false,
-                    ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.12f),
-                    spotColor = Color(0xFF64748B).copy(0.10f)
-                )
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke.copy(0.82f), RoundedCornerShape(20.dp))
+                .floatingGlassSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
                 .padding(20.dp)
         ) {
             Text(
@@ -751,9 +696,7 @@ private fun RequestInputField(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(theme.bg2)
-                .border(1.dp, theme.stroke, RoundedCornerShape(10.dp))
+                .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             BasicTextField(
@@ -846,17 +789,20 @@ private fun PickerCategoryChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(if (selected) color else color.copy(alpha = 0.06f))
-            .border(1.dp, if (selected) color else color.copy(0.2f), RoundedCornerShape(50))
+            .then(
+                if (selected) Modifier.insetControlSurface(color, theme, RoundedCornerShape(50))
+                else Modifier.background(theme.bg2)
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 11.dp)
     ) {
         Text(
             label,
-            color = if (selected) color.readableOnAccentColor() else color,
+            color = if (selected) color else theme.text1,
             fontSize = 10.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp

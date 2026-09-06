@@ -236,18 +236,16 @@ private fun ProfileContent(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .background(accent.copy(0.15f))
-                .border(1.dp, accent.copy(0.4f), RoundedCornerShape(50))
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(12.dp))
             Text(
-                theme.t("SEVİYE ${profile.level}", "LEVEL ${profile.level}"),
+                theme.t("Seviye ${profile.level}", "Level ${profile.level}"),
                 color = accent,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -262,15 +260,13 @@ private fun ProfileContent(
         if (profile.isMutual) {
             Spacer(Modifier.height(6.dp))
             Text(
-                theme.t("KARŞILIKLI TAKİP", "MUTUAL FOLLOW"),
+                theme.t("Karşılıklı takip", "Mutual follow"),
                 color = accent,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
                     .background(accent.copy(0.12f))
-                    .border(1.dp, accent.copy(0.35f), RoundedCornerShape(50))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
@@ -305,7 +301,7 @@ private fun ProfileContent(
                 Text(
                     theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
                     color = theme.text2,
-                    fontSize = 10.sp
+                    fontSize = 11.sp
                 )
             }
             Spacer(Modifier.height(6.dp))
@@ -355,7 +351,7 @@ private fun ProfileContent(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
                     )
-                    Text(theme.t("GÜNCEL SERİ", "CURRENT STREAK"), color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                    Text(theme.t("Güncel seri", "Current streak"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -371,7 +367,7 @@ private fun ProfileContent(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
                     )
-                    Text(theme.t("ÜYELİK", "MEMBER SINCE"), color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                    Text(theme.t("Üyelik", "Member since"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -593,13 +589,11 @@ private fun ChallengeActivityCard(
                 Text(
                     label,
                     color = color,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
                         .background(color.copy(0.12f))
-                        .border(1.dp, color.copy(0.3f), RoundedCornerShape(999.dp))
                         .padding(horizontal = 7.dp, vertical = 3.dp)
                 )
             }
@@ -666,15 +660,14 @@ private fun StatTile(value: String, label: String, icon: ImageVector) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(accent.copy(0.1f))
-                .border(1.dp, accent.copy(0.25f), CircleShape),
+                .background(accent.copy(0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.height(6.dp))
         Text(value, color = theme.text0, fontSize = 17.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -683,6 +676,6 @@ private fun FollowCountBlock(count: Int, label: String, modifier: Modifier = Mod
     val theme = LocalAppTheme.current
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(count.toString(), color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     }
 }

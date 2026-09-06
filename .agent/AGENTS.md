@@ -34,24 +34,26 @@ The project follows MVVM + Clean Architecture:
 | Fonts       | Google Fonts — Space Grotesk        |
 | Billing     | Google Play Billing Library v6+     |
 
-## Theme System — Premium Forge Dual Mode
+## Theme System — Performance Luxury Dual Mode
+
+The user's three September 2026 briefs and latest feedback override historical design experiments in the memory bank. Do not revive old neon, pillow, full-rim or glass-everywhere treatments. Track acceptance in `UI_REDESIGN_AUDIT.md`; shared-token propagation and a successful build do not prove every screen is finished.
 
 The app supports **dark and light modes**. Light mode uses a purpose-built cool-neutral palette; it is not a mechanical inversion of dark colors.
 
-### Dark Mode — Graphite Forge
-- Background: `#0C0D11` → `#25262E` distinct graphite surface hierarchy; OLED remains an optional darker variant
-- Accents: Neon (LIME `#CBFF4D`, PURPLE `#A855F7`, CYAN `#00E5D3`, etc.)
+### Dark Mode — Graphite
+- Background: `#090A0B`; quiet utility surfaces and continuously lit opaque elevated cards
+- Default accent: ember orange; existing user-selected colors remain supported
 
-### Light Mode — Porcelain Mineral
-- Background: `#F2F0F5` with porcelain elevated surfaces, soft lilac atmosphere and cool mineral depth
+### Light Mode — Mineral
+- Background: `#F2F4F6` with opaque opal surfaces and neutral depth; no lilac wash
 - Accents: darker readable variants from `AccentPreset.lightColor`
 - Shadows, borders, and bloom use lower opacity than dark mode
 
 ### Material Roles
-- `premiumSolidSurface`: normal content cards; solid, layered, elevated
-- `floatingGlassSurface`: navigation, media chrome, and transient overlays only
+- `premiumSolidSurface`: normal content cards; borderless matte tonal surfaces with restrained elevation
+- `floatingGlassSurface`: transient overlays only; navigation is a solid dock, not glass
 - `insetControlSurface`: recessed search and form controls
-- `PremiumButton` / `GhostButton`: tactile controls with a separate lower ledge and a moving front face; important CTA depth must not rely on shadow alone
+- `PremiumButton` / `GhostButton`: quiet primary/neutral controls; selected fields use shallow inward material, never an external lower ledge or exaggerated raised face
 - One view uses one interaction accent: only the preferred primary action receives an accent surface; secondary actions stay neutral
 - Extra colors are reserved for semantic meaning such as destructive, warning, success, rank, or distinct chart series
 
@@ -143,11 +145,12 @@ abstract class BaseViewModel<S : Any, E : Any>(initial: S) : ViewModel() {
 5. **UI Library Discipline:** Never build primitive components from scratch — use Compose Material 3.
 6. **Coroutines:** All async work launched from `ViewModel` using `viewModelScope`. Supabase calls on `Dispatchers.IO`.
 7. **No Placeholders:** Connect to real Supabase data. No hardcoded demo data in new code.
-8. **CinematicExerciseCard:** Preserve its interaction/data contract; visual material and theme-aware styling may evolve with explicit product direction.
+8. **CinematicExerciseCard:** Preserve its interaction/data contract. The list card is image-free; exercise imagery loads only in the dedicated how-to detail so arbitrary aspect ratios are not cropped and scrolling stays light.
 9. **DataStore Usage:** Theme persistence via `ThemeRepository` only. No SharedPreferences.
 10. **Update Memory Bank:** After each phase, update `.agent/memory/activeContext.md` and `.agent/memory/progress.md`.
 11. **No Mapper Classes:** Extension functions only: `fun ProgramDto.toDomain()`.
 12. **Interface-First:** Every repository has an interface. ViewModel never references `*Impl` directly.
 13. **6 Memory Files Protocol:** See `.agent/memory/` — activeContext, progress, systemPatterns, techContext, productContext, projectbrief.
-14. **Material role discipline:** Do not apply glass to every card. Content is solid/elevated, glass is reserved for floating chrome, and inputs are visually inset.
+14. **Material role discipline:** Performance Luxury is the default. Content cards are opaque borderless tonal surfaces; only bottom navigation, floating tools, modals, and rare hero surfaces may use restrained high-opacity glass.
 15. **Single-accent action hierarchy:** Never assign arbitrary category colors to neighboring buttons or clickable card chrome. Use the theme primary for the preferred action and neutral surfaces for alternatives; semantic status colors are the exception.
+16. **Performance-first depth:** Do not stack shadows, run decorative ambient glow animations, or load full-card images in scrolling lists. Dark depth is primarily tonal; light depth may use one subtle ambient shadow.

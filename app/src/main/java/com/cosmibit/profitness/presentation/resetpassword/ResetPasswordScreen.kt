@@ -96,15 +96,8 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .shadow(
-                        elevation = if (theme.isDark) 14.dp else 8.dp,
-                        shape = RoundedCornerShape(22.dp),
-                        ambientColor = if (theme.isDark) accent.copy(0.18f) else androidx.compose.ui.graphics.Color(0xFF64748B).copy(0.10f),
-                        spotColor = accent.copy(if (theme.isDark) 0.24f else 0.12f)
-                    )
                     .clip(RoundedCornerShape(22.dp))
-                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                    .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(22.dp)),
+                    .background(theme.bg2),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.LinkOff, null, tint = accent, modifier = Modifier.size(40.dp))
@@ -155,7 +148,7 @@ private fun NewPasswordContent(
     val yAnim     = remember { Animatable(24f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(420))
-        yAnim.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow))
+        yAnim.animateTo(0f, tween(260, easing = FastOutSlowInEasing))
     }
 
     if (state.isUpdating) {
@@ -190,15 +183,8 @@ private fun NewPasswordContent(
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .shadow(
-                        elevation = if (theme.isDark) 14.dp else 8.dp,
-                        shape = RoundedCornerShape(22.dp),
-                        ambientColor = if (theme.isDark) accent.copy(0.18f) else androidx.compose.ui.graphics.Color(0xFF64748B).copy(0.10f),
-                        spotColor = accent.copy(if (theme.isDark) 0.24f else 0.12f)
-                    )
                     .clip(RoundedCornerShape(22.dp))
-                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
-                    .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(22.dp)),
+                    .background(theme.bg2),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.LockReset, null, tint = accent, modifier = Modifier.size(40.dp))

@@ -11,6 +11,8 @@ import com.cosmibit.profitness.core.analytics.AnalyticsTracker
 import com.cosmibit.profitness.core.analytics.NoOpAnalyticsTracker
 import com.cosmibit.profitness.data.challenges.ChallengeRepository
 import com.cosmibit.profitness.data.challenges.ChallengeRepositoryImpl
+import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationRepository
+import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationRepositoryImpl
 import com.cosmibit.profitness.data.discover.DiscoverRepository
 import com.cosmibit.profitness.data.discover.DiscoverRepositoryImpl
 import com.cosmibit.profitness.data.local.AppDatabase
@@ -86,6 +88,9 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindChallengeRepository(impl: ChallengeRepositoryImpl): ChallengeRepository
+
+    @Binds @Singleton
+    abstract fun bindOrbitIntegrationRepository(impl: OrbitIntegrationRepositoryImpl): OrbitIntegrationRepository
 
     @Binds @Singleton
     abstract fun bindAnalyticsTracker(impl: NoOpAnalyticsTracker): AnalyticsTracker

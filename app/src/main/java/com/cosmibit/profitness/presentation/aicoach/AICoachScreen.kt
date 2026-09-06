@@ -52,6 +52,9 @@ import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.data.ai.ChatSession
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
+import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.floatingGlassSurface
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.store.PaywallDialog
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -78,7 +81,8 @@ data class ChatMessage(
 fun AICoachScreen(
     bottomPadding    : Dp = 0.dp,
     onNavigateToStore: () -> Unit = {},
-    viewModel        : AICoachViewModel = hiltViewModel()
+    viewModel        : AICoachViewModel = hiltViewModel(),
+    trainingSummary: OracleTrainingSummary? = null
 ) {
     val theme     = LocalAppTheme.current
     val strings   = theme.strings
@@ -119,7 +123,6 @@ fun AICoachScreen(
     var programNameInput  by remember { mutableStateOf("") }
     val listState         = rememberLazyListState()
     val scope             = rememberCoroutineScope()
-    val showCreditInfo    = state.userPlan == UserPlan.FREE && state.isBillingLoaded
 
     LaunchedEffect(state.programStatus) {
         when (state.programStatus) {
@@ -138,19 +141,15 @@ fun AICoachScreen(
     }
 
     LaunchedEffect(state.messages.size, state.isLoading, state.userPlan, state.isBillingLoaded) {
-        if (state.messages.isNotEmpty()) {
-            val creditInfoOffset = if (showCreditInfo) 1 else 0
+        if (state.messages.size > 1 || state.isLoading) {
             val typingOffset = if (state.isLoading) 1 else 0
             listState.animateScrollToItem(
-                creditInfoOffset + state.messages.lastIndex + typingOffset
+                state.messages.lastIndex + typingOffset + if (state.messages.size <= 1) 1 else 0
             )
         }
     }
 
-    val quickChips = listOf(
-        strings.chipNutrition, strings.chipMotivation, strings.chipProgram,
-        strings.chipRecovery,  strings.chipHiitVsLiss
-    )
+    val quickChips = listOf(strings.chipRecovery, strings.chipProgram, strings.chipNutrition)
 
     fun sendMessage(text: String) {
         if (text.isBlank() || state.isLoading) return
@@ -179,44 +178,40 @@ fun AICoachScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(theme.bg0)
+            .drawWithCache {
+                val atmosphere = Brush.radialGradient(
+                    listOf(
+                        theme.effectiveAccentColor.copy(if (theme.isDark) 0.045f else 0.022f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.82f, size.height * 0.18f),
+                    radius = size.width * 0.92f
+                )
+                onDrawBehind { drawRect(atmosphere) }
+            }
             .imePadding()           // keyboard resizes this Box from the bottom
     ) {
-        if (theme.isDark) {
-            PageAccentBloom()
-        } else {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .background(Brush.verticalGradient(listOf(theme.bg1, Color.Transparent)))
-            )
-        }
-
         // ── Message feed fills full Box, has bottom padding for the input area ─
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
         val inputAreaHeight = if (imeVisible) {
             if (responsive.isLargeFont) 112.dp else 88.dp
+        } else if (state.messages.size <= 1) {
+            (if (responsive.isLargeFont) 124.dp else 104.dp) + bottomPadding
         } else {
             (if (responsive.isLargeFont) 172.dp else 148.dp) + bottomPadding
         }
         LazyColumn(
             state           = listState,
             modifier        = Modifier.fillMaxSize(),
-            contentPadding  = PaddingValues(top = 116.dp, bottom = inputAreaHeight),
+            contentPadding  = PaddingValues(top = 92.dp, bottom = inputAreaHeight),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (showCreditInfo) {
-                item(key = "credit_info") {
-                    AiCreditInfoRow(
-                        isFree    = true,
-                        credits   = state.aiCredits,
-                        costLabel = theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"),
-                        theme     = theme,
-                        modifier  = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
+            if (state.messages.size <= 1) {
+                item(key = "performance_intelligence") {
+                    PerformanceIntelligenceOverview(trainingSummary, onAction = ::sendMessage)
                 }
             }
-            items(state.messages, key = { it.id }) { msg ->
+            items(if (state.messages.size > 1) state.messages else emptyList(), key = { it.id }) { msg ->
                 SanctuaryMessage(
                     msg            = msg,
                     onApplyProgram = { programDialogMsg = it; programNameInput = "" }
@@ -236,7 +231,7 @@ fun AICoachScreen(
                 .padding(bottom = if (imeVisible) 8.dp else bottomPadding + 8.dp)
         ) {
             AnimatedVisibility(
-                visible = !imeVisible,
+                visible = !imeVisible && state.messages.size > 1,
                 enter   = fadeIn() + expandVertically(),
                 exit    = fadeOut() + shrinkVertically()
             ) {
@@ -249,16 +244,8 @@ fun AICoachScreen(
                         val chipTheme = LocalAppTheme.current
                         Box(
                             modifier = Modifier
-                                .shadow(
-                                    elevation = if (chipTheme.isDark) 2.dp else 4.dp,
-                                    shape = RoundedCornerShape(12.dp),
-                                    clip = false,
-                                    ambientColor = if (chipTheme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.08f),
-                                    spotColor = Color(0xFF64748B).copy(0.08f)
-                                )
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(chipTheme.bg1)
-                                .border(1.dp, chipTheme.stroke.copy(0.4f), RoundedCornerShape(12.dp))
                                 .clickable(enabled = !state.isLoading) { sendMessage(chip) }
                                 .padding(14.dp, 7.dp)
                         ) {
@@ -267,7 +254,7 @@ fun AICoachScreen(
                                 color         = chipTheme.text1,
                                 fontSize      = 11.sp,
                                 fontWeight    = FontWeight.Light,
-                                letterSpacing = 1.sp
+                                letterSpacing = 0.sp
                             )
                         }
                     }
@@ -278,10 +265,7 @@ fun AICoachScreen(
                 value         = inputText,
                 onValueChange = { inputText = it },
                 onSend        = { sendMessage(inputText) },
-                isTyping      = state.isLoading,
-                isFree        = state.userPlan == UserPlan.FREE,
-                creditsLoaded = state.isBillingLoaded,
-                credits       = state.aiCredits
+                isTyping      = state.isLoading
             )
         }
 
@@ -290,7 +274,7 @@ fun AICoachScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .background(theme.bg0.copy(alpha = if (theme.isDark) 0.88f else 0.97f))
+                .background(Color.Transparent)
                 .padding(horizontal = 8.dp)
                 .padding(top = 8.dp)
         ) {
@@ -301,27 +285,25 @@ fun AICoachScreen(
                 modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { viewModel.openHistory() }) {
+                IconButton(
+                    onClick = { viewModel.openHistory() },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
+                ) {
                     Icon(
                         Icons.Rounded.History,
                         contentDescription = theme.t("Geçmiş", "History"),
-                        tint     = theme.text2.copy(0.6f),
-                        modifier = Modifier.size(20.dp)
+                        tint     = theme.text0,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
+                Spacer(Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            if (hasPlan) CardPurple.copy(0.15f) else Forge500.copy(0.15f)
-                        )
-                        .border(
-                            1.dp,
-                            if (hasPlan) CardPurple.copy(0.4f) else Forge500.copy(0.3f),
-                            RoundedCornerShape(10.dp)
-                        )
+                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
                         .clickable { onNavigateToStore() }
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Row(
                         verticalAlignment      = Alignment.CenterVertically,
@@ -331,13 +313,13 @@ fun AICoachScreen(
                             if (hasPlan) Icons.Rounded.AllInclusive else Icons.Rounded.Bolt,
                             null,
                             tint     = if (hasPlan) CardPurple else Forge500,
-                            modifier = Modifier.size(11.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Text(
                             if (hasPlan) state.userPlan.displayName.uppercase()
                             else if (state.isBillingLoaded) "${state.aiCredits}" else "...",
                             color         = if (hasPlan) CardPurple else Forge500,
-                            fontSize      = 10.sp,
+                            fontSize      = 12.sp,
                             fontWeight    = FontWeight.ExtraBold,
                             letterSpacing = 0.5.sp
                         )
@@ -349,22 +331,15 @@ fun AICoachScreen(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .padding(top = 16.dp)
+                    .padding(top = 12.dp)
                     .align(Alignment.Center)
             ) {
                 Text(
-                    "ORACLE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 6.sp,
-                    fontWeight = FontWeight.ExtraLight
-                )
-                Text(
-                    "SANCTUARY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = theme.text2,
-                    letterSpacing = 2.sp,
-                    fontSize = 8.sp
+                    "Oracle",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.45).sp,
+                    color = theme.text0
                 )
             }
 
@@ -373,23 +348,34 @@ fun AICoachScreen(
                 modifier          = Modifier.align(Alignment.CenterEnd),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {
-                    viewModel.startNewSession()
-                    viewModel.initWelcome(strings.oracleWelcome)
-                }) {
+                IconButton(
+                    onClick = {
+                        viewModel.startNewSession()
+                        viewModel.initWelcome(strings.oracleWelcome)
+                    },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
+                ) {
                     Icon(
                         Icons.Rounded.Add,
                         contentDescription = theme.t("Yeni Sohbet", "New Chat"),
-                        tint     = theme.text2.copy(0.6f),
-                        modifier = Modifier.size(20.dp)
+                        tint     = theme.text0,
+                        modifier = Modifier.size(23.dp)
                     )
                 }
-                IconButton(onClick = { viewModel.openPreferences() }) {
+                Spacer(Modifier.width(8.dp))
+                IconButton(
+                    onClick = { viewModel.openPreferences() },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
+                ) {
                     Icon(
                         Icons.Rounded.Settings,
                         contentDescription = theme.t("Ayarlar", "Settings"),
-                        tint     = theme.text2.copy(0.6f),
-                        modifier = Modifier.size(18.dp)
+                        tint     = theme.text0,
+                        modifier = Modifier.size(21.dp)
                     )
                 }
             }
@@ -558,6 +544,68 @@ fun AICoachScreen(
 // ── Sub-Components ────────────────────────────────────────────────────────────
 
 @Composable
+private fun PerformanceIntelligenceOverview(summary: OracleTrainingSummary?, onAction: (String) -> Unit) {
+    val theme = LocalAppTheme.current
+    val accent = MaterialTheme.colorScheme.primary
+    val heroShape = RoundedCornerShape(26.dp)
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .performanceSignatureSurface(theme, accent, heroShape)
+                .padding(20.dp)
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(accent.copy(0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(21.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            theme.t("Bugünkü plan", "Today's plan"),
+                            color = theme.text0,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        summary?.let { data ->
+                            Text(
+                                theme.t(
+                                    "${data.trainingDays} gün · ${data.exercises} hareket · ${data.completed} tamamlandı",
+                                    "${data.trainingDays} days · ${data.exercises} exercises · ${data.completed} completed"
+                                ),
+                                color = theme.text1,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        } ?: Text(
+                            theme.t("Programını birlikte netleştirelim.", "Let's refine your program."),
+                            color = theme.text1,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        PremiumButton(
+            text = theme.t("Planımı değerlendir", "Review my plan"),
+            onClick = { onAction(theme.t("Bugünkü antrenmanımı optimize et", "Optimize today's workout")) },
+            leadingIcon = Icons.Rounded.AutoAwesome,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
 private fun ProgramNameField(value: String, onValueChange: (String) -> Unit, theme: AppThemeState) {
     OutlinedTextField(
         value         = value,
@@ -604,34 +652,13 @@ private fun SanctuaryMessage(
             Column(horizontalAlignment = Alignment.End) {
                 Box(
                     modifier = Modifier
-                        .shadow(
-                            elevation = 12.dp,
-                            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp),
-                            spotColor = if (theme.isDark) accent.copy(0.24f) else Color(0xFF64748B).copy(0.12f),
-                            ambientColor = if (theme.isDark) Color.Black.copy(0.34f) else Color(0xFF64748B).copy(0.10f)
-                        )
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
-                        .drawBehind {
-                            drawRect(color = accent)
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    listOf(Color.White.copy(if (theme.isDark) 0.18f else 0.10f), Color.Transparent),
-                                    startY = 0f, endY = size.height * 0.5f
-                                )
-                            )
-                        }
-                        .border(
-                            1.dp,
-                            Brush.linearGradient(
-                                listOf(Color.White.copy(if (theme.isDark) 0.26f else 0.18f), accent.copy(0.54f), accent.copy(0.18f))
-                            ),
-                            RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
-                        )
+                        .background(theme.bg2)
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Text(
                         text       = msg.text,
-                        color      = theme.effectiveOnAccentColor,
+                        color      = theme.text0,
                         fontSize   = 15.sp,
                         lineHeight = 23.sp,
                         fontWeight = FontWeight.Normal
@@ -658,20 +685,7 @@ private fun SanctuaryMessage(
                 modifier = Modifier
                     .padding(top = 2.dp, end = 8.dp)
                     .size(30.dp)
-                    .drawBehind {
-                        val r  = size.minDimension / 2f
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        drawCircle(color = accent.copy(0.18f), radius = r, center = Offset(cx, cy))
-                        drawCircle(
-                            brush  = Brush.verticalGradient(
-                                listOf(Color.White.copy(0.15f), Color.Transparent),
-                                startY = 0f, endY = size.height
-                            ),
-                            radius = r, center = Offset(cx, cy)
-                        )
-                    }
-                    .border(0.8.dp, accent.copy(0.35f), CircleShape),
+                    .background(theme.bg2, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
@@ -680,51 +694,21 @@ private fun SanctuaryMessage(
             Column(horizontalAlignment = Alignment.Start) {
                 // Sender label
                 Text(
-                    "ORACLE",
-                    color         = accent,
-                    fontSize      = 8.sp,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 2.5.sp,
+                    "Oracle",
+                    color         = theme.text1,
+                    fontSize      = 11.sp,
+                    fontWeight    = FontWeight.SemiBold,
+                    letterSpacing = 0.sp,
                     modifier      = Modifier.padding(start = 4.dp, bottom = 4.dp)
                 )
 
                 // Glass bubble
                 Box(
                     modifier = Modifier
-                        .shadow(
-                            elevation = if (theme.isDark) 10.dp else 7.dp,
-                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
-                            spotColor = if (theme.isDark) accent.copy(0.12f) else Color(0xFF64748B).copy(0.12f),
-                            ambientColor = if (theme.isDark) Color.Black.copy(0.38f) else Color(0xFF64748B).copy(0.10f)
-                        )
                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
-                        .drawBehind {
-                            drawRect(color = if (theme.isDark) theme.bg2 else theme.bg1)
-                            if (theme.isDark) {
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        listOf(Color.White.copy(0.055f), Color.Transparent),
-                                        startY = 0f, endY = size.height * 0.4f
-                                    )
-                                )
-                            }
-                            // Left accent border line
-                            drawRect(
-                                color   = accent.copy(0.55f),
-                                topLeft = Offset(0f, 0f),
-                                size    = Size(2.dp.toPx(), size.height)
-                            )
-                        }
-                        .border(
-                            width = 0.8.dp,
-                            brush = Brush.linearGradient(
-                                listOf(
-                                    accent.copy(if (theme.isDark) 0.28f else 0.20f),
-                                    theme.stroke.copy(if (theme.isDark) 0.48f else 0.90f),
-                                    theme.stroke.copy(if (theme.isDark) 0.40f else 0.72f)
-                                )
-                            ),
-                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                        .background(
+                            if (theme.isDark) Color(0xFF10141B)
+                            else Color(0xFFF7F9FC)
                         )
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
@@ -732,10 +716,10 @@ private fun SanctuaryMessage(
                         Text(
                             text          = msg.text,
                             color         = theme.text0.copy(0.92f),
-                            fontSize      = 15.sp,
-                            lineHeight    = 24.sp,
-                            fontWeight    = FontWeight.Light,
-                            letterSpacing = 0.2.sp
+                            fontSize      = 14.sp,
+                            lineHeight    = 22.sp,
+                            fontWeight    = FontWeight.Normal,
+                            letterSpacing = 0.sp
                         )
                     }
                 }
@@ -770,8 +754,7 @@ private fun SanctuaryMessage(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(accent.copy(0.12f))
-                                .border(0.8.dp, accent.copy(0.35f), RoundedCornerShape(16.dp))
+                                .background(theme.bg2)
                                 .clickable { onApplyProgram(msg) }
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
@@ -825,111 +808,54 @@ private fun SanctuaryInput(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
-    isTyping: Boolean,
-    isFree: Boolean = true,
-    creditsLoaded: Boolean = true,
-    credits: Int = 0
+    isTyping: Boolean
 ) {
     val theme  = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape  = RoundedCornerShape(28.dp)
+    val shape  = RoundedCornerShape(22.dp)
     val responsive = rememberResponsiveLayoutInfo()
 
-    val borderBrush = if (theme.isDark) {
-        Brush.horizontalGradient(
-            listOf(accent.copy(alpha = 0.42f), theme.stroke.copy(0.60f), accent.copy(alpha = 0.24f))
-        )
-    } else {
-        Brush.horizontalGradient(listOf(theme.stroke, theme.stroke.copy(0.76f), theme.stroke))
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (isFree && creditsLoaded) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(end = 16.dp, bottom = 4.dp)
-                    .widthIn(max = (responsive.screenWidth - 32.dp).coerceAtLeast(180.dp))
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(accent.copy(alpha = 0.12f))
-                    .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(11.dp))
-                Spacer(Modifier.width(3.dp))
-                Text(
-                    theme.t("10 mesaj / 1 Enerji", "10 messages / 1 Energy"),
-                    color = accent,
-                    fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    theme.t("Enerji: $credits", "Energy: $credits"),
-                    color = theme.text2,
-                    fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
-                    maxLines = 1
-                )
-            }
-        }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .shadow(
-                elevation    = if (theme.isDark) 18.dp else 9.dp,
-                shape        = shape,
-                clip         = false,
-                spotColor    = if (theme.isDark) accent.copy(alpha = 0.18f) else Color(0xFF64748B).copy(0.13f),
-                ambientColor = if (theme.isDark) Color.Black.copy(0.54f) else Color(0xFF64748B).copy(0.11f)
+            .insetControlSurface(accent = accent, theme = theme, shape = shape)
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(
+                        theme.stroke.copy(if (theme.isDark) 0.88f else 0.62f),
+                        Color.White.copy(if (theme.isDark) 0.035f else 0.68f)
+                    )
+                ),
+                shape
             )
-            .clip(shape)
-            .drawWithCache {
-                val bgBase      = if (theme.isDark) theme.bg1.copy(alpha = 0.96f) else theme.bg1
-                val topMirror   = Brush.verticalGradient(colorStops = arrayOf(
-                    0.00f to Color.White.copy(alpha = if (theme.isDark) 0.07f else 0f),
-                    0.30f to Color.White.copy(alpha = if (theme.isDark) 0.015f else 0f),
-                    0.55f to Color.Transparent
-                ))
-                val accentBleed = Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0.00f to accent.copy(alpha = if (theme.isDark) 0.10f else 0f),
-                        0.28f to accent.copy(alpha = if (theme.isDark) 0.05f else 0f),
-                        0.58f to accent.copy(alpha = if (theme.isDark) 0.015f else 0f),
-                        1.00f to Color.Transparent
-                    ),
-                    start = Offset(0f, size.height * 0.5f),
-                    end   = Offset(size.width, size.height * 0.5f)
-                )
-                val depthShadow = Brush.verticalGradient(colorStops = arrayOf(
-                    0.42f to Color.Transparent,
-                    1.00f to if (theme.isDark) Color.Black.copy(alpha = 0.38f)
-                             else Color(0xFF526176).copy(alpha = 0.08f)
-                ))
-                onDrawBehind {
-                    drawRect(bgBase)
-                    drawRect(accentBleed)
-                    drawRect(depthShadow)
-                    drawRect(topMirror)
-                }
-            }
-            .border(1.dp, borderBrush, shape)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 9.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .performanceControlSurface(
+                    theme,
+                    accent.copy(if (theme.isDark) 0.16f else 0.10f),
+                    false,
+                    RoundedCornerShape(12.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(5.dp))
         TextField(
             value         = value,
             onValueChange = onValueChange,
             placeholder   = {
                 Text(
-                    theme.t("Sanctuary'ye sor...", "Ask Sanctuary..."),
+                    theme.t("Oracle'a sor...", "Ask Oracle..."),
                     color = theme.text2.copy(0.72f),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Light,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -954,14 +880,9 @@ private fun SanctuaryInput(
         val sendInteraction = remember { MutableInteractionSource() }
         val sendPressed by sendInteraction.collectIsPressedAsState()
         val sendScale by animateFloatAsState(
-            if (sendPressed && sendActive) 0.88f else 1f,
-            spring(stiffness = Spring.StiffnessHigh),
+            if (sendPressed && sendActive) 0.98f else 1f,
+            tween(120),
             label = "oracle_send_scale"
-        )
-        val sendElevation by animateDpAsState(
-            if (sendPressed) 1.dp else 8.dp,
-            spring(stiffness = Spring.StiffnessHigh),
-            label = "oracle_send_depth"
         )
         Box(
             modifier = Modifier
@@ -970,20 +891,12 @@ private fun SanctuaryInput(
                 .graphicsLayer {
                     scaleX = sendScale
                     scaleY = sendScale
-                    translationY = if (sendPressed) 1.dp.toPx() else 0f
                 }
-                .clip(CircleShape)
-                .then(
-                    if (sendActive) Modifier
-                        .shadow(
-                            elevation = sendElevation,
-                            shape = CircleShape,
-                            spotColor = if (theme.isDark) accent.copy(0.30f) else Color(0xFF64748B).copy(0.12f),
-                            ambientColor = if (theme.isDark) Color.Transparent else Color(0xFF64748B).copy(0.10f)
-                        )
-                        .background(Brush.verticalGradient(listOf(accent, accent.copy(0.76f))))
-                        .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), CircleShape)
-                    else Modifier.background(Color.Transparent)
+                .performanceControlSurface(
+                    theme,
+                    if (sendActive) accent else theme.bg3,
+                    sendPressed && sendActive,
+                    RoundedCornerShape(14.dp)
                 )
                 .clickable(
                     enabled = sendActive,
@@ -996,12 +909,11 @@ private fun SanctuaryInput(
             Icon(
                 Icons.AutoMirrored.Rounded.Send,
                 contentDescription = null,
-                tint     = if (sendActive) theme.effectiveOnAccentColor else theme.text2.copy(0.5f),
-                modifier = Modifier.size(20.dp)
+                tint     = if (sendActive) theme.effectiveOnAccentColor else theme.text2.copy(0.72f),
+                modifier = Modifier.size(22.dp)
             )
         }
     }
-    } // Column
 }
 
 // ── Geçmiş Sohbetler Sheet ────────────────────────────────────────────────────
@@ -1178,7 +1090,7 @@ private fun SessionHistorySheet(
                 }
             }
         }
-    }
+}
 }
 
 private fun formatSessionDate(millis: Long, theme: AppThemeState): String {

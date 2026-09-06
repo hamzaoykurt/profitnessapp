@@ -514,7 +514,7 @@ private fun ExerciseProgressionCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    displayName.uppercase(),
+                    displayName,
                     color = theme.text0,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black,

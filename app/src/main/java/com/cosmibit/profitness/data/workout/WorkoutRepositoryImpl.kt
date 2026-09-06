@@ -6,6 +6,7 @@ import com.cosmibit.profitness.data.local.dao.WorkoutDao
 import com.cosmibit.profitness.data.local.entity.ExerciseLogEntity
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
 import com.cosmibit.profitness.data.local.entity.WorkoutLogEntity
+import com.cosmibit.profitness.data.integration.orbit.OrbitSyncCoordinator
 import com.cosmibit.profitness.data.sync.SyncManager
 import com.cosmibit.profitness.data.workout.dto.UserStatsDto
 import io.github.jan.supabase.SupabaseClient
@@ -27,7 +28,8 @@ class WorkoutRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val workoutDao: WorkoutDao,
     private val setCompletionDao: SetCompletionDao,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val orbitSyncCoordinator: OrbitSyncCoordinator
 ) : WorkoutRepository {
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -102,6 +104,8 @@ class WorkoutRepositoryImpl @Inject constructor(
                 synced = false
             ))
 
+            orbitSyncCoordinator.fitnessDataChanged(userId)
+
             logId
         }
     }
@@ -139,6 +143,7 @@ class WorkoutRepositoryImpl @Inject constructor(
                         .delete { filter { eq("id", log.id) } }
                 }
             }
+            orbitSyncCoordinator.fitnessDataChanged(userId)
             Unit
         }
     }

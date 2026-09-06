@@ -43,6 +43,7 @@ import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AccentColorSwatch
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.profile.readSafeProfilePhotoBytes
@@ -1277,7 +1278,7 @@ private fun StepHeader(
         title,
         color = theme.text0,
         fontSize = if (responsive.isLargeFont) 24.sp else 26.sp,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.Bold,
         lineHeight = if (responsive.isLargeFont) 29.sp else 31.sp,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis
@@ -1356,15 +1357,7 @@ private fun ThemePreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (preview.isDark) 10.dp else 7.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = if (preview.isDark) Color.Black.copy(0.42f) else Color(0xFF64748B).copy(0.10f),
-                spotColor = if (preview.isDark) accent.copy(0.14f) else Color(0xFF64748B).copy(0.12f)
-            )
-            .clip(RoundedCornerShape(16.dp))
-            .background(preview.bg1)
-            .border(1.dp, preview.stroke, RoundedCornerShape(16.dp))
+            .performanceSignatureSurface(preview, accent, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -1451,7 +1444,6 @@ private fun <T> ThemeSegmentedSelector(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
             .padding(4.dp)
     ) {
         options.forEach { (value, label) ->
@@ -1460,14 +1452,14 @@ private fun <T> ThemeSegmentedSelector(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(if (isSelected) accent else Color.Transparent)
+                    .then(if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(9.dp)) else Modifier)
                     .clickable { onSelect(value) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     label,
-                    color         = if (isSelected) onAccent else theme.text1,
+                    color         = if (isSelected) accent else theme.text1,
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.Black,
                     letterSpacing = 1.4.sp
@@ -1494,14 +1486,9 @@ private fun PremiumOnboardingButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.965f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        targetValue = if (pressed && enabled) 0.98f else 1f,
+        animationSpec = tween(120),
         label = "onboarding_cta_scale"
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (pressed && enabled) 1.dp else if (theme.isDark) 12.dp else 8.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "onboarding_cta_depth"
     )
     val shape = RoundedCornerShape(16.dp)
 
@@ -1510,23 +1497,10 @@ private fun PremiumOnboardingButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (pressed && enabled) 2.dp.toPx() else 0f
                 alpha = if (enabled) 1f else 0.48f
             }
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                clip = false,
-                ambientColor = if (theme.isDark) Color.Black.copy(0.52f) else Color(0xFF64748B).copy(0.13f),
-                spotColor = accent.copy(if (theme.isDark) 0.30f else 0.18f)
-            )
             .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.92f), accent, accent.copy(alpha = 0.78f))
-                )
-            )
-            .border(1.dp, Color.White.copy(if (theme.isDark) 0.24f else 0.38f), shape)
+            .background(accent)
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,

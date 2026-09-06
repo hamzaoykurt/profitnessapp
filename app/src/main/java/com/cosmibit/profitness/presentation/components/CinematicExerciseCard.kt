@@ -9,7 +9,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Timer
@@ -22,10 +28,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.workout.Exercise
@@ -87,7 +89,6 @@ fun CinematicExerciseCard(
     val accent   = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val haptic   = LocalHapticFeedback.current
-    val context  = LocalContext.current
     val theme    = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
     var isExpanded by remember { mutableStateOf(false) }
@@ -152,81 +153,23 @@ fun CinematicExerciseCard(
         label         = "card_scale"
     )
 
-    // Slow ambient pulse: enough separation from the dark background without
-    // competing with the card's existing press/expand animations.
-    val ambientGlowTransition = rememberInfiniteTransition(label = "exercise_card_glow_$index")
-    val ambientGlowStrength by ambientGlowTransition.animateFloat(
-        initialValue = 0.28f,
-        targetValue = 0.50f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 3400 + ((index % 3) * 350),
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "exercise_card_glow_strength_$index"
-    )
-
-    val glowAlpha by animateFloatAsState(
-        targetValue   = if (isCompleted) 0.25f else 0f,
-        animationSpec = tween(600),
-        label         = "glow"
-    )
-    val imageOverlayBrush = remember(isExpanded) {
-        Brush.verticalGradient(
-            listOf(
-                Color.Transparent,
-                Color.Black.copy(0.4f),
-                Color.Black.copy(if (isExpanded) 0.92f else 0.82f)
-            )
-        )
-    }
-    val imageRequest = remember(context, exercise.image) {
-        ImageRequest.Builder(context)
-            .data(exercise.image)
-            .size(720, 360)
-            .crossfade(false)
-            .build()
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 6.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 5.dp)
             .graphicsLayer {
                 scaleX = cardScale
                 scaleY = cardScale
                 translationY = if (isPressed) 2.dp.toPx() else 0f
             }
     ) {
-        // A separate lower shell gives the media card a real physical edge.
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(y = 6.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    if (theme.isDark) Color(0xFF050609)
-                    else Color(0xFFD8D2DE)
-                )
-                .border(
-                    1.dp,
-                    if (theme.isDark) accent.copy(0.16f) else Color.White.copy(0.72f),
-                    RoundedCornerShape(24.dp)
-                )
-        )
         ForgeCard(
             modifier = Modifier
                 .fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(20.dp),
             glowColor = accent,
-            elevation = when {
-                isPressed -> 3.dp
-                isCompleted -> 13.dp
-                else -> 10.dp
-            },
-            glowStrength = if (isCompleted) 0.85f else ambientGlowStrength
+            glowStrength = if (isCompleted) 0.70f else 0.38f,
+            elevation = if (isPressed) 1.dp else 8.dp
         ) {
             // animateContentSize gives the same bouncy height expansion as before,
             // but is measured via placement — no explicit height state, no layout-per-frame jank
@@ -240,120 +183,103 @@ fun CinematicExerciseCard(
                         )
                     )
             ) {
-                // ── Fixed-height image header ────────────────────────────────────
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(
-                            when {
-                                responsive.isVeryLargeFont -> 210.dp
-                                responsive.isLargeFont -> 190.dp
-                                responsive.isSmallPhone -> 158.dp
-                                else -> 164.dp
-                            }
-                        )
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication        = null
-                        ) {
+                        .clickable(interactionSource = interactionSource, indication = null) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             isExpanded = !isExpanded
                             onExpandChanged?.invoke(isExpanded)
                         }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AsyncImage(
-                        model = imageRequest,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    if (isCompleted) {
-                        Box(modifier = Modifier.fillMaxSize().background(accent.copy(glowAlpha)))
-                    }
-
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(imageOverlayBrush)
-                    )
-
-                    // Info button — top-right corner
+                            .size(44.dp)
+                            .performanceControlSurface(
+                                theme = theme,
+                                color = if (isCompleted) accent else theme.bg3,
+                                pressed = isPressed,
+                                shape = RoundedCornerShape(13.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isCompleted) {
+                            Icon(Icons.Rounded.CheckCircle, null, tint = onAccent, modifier = Modifier.size(19.dp))
+                        } else {
+                            Text(
+                                text = (index + 1).toString().padStart(2, '0'),
+                                color = theme.text1,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = theme.exerciseCompactDisplayName(exercise.name),
+                            color = theme.text0,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        val targetLabel = theme.fitnessTermCompactDisplayName(exercise.target)
+                        Text(
+                            text = targetLabel,
+                            color = theme.text1,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        val prescription = if (activityBased) {
+                            val minutes = exercise.targetDurationSeconds
+                                ?.takeIf { it > 0 }
+                                ?.let { ((it + 59) / 60).toString() }
+                                ?: exercise.reps
+                            theme.t("$minutes dk hedef", "$minutes min target")
+                        } else {
+                            "${exercise.sets} × ${exercise.reps}"
+                        }
+                        Text(
+                            text = prescription,
+                            color = theme.text0,
+                            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     if (onShowDetail != null) {
-                        Box(
+                        IconButton(
+                            onClick = onShowDetail,
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(10.dp)
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(0.58f))
-                                .border(1.dp, Color.White.copy(0.24f), CircleShape)
-                                .clickable { onShowDetail() },
-                            contentAlignment = Alignment.Center
+                                .size(46.dp)
+                                .performanceControlSurface(
+                                    theme,
+                                    accent.copy(if (theme.isDark) 0.16f else 0.10f),
+                                    false,
+                                    RoundedCornerShape(14.dp)
+                                )
                         ) {
                             Icon(
-                                Icons.Rounded.Info, null,
-                                tint = Snow.copy(0.9f),
-                                modifier = Modifier.size(18.dp)
+                                Icons.Rounded.PlayCircle,
+                                theme.t("Hareketi gör", "Watch exercise"),
+                                tint = accent,
+                                modifier = Modifier.size(25.dp)
                             )
                         }
+                        Spacer(Modifier.width(7.dp))
                     }
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(if (responsive.isSmallPhone) 14.dp else 16.dp),
-                        verticalArrangement = Arrangement.Bottom
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                val targetLabel = theme.fitnessTermCompactDisplayName(exercise.target)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = theme.exerciseCompactDisplayName(exercise.name).uppercase(),
-                                        color = Snow,
-                                        fontSize = if (responsive.isLargeFont) 17.sp else 19.sp,
-                                        fontWeight = FontWeight.Black,
-                                        lineHeight = if (responsive.isLargeFont) 21.sp else 23.sp,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (isCompleted) {
-                                        Icon(
-                                            Icons.Rounded.CheckCircle, null,
-                                            tint = accent,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                                if (targetLabel.isNotBlank()) {
-                                    Text(
-                                        text = targetLabel,
-                                        color = Mist.copy(alpha = 0.82f),
-                                        fontSize = if (responsive.isLargeFont) 9.sp else 11.sp,
-                                        lineHeight = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                            StatBadge(
-                                sets = exercise.sets,
-                                reps = if (durationSetBased) {
-                                    exercise.targetDurationSeconds?.toString() ?: exercise.reps
-                                } else {
-                                    exercise.reps
-                                },
-                                isActivity = activityBased,
-                                isDurationSet = durationSetBased
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = theme.text1,
+                        modifier = Modifier.size(25.dp)
+                    )
                 }
 
                 // ── Expanded panel — rendered as part of the same Column so
@@ -362,10 +288,36 @@ fun CinematicExerciseCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.Black.copy(0.92f))
+                            .background(theme.bg1)
                             .padding(16.dp)
                     ) {
-                        Spacer(Modifier.height(4.dp))
+                        if (onShowDetail != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .performanceControlSurface(
+                                        theme,
+                                        accent.copy(if (theme.isDark) 0.16f else 0.10f),
+                                        false,
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable(onClick = onShowDetail),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.PlayCircle, null, tint = accent, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    theme.t("Hareketi gör", "Watch exercise"),
+                                    color = accent,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                            Spacer(Modifier.height(14.dp))
+                        } else {
+                            Spacer(Modifier.height(4.dp))
+                        }
                         if (activityBased) {
                             ActivityMetricsPanel(
                                 durationValue = activityDuration,
@@ -530,24 +482,11 @@ private fun ActivityMetricsPanel(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val backgroundBrush = remember(isDone, accent, theme.bg2, theme.bg3) {
-        Brush.verticalGradient(
-            listOf(
-                if (isDone) accent.copy(0.18f) else theme.bg3.copy(0.70f),
-                theme.bg2.copy(0.48f)
-            )
-        )
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(backgroundBrush)
-            .border(
-                1.dp,
-                if (isDone) accent.copy(0.42f) else theme.stroke.copy(0.72f),
-                RoundedCornerShape(16.dp)
-            )
+            .background(theme.bg2)
             .padding(12.dp)
     ) {
         Text(
@@ -644,19 +583,11 @@ private fun MetricDisplayTile(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val backgroundBrush = remember(theme.bg2, theme.bg3) {
-        Brush.verticalGradient(listOf(theme.bg3.copy(0.86f), theme.bg2.copy(0.64f)))
-    }
     Row(
         modifier = modifier
             .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(backgroundBrush)
-            .border(
-                1.dp,
-                if (isDone) accent.copy(0.34f) else theme.stroke.copy(0.72f),
-                RoundedCornerShape(13.dp)
-            )
+            .insetControlSurface(accent, theme, RoundedCornerShape(13.dp))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -831,24 +762,12 @@ private fun CompleteActionButton(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val bg = remember(isCompleted, accent, theme.bg2, theme.bg3) {
-        if (isCompleted) {
-            Brush.horizontalGradient(listOf(theme.bg3.copy(0.88f), theme.bg2.copy(0.72f)))
-        } else {
-            Brush.horizontalGradient(listOf(accent, accent.copy(0.86f)))
-        }
-    }
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
             .widthIn(min = 136.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(bg)
-            .border(
-                1.dp,
-                if (isCompleted) theme.stroke.copy(0.78f) else Color.White.copy(0.18f),
-                RoundedCornerShape(14.dp)
-            )
+            .background(if (isCompleted) theme.bg2 else accent)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -893,26 +812,12 @@ private fun TimedSetRow(
     val theme = LocalAppTheme.current
     val durationSeconds = durationValue.toDurationSetSecondsLabel()
     val durationDisplay = durationSeconds.ifBlank { "0" }
-    val bgAlpha by animateFloatAsState(
-        if (isDone) 0.20f else 0.08f,
-        tween(250),
-        label = "timed_set_bg"
-    )
-    val backgroundBrush = remember(isDone, accent, bgAlpha, theme.bg2, theme.bg3) {
-        Brush.horizontalGradient(
-            listOf(
-                if (isDone) accent.copy(bgAlpha) else theme.bg3.copy(0.68f),
-                theme.bg2.copy(0.48f)
-            )
-        )
-    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(backgroundBrush)
-            .border(1.dp, if (isDone) accent.copy(0.50f) else theme.stroke.copy(0.72f), RoundedCornerShape(16.dp))
+            .background(theme.bg2)
             .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -989,30 +894,12 @@ private fun SetRow(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val theme = LocalAppTheme.current
-    val bgAlpha by animateFloatAsState(
-        if (isDone) 0.20f else 0.08f,
-        tween(250),
-        label = "set_bg"
-    )
-    val backgroundBrush = remember(isDone, accent, bgAlpha, theme.bg2, theme.bg3) {
-        Brush.horizontalGradient(
-            listOf(
-                if (isDone) accent.copy(bgAlpha) else theme.bg3.copy(0.68f),
-                theme.bg2.copy(0.48f)
-            )
-        )
-    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(backgroundBrush)
-            .border(
-                1.dp,
-                if (isDone) accent.copy(0.50f) else theme.stroke.copy(0.72f),
-                RoundedCornerShape(16.dp)
-            )
+            .background(theme.bg2)
             .padding(10.dp)
     ) {
         // Üst satır: ağırlık input + set no + program tekrarı + checkbox
@@ -1088,19 +975,11 @@ private fun WeightInputField(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val backgroundBrush = remember(theme.bg2, theme.bg3) {
-        Brush.verticalGradient(listOf(theme.bg3.copy(0.86f), theme.bg2.copy(0.64f)))
-    }
     Column(
         modifier = modifier
             .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(backgroundBrush)
-            .border(
-                1.dp,
-                if (isDone) accent.copy(0.34f) else theme.stroke.copy(0.72f),
-                RoundedCornerShape(13.dp)
-            )
+            .insetControlSurface(accent, theme, RoundedCornerShape(13.dp))
             .padding(horizontal = 10.dp, vertical = 7.dp)
     ) {
         if (label != null) {
@@ -1257,23 +1136,24 @@ private fun RestTimerChip(
 @Composable
 fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSet: Boolean = false) {
     val responsive = rememberResponsiveLayoutInfo()
+    val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .background(Color.Black.copy(0.44f), RoundedCornerShape(12.dp))
-            .border(1.dp, Color.White.copy(0.20f), RoundedCornerShape(12.dp))
+            .background(theme.bg0.copy(if (theme.isDark) 0.54f else 0.28f), RoundedCornerShape(12.dp))
+            .border(1.dp, theme.stroke.copy(0.76f), RoundedCornerShape(12.dp))
             .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isActivity) {
                 Icon(Icons.Rounded.Timer, null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(text = reps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
+                Text(text = reps, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
             } else {
                 Text(text = "${sets}x", color = accent, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
                 Spacer(Modifier.width(3.dp))
                 val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
-                Text(text = displayReps, color = Snow, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
+                Text(text = displayReps, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
             }
         }
     }
