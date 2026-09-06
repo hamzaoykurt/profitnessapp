@@ -140,6 +140,9 @@ class WorkoutViewModel @Inject constructor(
     val draftInputs: StateFlow<Map<String, DraftInput>> = _draftInputs.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
     private val draftPersistJobs = mutableMapOf<String, Job>()
+    // Room completion ve set akışları ayrı ayrı emit eder. Undo sürerken eski
+    // akışlardan birinin optimistik UI durumunu geri çevirmesini engeller.
+    private val pendingIncompleteExerciseIds = mutableSetOf<String>()
 
     init {
         startObserving()
@@ -1290,6 +1293,7 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = uiState.value
             val dayState = currentState.dayStates.getOrNull(dayIdx) ?: return@launch
+            if (exerciseId in pendingIncompleteExerciseIds) return@launch
             val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return@launch
             val programDayId = dayState.day.programDayId
             if (programDayId.isBlank()) return@launch
@@ -1371,22 +1375,25 @@ class WorkoutViewModel @Inject constructor(
                     checkAndUnlockAchievements(userId)
                 }
             } else {
+                pendingIncompleteExerciseIds += exerciseId
                 markExerciseIncompleteOptimistically(dayIdx, exerciseId)
                 markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
-                // Önce egzersiz tamamlanma logunu geri al; kart/ilerleme UI'ı hemen normale döner.
-                // Set kayıtlarını ayrıca temizliyoruz, ama remote set-sync bunu geciktirse bile
-                // "Geri Al" aksiyonu kullanıcıya anında yansımış olur.
-                workoutRepository.uncompleteExercise(
-                    userId = userId,
-                    programDayId = programDayId,
-                    exerciseId = dbExerciseId
-                )
-                // Tüm setleri Room'dan sil — Flow otomatik UI'ı günceller
-                workoutRepository.clearExerciseSetCompletions(
-                    userId = userId,
-                    exerciseId = dbExerciseId,
-                    programDayId = programDayId
-                )
+                try {
+                    // İki completion kaynağını da önce Room'dan temizle. Pending
+                    // override, ayrı Flow emisyonları arasında tamamlandı flicker'ını önler.
+                    workoutRepository.clearExerciseSetCompletions(
+                        userId = userId,
+                        exerciseId = dbExerciseId,
+                        programDayId = programDayId
+                    )
+                    workoutRepository.uncompleteExercise(
+                        userId = userId,
+                        programDayId = programDayId,
+                        exerciseId = dbExerciseId
+                    )
+                } finally {
+                    pendingIncompleteExerciseIds -= exerciseId
+                }
 
                 // Stats rollback + challenge progress tazele (istismar önleme):
                 // yap→geri al döngüsü XP/total_exercises/streak/challenge ilerlemesini
@@ -1738,7 +1745,9 @@ class WorkoutViewModel @Inject constructor(
                     }
                     .map { it.id }
                     .toSet()
-                val completedPeIds = (loggedCompletedPeIds + setCompletedPeIds).toImmutableSet()
+                val completedPeIds = (loggedCompletedPeIds + setCompletedPeIds)
+                    .filterNot { it in pendingIncompleteExerciseIds }
+                    .toImmutableSet()
 
                 WorkoutDayState(workoutDay, completedIds = completedPeIds)
             } else {
@@ -1876,6 +1885,7 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = uiState.value
             val dayState = currentState.dayStates.getOrNull(dayIdx) ?: return@launch
+            if (exercise.id in pendingIncompleteExerciseIds) return@launch
             val programDayId = dayState.day.programDayId
             if (programDayId.isBlank()) return@launch
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
@@ -1918,10 +1928,15 @@ class WorkoutViewModel @Inject constructor(
                 )
                 refreshStatsAfterCompletion(userId)
             } else {
+                pendingIncompleteExerciseIds += exercise.id
                 markExerciseIncompleteOptimistically(dayIdx, exercise.id)
                 markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
-                workoutRepository.uncompleteExercise(userId, programDayId, dbExerciseId)
-                workoutRepository.clearExerciseSetCompletions(userId, dbExerciseId, programDayId)
+                try {
+                    workoutRepository.clearExerciseSetCompletions(userId, dbExerciseId, programDayId)
+                    workoutRepository.uncompleteExercise(userId, programDayId, dbExerciseId)
+                } finally {
+                    pendingIncompleteExerciseIds -= exercise.id
+                }
                 refreshStatsAfterRollback(userId)
             }
         }
