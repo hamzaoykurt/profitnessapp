@@ -899,21 +899,12 @@ private fun BuilderChooseScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Program Studio",
-                        color = theme.text0,
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        LocalAppTheme.current.strings.programStudioSub,
-                        color = theme.text1,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2
-                    )
-                }
+                Text(
+                    theme.t("Programlar", "Programs"),
+                    color = theme.text0,
+                    style = MaterialTheme.typography.headlineMedium,
+                    maxLines = 1
+                )
             }
         }
 

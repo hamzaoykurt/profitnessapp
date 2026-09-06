@@ -4,6 +4,12 @@ _Son güncelleme: 2026-09-05_
 
 ## Genel Durum: Premium çift tema yenilemesi uygulanıyor; kapsamlı cihaz QA'sı devam ediyor
 
+### Minimal tipografi ve başlık sadeleştirmesi — 2026-09-06
+
+- [x] Global font ailesi Space Grotesk'ten Inter'a geçirildi; ağır başlıklar, agresif tracking ve gereksiz body kalınlığı azaltıldı
+- [x] Keşfet/Programlar tekrar eden açıklamaları kaldırıldı; `Program Studio` sade `Programlar` başlığına dönüştürüldü
+- [x] Profil başlığı ortak kompakt headline stilini kullanıyor
+
 ### Alt navigasyon boşluk ve motion son düzeltmesi — 2026-09-06
 
 - [x] Drag sırasında görünmez etiketin ayırdığı genişlik tamamen kaldırıldı

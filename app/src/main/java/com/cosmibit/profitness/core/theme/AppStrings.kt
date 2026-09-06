@@ -101,7 +101,6 @@ data class AppStrings(
     val chipHiitVsLiss      : String,
 
     // ── Program Builder screen ───────────────────────────────────────────────
-    val programStudioSub    : String,   // "Hazır programlardan seç veya kendin tasarla."
     val createWithAI        : String,   // "AI ile Oluştur" / "Create with AI"
     val createManually      : String,   // "Manuel Oluştur" / "Create Manually"
     val activeProtocols     : String,   // "AKTİF PROTOKOLLER" / "ACTIVE PROTOCOLS"
@@ -246,7 +245,6 @@ val TurkishStrings = AppStrings(
     chipHiitVsLiss      = "HIIT vs LISS",
 
     // Program Builder
-    programStudioSub    = "Hazır programlardan seç veya kendin tasarla.",
     createWithAI        = "AI ile Oluştur",
     createManually      = "Manuel Oluştur",
     activeProtocols     = "AKTİF PROTOKOLLER",
@@ -391,7 +389,6 @@ val EnglishStrings = AppStrings(
     chipHiitVsLiss      = "HIIT vs LISS",
 
     // Program Builder
-    programStudioSub    = "Choose from ready programs or design your own.",
     createWithAI        = "Create with AI",
     createManually      = "Create Manually",
     activeProtocols     = "ACTIVE PROTOCOLS",

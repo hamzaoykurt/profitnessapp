@@ -4,6 +4,11 @@ _Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
+### Minimal typography + page headers (2026-09-06)
+
+- Uygulama genelindeki Space Grotesk ailesi daha nötr Inter ile değiştirildi; display/headline ağırlıkları ve negatif tracking azaltıldı, body stilleri Regular ağırlığa çekildi.
+- Keşfet ve Programlar ekranlarındaki içeriği tekrar eden alt açıklamalar kaldırıldı. `Program Studio` adı `Programlar` olarak sadeleştirildi; Profil başlığı global kompakt headline ölçeğine bağlandı.
+
 ### Bottom navigation gesture + motion finalization (2026-09-06)
 
 - Drag sırasında seçili etiket artık görünmez bırakılarak alan ayırmıyor; bütün sekmeler gerçekten kompakt moda geçiyor.

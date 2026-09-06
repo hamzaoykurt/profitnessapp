@@ -401,9 +401,7 @@ private fun ProfileHeroBanner(
                     Text(
                         theme.t("Profil", "Profile"),
                         color = theme.text0,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp,
+                        style = MaterialTheme.typography.headlineMedium,
                         maxLines = 1
                     )
                     Row(

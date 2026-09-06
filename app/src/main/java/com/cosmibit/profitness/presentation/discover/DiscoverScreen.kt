@@ -344,14 +344,6 @@ private fun DiscoverHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text     = theme.t("Topluluk programları ve challenge'lar", "Community programs and challenges"),
-                color    = theme.text1,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = if (responsive.isLargeFont) 2 else 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
         // Sort toggle
         SmallIconChip(
