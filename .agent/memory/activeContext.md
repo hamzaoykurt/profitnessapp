@@ -7,7 +7,7 @@ _Son güncelleme: 2026-09-04_
 ### Bottom navigation gesture + motion finalization (2026-09-06)
 
 - Drag sırasında seçili etiket artık görünmez bırakılarak alan ayırmıyor; bütün sekmeler gerçekten kompakt moda geçiyor.
-- Dock ekran genişliğine göre 300–348dp aralığında ve 64dp sabit gövde yüksekliğinde; görünür ikon/etiket genişlikleri arasındaki boşluk optik olarak eşit dağıtılıyor. Seçili etiket komşu sekmelerin dokunma alanını itmiyor.
+- Dock ekran genişliğine göre 292–312dp aralığında ve 64dp sabit gövde yüksekliğinde. Etiket açıkken görünür içerik boşlukları optik dağıtılıyor; sürüklemede etiketsiz ikonlar sabit 32dp aralıkla merkeze toplanıyor.
 - Drag başında geniş pill eski seçimden koparak kompakt moda daralıyor; x konumu parmağı kontrollü gecikmeyle izliyor, eşiklerde ekran seçimi güncelleniyor ve bırakınca yeni etikete genişliyor.
 - Indicator hedefleri gerçek tema fontuyla önceden ölçülen etiket genişliğinden hesaplanıyor; x 190ms, genişlik 175ms tek-shot geçiş kullanıyor ve layout sırasında yeniden başlamıyor.
 - Uç sekmelerde indicator kenara clamp edildiğinde ikon+etiket içeriği de aynı merkez farkıyla kaydırılıyor. 9dp iç padding, 5dp gap ve 22dp glyph ile komşu ikonlara güvenli mesafe korunuyor.

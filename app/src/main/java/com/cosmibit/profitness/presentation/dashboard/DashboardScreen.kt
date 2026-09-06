@@ -633,7 +633,7 @@ fun AppNavBar(
     val selectedTab = selected()
     val responsive = rememberResponsiveLayoutInfo()
     val navBodyWidth = (responsive.screenWidth - 32.dp)
-        .coerceIn(300.dp, 348.dp)
+        .coerceIn(292.dp, 312.dp)
     val selectedState by rememberUpdatedState(selectedTab)
     val onSelectState by rememberUpdatedState(onSelect)
     val indicatorX = remember { Animatable(0f) }
@@ -674,13 +674,20 @@ fun AppNavBar(
             if (tab == expandedTab) expandedWidthFor(tab) else compactVisualWidthPx
         }
         val contentWidth = widths.sum()
-        val gap = if (tabs.size > 1) {
+        val gap = if (expandedTab == null) {
+            with(density) { 32.dp.toPx() }
+        } else if (tabs.size > 1) {
             ((navBodyWidthPx - layoutEdgePx * 2f - contentWidth) / (tabs.size - 1))
-                .coerceAtLeast(with(density) { 8.dp.toPx() })
+                .coerceAtLeast(with(density) { 10.dp.toPx() })
         } else {
             0f
         }
-        var cursor = layoutEdgePx
+        val occupiedWidth = contentWidth + gap * (tabs.size - 1).coerceAtLeast(0)
+        var cursor = if (expandedTab == null) {
+            ((navBodyWidthPx - occupiedWidth) / 2f).coerceAtLeast(layoutEdgePx)
+        } else {
+            layoutEdgePx
+        }
         return buildMap {
             tabs.forEachIndexed { index, tab ->
                 val width = widths[index]

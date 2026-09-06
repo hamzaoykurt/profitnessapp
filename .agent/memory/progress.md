@@ -7,7 +7,7 @@ _Son güncelleme: 2026-09-05_
 ### Alt navigasyon boşluk ve motion son düzeltmesi — 2026-09-06
 
 - [x] Drag sırasında görünmez etiketin ayırdığı genişlik tamamen kaldırıldı
-- [x] Dock 300–348dp responsive genişliğe ve 64dp sabit gövdeye geçirildi; görünür içerikler arasındaki optik boşluk eşitlendi
+- [x] Dock 292–312dp responsive genişliğe ve 64dp sabit gövdeye geçirildi; sürüklemedeki etiketsiz ikonlar 32dp aralıkla merkeze toplandı
 - [x] Drag indicator eski geniş seçimden 52dp kompakt moda yumuşakça daralırken parmağı kontrollü gecikmeyle izliyor
 - [x] Tek dokunma indicator animasyonunun layout değişirken sürekli yeniden başlaması kaldırıldı; x 190ms ve genişlik 175ms tek-shot hale getirildi
 - [x] Pill hedef genişliği gerçek tema fontuyla önceden ölçülüyor; uç slotlarda içerik pill clamp merkeziyle eşit kaydırılıyor
