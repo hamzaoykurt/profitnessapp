@@ -18,8 +18,17 @@ Deploy migration `20260906120000_orbit_fitness_integration.sql` and both Edge Fu
 - `ORBIT_FITNESS_SYNC_URL`: Orbit server endpoint receiving the minimal summary.
 - `ORBIT_FITNESS_DISCONNECT_URL`: optional server-side revocation endpoint.
 - `ORBIT_FITNESS_SERVER_SECRET`: server-to-server bearer secret.
+- `ORBIT_FITNESS_REQUEST_SECRET`: Fitness → Orbit body/timestamp HMAC signing secret.
 - `ORBIT_FITNESS_STATE_SECRET`: signs short-lived, single-use link state.
 - `ORBIT_FITNESS_WEBHOOK_SECRET`: verifies `timestamp.raw_body` HMAC-SHA256 callbacks.
+
+Production Orbit endpoint contract:
+
+- Connect: `https://<orbit-host>/api/integrations/profitness/connect`
+- Sync: `https://<orbit-host>/api/integrations/profitness/sync`
+- Disconnect: `https://<orbit-host>/api/integrations/profitness/disconnect`
+
+`SERVER`, `REQUEST`, and `WEBHOOK` secrets are separate credentials. Values belong only in Supabase Edge Function secrets and Cloudflare Worker secrets; they must never be added to Android `BuildConfig`, source control, logs, screenshots, or chat.
 
 The Orbit callback sends `x-webhook-timestamp` and `x-webhook-signature`, plus:
 
@@ -28,6 +37,7 @@ The Orbit callback sends `x-webhook-timestamp` and `x-webhook-signature`, plus:
   "eventId": "stable-event-id",
   "type": "connection.updated",
   "state": "state returned by the connect URL",
+  "fitnessUserId": "Fitness user id bound inside the signed state",
   "orbitAccountId": "orbit-account-id",
   "accountLabel": "name@example.com",
   "authorized": true,

@@ -6,6 +6,7 @@ type CallbackBody = {
   eventId?: string;
   type?: string;
   state?: string;
+  fitnessUserId?: string;
   orbitAccountId?: string;
   accountLabel?: string;
   authorized?: boolean;
@@ -14,6 +15,38 @@ type CallbackBody = {
 };
 
 const encoder = new TextEncoder();
+const ALLOWED_EVENT_TYPES = new Set(["connection.updated", "entitlement.updated"]);
+
+async function readBoundedBody(req: Request, limit = 64 * 1024): Promise<string | null> {
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declared) && declared > limit) return null;
+  const reader = req.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) { await reader.cancel(); return null; }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const output = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.length; }
+  return new TextDecoder().decode(output);
+}
+
+function safeManageUrl(value: string | undefined): string | null {
+  if (!value?.trim() || value.length > 2048) return null;
+  try {
+    const candidate = new URL(value);
+    const connectOrigin = new URL(requiredEnv("ORBIT_FITNESS_CONNECT_URL")).origin;
+    return candidate.protocol === "https:" && candidate.origin === connectOrigin ? candidate.toString() : null;
+  } catch { return null; }
+}
 
 function decodeBase64Url(value: string): Uint8Array {
   const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
@@ -59,19 +92,24 @@ Deno.serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
   if (req.method !== "POST") return jsonResponse(405, { code: "method_not_allowed", message: "Method not allowed." });
 
-  const raw = await req.text();
+  const raw = await readBoundedBody(req);
+  if (raw === null) return jsonResponse(413, { code: "payload_too_large", message: "Orbit yanıtı çok büyük." });
   try {
     if (!await verifyRequest(req, raw)) return jsonResponse(401, { code: "invalid_signature", message: "Orbit imzası doğrulanamadı." });
     const body = JSON.parse(raw || "{}") as CallbackBody;
     const eventId = body.eventId?.trim();
     const orbitAccountId = body.orbitAccountId?.trim();
-    if (!eventId || !orbitAccountId) {
+    const eventType = body.type?.trim() || "connection.updated";
+    if (!eventId || eventId.length > 160 || !orbitAccountId || orbitAccountId.length > 128 || !ALLOWED_EVENT_TYPES.has(eventType)) {
       return jsonResponse(400, { code: "invalid_callback", message: "Orbit bağlantı yanıtı eksik." });
     }
     const db = adminClient();
     const state = body.state ? await statePayload(body.state) : null;
     let userId = state?.userId ?? null;
     if (state) {
+      if (body.fitnessUserId?.trim() !== state.userId) {
+        return jsonResponse(401, { code: "state_subject_mismatch", message: "Orbit bağlantı sahibi doğrulanamadı." });
+      }
       const { data: attempt } = await db.from("orbit_link_attempts")
         .update({ consumed_at: new Date().toISOString() })
         .eq("nonce", state.nonce).eq("user_id", state.userId)
@@ -97,12 +135,12 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("orbit_connections").upsert({
       user_id: userId,
       orbit_account_id: orbitAccountId,
-      account_label: body.accountLabel?.trim() || null,
+      account_label: body.accountLabel?.trim().slice(0, 160) || null,
       status: authorized ? "connected" : "reconnect_required",
       sync_enabled: authorized && body.fitnessSyncEntitled === true && existing?.sync_enabled === true,
       fitness_sync_entitled: authorized && body.fitnessSyncEntitled === true,
       entitlement_checked_at: now,
-      manage_url: body.manageUrl?.trim() || null,
+      manage_url: safeManageUrl(body.manageUrl),
       last_error_code: authorized ? null : "authorization_revoked",
       updated_at: now,
     }, { onConflict: "user_id" });

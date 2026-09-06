@@ -55,7 +55,7 @@ create index if not exists orbit_link_attempts_user_idx on public.orbit_link_att
 alter table public.orbit_link_attempts enable row level security;
 revoke all on public.orbit_link_attempts from anon, authenticated;
 
-create or replace function public.get_orbit_fitness_summary(
+create or replace function private.get_orbit_fitness_summary(
   p_user_id uuid,
   p_timezone text default 'UTC',
   p_now timestamptz default now()
@@ -171,6 +171,21 @@ begin
     'schedule', v_schedule
   );
 end;
+$$;
+
+revoke all on function private.get_orbit_fitness_summary(uuid, text, timestamptz) from public, anon, authenticated;
+grant execute on function private.get_orbit_fitness_summary(uuid, text, timestamptz) to service_role;
+
+create or replace function public.get_orbit_fitness_summary(
+  p_user_id uuid,
+  p_timezone text default 'UTC',
+  p_now timestamptz default now()
+) returns jsonb
+language sql
+security invoker
+set search_path = ''
+as $$
+  select private.get_orbit_fitness_summary(p_user_id, p_timezone, p_now)
 $$;
 
 revoke all on function public.get_orbit_fitness_summary(uuid, text, timestamptz) from public, anon, authenticated;

@@ -24,6 +24,23 @@ async function signedState(userId: string): Promise<{ value: string; nonce: stri
   return { value: `${payload}.${base64Url(signature)}`, nonce, expiresAt: new Date(expiresAtMs).toISOString() };
 }
 
+async function orbitServerHeaders(rawBody: string, idempotencyKey?: string): Promise<Record<string, string>> {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(requiredEnv("ORBIT_FITNESS_REQUEST_SECRET")),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`${timestamp}.${rawBody}`)));
+  const hex = Array.from(signature, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${requiredEnv("ORBIT_FITNESS_SERVER_SECRET")}`,
+    "X-Orbit-Timestamp": timestamp,
+    "X-Orbit-Signature": `sha256=${hex}`,
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+  };
+}
+
 function connectionResponse(row: Record<string, unknown> | null) {
   if (!row) return { status: "not_connected", syncEnabled: false, fitnessSyncEntitled: false };
   return {
@@ -61,6 +78,7 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error("link_state_save_failed");
       url.searchParams.set("state", state.value);
       url.searchParams.set("callback_url", callbackUrl);
+      url.searchParams.set("fitness_user_id", user.id);
       return jsonResponse(200, { ...connectionResponse(await readConnection()), authorizationUrl: url.toString() });
     }
 
@@ -70,10 +88,11 @@ Deno.serve(async (req: Request) => {
     if (action === "disconnect") {
       const disconnectUrl = Deno.env.get("ORBIT_FITNESS_DISCONNECT_URL")?.trim();
       if (disconnectUrl) {
+        const rawBody = JSON.stringify({ orbitAccountId: connection.orbit_account_id, fitnessUserId: user.id });
         const response = await fetch(disconnectUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${requiredEnv("ORBIT_FITNESS_SERVER_SECRET")}` },
-          body: JSON.stringify({ orbitAccountId: connection.orbit_account_id, fitnessUserId: user.id }),
+          headers: await orbitServerHeaders(rawBody),
+          body: rawBody,
         });
         if (!response.ok) throw new Error("orbit_disconnect_failed");
       }
@@ -103,8 +122,19 @@ Deno.serve(async (req: Request) => {
       const { error: deliveryError } = await db.from("orbit_sync_deliveries").insert({
         user_id: user.id, idempotency_key: idempotencyKey, status: "pending",
       });
-      if (deliveryError?.code === "23505") return jsonResponse(200, connectionResponse(connection));
-      if (deliveryError) throw new Error("delivery_record_failed");
+      if (deliveryError?.code === "23505") {
+        const { data: existingDelivery } = await db.from("orbit_sync_deliveries")
+          .select("status,created_at").eq("user_id", user.id).eq("idempotency_key", idempotencyKey).maybeSingle();
+        if (existingDelivery?.status === "delivered") return jsonResponse(200, connectionResponse(connection));
+        const isFreshPending = existingDelivery?.status === "pending" &&
+          Date.now() - Date.parse(existingDelivery.created_at) < 2 * 60_000;
+        if (isFreshPending) return jsonResponse(202, connectionResponse(connection));
+        const { error: retryError } = await db.from("orbit_sync_deliveries")
+          .update({ status: "pending", error_code: null, delivered_at: null })
+          .eq("user_id", user.id).eq("idempotency_key", idempotencyKey);
+        if (retryError) throw new Error("delivery_retry_failed");
+      }
+      if (deliveryError && deliveryError.code !== "23505") throw new Error("delivery_record_failed");
 
       const timeZone = (() => {
         try { new Intl.DateTimeFormat("en", { timeZone: body.timeZone ?? "UTC" }); return body.timeZone ?? "UTC"; }
@@ -113,17 +143,26 @@ Deno.serve(async (req: Request) => {
       const { data: summary, error: summaryError } = await db.rpc("get_orbit_fitness_summary", {
         p_user_id: user.id, p_timezone: timeZone,
       });
-      if (summaryError) throw new Error("summary_failed");
+      if (summaryError) {
+        await db.from("orbit_sync_deliveries").update({ status: "failed", error_code: "summary_failed" })
+          .eq("user_id", user.id).eq("idempotency_key", idempotencyKey);
+        throw new Error("summary_failed");
+      }
 
-      const response = await fetch(requiredEnv("ORBIT_FITNESS_SYNC_URL"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${requiredEnv("ORBIT_FITNESS_SERVER_SECRET")}`,
-          "Idempotency-Key": idempotencyKey,
-        },
-        body: JSON.stringify({ orbitAccountId: connection.orbit_account_id, fitnessUserId: user.id, summary }),
-      });
+      const rawBody = JSON.stringify({ orbitAccountId: connection.orbit_account_id, fitnessUserId: user.id, summary });
+      let response: Response;
+      try {
+        response = await fetch(requiredEnv("ORBIT_FITNESS_SYNC_URL"), {
+          method: "POST",
+          headers: { ...(await orbitServerHeaders(rawBody, idempotencyKey)), "X-Fitness-Updated-At": new Date().toISOString() },
+          body: rawBody,
+        });
+      } catch {
+        await db.from("orbit_sync_deliveries").update({ status: "failed", error_code: "orbit_network_error" })
+          .eq("user_id", user.id).eq("idempotency_key", idempotencyKey);
+        await db.from("orbit_connections").update({ last_error_code: "sync_failed", updated_at: new Date().toISOString() }).eq("user_id", user.id);
+        return jsonResponse(503, { code: "sync_failed", message: "Orbit geçici olarak kullanılamıyor." });
+      }
       if (!response.ok) {
         await db.from("orbit_sync_deliveries").update({ status: "failed", error_code: `orbit_http_${response.status}` })
           .eq("user_id", user.id).eq("idempotency_key", idempotencyKey);
