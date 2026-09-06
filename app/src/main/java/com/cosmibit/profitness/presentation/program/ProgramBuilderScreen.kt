@@ -2541,41 +2541,19 @@ private fun EditProgramScreen(
                 verticalAlignment   = Alignment.CenterVertically
             ) {
                 // AI ile Düzenle butonu
-                OutlinedButton(
-                    onClick         = { showAiEditDialog = true },
-                    enabled         = !isLoading && !uiState.aiEditLoading,
-                    modifier        = Modifier.height(64.dp),
-                    shape           = RoundedCornerShape(16.dp),
-                    contentPadding  = PaddingValues(horizontal = 16.dp),
-                    colors          = ButtonDefaults.outlinedButtonColors(
-                        containerColor = editTheme.bg2,
-                        contentColor = editAccent,
-                        disabledContentColor = editTheme.text2
-                    ),
-                    border = null
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            tint     = editAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            "AI",
-                            color         = editAccent,
-                            fontWeight    = FontWeight.Black,
-                            fontSize      = 11.sp,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
+                GhostButton(
+                    text = editTheme.t("AI ile düzenle", "Edit with AI"),
+                    onClick = { showAiEditDialog = true },
+                    isEnabled = !isLoading && !uiState.aiEditLoading,
+                    leadingIcon = Icons.Rounded.AutoAwesome,
+                    modifier = Modifier
+                        .width(132.dp)
+                        .height(64.dp)
+                )
 
                 // Kaydet butonu
-                Button(
+                PremiumButton(
+                    text = editTheme.t("Kaydet", "Save"),
                     onClick = {
                         val dayDrafts = days.mapIndexed { i, d ->
                             ManualDayDraft(
@@ -2610,23 +2588,10 @@ private fun EditProgramScreen(
                         )
                     },
                     modifier = Modifier.weight(1f).height(64.dp),
-                    colors   = ButtonDefaults.buttonColors(
-                        containerColor = editAccent,
-                        contentColor = editOnAccent,
-                        disabledContainerColor = editTheme.bg3,
-                        disabledContentColor = editTheme.text2
-                    ),
-                    shape    = RoundedCornerShape(16.dp),
-                    enabled  = !isLoading && !uiState.aiEditLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = editOnAccent, modifier = Modifier.size(22.dp))
-                    } else {
-                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("KAYDET", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                    }
-                }
+                    isEnabled = !isLoading && !uiState.aiEditLoading,
+                    isLoading = isLoading,
+                    leadingIcon = Icons.Rounded.Check
+                )
             }
         }
         // Navbar + timer alanı — transparan boşluk, arka plan yok

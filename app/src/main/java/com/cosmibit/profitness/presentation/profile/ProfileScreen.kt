@@ -459,6 +459,11 @@ private fun ProfileHeroBanner(
             val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
             val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
             val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
+            val animatedXpProgress by animateFloatAsState(
+                targetValue = xpProgress.coerceIn(0f, 1f),
+                animationSpec = tween(560, easing = FastOutSlowInEasing),
+                label = "profile_xp_progress"
+            )
             val rankColor = rankColor(rank)
 
             Spacer(Modifier.height(12.dp))
@@ -530,50 +535,83 @@ private fun ProfileHeroBanner(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 2.dp, vertical = 4.dp)
+                            .insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 13.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(accent.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Bolt,
+                                        contentDescription = null,
+                                        tint = accent,
+                                        modifier = Modifier.size(21.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        theme.t("SEVİYE $level → ${level + 1}", "LEVEL $level → ${level + 1}"),
+                                        color = theme.text2,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.7.sp
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        "$xpInLevel / $xpPerLevel XP",
+                                        color = theme.text0,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(accent.copy(alpha = 0.13f))
+                                    .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(50))
+                                    .padding(horizontal = 10.dp, vertical = 7.dp)
+                            ) {
                                 Text(
-                                    theme.t("Seviye $level → ${level + 1}", "Level $level → ${level + 1}"),
-                                    color = theme.text2,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    letterSpacing = 0.sp
-                                )
-                                Spacer(Modifier.height(3.dp))
-                                Text(
-                                    "$xpInLevel / $xpPerLevel XP",
-                                    color = theme.text0,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    if (xpLeft == 0) theme.t("HAZIR", "READY") else theme.t("$xpLeft KALDI", "$xpLeft LEFT"),
+                                    color = accent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 0.35.sp
                                 )
                             }
-                            Text(
-                                if (xpLeft == 0) theme.t("SEVİYE HAZIR", "LEVEL READY") else theme.t("$xpLeft XP KALDI", "$xpLeft XP LEFT"),
-                                color = accent,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(11.dp))
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(7.dp)
                                 .clip(CircleShape)
-                                .background(theme.stroke.copy(0.32f))
+                                .background(theme.bg0.copy(alpha = 0.72f))
                         ) {
                             Box(
                                 Modifier
-                                    .fillMaxWidth(xpProgress.coerceIn(0f, 1f))
+                                    .fillMaxWidth(animatedXpProgress)
                                     .fillMaxHeight()
                                     .clip(CircleShape)
-                                    .background(accent)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(accent.copy(alpha = 0.72f), accent)
+                                        )
+                                    )
                             )
                         }
                     }

@@ -4,6 +4,20 @@ _Son güncelleme: 2026-09-04_
 
 ## Şu Anki Odak
 
+### Bottom navigation gesture + motion finalization (2026-09-06)
+
+- Drag sırasında seçili etiket artık görünmez bırakılarak alan ayırmıyor; bütün sekmeler gerçekten kompakt moda geçiyor.
+- Dock ekran genişliğine göre 300–348dp aralığında ve 64dp sabit gövde yüksekliğinde; görünür ikon/etiket genişlikleri arasındaki boşluk optik olarak eşit dağıtılıyor. Seçili etiket komşu sekmelerin dokunma alanını itmiyor.
+- Drag başında geniş pill eski seçimden koparak kompakt moda daralıyor; x konumu parmağı kontrollü gecikmeyle izliyor, eşiklerde ekran seçimi güncelleniyor ve bırakınca yeni etikete genişliyor.
+- Indicator hedefleri gerçek tema fontuyla önceden ölçülen etiket genişliğinden hesaplanıyor; x 190ms, genişlik 175ms tek-shot geçiş kullanıyor ve layout sırasında yeniden başlamıyor.
+- Uç sekmelerde indicator kenara clamp edildiğinde ikon+etiket içeriği de aynı merkez farkıyla kaydırılıyor. 9dp iç padding, 5dp gap ve 22dp glyph ile komşu ikonlara güvenli mesafe korunuyor.
+- Eski etiket hareket başında 20ms'de söner, yeni etiket pill hedefe yaklaşırken açılır; yazının seçili yüzeyden kopuk veya kırpılmış göründüğü ara kare kaldırıldı.
+- Emulator QA'da beş yerleşimin tamamı ardışık doğrulandı (`build/nav-optical-0.png` … `build/nav-optical-4.png`); son daraltılmış dock ve 64dp gövde profil/program ekranlarında tekrar kontrol edildi.
+- Profil XP alanı inset premium modüle dönüştürüldü; seviye, kalan XP badge'i ve animasyonlu gradient ilerleme aynı hiyerarşide toplandı.
+- Program düzenleme alt eylemleri 64dp `AI ile düzenle` ikincil kontrolü ve geniş gradient `Kaydet` ana kontrolü olarak yenilendi.
+- `:app:assembleDebug`, `:app:testDebugUnitTest` ve `:app:lintDebug` başarılı.
+- Android Studio'da görülen tek seferlik `:app:processDebugResources` / `compile_and_runtime_not_namespaced...` hatası kaynak kod veya XML hatası değil: görev hem normal hem `--rerun-tasks` ile başarılı, ardından tam `assembleDebug` başarılı. IDE/Gradle ara çıktı kilidi veya stale build sonucu olarak değerlendirildi.
+
 ### Optional Orbit Personal OS Fitness Sync (2026-09-06)
 
 - Profil Ayarları içine ayrı ve isteğe bağlı `Entegrasyonlar → Orbit Personal OS` akışı eklendi; onboarding ve workout UI değiştirilmedi.
