@@ -345,17 +345,6 @@ fun WorkoutScreen(
             }
         }
 
-        // Scrolled/auto-expanded cards must stop below the system status bar.
-        // This opaque cap prevents list content from visually colliding with
-        // the clock and system icons while preserving the edge-to-edge page.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(statusBarPad)
-                .background(theme.bg0)
-        )
-
         // ── Dynamic Island — rest timer overlay ──────────────────────────────
         DynamicIslandTimer(
             timer     = restTimer,

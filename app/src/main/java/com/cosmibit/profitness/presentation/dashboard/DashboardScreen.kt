@@ -642,8 +642,11 @@ fun AppNavBar(
     val sourceGhostX = remember { Animatable(0f) }
     val sourceGhostWidth = remember { Animatable(0f) }
     val sourceGhostAlpha = remember { Animatable(0f) }
+    val sourceSplitProgress = remember { Animatable(0f) }
+    val targetMergeProgress = remember { Animatable(1f) }
     var indicatorReady by remember { mutableStateOf(false) }
     var sourceGhostVisible by remember { mutableStateOf(false) }
+    var targetMergeVisible by remember { mutableStateOf(false) }
     var isIndicatorDragging by remember { mutableStateOf(false) }
     var settleIndicatorFromDrag by remember { mutableStateOf(false) }
     var draggedIndicatorX by remember { mutableFloatStateOf(0f) }
@@ -661,7 +664,6 @@ fun AppNavBar(
     )
     val horizontalInsetPx = with(density) { 6.dp.toPx() }
     val collapsedIndicatorWidthPx = with(density) { 52.dp.toPx() }
-    val ghostCollapsedWidthPx = with(density) { 34.dp.toPx() }
     val navBodyWidthPx = with(density) { navBodyWidth.toPx() }
     val layoutEdgePx = with(density) { 12.dp.toPx() }
     val compactVisualWidthPx = with(density) { 22.dp.toPx() }
@@ -717,6 +719,7 @@ fun AppNavBar(
     ) {
         val target = selectedLayout
         if (isIndicatorDragging) return@LaunchedEffect
+        val finishingDrag = settleIndicatorFromDrag
         if (settleIndicatorFromDrag) {
             indicatorX.snapTo(draggedIndicatorX)
             indicatorWidth.snapTo(draggedIndicatorWidth)
@@ -728,33 +731,29 @@ fun AppNavBar(
             revealedLabelRoute = selectedTab.route
             indicatorReady = true
         } else {
-            val sourceCenter = indicatorX.value + indicatorWidth.value / 2f
-            sourceGhostX.snapTo(indicatorX.value)
-            sourceGhostWidth.snapTo(indicatorWidth.value)
-            sourceGhostAlpha.snapTo(0.82f)
-            sourceGhostVisible = true
-            launch {
-                kotlinx.coroutines.coroutineScope {
-                    launch {
-                        sourceGhostX.animateTo(
-                            sourceCenter - with(density) { 17.dp.toPx() },
-                            tween(185, easing = NavIndicatorEaseInOut)
-                        )
+            if (!finishingDrag) {
+                sourceGhostX.snapTo(indicatorX.value)
+                sourceGhostWidth.snapTo(indicatorWidth.value)
+                sourceGhostAlpha.snapTo(0.92f)
+                sourceSplitProgress.snapTo(0f)
+                sourceGhostVisible = true
+                launch {
+                    kotlinx.coroutines.coroutineScope {
+                        launch {
+                            sourceSplitProgress.animateTo(
+                                1f,
+                                tween(190, easing = NavIndicatorEaseInOut)
+                            )
+                        }
+                        launch {
+                            sourceGhostAlpha.animateTo(
+                                0f,
+                                tween(160, delayMillis = 55, easing = NavIndicatorEaseOut)
+                            )
+                        }
                     }
-                    launch {
-                        sourceGhostWidth.animateTo(
-                            with(density) { 34.dp.toPx() },
-                            tween(185, easing = NavIndicatorEaseInOut)
-                        )
-                    }
-                    launch {
-                        sourceGhostAlpha.animateTo(
-                            0f,
-                            tween(175, delayMillis = 20, easing = NavIndicatorEaseOut)
-                        )
-                    }
+                    sourceGhostVisible = false
                 }
-                sourceGhostVisible = false
             }
             revealedLabelRoute = null
             val compactTargetX = target.center - collapsedIndicatorWidthPx / 2f
@@ -776,6 +775,8 @@ fun AppNavBar(
                 compactTargetX,
                 tween(135, easing = NavIndicatorEaseOut)
             )
+            targetMergeProgress.snapTo(0f)
+            targetMergeVisible = true
             revealedLabelRoute = selectedTab.route
             kotlinx.coroutines.coroutineScope {
                 launch {
@@ -790,7 +791,14 @@ fun AppNavBar(
                         tween(115, easing = NavIndicatorEaseInOut)
                     )
                 }
+                launch {
+                    targetMergeProgress.animateTo(
+                        1f,
+                        tween(125, easing = NavIndicatorEaseInOut)
+                    )
+                }
             }
+            targetMergeVisible = false
         }
     }
 
@@ -862,29 +870,23 @@ fun AppNavBar(
                                 gestureDragging = true
                                 val ghostStartX = indicatorX.value
                                 val ghostStartWidth = indicatorWidth.value
-                                val sourceCenter = ghostStartX + ghostStartWidth / 2f
                                 navAnimationScope.launch {
                                     sourceGhostX.snapTo(ghostStartX)
                                     sourceGhostWidth.snapTo(ghostStartWidth)
-                                    sourceGhostAlpha.snapTo(0.82f)
+                                    sourceGhostAlpha.snapTo(0.92f)
+                                    sourceSplitProgress.snapTo(0f)
                                     sourceGhostVisible = true
                                     kotlinx.coroutines.coroutineScope {
                                         launch {
-                                            sourceGhostX.animateTo(
-                                                sourceCenter - ghostCollapsedWidthPx / 2f,
-                                                tween(210, easing = NavIndicatorEaseInOut)
-                                            )
-                                        }
-                                        launch {
-                                            sourceGhostWidth.animateTo(
-                                                ghostCollapsedWidthPx,
-                                                tween(210, easing = NavIndicatorEaseInOut)
+                                            sourceSplitProgress.animateTo(
+                                                1f,
+                                                tween(220, easing = NavIndicatorEaseInOut)
                                             )
                                         }
                                         launch {
                                             sourceGhostAlpha.animateTo(
                                                 0f,
-                                                tween(195, delayMillis = 25, easing = NavIndicatorEaseOut)
+                                                tween(185, delayMillis = 60, easing = NavIndicatorEaseOut)
                                             )
                                         }
                                     }
@@ -932,12 +934,41 @@ fun AppNavBar(
                     }
                 }
         ) {
+            if (indicatorReady) {
+                val activeIndicatorModifier = Modifier
+                    .offset {
+                        val x = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorX else indicatorX.value
+                        IntOffset(x.roundToInt(), with(density) { 6.dp.roundToPx() })
+                    }
+                    .width(
+                        with(density) {
+                            val width = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorWidth else indicatorWidth.value
+                            width.toDp()
+                        }
+                    )
+                    .height(52.dp)
+                if (targetMergeVisible) {
+                    SplitNavSelectionSurface(
+                        accent = accent,
+                        theme = theme,
+                        splitProgress = 1f - targetMergeProgress.value,
+                        modifier = activeIndicatorModifier
+                    )
+                } else {
+                    NavSelectionSurface(
+                        accent = accent,
+                        theme = theme,
+                        modifier = activeIndicatorModifier
+                    )
+                }
+            }
             if (sourceGhostVisible && sourceGhostAlpha.value > 0f) {
-                NavSelectionSurface(
+                SplitNavSelectionSurface(
                     accent = accent,
                     theme = theme,
                     alpha = sourceGhostAlpha.value,
                     elevation = 3.dp,
+                    splitProgress = sourceSplitProgress.value,
                     modifier = Modifier
                         .offset {
                             IntOffset(
@@ -946,24 +977,6 @@ fun AppNavBar(
                             )
                         }
                         .width(with(density) { sourceGhostWidth.value.toDp() })
-                        .height(52.dp)
-                )
-            }
-            if (indicatorReady) {
-                NavSelectionSurface(
-                    accent = accent,
-                    theme = theme,
-                    modifier = Modifier
-                        .offset {
-                            val x = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorX else indicatorX.value
-                            IntOffset(x.roundToInt(), with(density) { 6.dp.roundToPx() })
-                        }
-                        .width(
-                            with(density) {
-                                val width = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorWidth else indicatorWidth.value
-                                width.toDp()
-                            }
-                        )
                         .height(52.dp)
                 )
             }
@@ -1005,24 +1018,74 @@ fun AppNavBar(
 }
 
 @Composable
+private fun SplitNavSelectionSurface(
+    accent: Color,
+    theme: AppThemeState,
+    splitProgress: Float,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+    elevation: Dp = 8.dp
+) {
+    val progress = splitProgress.coerceIn(0f, 1f)
+    val seamGap = 10.dp * progress
+    BoxWithConstraints(
+        modifier = modifier.graphicsLayer { this.alpha = alpha }
+    ) {
+        val halfWidth = maxWidth / 2f
+        NavSelectionSurface(
+            accent = accent,
+            theme = theme,
+            elevation = elevation,
+            shape = RoundedCornerShape(
+                topStart = 22.dp,
+                bottomStart = 22.dp,
+                topEnd = 3.dp,
+                bottomEnd = 3.dp
+            ),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = -seamGap / 2f)
+                .width(halfWidth)
+                .fillMaxHeight()
+        )
+        NavSelectionSurface(
+            accent = accent,
+            theme = theme,
+            elevation = elevation,
+            shape = RoundedCornerShape(
+                topStart = 3.dp,
+                bottomStart = 3.dp,
+                topEnd = 22.dp,
+                bottomEnd = 22.dp
+            ),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .offset(x = seamGap / 2f)
+                .width(halfWidth)
+                .fillMaxHeight()
+        )
+    }
+}
+
+@Composable
 private fun NavSelectionSurface(
     accent: Color,
     theme: AppThemeState,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
-    elevation: Dp = 8.dp
+    elevation: Dp = 8.dp,
+    shape: Shape = RoundedCornerShape(22.dp)
 ) {
-    val indicatorShape = RoundedCornerShape(22.dp)
     Box(
         modifier = modifier
             .graphicsLayer { this.alpha = alpha }
             .shadow(
                 elevation = elevation,
-                shape = indicatorShape,
+                shape = shape,
                 spotColor = accent.copy(if (theme.isDark) 0.28f else 0.10f),
                 ambientColor = Color.Transparent
             )
-            .clip(indicatorShape)
+            .clip(shape)
             .background(if (theme.isDark) Color(0xFF17121F) else Color(0xFFF3EFF8))
             .background(
                 Brush.horizontalGradient(
@@ -1036,7 +1099,7 @@ private fun NavSelectionSurface(
             .border(
                 1.dp,
                 Color.White.copy(if (theme.isDark) 0.15f else 0.58f),
-                indicatorShape
+                shape
             )
     )
 }
