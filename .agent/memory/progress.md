@@ -9,6 +9,7 @@ _Son güncelleme: 2026-09-05_
 - [x] Drag sırasında görünmez etiketin ayırdığı genişlik tamamen kaldırıldı
 - [x] Dock 292–312dp responsive genişliğe ve 64dp sabit gövdeye geçirildi; sürüklemedeki etiketsiz ikonlar 32dp aralıkla merkeze toplandı
 - [x] Drag indicator eski geniş seçimden 52dp kompakt moda yumuşakça daralırken parmağı kontrollü gecikmeyle izliyor
+- [x] Tek dokunma ve drag bırakma aynı kopma → kompakt hareket → hedefte genişleme morph akışını kullanıyor; etiket son fazda senkron açılıyor
 - [x] Tek dokunma indicator animasyonunun layout değişirken sürekli yeniden başlaması kaldırıldı; x 190ms ve genişlik 175ms tek-shot hale getirildi
 - [x] Pill hedef genişliği gerçek tema fontuyla önceden ölçülüyor; uç slotlarda içerik pill clamp merkeziyle eşit kaydırılıyor
 - [x] Beş seçili durum emulator üzerinde tek tek doğrulandı (`build/nav-optical-0.png` … `build/nav-optical-4.png`); son dock yüksekliği profil/program ekranlarında tekrar kontrol edildi

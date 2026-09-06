@@ -644,6 +644,7 @@ fun AppNavBar(
     var draggedIndicatorX by remember { mutableFloatStateOf(0f) }
     var draggedIndicatorWidth by remember { mutableFloatStateOf(0f) }
     var dragHoveredRoute by remember { mutableStateOf<String?>(null) }
+    var revealedLabelRoute by remember { mutableStateOf<String?>(selectedTab.route) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelMedium.copy(
@@ -717,19 +718,41 @@ fun AppNavBar(
         if (!indicatorReady) {
             indicatorX.snapTo(target.x)
             indicatorWidth.snapTo(target.width)
+            revealedLabelRoute = selectedTab.route
             indicatorReady = true
         } else {
+            revealedLabelRoute = null
+            val compactTargetX = target.center - collapsedIndicatorWidthPx / 2f
+            kotlinx.coroutines.coroutineScope {
+                launch {
+                    indicatorX.animateTo(
+                        indicatorX.value + (indicatorWidth.value - collapsedIndicatorWidthPx) / 2f,
+                        tween(70, easing = NavIndicatorEaseInOut)
+                    )
+                }
+                launch {
+                    indicatorWidth.animateTo(
+                        collapsedIndicatorWidthPx,
+                        tween(70, easing = NavIndicatorEaseInOut)
+                    )
+                }
+            }
+            indicatorX.animateTo(
+                compactTargetX,
+                tween(135, easing = NavIndicatorEaseOut)
+            )
+            revealedLabelRoute = selectedTab.route
             kotlinx.coroutines.coroutineScope {
                 launch {
                     indicatorX.animateTo(
                         target.x,
-                        tween(190, easing = NavIndicatorEaseOut)
+                        tween(105, easing = NavIndicatorEaseOut)
                     )
                 }
                 launch {
                     indicatorWidth.animateTo(
                         target.width,
-                        tween(175, easing = NavIndicatorEaseInOut)
+                        tween(115, easing = NavIndicatorEaseInOut)
                     )
                 }
             }
@@ -806,6 +829,7 @@ fun AppNavBar(
                                     (indicatorWidth.value - collapsedIndicatorWidthPx) / 2f
                                 draggedIndicatorWidth = indicatorWidth.value
                                 dragHoveredRoute = selectedState.route
+                                revealedLabelRoute = null
                                 isIndicatorDragging = true
                             }
                             if (gestureDragging) {
@@ -884,7 +908,11 @@ fun AppNavBar(
                 )
             }
 
-            val renderedLayouts = if (isIndicatorDragging) compactLayouts else expandedLayouts
+            val renderedLayouts = if (isIndicatorDragging || revealedLabelRoute == null) {
+                compactLayouts
+            } else {
+                expandedLayouts
+            }
             tabs.forEach { tab ->
                 val tabLayout = renderedLayouts.getValue(tab.route)
                 val targetItemX = tabLayout.center - itemTouchWidthPx / 2f
@@ -895,7 +923,7 @@ fun AppNavBar(
                 )
                 NavCapsuleItem(
                     tab = tab,
-                    isSelected = !isIndicatorDragging && tab.route == selectedTab.route,
+                    isSelected = !isIndicatorDragging && tab.route == revealedLabelRoute,
                     isHighlighted = tab.route == (
                         if (isIndicatorDragging) dragHoveredRoute else selectedTab.route
                     ),
