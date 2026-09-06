@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -638,13 +639,18 @@ fun AppNavBar(
     val onSelectState by rememberUpdatedState(onSelect)
     val indicatorX = remember { Animatable(0f) }
     val indicatorWidth = remember { Animatable(0f) }
+    val sourceGhostX = remember { Animatable(0f) }
+    val sourceGhostWidth = remember { Animatable(0f) }
+    val sourceGhostAlpha = remember { Animatable(0f) }
     var indicatorReady by remember { mutableStateOf(false) }
+    var sourceGhostVisible by remember { mutableStateOf(false) }
     var isIndicatorDragging by remember { mutableStateOf(false) }
     var settleIndicatorFromDrag by remember { mutableStateOf(false) }
     var draggedIndicatorX by remember { mutableFloatStateOf(0f) }
     var draggedIndicatorWidth by remember { mutableFloatStateOf(0f) }
     var dragHoveredRoute by remember { mutableStateOf<String?>(null) }
     var revealedLabelRoute by remember { mutableStateOf<String?>(selectedTab.route) }
+    val navAnimationScope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelMedium.copy(
@@ -655,6 +661,7 @@ fun AppNavBar(
     )
     val horizontalInsetPx = with(density) { 6.dp.toPx() }
     val collapsedIndicatorWidthPx = with(density) { 52.dp.toPx() }
+    val ghostCollapsedWidthPx = with(density) { 34.dp.toPx() }
     val navBodyWidthPx = with(density) { navBodyWidth.toPx() }
     val layoutEdgePx = with(density) { 12.dp.toPx() }
     val compactVisualWidthPx = with(density) { 22.dp.toPx() }
@@ -721,6 +728,34 @@ fun AppNavBar(
             revealedLabelRoute = selectedTab.route
             indicatorReady = true
         } else {
+            val sourceCenter = indicatorX.value + indicatorWidth.value / 2f
+            sourceGhostX.snapTo(indicatorX.value)
+            sourceGhostWidth.snapTo(indicatorWidth.value)
+            sourceGhostAlpha.snapTo(0.82f)
+            sourceGhostVisible = true
+            launch {
+                kotlinx.coroutines.coroutineScope {
+                    launch {
+                        sourceGhostX.animateTo(
+                            sourceCenter - with(density) { 17.dp.toPx() },
+                            tween(185, easing = NavIndicatorEaseInOut)
+                        )
+                    }
+                    launch {
+                        sourceGhostWidth.animateTo(
+                            with(density) { 34.dp.toPx() },
+                            tween(185, easing = NavIndicatorEaseInOut)
+                        )
+                    }
+                    launch {
+                        sourceGhostAlpha.animateTo(
+                            0f,
+                            tween(175, delayMillis = 20, easing = NavIndicatorEaseOut)
+                        )
+                    }
+                }
+                sourceGhostVisible = false
+            }
             revealedLabelRoute = null
             val compactTargetX = target.center - collapsedIndicatorWidthPx / 2f
             kotlinx.coroutines.coroutineScope {
@@ -825,6 +860,36 @@ fun AppNavBar(
                             dragAccum += change.positionChange().x
                             if (!gestureDragging && abs(dragAccum) > viewConfiguration.touchSlop) {
                                 gestureDragging = true
+                                val ghostStartX = indicatorX.value
+                                val ghostStartWidth = indicatorWidth.value
+                                val sourceCenter = ghostStartX + ghostStartWidth / 2f
+                                navAnimationScope.launch {
+                                    sourceGhostX.snapTo(ghostStartX)
+                                    sourceGhostWidth.snapTo(ghostStartWidth)
+                                    sourceGhostAlpha.snapTo(0.82f)
+                                    sourceGhostVisible = true
+                                    kotlinx.coroutines.coroutineScope {
+                                        launch {
+                                            sourceGhostX.animateTo(
+                                                sourceCenter - ghostCollapsedWidthPx / 2f,
+                                                tween(210, easing = NavIndicatorEaseInOut)
+                                            )
+                                        }
+                                        launch {
+                                            sourceGhostWidth.animateTo(
+                                                ghostCollapsedWidthPx,
+                                                tween(210, easing = NavIndicatorEaseInOut)
+                                            )
+                                        }
+                                        launch {
+                                            sourceGhostAlpha.animateTo(
+                                                0f,
+                                                tween(195, delayMillis = 25, easing = NavIndicatorEaseOut)
+                                            )
+                                        }
+                                    }
+                                    sourceGhostVisible = false
+                                }
                                 draggedIndicatorX = indicatorX.value +
                                     (indicatorWidth.value - collapsedIndicatorWidthPx) / 2f
                                 draggedIndicatorWidth = indicatorWidth.value
@@ -867,8 +932,27 @@ fun AppNavBar(
                     }
                 }
         ) {
+            if (sourceGhostVisible && sourceGhostAlpha.value > 0f) {
+                NavSelectionSurface(
+                    accent = accent,
+                    theme = theme,
+                    alpha = sourceGhostAlpha.value,
+                    elevation = 3.dp,
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                sourceGhostX.value.roundToInt(),
+                                with(density) { 6.dp.roundToPx() }
+                            )
+                        }
+                        .width(with(density) { sourceGhostWidth.value.toDp() })
+                        .height(52.dp)
+                )
+            }
             if (indicatorReady) {
-                Box(
+                NavSelectionSurface(
+                    accent = accent,
+                    theme = theme,
                     modifier = Modifier
                         .offset {
                             val x = if (isIndicatorDragging || settleIndicatorFromDrag) draggedIndicatorX else indicatorX.value
@@ -881,30 +965,6 @@ fun AppNavBar(
                             }
                         )
                         .height(52.dp)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(22.dp),
-                            spotColor = accent.copy(if (theme.isDark) 0.28f else 0.10f),
-                            ambientColor = Color.Transparent
-                        )
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(
-                            if (theme.isDark) Color(0xFF17121F) else Color(0xFFF3EFF8)
-                        )
-                        .background(
-                            Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0f to accent.copy(if (theme.isDark) 0.30f else 0.18f),
-                                    0.68f to accent.copy(if (theme.isDark) 0.17f else 0.10f),
-                                    1f to accent.copy(if (theme.isDark) 0.07f else 0.04f)
-                                )
-                            )
-                        )
-                        .border(
-                            1.dp,
-                            Color.White.copy(if (theme.isDark) 0.15f else 0.58f),
-                            RoundedCornerShape(22.dp)
-                        )
                 )
             }
 
@@ -942,6 +1002,43 @@ fun AppNavBar(
             }
         }
     }
+}
+
+@Composable
+private fun NavSelectionSurface(
+    accent: Color,
+    theme: AppThemeState,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+    elevation: Dp = 8.dp
+) {
+    val indicatorShape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = modifier
+            .graphicsLayer { this.alpha = alpha }
+            .shadow(
+                elevation = elevation,
+                shape = indicatorShape,
+                spotColor = accent.copy(if (theme.isDark) 0.28f else 0.10f),
+                ambientColor = Color.Transparent
+            )
+            .clip(indicatorShape)
+            .background(if (theme.isDark) Color(0xFF17121F) else Color(0xFFF3EFF8))
+            .background(
+                Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to accent.copy(if (theme.isDark) 0.30f else 0.18f),
+                        0.68f to accent.copy(if (theme.isDark) 0.17f else 0.10f),
+                        1f to accent.copy(if (theme.isDark) 0.07f else 0.04f)
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                Color.White.copy(if (theme.isDark) 0.15f else 0.58f),
+                indicatorShape
+            )
+    )
 }
 
 @Composable

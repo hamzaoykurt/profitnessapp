@@ -15,14 +15,14 @@ private val provider = GoogleFont.Provider(
     certificates     = R.array.com_google_android_gms_fonts_certs
 )
 
-private val Inter = GoogleFont("Inter")
+private val Sora = GoogleFont("Sora")
 
 val AppFontFamily = FontFamily(
-    Font(googleFont = Inter, fontProvider = provider, weight = FontWeight.Light),
-    Font(googleFont = Inter, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = Inter, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = Inter, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = Inter, fontProvider = provider, weight = FontWeight.Bold),
+    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Light),
+    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Normal),
+    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Medium),
+    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.SemiBold),
+    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Bold),
 )
 
 val Typography = Typography(

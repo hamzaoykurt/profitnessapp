@@ -6,7 +6,7 @@ _Son güncelleme: 2026-09-04_
 
 ### Minimal typography + page headers (2026-09-06)
 
-- Uygulama genelindeki Space Grotesk ailesi daha nötr Inter ile değiştirildi; display/headline ağırlıkları ve negatif tracking azaltıldı, body stilleri Regular ağırlığa çekildi.
+- Uygulama genelindeki Space Grotesk/Inter yönü bırakılıp daha karakterli geometrik Sora ailesine geçildi; display/headline ağırlıkları ve negatif tracking azaltıldı, body stilleri Regular ağırlıkta tutuldu.
 - Keşfet ve Programlar ekranlarındaki içeriği tekrar eden alt açıklamalar kaldırıldı. `Program Studio` adı `Programlar` olarak sadeleştirildi; Profil başlığı global kompakt headline ölçeğine bağlandı.
 
 ### Bottom navigation gesture + motion finalization (2026-09-06)
@@ -14,7 +14,7 @@ _Son güncelleme: 2026-09-04_
 - Drag sırasında seçili etiket artık görünmez bırakılarak alan ayırmıyor; bütün sekmeler gerçekten kompakt moda geçiyor.
 - Dock ekran genişliğine göre 292–312dp aralığında ve 64dp sabit gövde yüksekliğinde. Etiket açıkken görünür içerik boşlukları optik dağıtılıyor; sürüklemede etiketsiz ikonlar sabit 32dp aralıkla merkeze toplanıyor.
 - Drag başında geniş pill eski seçimden koparak kompakt moda daralıyor; x konumu parmağı kontrollü gecikmeyle izliyor, eşiklerde ekran seçimi güncelleniyor ve bırakınca yeni etikete genişliyor.
-- Tek dokunma da aynı üç aşamalı morph'u kullanıyor: eski geniş yüzey 70ms'de merkezine daralıyor, 135ms kompakt halde hedefe akıyor ve hedefte 115ms'de etiketiyle yeniden açılıyor. Etiket yalnız son genişleme başlarken görünür olduğu için yüzeyden ayrı hareket etmiyor.
+- Tek dokunma ve drag başlangıcında iki gerçek yüzey çiziliyor: eski geniş pill merkezine çökerken sönüyor, ondan ayrılan canlı kompakt pill hedefe akıyor ve hedefte etiketiyle yeniden birleşip genişliyor. Böylece yalnız genişlik animasyonu değil, görünür split/merge etkisi oluşuyor.
 - Indicator hedefleri gerçek tema fontuyla önceden ölçülen etiket genişliğinden hesaplanıyor; x 190ms, genişlik 175ms tek-shot geçiş kullanıyor ve layout sırasında yeniden başlamıyor.
 - Uç sekmelerde indicator kenara clamp edildiğinde ikon+etiket içeriği de aynı merkez farkıyla kaydırılıyor. 9dp iç padding, 5dp gap ve 22dp glyph ile komşu ikonlara güvenli mesafe korunuyor.
 - Eski etiket hareket başında 20ms'de söner, yeni etiket pill hedefe yaklaşırken açılır; yazının seçili yüzeyden kopuk veya kırpılmış göründüğü ara kare kaldırıldı.
