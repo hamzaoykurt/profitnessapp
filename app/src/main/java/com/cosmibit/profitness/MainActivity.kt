@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -18,6 +19,7 @@ import com.cosmibit.profitness.core.theme.AppThemeState
 import com.cosmibit.profitness.core.theme.AppThemeStateSaver
 import com.cosmibit.profitness.core.theme.ProfitnessTheme
 import com.cosmibit.profitness.core.theme.ThemeRepository
+import com.cosmibit.profitness.core.theme.ThemeMode
 import com.cosmibit.profitness.presentation.navigation.AppNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +55,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            ProfitnessTheme(themeState = themeState) {
+            val systemIsDark = isSystemInDarkTheme()
+            val effectiveThemeState = themeState.copy(
+                isDark = when (themeState.themeMode) {
+                    ThemeMode.DARK -> true
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.SYSTEM -> systemIsDark
+                }
+            )
+
+            ProfitnessTheme(themeState = effectiveThemeState) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color    = Color.Transparent
@@ -63,7 +74,13 @@ class MainActivity : ComponentActivity() {
                         navController  = navController,
                         recoveryCode   = recoveryCode,
                         onThemeChange  = { newState ->
-                            themeState = newState
+                            themeState = newState.copy(
+                                isDark = when (newState.themeMode) {
+                                    ThemeMode.DARK -> true
+                                    ThemeMode.LIGHT -> false
+                                    ThemeMode.SYSTEM -> systemIsDark
+                                }
+                            )
                             lifecycleScope.launch { themeRepository.saveTheme(newState) }
                         }
                     )

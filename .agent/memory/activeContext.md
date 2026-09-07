@@ -1,8 +1,15 @@
 # Active Context — Profitness
 
-_Son güncelleme: 2026-09-04_
+_Son güncelleme: 2026-09-07_
 
 ## Şu Anki Odak
+
+### Orbit kullanıcı arayüzü devre dışı — 2026-09-07
+
+- Profil Ayarları içindeki `Entegrasyonlar → Orbit Personal OS` satırı ve bağlantı bottom sheet'i ürün kapsamından çıkarıldı.
+- `ProfileState`, `ProfileEvent` ve `ProfileViewModel` Orbit durum/bağlantı akışından ayrıldı; profil açılışında veya `ON_RESUME` sırasında Orbit durum isteği yapılmıyor.
+- Workout repository içindeki completion/uncomplete sonrası Orbit bildirimleri kaldırıldı. Entegrasyon kaynakları, Supabase taslağı ve dokümantasyon ileride sağlık/wearable verisi senaryosu için repoda pasif olarak tutuluyor.
+- Geçici sahte build yapılandırmasıyla `:app:compileDebugKotlin` başarılı; mevcut deprecated ikon uyarıları bu değişiklikle ilgili değil.
 
 ### Minimal typography + page headers (2026-09-06)
 
@@ -226,3 +233,24 @@ Kullanıcının üç ayrıntılı brifi yeniden tam olarak okundu. Yenileme sür
 - [ ] **FAZ 2B:** Manuel program oluşturma — 7 gün max, otomatik başlık algoritması, `exercises` tablosundan hareket seçme
 - [ ] **FAZ 2C:** Mevcut programı düzenleme — CRUD, gün ekle/sil/sırala
 - [ ] Session persistence — DataStore-based `SessionStorage` entegrasyonu
+
+---
+
+## Veri dışa/içe aktarma — 2026-09-07
+
+- Profil ayarlarına genel kullanıcı diliyle `Verileri Dışa Aktar` ve `Verileri İçe Aktar` eklendi; Orbit/Mentor markalaması kullanılmıyor.
+- Android belge seçici üzerinden sürümlü `profitness-backup` JSON dosyası oluşturuluyor ve okunuyor.
+- Yedek kapsamı: temel profil alanları, egzersiz tanımları, program/gün/hareket yapısı, antrenman ve egzersiz logları, set performansı ve kilo geçmişi.
+- İçe aktarma silme yapmaz; aynı hesaba ait yedeği mevcut Room kayıtlarıyla ID bazında birleştirir. İçe alınan geçmiş kayıtları sonraki senkron için bekleyen olarak işaretlenir.
+- XP, kredi, rütbe/sıralama, başarımlar ve sosyal/challenge verileri kullanıcı tarafından değiştirilebilir yedeğe alınmaz.
+- Dosya biçimi hesap kimliği ve sürüm doğrulaması yapar; farklı hesaba ait veya 10 MB üstü dosyalar reddedilir.
+- `:app:compileDebugKotlin` başarılı.
+
+## Sistem teması — 2026-09-07
+
+- Tema tercihi artık `ThemeMode.DARK`, `LIGHT` veya `SYSTEM` olarak saklanıyor.
+- Eski kurulumlarda kayıtlı `is_dark` değeri otomatik olarak DARK/LIGHT tercihine dönüştürülür; mevcut kullanıcı tercihi değişmez.
+- `SYSTEM` seçiliyken `MainActivity`, Android sistem gece modunu Compose üzerinden izler ve efektif `isDark` değerini anlık uygular.
+- Profil görünüm sheet'i ve onboarding tema adımı üç seçenekli `Koyu / Açık / Sistem` kontrolünü kullanır.
+- `AppThemeStateSaver` yeni alanı geriye uyumlu biçimde saklar.
+- `:app:compileDebugKotlin` başarılı.

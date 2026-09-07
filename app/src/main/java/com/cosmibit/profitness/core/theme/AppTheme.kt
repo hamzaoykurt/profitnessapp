@@ -39,9 +39,12 @@ enum class AccentIntensity { NEON, PASTEL, VIVID, SOFT }
 
 enum class AppLanguage { TURKISH, ENGLISH }
 
+enum class ThemeMode { DARK, LIGHT, SYSTEM }
+
 @Immutable
 data class AppThemeState(
     val isDark              : Boolean         = true,
+    val themeMode           : ThemeMode       = ThemeMode.DARK,
     val accent              : AccentPreset    = AccentPreset.ORANGE,
     val surfaceStyle        : SurfaceStyle    = SurfaceStyle.GRAPHITE,
     val intensity           : AccentIntensity = AccentIntensity.SOFT,
@@ -189,12 +192,17 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
             s.language.ordinal,
             s.notificationsEnabled,
             s.intensity.ordinal,
-            s.customAccentArgb
+            s.customAccentArgb,
+            s.themeMode.ordinal
         )
     },
     restore = { values ->
         AppThemeState(
             isDark               = values.getOrNull(0) as? Boolean ?: true,
+            themeMode            = ThemeMode.entries.getOrElse(
+                values.getOrNull(6) as? Int
+                    ?: if (values.getOrNull(0) as? Boolean ?: true) ThemeMode.DARK.ordinal else ThemeMode.LIGHT.ordinal
+            ) { ThemeMode.DARK },
             accent               = AccentPreset.entries.getOrElse(values.getOrNull(1) as? Int ?: AccentPreset.ORANGE.ordinal) { AccentPreset.ORANGE },
             language             = AppLanguage.entries.getOrElse(values.getOrNull(2) as? Int ?: 0) { AppLanguage.TURKISH },
             notificationsEnabled = values.getOrNull(3) as? Boolean ?: true,

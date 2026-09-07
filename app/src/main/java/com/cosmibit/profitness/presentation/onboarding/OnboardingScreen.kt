@@ -272,11 +272,17 @@ private fun StepTheme(
     onThemeChange: (AppThemeState) -> Unit,
     vm           : OnboardingViewModel
 ) {
-    var isDark         by remember { mutableStateOf(current.isDark) }
+    var themeMode     by remember { mutableStateOf(current.themeMode) }
     var accent       by remember { mutableStateOf(current.accent) }
     var intensity    by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
     var showColorPicker by remember { mutableStateOf(false) }
+    val systemIsDark = isSystemInDarkTheme()
+    val previewIsDark = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> systemIsDark
+    }
     val presetRows = remember {
         listOf(
             AccentPreset.LIME,
@@ -293,7 +299,8 @@ private fun StepTheme(
         )
     }
     val preview = current.copy(
-        isDark          = isDark,
+        isDark          = previewIsDark,
+        themeMode       = themeMode,
         accent           = accent,
         surfaceStyle     = SurfaceStyle.OLED,
         intensity        = intensity,
@@ -324,14 +331,15 @@ private fun StepTheme(
         Spacer(Modifier.height(8.dp))
         ThemeSegmentedSelector(
             options = listOf(
-                true to current.t("KOYU", "DARK"),
-                false to current.t("AÇIK", "LIGHT")
+                ThemeMode.DARK to current.t("KOYU", "DARK"),
+                ThemeMode.LIGHT to current.t("AÇIK", "LIGHT"),
+                ThemeMode.SYSTEM to current.t("SİSTEM", "SYSTEM")
             ),
-            selected = isDark,
+            selected = themeMode,
             accent = previewAccent,
             onAccent = previewOnAccent,
             theme = preview,
-            onSelect = { isDark = it }
+            onSelect = { themeMode = it }
         )
         Spacer(Modifier.height(18.dp))
 

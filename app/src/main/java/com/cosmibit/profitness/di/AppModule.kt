@@ -30,6 +30,8 @@ import com.cosmibit.profitness.data.social.SocialRepositoryImpl
 import com.cosmibit.profitness.data.program.ProgramRepository
 import com.cosmibit.profitness.data.program.ProgramRepositoryImpl
 import com.cosmibit.profitness.data.sync.SyncManager
+import com.cosmibit.profitness.data.transfer.DataTransferRepository
+import com.cosmibit.profitness.data.transfer.DataTransferRepositoryImpl
 import com.cosmibit.profitness.data.store.UserPlanRepository
 import com.cosmibit.profitness.data.store.UserPlanRepositoryImpl
 import com.cosmibit.profitness.data.weight.WeightRepository
@@ -91,6 +93,9 @@ abstract class AppModule {
 
     @Binds @Singleton
     abstract fun bindOrbitIntegrationRepository(impl: OrbitIntegrationRepositoryImpl): OrbitIntegrationRepository
+
+    @Binds @Singleton
+    abstract fun bindDataTransferRepository(impl: DataTransferRepositoryImpl): DataTransferRepository
 
     @Binds @Singleton
     abstract fun bindAnalyticsTracker(impl: NoOpAnalyticsTracker): AnalyticsTracker

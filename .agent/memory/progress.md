@@ -1,8 +1,17 @@
 # Progress — Profitness
 
-_Son güncelleme: 2026-09-05_
+_Son güncelleme: 2026-09-07_
 
 ## Genel Durum: Premium çift tema yenilemesi uygulanıyor; kapsamlı cihaz QA'sı devam ediyor
+
+### Orbit görünür akışını kaldırma — 2026-09-07
+
+- [x] Profildeki Orbit Personal OS ayar satırı ve entegrasyon paneli kaldırıldı
+- [x] Profile ViewModel'deki Orbit state, event, repository ve bağlantı eylemleri kaldırıldı
+- [x] Profil açılış/resume Orbit durum sorguları kapatıldı
+- [x] Antrenman tamamlama/geri alma sonrasındaki pasif Orbit ağ tetikleri kaldırıldı
+- [x] Entegrasyon altyapısı gelecekteki sağlık/wearable kapsamı için kaynakta pasif tutuldu
+- [x] `:app:compileDebugKotlin` başarılı
 
 ### Minimal tipografi ve başlık sadeleştirmesi — 2026-09-06
 
@@ -212,6 +221,25 @@ _Son güncelleme: 2026-09-05_
 ---
 
 ## Bilinen Sorunlar
+
+### 2026-09-07 — Genel veri dışa/içe aktarma
+
+- [x] Orbit'teki veri taşıma yaklaşımı incelendi; ProFitness için markadan bağımsız yedekleme akışına uyarlandı
+- [x] Profil ekranına `Verileri Dışa Aktar` / `Verileri İçe Aktar` seçenekleri eklendi
+- [x] Profil, program, egzersiz, antrenman, set ve kilo verilerini kapsayan sürümlü JSON formatı eklendi
+- [x] İçe aktarma silmeden birleştirme, aynı hesap kontrolü ve dosya boyutu sınırı eklendi
+- [x] XP/kredi/sıralama/sosyal veriler güvenli biçimde kapsam dışında bırakıldı
+- [x] `:app:compileDebugKotlin` başarılı
+
+### 2026-09-07 — Sistem temasını takip et
+
+- [x] Kalıcı `DARK / LIGHT / SYSTEM` tema modu eklendi
+- [x] Sistem modu Android gece/gündüz ayarını anlık takip edecek şekilde ana tema katmanına bağlandı
+- [x] Profil ayarları ve onboarding tema seçimi üç seçeneğe çıkarıldı
+- [x] Eski `is_dark` tercihlerinin geriye uyumlu geçişi korundu
+- [x] `AppThemeStateSaver` yeni tema modunu koruyacak şekilde güncellendi
+- [x] `:app:compileDebugKotlin` başarılı
+- [ ] `:app:testDebugUnitTest` kaynaklar ve test sınıfları derlenmesine rağmen iki mevcut testte Gradle/JUnit `ClassNotFoundException` ile çalıştırıcı seviyesinde duruyor; daemon sıfırlama, `--rerun-tasks` ve configuration cache kapatma sonucu değiştirmedi
 
 ### 2026-09-06 — Premium gradient + sculpted material uygulaması
 

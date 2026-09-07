@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -26,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,9 +46,8 @@ import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.data.store.UserPlan
-import com.cosmibit.profitness.data.integration.orbit.OrbitConnectionStatus
-import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationState
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,13 +66,17 @@ fun ProfileScreen(
     val accent  = MaterialTheme.colorScheme.primary
     val strings = theme.strings
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
-    val uriHandler = LocalUriHandler.current
-
     var showAppearance       by remember { mutableStateOf(false) }
     var showNotifications    by remember { mutableStateOf(false) }
     var showLanguagePicker   by remember { mutableStateOf(false) }
-    var showIntegrations     by remember { mutableStateOf(false) }
     var achievementPopup     by remember { mutableStateOf<Triple<String, String, String>?>(null) } // icon, name, description
+    val snackbarHostState    = remember { SnackbarHostState() }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> uri?.let(viewModel::exportData) }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::importData) }
 
     // Achievement unlock bildirimi
     LaunchedEffect(Unit) {
@@ -79,8 +84,7 @@ fun ProfileScreen(
             when (event) {
                 is ProfileEvent.AchievementUnlocked ->
                     achievementPopup = Triple(event.icon, event.name, event.description)
-                is ProfileEvent.ShowSnackbar -> {} // global snackbar host handles other profile events
-                is ProfileEvent.OpenOrbitUrl -> uriHandler.openUri(event.url)
+                is ProfileEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }
@@ -89,7 +93,6 @@ fun ProfileScreen(
     LaunchedEffect(Unit) {
         delay(16)
         viewModel.initLoad()
-        viewModel.refreshOrbitStatus()
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -97,7 +100,6 @@ fun ProfileScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.reloadIfStale()
-                viewModel.refreshOrbitStatus()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -162,13 +164,22 @@ fun ProfileScreen(
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
-                    onIntegrationsClick  = { showIntegrations = true },
-                    orbit                = state.orbitIntegration,
+                    onExportData         = {
+                        exportLauncher.launch("profitness-yedek-${LocalDate.now()}.json")
+                    },
+                    onImportData         = {
+                        importLauncher.launch(arrayOf("application/json", "text/json", "text/plain"))
+                    },
+                    isTransferring       = state.isTransferring,
                     displayName          = state.displayName.ifBlank { theme.t("Kullanıcı", "User") },
                     avatar               = state.avatar
                 )
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp + timerExtraPad)
+        )
     }
 
     // ── Achievement Popup ─────────────────────────────────────────────────────
@@ -322,24 +333,6 @@ fun ProfileScreen(
         }
     }
 
-    if (showIntegrations) {
-        ModalBottomSheet(
-            onDismissRequest = { showIntegrations = false },
-            containerColor = theme.bg1,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ) {
-            OrbitIntegrationSheet(
-                orbit = state.orbitIntegration,
-                theme = theme,
-                accent = accent,
-                onConnect = viewModel::connectOrbit,
-                onDisconnect = viewModel::disconnectOrbit,
-                onSyncEnabled = viewModel::setOrbitSyncEnabled,
-                onSyncNow = viewModel::syncOrbitNow,
-                onManage = { state.orbitIntegration.manageUrl?.let(uriHandler::openUri) }
-            )
-        }
-    }
 }
 
 // ── Profile Hero Banner ───────────────────────────────────────────────────────
@@ -1101,8 +1094,9 @@ private fun SettingsSection(
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
-    onIntegrationsClick : () -> Unit = {},
-    orbit               : OrbitIntegrationState = OrbitIntegrationState(),
+    onExportData        : () -> Unit = {},
+    onImportData        : () -> Unit = {},
+    isTransferring      : Boolean    = false,
     displayName         : String     = "",
     avatar              : String     = "🏋️"
 ) {
@@ -1210,37 +1204,51 @@ private fun SettingsSection(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            theme.t("ENTEGRASYONLAR", "INTEGRATIONS"),
-            style = MaterialTheme.typography.labelSmall,
-            color = theme.text1,
+            theme.t("VERİLER", "DATA"),
+            style         = MaterialTheme.typography.labelSmall,
+            color         = theme.text1,
             letterSpacing = 2.sp
         )
-        Spacer(Modifier.height(12.dp))
+
+        Spacer(Modifier.height(16.dp))
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
         ) {
             SettingsRow(
-                icon = Icons.Rounded.Hub,
-                label = "Orbit Personal OS",
-                sub = when {
-                    orbit.isLoading -> theme.t("Kontrol ediliyor", "Checking")
-                    orbit.status == OrbitConnectionStatus.CONNECTED && orbit.fitnessSyncEntitled ->
-                        theme.t("Bağlı · Fitness Sync", "Connected · Fitness Sync")
-                    orbit.status == OrbitConnectionStatus.CONNECTED ->
-                        theme.t("Bağlı · Orbit yetkisi gerekli", "Connected · Orbit entitlement required")
-                    orbit.status == OrbitConnectionStatus.RECONNECT_REQUIRED ->
-                        theme.t("Yeniden bağlantı gerekli", "Reconnect required")
-                    else -> theme.t("Bağlı değil", "Not connected")
-                },
-                theme = theme,
-                accent = accent,
-                onClick = onIntegrationsClick
+                icon    = Icons.Rounded.UploadFile,
+                label   = theme.t("Verileri Dışa Aktar", "Export Data"),
+                sub     = if (isTransferring) theme.t("İşlem sürüyor…", "Working…") else
+                    theme.t("Profil, program ve antrenman yedeği oluştur", "Create a profile, program and workout backup"),
+                theme   = theme,
+                accent  = accent,
+                enabled = !isTransferring,
+                onClick = onExportData
+            )
+            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsRow(
+                icon    = Icons.Rounded.Download,
+                label   = theme.t("Verileri İçe Aktar", "Import Data"),
+                sub     = theme.t("Mevcut verileri silmeden bir yedeği birleştir", "Merge a backup without deleting current data"),
+                theme   = theme,
+                accent  = accent,
+                enabled = !isTransferring,
+                onClick = onImportData
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Text(
+            theme.t(
+                "XP, kredi, sıralama ve sosyal veriler yedeğe dahil edilmez.",
+                "XP, credits, rankings and social data are not included."
+            ),
+            color = theme.text2,
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp)
+        )
 
         Row(
             modifier = Modifier
@@ -1288,12 +1296,14 @@ private fun SettingsRow(
     sub    : String,
     theme  : AppThemeState,
     accent : Color,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
+            .then(if (enabled) Modifier else Modifier.alpha(0.55f))
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1316,144 +1326,6 @@ private fun SettingsRow(
     }
 }
 
-@Composable
-private fun OrbitIntegrationSheet(
-    orbit: OrbitIntegrationState,
-    theme: AppThemeState,
-    accent: Color,
-    onConnect: () -> Unit,
-    onDisconnect: () -> Unit,
-    onSyncEnabled: (Boolean) -> Unit,
-    onSyncNow: () -> Unit,
-    onManage: () -> Unit
-) {
-    val connected = orbit.status == OrbitConnectionStatus.CONNECTED
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(
-                Modifier
-                    .size(50.dp)
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(Brush.linearGradient(listOf(accent.copy(.28f), accent.copy(.08f))))
-                    .border(1.dp, accent.copy(.42f), RoundedCornerShape(15.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Hub, null, tint = accent, modifier = Modifier.size(26.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Orbit Personal OS", color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text(
-                    theme.t("Fitness özetini güvenli ve isteğe bağlı paylaş", "Securely share your Fitness summary when you choose"),
-                    color = theme.text2,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp
-                )
-            }
-        }
-
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val statusText = when (orbit.status) {
-                OrbitConnectionStatus.CONNECTED -> orbit.accountLabel?.let { theme.t("$it bağlı", "$it connected") }
-                    ?: theme.t("Orbit hesabı bağlı", "Orbit account connected")
-                OrbitConnectionStatus.RECONNECT_REQUIRED -> theme.t("Yeniden bağlantı gerekli", "Reconnect required")
-                OrbitConnectionStatus.TEMPORARILY_UNAVAILABLE -> theme.t("Geçici olarak kullanılamıyor", "Temporarily unavailable")
-                OrbitConnectionStatus.NOT_CONNECTED -> theme.t("Bağlı değil", "Not connected")
-            }
-            Text(statusText, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(
-                theme.t(
-                    "Haftalık hedef, bu haftaki tamamlamalar, bugünkü antrenman ve son tamamlanma zamanı paylaşılır. Fitness verileri burada kalır.",
-                    "Weekly target, this week's completions, today's workout and last completion time are shared. Fitness remains the source of truth."
-                ),
-                color = theme.text2,
-                fontSize = 12.sp,
-                lineHeight = 18.sp
-            )
-
-            if (connected) {
-                HorizontalDivider(color = theme.stroke)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(theme.t("Fitness Sync", "Fitness Sync"), color = theme.text0, fontWeight = FontWeight.Bold)
-                        Text(
-                            if (orbit.fitnessSyncEntitled) theme.t("Orbit tarafından yetkilendirildi", "Authorized by Orbit")
-                            else theme.t("Orbit üyeliğinde bu özellik açık değil", "Not enabled by your Orbit membership"),
-                            color = if (orbit.fitnessSyncEntitled) accent else theme.text2,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Switch(
-                        checked = orbit.syncEnabled && orbit.fitnessSyncEntitled,
-                        onCheckedChange = onSyncEnabled,
-                        enabled = orbit.fitnessSyncEntitled
-                    )
-                }
-            }
-            if (orbit.lastErrorCode != null) {
-                Text(
-                    theme.t("Orbit geçici olarak kullanılamıyor. Fitness normal çalışmaya devam eder.", "Orbit is temporarily unavailable. Fitness continues to work normally."),
-                    color = CardCoral,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
-                )
-            }
-        }
-
-        if (!connected || orbit.status == OrbitConnectionStatus.RECONNECT_REQUIRED) {
-            Button(
-                onClick = onConnect,
-                enabled = !orbit.isLoading,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(17.dp)
-            ) {
-                Icon(Icons.Rounded.Link, null)
-                Spacer(Modifier.width(8.dp))
-                Text(theme.t("Orbit'e Bağlan", "Connect Orbit"), fontWeight = FontWeight.Black)
-            }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(
-                    onClick = if (orbit.manageUrl != null) onManage else onSyncNow,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(15.dp)
-                ) {
-                    Text(if (orbit.manageUrl != null) theme.t("Yönet", "Manage") else theme.t("Şimdi Eşitle", "Sync now"))
-                }
-                OutlinedButton(
-                    onClick = onDisconnect,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CardCoral)
-                ) {
-                    Text(theme.t("Bağlantıyı Kes", "Disconnect"))
-                }
-            }
-        }
-        Text(
-            theme.t(
-                "Orbit premium durumu bu uygulamada oluşturulmaz; her zaman Orbit sunucusundan doğrulanır.",
-                "Orbit premium status is never created in this app; it is always verified by Orbit."
-            ),
-            color = theme.text2,
-            fontSize = 10.sp,
-            lineHeight = 15.sp,
-            modifier = Modifier.padding(bottom = 28.dp)
-        )
-    }
-}
-
 // ── Appearance / Theme Settings Sheet ────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1463,12 +1335,18 @@ private fun ThemeSettingsSheet(
     strings: AppStrings,
     onApply: (AppThemeState) -> Unit
 ) {
-    var isDark          by remember { mutableStateOf(current.isDark) }
+    var themeMode       by remember { mutableStateOf(current.themeMode) }
     var accent          by remember { mutableStateOf(current.accent) }
     var intensity       by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
     var showColorPicker by remember { mutableStateOf(false) }
     val theme           = LocalAppTheme.current
+    val systemIsDark    = isSystemInDarkTheme()
+    val previewIsDark   = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> systemIsDark
+    }
     val presetRows = remember {
         listOf(
             AccentPreset.LIME,
@@ -1487,7 +1365,8 @@ private fun ThemeSettingsSheet(
 
     // Live preview state — her değişimde anında güncellenir
     val preview = current.copy(
-        isDark          = isDark,
+        isDark          = previewIsDark,
+        themeMode       = themeMode,
         accent           = accent,
         surfaceStyle     = SurfaceStyle.OLED,
         intensity        = intensity,
@@ -1513,14 +1392,15 @@ private fun ThemeSettingsSheet(
         SectionLabel(current.t("Görünüm", "Appearance"), theme)
         SegmentedSelector(
             options = listOf(
-                true  to current.t("Koyu", "Dark"),
-                false to current.t("Açık", "Light")
+                ThemeMode.DARK to current.t("Koyu", "Dark"),
+                ThemeMode.LIGHT to current.t("Açık", "Light"),
+                ThemeMode.SYSTEM to current.t("Sistem", "System")
             ),
-            selected = isDark,
+            selected = themeMode,
             accent   = previewAccent,
             onAccent = previewOnAccent,
             theme    = theme,
-            onSelect = { isDark = it }
+            onSelect = { themeMode = it }
         )
 
         // ── Live Preview Card ─────────────────────────────────────────────────
@@ -1572,7 +1452,8 @@ private fun ThemeSettingsSheet(
             onClick  = {
                 onApply(
                     current.copy(
-                        isDark       = isDark,
+                        isDark       = previewIsDark,
+                        themeMode    = themeMode,
                         accent       = accent,
                         surfaceStyle = SurfaceStyle.OLED,
                         intensity    = intensity,

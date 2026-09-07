@@ -24,6 +24,7 @@ class ThemeRepository @Inject constructor(
 ) {
     private object Keys {
         val IS_DARK       = booleanPreferencesKey("is_dark")
+        val THEME_MODE    = intPreferencesKey("theme_mode")
         val ACCENT_ORD    = intPreferencesKey("accent_ordinal")
         val SURFACE_ORD   = intPreferencesKey("surface_style_ordinal")
         val INTENSITY_ORD = intPreferencesKey("intensity_ordinal")
@@ -43,6 +44,9 @@ class ThemeRepository @Inject constructor(
         }
         .map { prefs ->
             val isDark        = prefs[Keys.IS_DARK]       ?: true
+            val themeMode     = prefs[Keys.THEME_MODE]?.let { ordinal ->
+                ThemeMode.entries.getOrElse(ordinal) { ThemeMode.DARK }
+            } ?: if (isDark) ThemeMode.DARK else ThemeMode.LIGHT
             val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: AccentPreset.ORANGE.ordinal
             val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: AccentIntensity.SOFT.ordinal
             val languageOrd   = prefs[Keys.LANGUAGE_ORD]  ?: 0
@@ -53,6 +57,7 @@ class ThemeRepository @Inject constructor(
             val language      = AppLanguage.entries.getOrElse(languageOrd) { AppLanguage.TURKISH }
             AppThemeState(
                 isDark               = isDark,
+                themeMode            = themeMode,
                 accent               = accent,
                 surfaceStyle         = SurfaceStyle.GRAPHITE,
                 intensity            = intensity,
@@ -65,6 +70,7 @@ class ThemeRepository @Inject constructor(
     suspend fun saveTheme(state: AppThemeState) {
         context.themeDataStore.edit { prefs ->
             prefs[Keys.IS_DARK]       = state.isDark
+            prefs[Keys.THEME_MODE]    = state.themeMode.ordinal
             prefs[Keys.ACCENT_ORD]    = state.accent.ordinal
             prefs[Keys.SURFACE_ORD]   = SurfaceStyle.GRAPHITE.ordinal
             prefs[Keys.INTENSITY_ORD] = state.intensity.ordinal

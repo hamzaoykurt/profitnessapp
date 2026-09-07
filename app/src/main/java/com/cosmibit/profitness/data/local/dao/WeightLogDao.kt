@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.cosmibit.profitness.data.local.entity.WeightLogEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -15,6 +16,9 @@ interface WeightLogDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entry: WeightLogEntity)
+
+    @Upsert
+    suspend fun upsertAll(entries: List<WeightLogEntity>)
 
     @Update
     suspend fun update(entry: WeightLogEntity)
@@ -40,6 +44,13 @@ interface WeightLogDao {
         LIMIT :limit
     """)
     suspend fun getRecent(userId: String, limit: Int = 30): List<WeightLogEntity>
+
+    @Query("""
+        SELECT * FROM weight_logs
+        WHERE user_id = :userId
+        ORDER BY recorded_at ASC
+    """)
+    suspend fun getAllForUser(userId: String): List<WeightLogEntity>
 
     /** Belirli tarih aralığındaki kayıtlar (grafik / haftalık özet). */
     @Query("""

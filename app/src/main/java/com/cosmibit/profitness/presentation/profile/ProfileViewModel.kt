@@ -1,16 +1,16 @@
 package com.cosmibit.profitness.presentation.profile
 
+import android.net.Uri
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.cache.DiskCache
 import com.cosmibit.profitness.data.leaderboard.LeaderboardRepository
-import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationRepository
-import com.cosmibit.profitness.data.integration.orbit.OrbitIntegrationState
 import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.profile.dto.AchievementDto
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.data.store.UserPlanRepository
+import com.cosmibit.profitness.data.transfer.DataTransferRepository
 import com.cosmibit.profitness.data.workout.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -91,16 +91,15 @@ data class ProfileState(
     val totalCalories        : Int                  = 0,
     val isLoading            : Boolean              = true,
     val isSaving             : Boolean              = false,
+    val isTransferring       : Boolean              = false,
     val userPlan             : UserPlan             = UserPlan.FREE,
-    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
-    val orbitIntegration     : OrbitIntegrationState = OrbitIntegrationState()
+    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
 sealed class ProfileEvent {
     data class ShowSnackbar(val message: String) : ProfileEvent()
-    data class OpenOrbitUrl(val url: String) : ProfileEvent()
     data class AchievementUnlocked(val name: String, val icon: String, val description: String = "") : ProfileEvent()
 }
 
@@ -112,7 +111,7 @@ class ProfileViewModel @Inject constructor(
     private val leaderboardRepository: LeaderboardRepository,
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
-    private val orbitRepository   : OrbitIntegrationRepository,
+    private val dataTransferRepository: DataTransferRepository,
     private val disk              : DiskCache,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
@@ -129,11 +128,6 @@ class ProfileViewModel @Inject constructor(
                 .collect { (plan, credits) ->
                     updateState { it.copy(userPlan = plan, aiCredits = credits) }
                 }
-        }
-        viewModelScope.launch {
-            orbitRepository.state.collect { orbit ->
-                updateState { it.copy(orbitIntegration = orbit) }
-            }
         }
     }
 
@@ -161,39 +155,6 @@ class ProfileViewModel @Inject constructor(
             delay(1_500L)
             profileRepository.invalidateStatsCache()
             loadProfile()
-        }
-    }
-
-    fun refreshOrbitStatus() {
-        viewModelScope.launch { orbitRepository.refresh() }
-    }
-
-    fun connectOrbit() {
-        viewModelScope.launch {
-            orbitRepository.beginConnection()
-                .onSuccess { sendEvent(ProfileEvent.OpenOrbitUrl(it)) }
-                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit bağlantısı başlatılamadı.")) }
-        }
-    }
-
-    fun disconnectOrbit() {
-        viewModelScope.launch {
-            orbitRepository.disconnect()
-                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit bağlantısı kaldırılamadı.")) }
-        }
-    }
-
-    fun setOrbitSyncEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            orbitRepository.setSyncEnabled(enabled)
-                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Senkron ayarı güncellenemedi.")) }
-        }
-    }
-
-    fun syncOrbitNow() {
-        viewModelScope.launch {
-            orbitRepository.requestSync(java.time.ZoneId.systemDefault().id)
-                .onFailure { sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Orbit senkronu şu anda kullanılamıyor.")) }
         }
     }
 
@@ -373,6 +334,45 @@ class ProfileViewModel @Inject constructor(
             } else {
                 updateState { it.copy(isSaving = false) }
                 sendEvent(ProfileEvent.ShowSnackbar("Fotoğraf yüklenemedi"))
+            }
+        }
+    }
+
+    fun exportData(destination: Uri) {
+        if (uiState.value.isTransferring) return
+        viewModelScope.launch {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+                sendEvent(ProfileEvent.ShowSnackbar("Oturum bulunamadı"))
+                return@launch
+            }
+            updateState { it.copy(isTransferring = true) }
+            val result = dataTransferRepository.exportTo(userId, destination)
+            updateState { it.copy(isTransferring = false) }
+            result.onSuccess { summary ->
+                sendEvent(ProfileEvent.ShowSnackbar("Yedek oluşturuldu · ${summary.totalRecords} kayıt"))
+            }.onFailure {
+                sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Veriler dışa aktarılamadı"))
+            }
+        }
+    }
+
+    fun importData(source: Uri) {
+        if (uiState.value.isTransferring) return
+        viewModelScope.launch {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+                sendEvent(ProfileEvent.ShowSnackbar("Oturum bulunamadı"))
+                return@launch
+            }
+            updateState { it.copy(isTransferring = true) }
+            val result = dataTransferRepository.importFrom(userId, source)
+            updateState { it.copy(isTransferring = false) }
+            result.onSuccess { summary ->
+                lastLoadMs = 0L
+                profileRepository.invalidateStatsCache()
+                loadProfile()
+                sendEvent(ProfileEvent.ShowSnackbar("Veriler içe aktarıldı · ${summary.totalRecords} kayıt"))
+            }.onFailure {
+                sendEvent(ProfileEvent.ShowSnackbar(it.message ?: "Veriler içe aktarılamadı"))
             }
         }
     }
