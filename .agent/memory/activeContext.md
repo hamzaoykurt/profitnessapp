@@ -246,6 +246,12 @@ Kullanıcının üç ayrıntılı brifi yeniden tam olarak okundu. Yenileme sür
 - Dosya biçimi hesap kimliği ve sürüm doğrulaması yapar; farklı hesaba ait veya 10 MB üstü dosyalar reddedilir.
 - `:app:compileDebugKotlin` başarılı.
 
+### Oturum fallback düzeltmesi (2026-09-07)
+
+- Veri dışa/içe aktarma, GoTrue başlangıçta `currentUserOrNull()` geçici null döndürebildiği için “Oturum bulunamadı” hatasına düşebiliyordu.
+- `ProfileViewModel.currentUserId()` artık önce `currentSessionOrNull()?.user?.id`, sonra `currentUserOrNull()?.id` kullanır; dışa/içe aktarma bu yardımcıdan kullanıcı kimliği alır.
+- `:app:compileDebugKotlin` başarılı.
+
 ## Sistem teması — 2026-09-07
 
 - Tema tercihi artık `ThemeMode.DARK`, `LIGHT` veya `SYSTEM` olarak saklanıyor.

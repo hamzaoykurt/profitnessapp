@@ -341,7 +341,7 @@ class ProfileViewModel @Inject constructor(
     fun exportData(destination: Uri) {
         if (uiState.value.isTransferring) return
         viewModelScope.launch {
-            val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+            val userId = currentUserId() ?: run {
                 sendEvent(ProfileEvent.ShowSnackbar("Oturum bulunamadı"))
                 return@launch
             }
@@ -359,7 +359,7 @@ class ProfileViewModel @Inject constructor(
     fun importData(source: Uri) {
         if (uiState.value.isTransferring) return
         viewModelScope.launch {
-            val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+            val userId = currentUserId() ?: run {
                 sendEvent(ProfileEvent.ShowSnackbar("Oturum bulunamadı"))
                 return@launch
             }
@@ -412,6 +412,11 @@ class ProfileViewModel @Inject constructor(
     private suspend fun saveSnapshot(userId: String, state: ProfileState) {
         disk.putOnIo("profile_state_$userId", state.toSnapshot())
     }
+
+    /** GoTrue açılışta currentUser'ı geçici null döndürebilir; session.user fallback'tir. */
+    private fun currentUserId(): String? =
+        supabase.auth.currentSessionOrNull()?.user?.id
+            ?: supabase.auth.currentUserOrNull()?.id
 
     // ── FAZ 5C: Achievement Kontrol ───────────────────────────────────────────
 

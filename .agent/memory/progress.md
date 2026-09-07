@@ -230,6 +230,7 @@ _Son güncelleme: 2026-09-07_
 - [x] İçe aktarma silmeden birleştirme, aynı hesap kontrolü ve dosya boyutu sınırı eklendi
 - [x] XP/kredi/sıralama/sosyal veriler güvenli biçimde kapsam dışında bırakıldı
 - [x] `:app:compileDebugKotlin` başarılı
+- [x] Oturum yüklenirken `currentUser` null olduğunda session.user fallback'i eklendi; “Oturum bulunamadı” geri bildirimi düzeltildi
 
 ### 2026-09-07 — Sistem temasını takip et
 
