@@ -1,8 +1,15 @@
 # Active Context — Profitness
 
-_Son güncelleme: 2026-09-07_
+_Son güncelleme: 2026-09-08_
 
 ## Şu Anki Odak
+
+### Gün bazlı hareket tamamlama izolasyonu — 2026-09-08
+
+- Haftalık set tamamlamaları artık yalnız `exerciseId` ile değil, `programDayId + exerciseId` anahtarıyla gruplanıyor; aynı hareket farklı program günlerinde bağımsız tutuluyor.
+- Workout ekranındaki set tikleri, otomatik hareket tamamlama, aktivite tamamlama ve optimistik geri alma yolları aynı gün-bazlı anahtarı kullanıyor.
+- Aynı hareketin pazartesi ve cuma kayıtlarının birleşmediğini doğrulayan regresyon testi eklendi.
+- `:app:compileDebugKotlin` kaynak derlemesi başarılı. Tam `testDebugUnitTest`, OneDrive dosya modu nedeniyle `processDebugJavaRes` / `transformDebugClassesWithAsm` aşamasında testlere ulaşmadan duruyor.
 
 ### Orbit kullanıcı arayüzü devre dışı — 2026-09-07
 

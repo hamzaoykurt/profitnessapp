@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.cosmibit.profitness.data.workout.SetCompletionKey
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -799,7 +800,10 @@ private fun WorkoutContent(
                 }
                 val isCompleted = exercise.id in currentState.completedIds
                 var showDetail by remember { mutableStateOf(false) }
-                val completionKey = exercise.exerciseTableId.ifBlank { exercise.id }
+                val completionKey = SetCompletionKey(
+                    programDayId = currentState.day.programDayId,
+                    exerciseId = exercise.exerciseTableId.ifBlank { exercise.id }
+                )
                 val persistedSetCompletions = state.setCompletions[completionKey]
                 val doneSetIndices = remember(isCompleted, exercise.sets, persistedSetCompletions) {
                     if (isCompleted) {

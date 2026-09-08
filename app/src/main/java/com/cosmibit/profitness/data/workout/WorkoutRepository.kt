@@ -9,6 +9,11 @@ data class ExerciseSessionSets(
     val previous: Map<String, List<SetCompletionEntity>>
 )
 
+data class SetCompletionKey(
+    val programDayId: String,
+    val exerciseId: String
+)
+
 interface WorkoutRepository {
 
     // ── Reactive observe (Room Flow) ─────────────────────────────────────────
@@ -28,9 +33,10 @@ interface WorkoutRepository {
 
     /**
      * Set tamamlamalarını reaktif izler.
-     * Map<exerciseId, Set<setIndex>> — her egzersizin tamamlanan set indexleri.
+     * Map<SetCompletionKey, Set<setIndex>> — her program günündeki egzersizin
+     * tamamlanan set indexleri. Aynı egzersiz farklı günlerde birbirinden ayrı tutulur.
      */
-    fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<String, Set<Int>>>
+    fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<SetCompletionKey, Set<Int>>>
 
     // ── Write (Room-first, Supabase async sync) ──────────────────────────────
 

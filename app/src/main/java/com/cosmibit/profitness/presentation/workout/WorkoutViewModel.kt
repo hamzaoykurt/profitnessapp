@@ -16,6 +16,7 @@ import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.program.ProgramRepository
 import com.cosmibit.profitness.data.sync.SyncCoordinator
 import com.cosmibit.profitness.data.workout.WorkoutRepository
+import com.cosmibit.profitness.data.workout.SetCompletionKey
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.challenges.ChallengeMovement
 import com.cosmibit.profitness.domain.challenges.EventMode
@@ -91,7 +92,7 @@ data class WorkoutScreenState(
     val hasProgramLoaded: Boolean = false,
     val currentProgramId: String = "",
     val currentStreak: Int = 0,
-    val setCompletions: Map<String, Set<Int>> = emptyMap(),
+    val setCompletions: Map<SetCompletionKey, Set<Int>> = emptyMap(),
     // Progressive overload — per-set weight input. Reps are read from the program.
     val setWeights: Map<String, Map<Int, String>> = emptyMap(),
     val setReps: Map<String, Map<Int, String>> = emptyMap(),
@@ -796,8 +797,9 @@ class WorkoutViewModel @Inject constructor(
         val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
         val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
 
-        val isCurrentlyDone = setIndex in (currentState.setCompletions[dbExerciseId] ?: emptySet())
-        markSetCompletionOptimistically(dbExerciseId, setIndex, !isCurrentlyDone)
+        val completionKey = SetCompletionKey(programDayId, dbExerciseId)
+        val isCurrentlyDone = setIndex in (currentState.setCompletions[completionKey] ?: emptySet())
+        markSetCompletionOptimistically(completionKey, setIndex, !isCurrentlyDone)
         val isDurationSet = isDurationSetBased(exercise)
 
         viewModelScope.launch {
@@ -852,7 +854,7 @@ class WorkoutViewModel @Inject constructor(
                 workoutRepository.upsertSetRepsActual(userId, dbExerciseId, programDayId, setIndex, reps)
                 }
 
-                val completedAfter = (currentState.setCompletions[dbExerciseId] ?: emptySet()) + setIndex
+                val completedAfter = (currentState.setCompletions[completionKey] ?: emptySet()) + setIndex
                 val shouldAutoComplete =
                     !isActivityBased(exercise) &&
                     exercise.sets > 0 &&
@@ -984,7 +986,7 @@ class WorkoutViewModel @Inject constructor(
                     state.copy(setReps = state.setReps + (exerciseId to exerciseMap))
                 }
                 // Sadece set zaten tikliyse reps_actual güncellenir — tikli olmayan set draft kalmalı.
-                val isDone = setIndex in (latest.setCompletions[dbExerciseId] ?: emptySet())
+                val isDone = setIndex in latest.setCompletions[SetCompletionKey(programDayId, dbExerciseId)].orEmpty()
                 if (isDone) {
                     val r = repsValue.toIntOrNull()
                     if (r != null) {
@@ -1312,7 +1314,7 @@ class WorkoutViewModel @Inject constructor(
 
                 markExerciseCompletedOptimistically(dayIdx, exerciseId)
                 if (activityBased) {
-                    markSetCompletionOptimistically(dbExerciseId, ACTIVITY_SET_INDEX, true)
+                    markSetCompletionOptimistically(SetCompletionKey(programDayId, dbExerciseId), ACTIVITY_SET_INDEX, true)
                     workoutRepository.upsertSetActivityMetrics(
                         userId = userId,
                         exerciseId = dbExerciseId,
@@ -1331,7 +1333,7 @@ class WorkoutViewModel @Inject constructor(
                         repsActual = activityRepsActual
                     )
                 } else {
-                    markExerciseSetsCompletedOptimistically(dbExerciseId, exercise.sets)
+                    markExerciseSetsCompletedOptimistically(SetCompletionKey(programDayId, dbExerciseId), exercise.sets)
                     // Tüm setleri Room'a yaz — Flow otomatik UI'ı günceller.
                     val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
                     workoutRepository.fillExerciseSetCompletions(
@@ -1377,7 +1379,7 @@ class WorkoutViewModel @Inject constructor(
             } else {
                 pendingIncompleteExerciseIds += exerciseId
                 markExerciseIncompleteOptimistically(dayIdx, exerciseId)
-                markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
+                markExerciseSetCompletionsClearedOptimistically(SetCompletionKey(programDayId, dbExerciseId))
                 try {
                     // İki completion kaynağını da önce Room'dan temizle. Pending
                     // override, ayrı Flow emisyonları arasında tamamlandı flicker'ını önler.
@@ -1413,7 +1415,7 @@ class WorkoutViewModel @Inject constructor(
         currentState: WorkoutScreenState
     ) {
         markExerciseCompletedOptimistically(dayIdx, exerciseId)
-        markExerciseSetsCompletedOptimistically(dbExerciseId, exercise.sets)
+        markExerciseSetsCompletedOptimistically(SetCompletionKey(programDayId, dbExerciseId), exercise.sets)
 
         val plannedReps = exercise.reps.toIntOrNull()?.takeIf { it > 0 } ?: 1
         workoutRepository.fillExerciseSetCompletions(
@@ -1469,7 +1471,7 @@ class WorkoutViewModel @Inject constructor(
         val key = "$exerciseId:activity"
         draftPersistJobs[key]?.cancel()
 
-        markSetCompletionOptimistically(dbExerciseId, ACTIVITY_SET_INDEX, true)
+        markSetCompletionOptimistically(SetCompletionKey(programDayId, dbExerciseId), ACTIVITY_SET_INDEX, true)
         if (!wasCompleted) markExerciseCompletedOptimistically(dayIdx, exerciseId)
 
         viewModelScope.launch {
@@ -1586,35 +1588,35 @@ class WorkoutViewModel @Inject constructor(
     }
 
     private fun markSetCompletionOptimistically(
-        dbExerciseId: String,
+        completionKey: SetCompletionKey,
         setIndex: Int,
         isDone: Boolean
     ) {
         updateState { state ->
-            val current = state.setCompletions[dbExerciseId].orEmpty()
+            val current = state.setCompletions[completionKey].orEmpty()
             val updated = if (isDone) current + setIndex else current - setIndex
             state.copy(
                 setCompletions = if (updated.isEmpty()) {
-                    state.setCompletions - dbExerciseId
+                    state.setCompletions - completionKey
                 } else {
-                    state.setCompletions + (dbExerciseId to updated)
+                    state.setCompletions + (completionKey to updated)
                 }
             )
         }
     }
 
-    private fun markExerciseSetsCompletedOptimistically(dbExerciseId: String, totalSets: Int) {
+    private fun markExerciseSetsCompletedOptimistically(completionKey: SetCompletionKey, totalSets: Int) {
         if (totalSets <= 0) return
         updateState { state ->
             state.copy(
-                setCompletions = state.setCompletions + (dbExerciseId to (0 until totalSets).toSet())
+                setCompletions = state.setCompletions + (completionKey to (0 until totalSets).toSet())
             )
         }
     }
 
-    private fun markExerciseSetCompletionsClearedOptimistically(dbExerciseId: String) {
+    private fun markExerciseSetCompletionsClearedOptimistically(completionKey: SetCompletionKey) {
         updateState { state ->
-            state.copy(setCompletions = state.setCompletions - dbExerciseId)
+            state.copy(setCompletions = state.setCompletions - completionKey)
         }
     }
 
@@ -1678,7 +1680,7 @@ class WorkoutViewModel @Inject constructor(
     private fun buildDayStates(
         program: Program,
         completions: Map<String, Set<String>>,
-        setCompletions: Map<String, Set<Int>>
+        setCompletions: Map<SetCompletionKey, Set<Int>>
     ): ImmutableList<WorkoutDayState> {
         val sortedDays = program.days.sortedBy { it.dayIndex }
         val dayByIndex = sortedDays.associateBy { it.dayIndex }
@@ -1736,7 +1738,7 @@ class WorkoutViewModel @Inject constructor(
                 val setCompletedPeIds = workoutDay.exercises
                     .filter { exercise ->
                         val dbExerciseId = exercise.exerciseTableId.ifBlank { exercise.id }
-                        val completedSets = setCompletions[dbExerciseId].orEmpty()
+                        val completedSets = setCompletions[SetCompletionKey(day.id, dbExerciseId)].orEmpty()
                         if (isActivityBased(exercise)) {
                             ACTIVITY_SET_INDEX in completedSets
                         } else {
@@ -1900,7 +1902,7 @@ class WorkoutViewModel @Inject constructor(
                 val activityRepsActual = activityRepsActualFor(exercise, currentState, exercise.id)
 
                 markExerciseCompletedOptimistically(dayIdx, exercise.id)
-                markSetCompletionOptimistically(dbExerciseId, ACTIVITY_SET_INDEX, true)
+                markSetCompletionOptimistically(SetCompletionKey(programDayId, dbExerciseId), ACTIVITY_SET_INDEX, true)
                 workoutRepository.upsertSetActivityMetrics(
                     userId = userId,
                     exerciseId = dbExerciseId,
@@ -1930,7 +1932,7 @@ class WorkoutViewModel @Inject constructor(
             } else {
                 pendingIncompleteExerciseIds += exercise.id
                 markExerciseIncompleteOptimistically(dayIdx, exercise.id)
-                markExerciseSetCompletionsClearedOptimistically(dbExerciseId)
+                markExerciseSetCompletionsClearedOptimistically(SetCompletionKey(programDayId, dbExerciseId))
                 try {
                     workoutRepository.clearExerciseSetCompletions(userId, dbExerciseId, programDayId)
                     workoutRepository.uncompleteExercise(userId, programDayId, dbExerciseId)
@@ -1961,14 +1963,15 @@ class WorkoutViewModel @Inject constructor(
         if (programDayId.isBlank()) return
         val exercise = dayState.day.exercises.find { it.id == exerciseId } ?: return
         val dbExerciseId = exercise.exerciseTableId.ifBlank { exerciseId }
-        val completedAfter = (currentState.setCompletions[dbExerciseId] ?: emptySet()) + setIndex
+        val completionKey = SetCompletionKey(programDayId, dbExerciseId)
+        val completedAfter = (currentState.setCompletions[completionKey] ?: emptySet()) + setIndex
 
         updateState { state ->
             val exerciseMap = state.setDurations[exerciseId].orEmpty().toMutableMap()
             exerciseMap[setIndex] = seconds.toString()
             state.copy(setDurations = state.setDurations + (exerciseId to exerciseMap))
         }
-        markSetCompletionOptimistically(dbExerciseId, setIndex, true)
+        markSetCompletionOptimistically(completionKey, setIndex, true)
 
         viewModelScope.launch {
             workoutRepository.upsertSetActivityMetrics(
@@ -2113,7 +2116,7 @@ class WorkoutViewModel @Inject constructor(
             )
             if (
                 supportsActivityReps(exercise) &&
-                ACTIVITY_SET_INDEX in latest.setCompletions[dbExerciseId].orEmpty()
+                ACTIVITY_SET_INDEX in latest.setCompletions[SetCompletionKey(programDayId, dbExerciseId)].orEmpty()
             ) {
                 workoutRepository.upsertSetRepsActual(
                     userId = userId,
@@ -2152,7 +2155,7 @@ class WorkoutViewModel @Inject constructor(
             )
             if (
                 supportsActivityReps(exercise) &&
-                ACTIVITY_SET_INDEX in latest.setCompletions[dbExerciseId].orEmpty()
+                ACTIVITY_SET_INDEX in latest.setCompletions[SetCompletionKey(programDayId, dbExerciseId)].orEmpty()
             ) {
                 workoutRepository.upsertSetRepsActual(
                     userId = userId,

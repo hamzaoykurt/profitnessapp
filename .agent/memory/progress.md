@@ -1,8 +1,16 @@
 # Progress — Profitness
 
-_Son güncelleme: 2026-09-07_
+_Son güncelleme: 2026-09-08_
 
 ## Genel Durum: Premium çift tema yenilemesi uygulanıyor; kapsamlı cihaz QA'sı devam ediyor
+
+### Günler arası hareket tamamlama sızıntısı — 2026-09-08
+
+- [x] Set completion akışı `programDayId + exerciseId` bileşik anahtarına geçirildi
+- [x] Kart, set toggle, otomatik tamamlama, aktivite ve geri alma yolları gün-bazlı anahtarla eşlendi
+- [x] Aynı hareketin iki farklı program günündeki setlerini ayıran regresyon testi eklendi
+- [x] `:app:compileDebugKotlin` kaynak derlemesi başarılı
+- [ ] Tam unit test koşusu OneDrive dosya modu hatası nedeniyle Android sınıf dönüştürme adımında duruyor; testler başlamadan kesiliyor
 
 ### Orbit görünür akışını kaldırma — 2026-09-07
 

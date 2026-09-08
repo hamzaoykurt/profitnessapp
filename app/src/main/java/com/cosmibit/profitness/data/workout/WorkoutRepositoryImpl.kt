@@ -52,12 +52,9 @@ class WorkoutRepositoryImpl @Inject constructor(
             .map { dates -> calculateStreak(dates) }
             .flowOn(Dispatchers.IO)
 
-    override fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<String, Set<Int>>> =
+    override fun observeSetCompletions(userId: String, weekStart: String): Flow<Map<SetCompletionKey, Set<Int>>> =
         setCompletionDao.observeForWeek(userId, weekStart)
-            .map { list ->
-                list.groupBy { it.exerciseId }
-                    .mapValues { entry -> entry.value.map { it.setIndex }.toSet() }
-            }
+            .map { list -> list.toSetCompletionMap() }
             .flowOn(Dispatchers.IO)
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -495,3 +492,11 @@ class WorkoutRepositoryImpl @Inject constructor(
         const val SET_SYNC_TIMEOUT_MS = 750L
     }
 }
+
+internal fun List<SetCompletionEntity>.toSetCompletionMap(): Map<SetCompletionKey, Set<Int>> =
+    groupBy { completion ->
+        SetCompletionKey(
+            programDayId = completion.programDayId,
+            exerciseId = completion.exerciseId
+        )
+    }.mapValues { entry -> entry.value.map { it.setIndex }.toSet() }
