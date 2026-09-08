@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
+import com.cosmibit.profitness.data.auth.AuthRepository
 import com.cosmibit.profitness.data.cache.DiskCache
 import com.cosmibit.profitness.data.leaderboard.LeaderboardRepository
 import com.cosmibit.profitness.data.profile.ProfileRepository
@@ -112,6 +113,7 @@ class ProfileViewModel @Inject constructor(
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
     private val dataTransferRepository: DataTransferRepository,
+    private val authRepository    : AuthRepository,
     private val disk              : DiskCache,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
@@ -413,8 +415,18 @@ class ProfileViewModel @Inject constructor(
         disk.putOnIo("profile_state_$userId", state.toSnapshot())
     }
 
-    /** GoTrue açılışta currentUser'ı geçici null döndürebilir; session.user fallback'tir. */
-    private fun currentUserId(): String? =
+    /**
+     * Sistem dosya seçici uygulamayı arka plana aldığında GoTrue oturumu tekrar
+     * depolamadan yükler. Activity sonucu bu yükleme tamamlanmadan gelebileceği için
+     * anlık null değerini çıkış yapılmış gibi yorumlamadan önce restore'u bekle.
+     */
+    private suspend fun currentUserId(): String? {
+        activeUserId()?.let { return it }
+        authRepository.awaitSessionLoaded()
+        return activeUserId()
+    }
+
+    private fun activeUserId(): String? =
         supabase.auth.currentSessionOrNull()?.user?.id
             ?: supabase.auth.currentUserOrNull()?.id
 
