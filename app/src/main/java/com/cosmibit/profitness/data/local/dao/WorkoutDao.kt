@@ -148,11 +148,23 @@ interface WorkoutDao {
     @Query("UPDATE workout_logs SET finished_at = :finishedAt WHERE id = :logId")
     suspend fun finishWorkout(logId: String, finishedAt: String)
 
-    @Query("DELETE FROM exercise_logs WHERE workout_log_id = :workoutLogId AND exercise_id = :exerciseId")
-    suspend fun deleteExerciseLog(workoutLogId: String, exerciseId: String)
+    /**
+     * Geri alınan egzersizi senkron edilene kadar yerel silme kaydı olarak tutar.
+     * Böylece çevrimdışı/başarısız uzak silme sonrasında eski kayıt yeniden çekilip
+     * tamamlandı durumunu diriltemez.
+     */
+    @Query("""
+        UPDATE exercise_logs
+        SET is_completed = 0, synced = 0
+        WHERE workout_log_id = :workoutLogId AND exercise_id = :exerciseId
+    """)
+    suspend fun markExerciseLogIncomplete(workoutLogId: String, exerciseId: String): Int
+
+    @Query("DELETE FROM exercise_logs WHERE id = :id")
+    suspend fun deleteExerciseLogById(id: String)
 
     /** Bir workout_log'a bağlı kalan exercise_logs sayısı. */
-    @Query("SELECT COUNT(*) FROM exercise_logs WHERE workout_log_id = :workoutLogId")
+    @Query("SELECT COUNT(*) FROM exercise_logs WHERE workout_log_id = :workoutLogId AND is_completed = 1")
     suspend fun countExerciseLogsForWorkout(workoutLogId: String): Int
 
     // ── Bulk sync helper ─────────────────────────────────────────────────────
@@ -164,15 +176,26 @@ interface WorkoutDao {
         logs: List<WorkoutLogEntity>,
         exerciseLogs: List<ExerciseLogEntity>
     ) {
-        // Sadece synced olan kayıtları sil — unsynced olanları koru
+        // Uzak silme henüz tamamlanmamış egzersiz tombstone'larını pull sırasında
+        // koru. Aksi halde synced parent log silinirken cascade ile tombstone da
+        // silinir ve uzaktaki eski tamamlanma yeniden yerleşir.
         val existingLogs = getLogsForWeek(userId, weekStart)
-        val syncedLogIds = existingLogs.filter { it.synced }.map { it.id }
+        val unsyncedExerciseLogs = existingLogs
+            .flatMap { getExerciseLogsForWorkout(it.id) }
+            .filterNot { it.synced }
+        val protectedLogIds = unsyncedExerciseLogs.mapTo(mutableSetOf()) { it.workoutLogId }
+        val syncedLogIds = existingLogs
+            .filter { it.synced && it.id !in protectedLogIds }
+            .map { it.id }
         for (id in syncedLogIds) {
             deleteLogById(id)
         }
         // Remote'dan gelen kayıtları synced olarak ekle
         if (logs.isNotEmpty()) upsertLogs(logs.map { it.copy(synced = true) })
         if (exerciseLogs.isNotEmpty()) upsertExerciseLogs(exerciseLogs.map { it.copy(synced = true) })
+        // Aynı unique anahtara sahip uzak kayıt tombstone'u ezmiş olabilir;
+        // yerel pending işlem her zaman son sözü söyler.
+        if (unsyncedExerciseLogs.isNotEmpty()) upsertExerciseLogs(unsyncedExerciseLogs)
     }
 
     @Query("DELETE FROM workout_logs WHERE id = :id")

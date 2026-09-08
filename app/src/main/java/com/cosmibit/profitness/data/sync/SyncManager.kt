@@ -308,21 +308,44 @@ class SyncManager @Inject constructor(
                 }
 
                 val unsyncedExLogs = workoutDao.getUnsyncedExerciseLogs()
-                if (unsyncedExLogs.isNotEmpty()) {
-                    val payload = unsyncedExLogs.map { exLog ->
+
+                // is_completed=false yerel bir silme tombstone'udur. Bunu upsert
+                // etmek yerine uzaktaki tamamlanma kaydını sil ve yalnızca işlem
+                // başarılı olduktan sonra yerel tombstone'u kaldır.
+                val pendingDeletes = unsyncedExLogs.filterNot { it.isCompleted }
+                pendingDeletes.forEach { exLog ->
+                    supabase.postgrest["exercise_logs"].delete {
+                        filter {
+                            eq("workout_log_id", exLog.workoutLogId)
+                            eq("exercise_id", exLog.exerciseId)
+                        }
+                    }
+                    workoutDao.deleteExerciseLogById(exLog.id)
+
+                    if (workoutDao.countExerciseLogsForWorkout(exLog.workoutLogId) == 0) {
+                        supabase.postgrest["workout_logs"].delete {
+                            filter { eq("id", exLog.workoutLogId) }
+                        }
+                        workoutDao.deleteLogById(exLog.workoutLogId)
+                    }
+                }
+
+                val pendingUpserts = unsyncedExLogs.filter { it.isCompleted }
+                if (pendingUpserts.isNotEmpty()) {
+                    val payload = pendingUpserts.map { exLog ->
                         ExerciseLogUpsert(
                             id = exLog.id,
                             workout_log_id = exLog.workoutLogId,
                             exercise_id = exLog.exerciseId,
                             sets_completed = exLog.setsCompleted,
                             reps_completed = exLog.repsCompleted,
-                            is_completed = true,
+                            is_completed = exLog.isCompleted,
                             duration_seconds = exLog.durationSeconds
                         )
                     }
                     supabase.postgrest["exercise_logs"]
                         .upsert(payload, onConflict = "id", defaultToNull = false)
-                    unsyncedExLogs.forEach { workoutDao.markExerciseLogSynced(it.id) }
+                    pendingUpserts.forEach { workoutDao.markExerciseLogSynced(it.id) }
                 }
             }
         }

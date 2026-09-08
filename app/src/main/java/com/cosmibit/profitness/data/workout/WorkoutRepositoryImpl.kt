@@ -112,11 +112,17 @@ class WorkoutRepositoryImpl @Inject constructor(
             val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             val log = workoutDao.getLogForToday(userId, programDayId, today) ?: return@runCatching Unit
 
-            // Room'dan sil
-            workoutDao.deleteExerciseLog(log.id, exerciseId)
+            val exerciseLog = workoutDao.getExerciseLogsForWorkout(log.id)
+                .firstOrNull { it.exerciseId == exerciseId }
+                ?: return@runCatching Unit
 
-            // Supabase'den de sil (best-effort)
-            runCatching {
+            // Önce Room'da tombstone oluştur. Uzak silme başarısız olsa bile UI
+            // ve sonraki uygulama açılışı geri alınmış durumu korur.
+            workoutDao.markExerciseLogIncomplete(log.id, exerciseId)
+
+            // Mümkünse hemen Supabase'den sil. Başarısız olursa synced=0
+            // tombstone SyncManager tarafından sonraki bağlantıda tekrar denenir.
+            val remoteDeleted = runCatching {
                 supabase.postgrest["exercise_logs"]
                     .delete {
                         filter {
@@ -124,17 +130,21 @@ class WorkoutRepositoryImpl @Inject constructor(
                             eq("exercise_id", exerciseId)
                         }
                     }
-            }
+            }.isSuccess
+
+            if (!remoteDeleted) return@runCatching Unit
+
+            workoutDao.deleteExerciseLogById(exerciseLog.id)
 
             // Güvenlik: workout_log'da başka egzersiz kalmadıysa log'u da sil.
             // Aksi halde streak bu günü "çalışılmış" sayıp sayaç şişirebilir.
             val remaining = workoutDao.countExerciseLogsForWorkout(log.id)
             if (remaining == 0) {
-                workoutDao.deleteLogById(log.id)
-                runCatching {
+                val remoteLogDeleted = runCatching {
                     supabase.postgrest["workout_logs"]
                         .delete { filter { eq("id", log.id) } }
-                }
+                }.isSuccess
+                if (remoteLogDeleted) workoutDao.deleteLogById(log.id)
             }
             Unit
         }
