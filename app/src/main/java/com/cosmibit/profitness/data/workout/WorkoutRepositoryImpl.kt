@@ -109,42 +109,45 @@ class WorkoutRepositoryImpl @Inject constructor(
         exerciseId: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val log = workoutDao.getLogForToday(userId, programDayId, today) ?: return@runCatching Unit
+            val weekStart = currentWeekStart()
+            val matchingLogs = workoutDao.getLogsForWeek(userId, weekStart)
+                .filter { it.programDayId == programDayId }
+                .mapNotNull { log ->
+                    workoutDao.getExerciseLogsForWorkout(log.id)
+                        .firstOrNull { it.exerciseId == exerciseId }
+                        ?.let { exerciseLog -> log to exerciseLog }
+                }
 
-            val exerciseLog = workoutDao.getExerciseLogsForWorkout(log.id)
-                .firstOrNull { it.exerciseId == exerciseId }
-                ?: return@runCatching Unit
+            matchingLogs.forEach { (log, exerciseLog) ->
+                // Haftalık ekran program gününe göre birleştiği için, seçili güne ait
+                // bu haftadaki tüm tarihleri geri al. Böylece Pazartesi kaydı Salı
+                // günü geri alındığında eski tarih yeniden tamamlanmış görünmez.
+                workoutDao.markExerciseLogIncomplete(log.id, exerciseId)
 
-            // Önce Room'da tombstone oluştur. Uzak silme başarısız olsa bile UI
-            // ve sonraki uygulama açılışı geri alınmış durumu korur.
-            workoutDao.markExerciseLogIncomplete(log.id, exerciseId)
-
-            // Mümkünse hemen Supabase'den sil. Başarısız olursa synced=0
-            // tombstone SyncManager tarafından sonraki bağlantıda tekrar denenir.
-            val remoteDeleted = runCatching {
-                supabase.postgrest["exercise_logs"]
-                    .delete {
-                        filter {
-                            eq("workout_log_id", log.id)
-                            eq("exercise_id", exerciseId)
+                val remoteDeleted = runCatching {
+                    supabase.postgrest["exercise_logs"]
+                        .delete {
+                            filter {
+                                eq("workout_log_id", log.id)
+                                eq("exercise_id", exerciseId)
+                            }
                         }
-                    }
-            }.isSuccess
-
-            if (!remoteDeleted) return@runCatching Unit
-
-            workoutDao.deleteExerciseLogById(exerciseLog.id)
-
-            // Güvenlik: workout_log'da başka egzersiz kalmadıysa log'u da sil.
-            // Aksi halde streak bu günü "çalışılmış" sayıp sayaç şişirebilir.
-            val remaining = workoutDao.countExerciseLogsForWorkout(log.id)
-            if (remaining == 0) {
-                val remoteLogDeleted = runCatching {
-                    supabase.postgrest["workout_logs"]
-                        .delete { filter { eq("id", log.id) } }
                 }.isSuccess
-                if (remoteLogDeleted) workoutDao.deleteLogById(log.id)
+
+                // Başarısız uzak silmeler tombstone olarak kalır ve SyncManager
+                // tarafından sonraki bağlantıda yeniden denenir.
+                if (remoteDeleted) {
+                    workoutDao.deleteExerciseLogById(exerciseLog.id)
+
+                    val remaining = workoutDao.countExerciseLogsForWorkout(log.id)
+                    if (remaining == 0) {
+                        val remoteLogDeleted = runCatching {
+                            supabase.postgrest["workout_logs"]
+                                .delete { filter { eq("id", log.id) } }
+                        }.isSuccess
+                        if (remoteLogDeleted) workoutDao.deleteLogById(log.id)
+                    }
+                }
             }
             Unit
         }
@@ -315,8 +318,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         userId: String, exerciseId: String, programDayId: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            setCompletionDao.deleteAllForExercise(userId, exerciseId, programDayId, today)
+            setCompletionDao.deleteAllForExercise(userId, exerciseId, programDayId, currentWeekStart())
             Unit
         }
     }
@@ -510,3 +512,7 @@ internal fun List<SetCompletionEntity>.toSetCompletionMap(): Map<SetCompletionKe
             exerciseId = completion.exerciseId
         )
     }.mapValues { entry -> entry.value.map { it.setIndex }.toSet() }
+
+internal fun currentWeekStart(today: LocalDate = LocalDate.now()): String =
+    today.minusDays((today.dayOfWeek.value - 1).toLong())
+        .format(DateTimeFormatter.ISO_LOCAL_DATE)

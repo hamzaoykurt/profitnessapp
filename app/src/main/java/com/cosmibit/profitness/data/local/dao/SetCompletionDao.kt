@@ -223,13 +223,19 @@ interface SetCompletionDao {
         UPDATE set_completions
         SET synced = 0, dirty = 1, deleted = 1, updated_at_ms = :updatedAtMs
         WHERE user_id = :userId AND exercise_id = :exerciseId
-          AND program_day_id = :programDayId AND date = :date
+          AND program_day_id = :programDayId AND date >= :weekStart
     """)
-    suspend fun markAllForExerciseDeleted(userId: String, exerciseId: String, programDayId: String, date: String, updatedAtMs: Long)
+    suspend fun markAllForExerciseDeleted(
+        userId: String,
+        exerciseId: String,
+        programDayId: String,
+        weekStart: String,
+        updatedAtMs: Long
+    )
 
     @Transaction
-    suspend fun deleteAllForExercise(userId: String, exerciseId: String, programDayId: String, date: String) {
-        markAllForExerciseDeleted(userId, exerciseId, programDayId, date, System.currentTimeMillis())
+    suspend fun deleteAllForExercise(userId: String, exerciseId: String, programDayId: String, weekStart: String) {
+        markAllForExerciseDeleted(userId, exerciseId, programDayId, weekStart, System.currentTimeMillis())
     }
 
     @Query("""
