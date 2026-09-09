@@ -1378,6 +1378,7 @@ class WorkoutViewModel @Inject constructor(
                 }
             } else {
                 pendingIncompleteExerciseIds += exerciseId
+                cancelPendingExerciseWrites(exerciseId)
                 markExerciseIncompleteOptimistically(dayIdx, exerciseId)
                 markExerciseSetCompletionsClearedOptimistically(SetCompletionKey(programDayId, dbExerciseId))
                 try {
@@ -1778,6 +1779,7 @@ class WorkoutViewModel @Inject constructor(
 
     private fun refreshStatsAfterCompletion(userId: String) {
         viewModelScope.launch {
+            runCatching { workoutRepository.syncToRemote() }
             workoutRepository.updateStreak(userId)
             profileRepository.invalidateStatsCache()
             runCatching { challengeRepository.refreshMyProgress() }
@@ -1786,6 +1788,7 @@ class WorkoutViewModel @Inject constructor(
 
     private fun refreshStatsAfterRollback(userId: String) {
         viewModelScope.launch {
+            runCatching { workoutRepository.syncToRemote() }
             workoutRepository.rollbackStreak(userId)
             profileRepository.invalidateStatsCache()
             runCatching { challengeRepository.refreshMyProgress() }
@@ -1931,6 +1934,7 @@ class WorkoutViewModel @Inject constructor(
                 refreshStatsAfterCompletion(userId)
             } else {
                 pendingIncompleteExerciseIds += exercise.id
+                cancelPendingExerciseWrites(exercise.id)
                 markExerciseIncompleteOptimistically(dayIdx, exercise.id)
                 markExerciseSetCompletionsClearedOptimistically(SetCompletionKey(programDayId, dbExerciseId))
                 try {
@@ -1942,6 +1946,13 @@ class WorkoutViewModel @Inject constructor(
                 refreshStatsAfterRollback(userId)
             }
         }
+    }
+
+    private fun cancelPendingExerciseWrites(exerciseId: String) {
+        draftPersistJobs.keys.filter { it.startsWith("$exerciseId:") }.forEach { key ->
+            draftPersistJobs.remove(key)?.cancel()
+        }
+        if (_restTimer.value.exerciseId == exerciseId) dismissVisibleTimer()
     }
 
     private fun saveActivityDuration(exerciseId: String, seconds: Int) {

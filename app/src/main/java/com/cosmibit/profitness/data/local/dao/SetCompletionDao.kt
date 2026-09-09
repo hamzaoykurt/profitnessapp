@@ -50,6 +50,36 @@ interface SetCompletionDao {
     suspend fun upsertAll(entities: List<SetCompletionEntity>)
 
     @Query("""
+        SELECT * FROM set_completions WHERE user_id = :userId
+        AND exercise_id = :exerciseId AND program_day_id = :programDayId
+        AND set_index = :setIndex AND date = :date LIMIT 1
+    """)
+    suspend fun getIncludingDeleted(userId: String, exerciseId: String, programDayId: String,
+        setIndex: Int, date: String): SetCompletionEntity?
+
+    /** A network response may acknowledge only the exact snapshot that was sent. */
+    @Transaction
+    suspend fun acknowledge(snapshot: SetCompletionEntity) {
+        val current = getIncludingDeleted(snapshot.userId, snapshot.exerciseId,
+            snapshot.programDayId, snapshot.setIndex, snapshot.date)
+        if (current == snapshot) {
+            // Keep deletion markers so an already in-flight pull cannot resurrect them.
+            upsertAll(listOf(snapshot.copy(synced = true, dirty = false)))
+        }
+    }
+
+    @Transaction
+    suspend fun mergeRemote(entities: List<SetCompletionEntity>) {
+        entities.forEach { remote ->
+            val local = getIncludingDeleted(remote.userId, remote.exerciseId,
+                remote.programDayId, remote.setIndex, remote.date)
+            if (local == null || (!local.dirty && local.synced && !local.deleted)) {
+                upsertAll(listOf(remote))
+            }
+        }
+    }
+
+    @Query("""
         SELECT * FROM set_completions
         WHERE user_id = :userId AND deleted = 0
         ORDER BY date ASC, exercise_id ASC, set_index ASC
@@ -62,6 +92,9 @@ interface SetCompletionDao {
         ORDER BY updated_at_ms ASC, date ASC, exercise_id ASC, set_index ASC
     """)
     suspend fun getDirtyForUser(userId: String): List<SetCompletionEntity>
+
+    @Query("SELECT DISTINCT user_id FROM set_completions WHERE dirty = 1 OR synced = 0")
+    suspend fun getPendingUserIds(): List<String>
 
     @Query("""
         SELECT * FROM set_completions
@@ -79,6 +112,7 @@ interface SetCompletionDao {
     @Query("""
         UPDATE set_completions
         SET weight_kg = :weightKg,
+            reps_actual = CASE WHEN deleted = 1 THEN NULL ELSE reps_actual END,
             synced = 0,
             dirty = 1,
             deleted = 0,
@@ -161,6 +195,7 @@ interface SetCompletionDao {
     @Query("""
         UPDATE set_completions
         SET duration_seconds = :durationSeconds,
+            reps_actual = CASE WHEN deleted = 1 THEN NULL ELSE reps_actual END,
             distance_meters = :distanceMeters,
             elevation_meters = :elevationMeters,
             incline_percent = :inclinePercent,

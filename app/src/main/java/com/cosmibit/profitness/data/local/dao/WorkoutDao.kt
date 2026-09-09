@@ -40,6 +40,8 @@ interface WorkoutDao {
     @Query("""
         SELECT DISTINCT date FROM workout_logs
         WHERE user_id = :userId
+          AND (NOT EXISTS (SELECT 1 FROM exercise_logs e WHERE e.workout_log_id = workout_logs.id AND e.is_completed = 0)
+            OR EXISTS (SELECT 1 FROM exercise_logs e WHERE e.workout_log_id = workout_logs.id AND e.is_completed = 1))
         ORDER BY date DESC
     """)
     fun observeWorkoutDates(userId: String): Flow<List<String>>
@@ -89,7 +91,12 @@ interface WorkoutDao {
     """)
     fun observeWeeklyCompletionPairs(userId: String, weekStart: String): Flow<List<CompletionPair>>
 
-    @Query("SELECT DISTINCT date FROM workout_logs WHERE user_id = :userId ORDER BY date DESC")
+    @Query("""
+        SELECT DISTINCT date FROM workout_logs WHERE user_id = :userId
+          AND (NOT EXISTS (SELECT 1 FROM exercise_logs e WHERE e.workout_log_id = workout_logs.id AND e.is_completed = 0)
+            OR EXISTS (SELECT 1 FROM exercise_logs e WHERE e.workout_log_id = workout_logs.id AND e.is_completed = 1))
+        ORDER BY date DESC
+    """)
     suspend fun getWorkoutDates(userId: String): List<String>
 
     @Query("SELECT * FROM workout_logs WHERE user_id = :userId ORDER BY date ASC, id ASC")
@@ -160,6 +167,26 @@ interface WorkoutDao {
     """)
     suspend fun markExerciseLogIncomplete(workoutLogId: String, exerciseId: String): Int
 
+    @Query("""
+        UPDATE exercise_logs SET is_completed = 0, synced = 0
+        WHERE exercise_id = :exerciseId AND workout_log_id IN (
+            SELECT id FROM workout_logs WHERE user_id = :userId
+            AND program_day_id = :programDayId AND date >= :weekStart
+        )
+    """)
+    suspend fun markWeeklyExerciseIncomplete(userId: String, programDayId: String,
+        exerciseId: String, weekStart: String)
+
+    @Query("SELECT * FROM exercise_logs WHERE id = :id LIMIT 1")
+    suspend fun getExerciseLog(id: String): ExerciseLogEntity?
+
+    @Transaction
+    suspend fun acknowledgeExercise(snapshot: ExerciseLogEntity) {
+        if (getExerciseLog(snapshot.id) == snapshot) {
+            upsertExerciseLogs(listOf(snapshot.copy(synced = true)))
+        }
+    }
+
     @Query("DELETE FROM exercise_logs WHERE id = :id")
     suspend fun deleteExerciseLogById(id: String)
 
@@ -182,7 +209,7 @@ interface WorkoutDao {
         val existingLogs = getLogsForWeek(userId, weekStart)
         val unsyncedExerciseLogs = existingLogs
             .flatMap { getExerciseLogsForWorkout(it.id) }
-            .filterNot { it.synced }
+            .filter { !it.synced || !it.isCompleted }
         val protectedLogIds = unsyncedExerciseLogs.mapTo(mutableSetOf()) { it.workoutLogId }
         val syncedLogIds = existingLogs
             .filter { it.synced && it.id !in protectedLogIds }
@@ -191,8 +218,11 @@ interface WorkoutDao {
             deleteLogById(id)
         }
         // Remote'dan gelen kayıtları synced olarak ekle
-        if (logs.isNotEmpty()) upsertLogs(logs.map { it.copy(synced = true) })
-        if (exerciseLogs.isNotEmpty()) upsertExerciseLogs(exerciseLogs.map { it.copy(synced = true) })
+        val pendingKeys = unsyncedExerciseLogs.map { it.workoutLogId to it.exerciseId }.toSet()
+        val remoteLogs = logs.filter { it.id !in protectedLogIds }
+        val remoteExercises = exerciseLogs.filter { (it.workoutLogId to it.exerciseId) !in pendingKeys }
+        if (remoteLogs.isNotEmpty()) upsertLogs(remoteLogs.map { it.copy(synced = true) })
+        if (remoteExercises.isNotEmpty()) upsertExerciseLogs(remoteExercises.map { it.copy(synced = true) })
         // Aynı unique anahtara sahip uzak kayıt tombstone'u ezmiş olabilir;
         // yerel pending işlem her zaman son sözü söyler.
         if (unsyncedExerciseLogs.isNotEmpty()) upsertExerciseLogs(unsyncedExerciseLogs)

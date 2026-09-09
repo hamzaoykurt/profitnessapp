@@ -227,10 +227,18 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation("org.robolectric:robolectric:4.14.1")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
     baselineProfile(project(":baselineprofile"))
+}
+
+// Native test libraries normalize OS names using the JVM locale (Windows ->
+// wındows under Turkish). Keep test runtime discovery independent of host locale.
+tasks.withType<Test>().configureEach {
+    systemProperty("user.language", "en")
+    systemProperty("user.country", "US")
 }

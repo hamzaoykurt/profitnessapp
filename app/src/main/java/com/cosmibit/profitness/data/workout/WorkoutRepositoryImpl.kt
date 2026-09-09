@@ -85,6 +85,9 @@ class WorkoutRepositoryImpl @Inject constructor(
                     date = today,
                     synced = false
                 ))
+            } else {
+                // A completed rollback may have removed this parent remotely.
+                workoutDao.upsertLog(existingLog.copy(synced = false))
             }
 
             // 2. Exercise log yaz (Room'a, unsynced)
@@ -110,45 +113,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val weekStart = currentWeekStart()
-            val matchingLogs = workoutDao.getLogsForWeek(userId, weekStart)
-                .filter { it.programDayId == programDayId }
-                .mapNotNull { log ->
-                    workoutDao.getExerciseLogsForWorkout(log.id)
-                        .firstOrNull { it.exerciseId == exerciseId }
-                        ?.let { exerciseLog -> log to exerciseLog }
-                }
-
-            matchingLogs.forEach { (log, exerciseLog) ->
-                // Haftalık ekran program gününe göre birleştiği için, seçili güne ait
-                // bu haftadaki tüm tarihleri geri al. Böylece Pazartesi kaydı Salı
-                // günü geri alındığında eski tarih yeniden tamamlanmış görünmez.
-                workoutDao.markExerciseLogIncomplete(log.id, exerciseId)
-
-                val remoteDeleted = runCatching {
-                    supabase.postgrest["exercise_logs"]
-                        .delete {
-                            filter {
-                                eq("workout_log_id", log.id)
-                                eq("exercise_id", exerciseId)
-                            }
-                        }
-                }.isSuccess
-
-                // Başarısız uzak silmeler tombstone olarak kalır ve SyncManager
-                // tarafından sonraki bağlantıda yeniden denenir.
-                if (remoteDeleted) {
-                    workoutDao.deleteExerciseLogById(exerciseLog.id)
-
-                    val remaining = workoutDao.countExerciseLogsForWorkout(log.id)
-                    if (remaining == 0) {
-                        val remoteLogDeleted = runCatching {
-                            supabase.postgrest["workout_logs"]
-                                .delete { filter { eq("id", log.id) } }
-                        }.isSuccess
-                        if (remoteLogDeleted) workoutDao.deleteLogById(log.id)
-                    }
-                }
-            }
+            workoutDao.markWeeklyExerciseIncomplete(userId, programDayId, exerciseId, weekStart)
             Unit
         }
     }
@@ -270,7 +235,9 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncToRemote() {
-        syncManager.pushUnsyncedWorkouts()
+        syncManager.pushUnsyncedWorkouts().getOrThrow()
+        val userIds = setCompletionDao.getPendingUserIds()
+        userIds.forEach { syncManager.pushSetCompletions(it).getOrThrow() }
     }
 
     // ═════════════════════════════════════════════════════════════════════════

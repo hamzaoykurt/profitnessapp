@@ -92,6 +92,7 @@ class SyncManager @Inject constructor(
     private val setCompletionDao: SetCompletionDao
 ) {
     private val syncMutex = Mutex()
+    private val setSyncMutex = Mutex()
     private val prefs by lazy {
         context.getSharedPreferences("profitness_set_completion_sync", Context.MODE_PRIVATE)
     }
@@ -233,7 +234,11 @@ class SyncManager @Inject constructor(
     }
 
     /** Set bazlı ağırlık/tekrar kayıtlarını Supabase'den Room'a delta olarak geri yükler. */
-    suspend fun pullSetCompletions(userId: String, forceFull: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun pullSetCompletions(userId: String, forceFull: Boolean = false) = setSyncMutex.withLock {
+        pullSetCompletionsWithoutLock(userId, forceFull)
+    }
+
+    private suspend fun pullSetCompletionsWithoutLock(userId: String, forceFull: Boolean) = withContext(Dispatchers.IO) {
         runCatching {
             val lastPullAt = if (forceFull) null else readLastSetCompletionPullAt(userId)
             val remote = supabase.postgrest["set_completions"]
@@ -250,7 +255,7 @@ class SyncManager @Inject constructor(
                 .decodeList<SetCompletionUpsert>()
 
             if (remote.isNotEmpty()) {
-                setCompletionDao.upsertAll(remote.map { it.toEntity() })
+                setCompletionDao.mergeRemote(remote.map { it.toEntity() })
                 remote.mapNotNull { it.updated_at }.maxOrNull()?.let { newest ->
                     persistLastSetCompletionPullAt(userId, newest)
                 }
@@ -320,14 +325,12 @@ class SyncManager @Inject constructor(
                             eq("exercise_id", exLog.exerciseId)
                         }
                     }
-                    workoutDao.deleteExerciseLogById(exLog.id)
-
                     if (workoutDao.countExerciseLogsForWorkout(exLog.workoutLogId) == 0) {
                         supabase.postgrest["workout_logs"].delete {
                             filter { eq("id", exLog.workoutLogId) }
                         }
-                        workoutDao.deleteLogById(exLog.workoutLogId)
                     }
+                    workoutDao.acknowledgeExercise(exLog)
                 }
 
                 val pendingUpserts = unsyncedExLogs.filter { it.isCompleted }
@@ -345,13 +348,17 @@ class SyncManager @Inject constructor(
                     }
                     supabase.postgrest["exercise_logs"]
                         .upsert(payload, onConflict = "id", defaultToNull = false)
-                    pendingUpserts.forEach { workoutDao.markExerciseLogSynced(it.id) }
+                    pendingUpserts.forEach { workoutDao.acknowledgeExercise(it) }
                 }
             }
         }
 
     /** Dirty lokal set kayıtlarını profile bağlı kalıcı Supabase tablosuna yazar. */
-    suspend fun pushSetCompletions(userId: String) = withContext(Dispatchers.IO) {
+    suspend fun pushSetCompletions(userId: String) = setSyncMutex.withLock {
+        pushSetCompletionsWithoutLock(userId)
+    }
+
+    private suspend fun pushSetCompletionsWithoutLock(userId: String) = withContext(Dispatchers.IO) {
         runCatching {
             val entries = setCompletionDao.getDirtyForUser(userId)
             if (entries.isEmpty()) return@runCatching
@@ -366,13 +373,7 @@ class SyncManager @Inject constructor(
                         eq("date", entity.date)
                     }
                 }
-                setCompletionDao.hardDelete(
-                    entity.userId,
-                    entity.exerciseId,
-                    entity.programDayId,
-                    entity.setIndex,
-                    entity.date
-                )
+                setCompletionDao.acknowledge(entity)
             }
 
             val upserts = entries.filterNot { it.deleted }
@@ -383,16 +384,20 @@ class SyncManager @Inject constructor(
                         onConflict = "user_id,exercise_id,program_day_id,set_index,date",
                         defaultToNull = false
                     )
-                setCompletionDao.upsertAll(upserts.map { it.copy(synced = true, dirty = false, deleted = false) })
+                upserts.forEach { setCompletionDao.acknowledge(it) }
             }
         }
     }
 
-    suspend fun pushSetCompletion(entity: SetCompletionEntity) = withContext(Dispatchers.IO) {
+    suspend fun pushSetCompletion(entity: SetCompletionEntity) = setSyncMutex.withLock {
+        pushSetCompletionWithoutLock(entity)
+    }
+
+    private suspend fun pushSetCompletionWithoutLock(entity: SetCompletionEntity) = withContext(Dispatchers.IO) {
         runCatching {
             if (entity.deleted) {
                 deleteSetCompletion(entity.userId, entity.exerciseId, entity.programDayId, entity.setIndex, entity.date).getOrThrow()
-                setCompletionDao.hardDelete(entity.userId, entity.exerciseId, entity.programDayId, entity.setIndex, entity.date)
+                setCompletionDao.acknowledge(entity)
                 return@runCatching
             }
             supabase.postgrest["set_completions"]
@@ -401,7 +406,7 @@ class SyncManager @Inject constructor(
                     onConflict = "user_id,exercise_id,program_day_id,set_index,date",
                     defaultToNull = false
                 )
-            setCompletionDao.upsertAll(listOf(entity.copy(synced = true, dirty = false, deleted = false)))
+            setCompletionDao.acknowledge(entity)
         }
     }
 
