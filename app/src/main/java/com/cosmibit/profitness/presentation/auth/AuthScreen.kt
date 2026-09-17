@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package com.cosmibit.profitness.presentation.auth
 
 import androidx.activity.compose.BackHandler
@@ -18,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.AutofillNode
+import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -31,6 +35,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalAutofill
+import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -63,6 +71,14 @@ import kotlinx.coroutines.launch
 private enum class AuthMode {
     Login,
     Register
+}
+
+enum class AuthAutofillHint {
+    LoginEmail,
+    NewEmail,
+    Email,
+    Password,
+    NewPassword
 }
 
 @Composable
@@ -214,6 +230,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
             onValueChange = { email = it },
             placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
+            autofillHint  = AuthAutofillHint.LoginEmail,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Next,
             onImeAction   = { passFocus.requestFocus() }
@@ -224,6 +241,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
             onValueChange = { password = it },
             placeholder   = theme.t("Şifre", "Password"),
             icon          = Icons.Rounded.Lock,
+            autofillHint  = AuthAutofillHint.Password,
             isPassword    = true,
             showPass      = showPass,
             onTogglePass  = { showPass = !showPass },
@@ -305,6 +323,7 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onValueChange = { email = it },
             placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
+            autofillHint  = AuthAutofillHint.NewEmail,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Next,
             onImeAction   = { passFocus.requestFocus() }
@@ -315,6 +334,7 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onValueChange = { password = it },
             placeholder   = theme.t("Şifre", "Password"),
             icon          = Icons.Rounded.Lock,
+            autofillHint  = AuthAutofillHint.NewPassword,
             isPassword    = true,
             showPass      = showPass,
             onTogglePass  = { showPass = !showPass },
@@ -332,6 +352,7 @@ private fun RegisterScreen(state: AuthState, viewModel: AuthViewModel) {
             onValueChange = { confirmPassword = it },
             placeholder   = theme.t("Şifre tekrar", "Repeat password"),
             icon          = Icons.Rounded.LockOpen,
+            autofillHint  = AuthAutofillHint.NewPassword,
             isPassword    = true,
             showPass      = showConfirmPass,
             onTogglePass  = { showConfirmPass = !showConfirmPass },
@@ -395,6 +416,7 @@ private fun ForgotPasswordScreen(
             onValueChange = { email.value = it },
             placeholder   = theme.t("Email adresi", "Email address"),
             icon          = Icons.Rounded.Email,
+            autofillHint  = AuthAutofillHint.Email,
             keyboardType  = KeyboardType.Email,
             imeAction     = ImeAction.Done,
             onImeAction   = { viewModel.onForgotPasswordClick(email.value) }
@@ -1021,6 +1043,7 @@ fun GlassInputField(
     onValueChange: (String) -> Unit,
     placeholder  : String,
     icon         : ImageVector,
+    autofillHint : AuthAutofillHint,
     isPassword   : Boolean = false,
     showPass     : Boolean = false,
     onTogglePass : () -> Unit = {},
@@ -1033,6 +1056,41 @@ fun GlassInputField(
     val theme  = LocalAppTheme.current
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val autofill = LocalAutofill.current
+    val autofillTree = LocalAutofillTree.current
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val autofillTypes = remember(autofillHint) {
+        when (autofillHint) {
+            AuthAutofillHint.LoginEmail -> listOf(AutofillType.Username, AutofillType.EmailAddress)
+            AuthAutofillHint.NewEmail -> listOf(AutofillType.NewUsername, AutofillType.EmailAddress)
+            AuthAutofillHint.Email -> listOf(AutofillType.EmailAddress)
+            AuthAutofillHint.Password -> listOf(AutofillType.Password)
+            AuthAutofillHint.NewPassword -> listOf(AutofillType.NewPassword)
+        }
+    }
+    val autofillNode = remember(autofillHint) {
+        AutofillNode(
+            autofillTypes = autofillTypes,
+            onFill = { currentOnValueChange(it) }
+        )
+    }
+    var isPositionedForAutofill by remember(autofillNode) { mutableStateOf(false) }
+
+    DisposableEffect(autofillTree, autofillNode) {
+        autofillTree += autofillNode
+        onDispose { autofillTree.children.remove(autofillNode.id) }
+    }
+
+    DisposableEffect(isFocused, isPositionedForAutofill, autofill, autofillNode) {
+        if (isFocused && isPositionedForAutofill) {
+            autofill?.requestAutofillForNode(autofillNode)
+        }
+        onDispose {
+            if (isFocused && isPositionedForAutofill) {
+                autofill?.cancelAutofillForNode(autofillNode)
+            }
+        }
+    }
 
     val borderColor by animateColorAsState(
         if (isFocused) accent.copy(alpha = 0.72f)
@@ -1097,7 +1155,12 @@ fun GlassInputField(
                     cursorColor              = accent
                 ),
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                modifier  = Modifier.weight(1f)
+                modifier  = Modifier
+                    .weight(1f)
+                    .onGloballyPositioned { coordinates ->
+                        autofillNode.boundingBox = coordinates.boundsInWindow()
+                        isPositionedForAutofill = true
+                    }
             )
             if (isPassword) {
                 IconButton(onClick = onTogglePass, modifier = Modifier.size(40.dp)) {
@@ -1189,6 +1252,7 @@ fun AuthLiquidField(
     onValueChange: (String) -> Unit,
     label        : String,
     icon         : ImageVector,
+    autofillHint : AuthAutofillHint,
     isPassword   : Boolean = false,
     showPass     : Boolean = false,
     onTogglePass : () -> Unit = {},
@@ -1201,6 +1265,7 @@ fun AuthLiquidField(
         onValueChange = onValueChange,
         placeholder   = label.lowercase().replaceFirstChar { it.uppercase() },
         icon          = icon,
+        autofillHint  = autofillHint,
         isPassword    = isPassword,
         showPass      = showPass,
         onTogglePass  = onTogglePass,

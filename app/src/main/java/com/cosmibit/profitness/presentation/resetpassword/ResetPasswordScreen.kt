@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.auth.AuthFeedback
+import com.cosmibit.profitness.presentation.auth.AuthAutofillHint
 import com.cosmibit.profitness.presentation.auth.AuthLiquidField
 import com.cosmibit.profitness.presentation.auth.ObsidianButton
 import com.cosmibit.profitness.presentation.auth.PasswordStrengthBar
@@ -208,6 +209,7 @@ private fun NewPasswordContent(
                 onValueChange = { password = it; viewModel.clearError() },
                 label         = theme.t("YENİ ŞİFRE", "NEW PASSWORD"),
                 icon          = Icons.Rounded.Lock,
+                autofillHint  = AuthAutofillHint.NewPassword,
                 isPassword    = true,
                 showPass      = showPass,
                 onTogglePass  = { showPass = !showPass },
@@ -227,6 +229,7 @@ private fun NewPasswordContent(
                 onValueChange = { confirmPassword = it; viewModel.clearError() },
                 label         = theme.t("ŞİFRE TEKRAR", "CONFIRM PASSWORD"),
                 icon          = Icons.Rounded.Lock,
+                autofillHint  = AuthAutofillHint.NewPassword,
                 isPassword    = true,
                 showPass      = showConfirmPass,
                 onTogglePass  = { showConfirmPass = !showConfirmPass },
