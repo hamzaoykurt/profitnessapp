@@ -32,7 +32,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Keystore signing is handled explicitly in build.gradle.kts via local.properties.
+      # Release keystore signing is handled explicitly in build.gradle.kts via local.properties.
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/setup-gradle@v3
