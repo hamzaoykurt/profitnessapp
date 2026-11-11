@@ -47,7 +47,7 @@ fun AiCreditInfoRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (theme.isDark) Color(0xFF10131A) else Color(0xFFF5F7FA))
+            .background(theme.bg2)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

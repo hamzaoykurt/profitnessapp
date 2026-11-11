@@ -240,7 +240,7 @@ fun ShareProgramSheet(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                LabeledField(theme.t("Başlık *", "Title *"), title, onChange = { title = it }, placeholder = theme.t("Örn. 3 Günlük Güç Protokolü", "e.g. 3-Day Strength Protocol"))
+                LabeledField(theme.t("Başlık *", "Title *"), title, onChange = { title = it }, placeholder = theme.t("Örn. 3 Günlük Güç Programı", "e.g. 3-Day Strength Program"))
                 Spacer(Modifier.height(12.dp))
                 LabeledField(theme.t("Açıklama", "Description"), description, onChange = { description = it },
                     placeholder = theme.t("Kime, ne kadar sürede, hangi amaca?", "For whom, over how long, and for what goal?"), multiline = true)

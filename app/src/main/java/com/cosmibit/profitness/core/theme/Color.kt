@@ -8,11 +8,11 @@ import androidx.compose.ui.graphics.Color
 // ╚══════════════════════════════════════════════════════════════════╝
 
 // ── Base Surfaces ────────────────────────────────────────────────────────────
-val Surface0      = Color(0xFF090A0B)
-val Surface1      = Color(0xFF0D0F11)
-val Surface2      = Color(0xFF111316)
-val Surface3      = Color(0xFF171A1E)
-val SurfaceStroke = Color(0xFF25282D)
+val Surface0      = Color(0xFF0F0D0C)
+val Surface1      = Color(0xFF161311)
+val Surface2      = Color(0xFF1D1916)
+val Surface3      = Color(0xFF26211D)
+val SurfaceStroke = Color(0xFF3A332D)
 
 // ── Electric Lime — Primary Accent ───────────────────────────────────────────
 val Lime          = Color(0xFFF36A21)   // Legacy primary alias → brand ember
@@ -34,9 +34,9 @@ val CardPurple    = Color(0xFF8B7BB8)
 val CardGreen     = Color(0xFF6E9B7A)
 
 // ── Text Hierarchy ────────────────────────────────────────────────────────────
-val TextPrimary   = Color(0xFFF5F6F7)
-val TextSecondary = Color(0xFF9299A5)
-val TextMuted     = Color(0xFF626A76)
+val TextPrimary   = Color(0xFFF8F4EE)
+val TextSecondary = Color(0xFFC4BBB1)
+val TextMuted     = Color(0xFF9C9389)
 
 // ── Legacy Aliases ────────────────────────────────────────────────────────────
 val Abyss        = Surface0

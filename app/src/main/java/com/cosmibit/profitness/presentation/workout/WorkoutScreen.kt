@@ -397,36 +397,8 @@ private fun NotificationPermissionBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            theme.bg2.copy(0.97f),
-                            theme.bg1.copy(0.97f)
-                        )
-                    )
-                )
-                .border(
-                    1.dp,
-                    Brush.linearGradient(
-                        listOf(
-                            accent.copy(0.45f),
-                            theme.stroke.copy(0.35f),
-                            accent.copy(0.20f)
-                        )
-                    ),
-                    RoundedCornerShape(18.dp)
-                )
-                .drawWithCache {
-                    onDrawBehind {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                listOf(Color.Transparent, accent.copy(0.35f), Color.Transparent)
-                            ),
-                            size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())
-                        )
-                    }
-                }
-                .padding(16.dp, 14.dp),
+                .background(theme.bg2)
+                .padding(20.dp, 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon
@@ -531,7 +503,7 @@ private fun NoProgramView(
             color = accent,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
         Spacer(Modifier.height(10.dp))
         Text(
@@ -656,12 +628,13 @@ private fun WorkoutContent(
             (if (hasTodayBanner) 1 else 0)
     }
 
+    val topInsetPx = WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current)
     LaunchedEffect(expandedExIdx, itemsBeforeExercises) {
         if (expandedExIdx >= 0) {
             val lazyIdx = itemsBeforeExercises + expandedExIdx
             kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
             val viewportHeight = listState.layoutInfo.viewportSize.height
-            listState.animateScrollToItem(lazyIdx, scrollOffset = -(viewportHeight / 5))
+            listState.animateScrollToItem(lazyIdx, scrollOffset = -(topInsetPx + viewportHeight / 40))
         }
     }
 
@@ -683,6 +656,7 @@ private fun WorkoutContent(
         label         = "timer_top_pad"
     )
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -759,7 +733,7 @@ private fun WorkoutContent(
                 val previousExercise = visibleExercises.getOrNull(idx - 1)
                 if (exercise.section.isNotBlank() && !exercise.section.equals(previousExercise?.section, ignoreCase = true)) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -916,6 +890,15 @@ private fun WorkoutContent(
         }
 
     }
+    // Kaydırılan içerik durum çubuğu ikonlarının altına girmesin
+    if (listState.canScrollBackward) Box(
+        Modifier.fillMaxWidth()
+            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                listOf(theme.bg0.copy(0.94f), theme.bg0.copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)
+            ))
+    )
+    }
 
     // ── FAZ 7J-9: Challenge detail overlay (banner/upcoming tap target) ──
     detailChallengeId?.let { id ->
@@ -1032,7 +1015,7 @@ private fun SkippedProgramNotice() {
             color = accent,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -1074,57 +1057,16 @@ private fun StreakBanner(streak: Int) {
                 end = responsive.horizontalPadding,
                 bottom = 8.dp
             )
-            .shadow(
-                elevation = if (theme.isDark) 10.dp else 6.dp,
-                shape = shape,
-                spotColor = Color.Black.copy(alpha = if (theme.isDark) 0.42f else 0.12f),
-                ambientColor = Color.Transparent
-            )
             .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0f to accent.copy(alpha = if (theme.isDark) 0.16f else 0.09f),
-                        0.34f to theme.bg2,
-                        1f to theme.bg1
-                    ),
-                    start = Offset.Zero,
-                    end = Offset.Infinite
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    listOf(
-                        accent.copy(alpha = if (theme.isDark) 0.42f else 0.28f),
-                        theme.stroke.copy(alpha = 0.78f),
-                        theme.stroke.copy(alpha = 0.28f)
-                    )
-                ),
-                shape = shape
-            )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .background(theme.bg2)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .shadow(
-                    elevation = 5.dp,
-                    shape = RoundedCornerShape(14.dp),
-                    spotColor = accent.copy(alpha = 0.28f),
-                    ambientColor = Color.Transparent
-                )
                 .clip(RoundedCornerShape(14.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            accent.copy(alpha = if (theme.isDark) 0.34f else 0.22f),
-                            accent.copy(alpha = if (theme.isDark) 0.13f else 0.10f)
-                        )
-                    )
-                )
-                .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(14.dp)),
+                .background(accent.copy(alpha = if (theme.isDark) 0.22f else 0.14f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -1164,21 +1106,20 @@ private fun StreakBanner(streak: Int) {
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(13.dp))
-                .background(accent.copy(alpha = if (theme.isDark) 0.12f else 0.09f))
-                .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(13.dp))
+                .background(theme.bg3)
                 .padding(horizontal = 11.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = streakDays.coerceAtLeast(0).toString(),
-                color = accent,
+                color = theme.accentTextColor,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 14.sp,
                 lineHeight = 14.sp
             )
             Text(
                 text = theme.t("GÜN", "DAYS"),
-                color = accent.copy(alpha = 0.78f),
+                color = theme.accentTextColor.copy(alpha = 0.85f),
                 fontWeight = FontWeight.Bold,
                 fontSize = 7.sp,
                 letterSpacing = 0.8.sp,
@@ -1205,11 +1146,11 @@ private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
     ) {
         Column(Modifier.weight(1f).padding(end = 16.dp)) {
             Text(
-                text = theme.t("BUGÜNÜN PROTOKOLÜ", "TODAY'S PROTOCOL"),
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 9.sp,
+                text = theme.t("Bugünün programı", "Today's program"),
+                color = theme.accentTextColor,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.45.sp
+                letterSpacing = 0.4.sp
             )
             Spacer(Modifier.height(5.dp))
             Text(
@@ -1280,19 +1221,7 @@ fun CircularProgressRing(
                 ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
             )
             .clip(CircleShape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (theme.isDark) Color(0xFF252A31) else Color.White,
-                        if (theme.isDark) Color(0xFF111419) else Color(0xFFE7EBEE)
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                Brush.verticalGradient(listOf(Color.White.copy(if (theme.isDark) 0.13f else 0.82f), theme.stroke)),
-                CircleShape
-            ),
+            .background(theme.bg2),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(7.dp)) {
@@ -1346,26 +1275,9 @@ private fun DaySelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (theme.isDark) Color(0xFF090C10) else Color(0xFFE4E9EC),
-                        if (theme.isDark) Color(0xFF11151A) else Color(0xFFF4F6F7)
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Black.copy(if (theme.isDark) 0.52f else 0.10f),
-                        Color.White.copy(if (theme.isDark) 0.055f else 0.70f)
-                    )
-                ),
-                RoundedCornerShape(18.dp)
-            )
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(theme.bg2)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
@@ -1390,32 +1302,8 @@ private fun DaySelector(
                     .then(
                         if (isSelected)
                             Modifier
-                                .shadow(
-                                    elevation = if (isPressed) 2.dp else 7.dp,
-                                    shape = dayShape,
-                                    spotColor = accent.copy(if (theme.isDark) 0.24f else 0.08f),
-                                    ambientColor = Color.Black.copy(if (theme.isDark) 0.18f else 0.06f)
-                                )
                                 .clip(dayShape)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            accent.copy(if (theme.isDark) 0.30f else 0.16f),
-                                            if (theme.isDark) Color(0xFF1B1F25) else Color.White,
-                                            if (theme.isDark) Color(0xFF101319) else Color(0xFFE9EDF0)
-                                        )
-                                    )
-                                )
-                                .border(
-                                    1.dp,
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(if (theme.isDark) 0.18f else 0.82f),
-                                            accent.copy(if (theme.isDark) 0.30f else 0.16f)
-                                        )
-                                    ),
-                                    dayShape
-                                )
+                                .background(theme.bg3)
                         else
                             Modifier
                     )
@@ -1428,7 +1316,7 @@ private fun DaySelector(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = localizedWorkoutDayLabel(day.day, theme),
-                        color = if (isSelected) accent else theme.text2,
+                        color = if (isSelected) theme.accentTextColor else theme.text2,
                         fontSize = if (responsive.isLargeFont) 8.sp else 10.sp,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
                         letterSpacing = if (isSelected) 0.35.sp else 0.sp,
@@ -1458,7 +1346,7 @@ private fun RestDayView() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp, 40.dp, 24.dp, 0.dp),
+            .padding(20.dp, 40.dp, 20.dp, 0.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -1478,7 +1366,7 @@ private fun RestDayView() {
         Spacer(Modifier.height(24.dp))
         Text(
             strings.restDayTitle, color = theme.text0,
-            fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp
+            fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 0.sp
         )
         Text(
             strings.restDaySubtitle,
@@ -1494,14 +1382,14 @@ private fun RestDayView() {
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             tips.forEach { (icon, color, tip) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassCard(color, theme, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .glassCard(color, theme, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {

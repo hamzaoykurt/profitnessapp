@@ -37,8 +37,8 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
                 )
                 val mineralAtmosphere = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0.0f to if (theme.isDark) Color(0xFF315D8A).copy(0.16f) else Color(0xFF6887A7).copy(0.075f),
-                        0.42f to if (theme.isDark) Color(0xFF315D8A).copy(0.035f) else Color(0xFFB7C7D7).copy(0.018f),
+                        0.0f to if (theme.isDark) Color(0xFF8A6A4A).copy(0.16f) else Color(0xFFA88A6C).copy(0.075f),
+                        0.42f to if (theme.isDark) Color(0xFF8A6A4A).copy(0.035f) else Color(0xFFD9C7B3).copy(0.018f),
                         1.0f to Color.Transparent,
                     ),
                     center = Offset(-size.width * 0.48f, size.height * 0.72f),

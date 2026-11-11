@@ -72,6 +72,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.PageAccentBloom
+import com.cosmibit.profitness.core.theme.accentTextColor
+import com.cosmibit.profitness.core.theme.bg3
 import com.cosmibit.profitness.core.theme.bg1
 import com.cosmibit.profitness.core.theme.bg2
 import com.cosmibit.profitness.core.theme.bg0
@@ -370,8 +372,7 @@ private fun SmallIconChip(
         modifier = Modifier
             .heightIn(min = responsive.compactChipMinHeight)
             .clip(shape)
-            .background(if (selected) accent.copy(0.18f) else theme.bg2.copy(0.5f))
-            .border(1.dp, if (selected) accent.copy(0.4f) else theme.stroke.copy(0.35f), shape)
+            .background(if (selected) accent.copy(0.18f) else theme.bg2)
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -379,7 +380,7 @@ private fun SmallIconChip(
         Icon(icon, null, tint = if (selected) accent else theme.text2.copy(0.6f),
             modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = if (selected) accent else theme.text2.copy(0.7f),
+        Text(label, color = if (selected) theme.accentTextColor else theme.text2,
             fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.2.sp,
@@ -520,9 +521,9 @@ private fun ProgramsList(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = 20.dp, end = 20.dp,
-                        top = 12.dp, bottom = bottomPadding + 80.dp
+                        top = 16.dp, bottom = bottomPadding + 80.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.items, key = { it.id }) { program ->
                         // Senior approach: content-addressable. UYGULANDI iff caller has a local
@@ -606,9 +607,9 @@ private fun SavedProgramsList(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = 20.dp, end = 20.dp,
-                        top = 12.dp, bottom = bottomPadding + 80.dp
+                        top = 16.dp, bottom = bottomPadding + 80.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.savedItems, key = { it.id }) { program ->
                         val isAppliedByHash =
@@ -655,7 +656,7 @@ private fun SharedProgramCard(
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(24.dp)
     val stackActions = responsive.isSmallPhone || responsive.isLargeFont
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -675,7 +676,7 @@ private fun SharedProgramCard(
             }
             .performanceElevatedSurface(theme, shape)
             .clickable(interactionSource = interaction, indication = null) { onOpenDetails() }
-            .padding(if (responsive.isSmallPhone) 14.dp else 16.dp)
+            .padding(20.dp)
     ) {
         // Author row
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -741,7 +742,7 @@ private fun SharedProgramCard(
                             .background(accent.copy(0.10f))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text("#$tag", color = accent.copy(0.9f), fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("#$tag", color = theme.accentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -823,10 +824,7 @@ private fun SharedProgramDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                if (theme.isDark) Brush.verticalGradient(listOf(theme.bg1, theme.bg0))
-                else Brush.verticalGradient(listOf(theme.bg0, theme.bg2.copy(0.42f)))
-            )
+            .background(theme.bg0)
     ) {
         if (theme.isDark) PageAccentBloom()
 
@@ -844,10 +842,10 @@ private fun SharedProgramDetailScreen(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = theme.t("Program içeriği", "Program content"),
-                        color = accent,
+                        color = theme.accentTextColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.4.sp
+                        letterSpacing = 1.2.sp
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
@@ -869,7 +867,7 @@ private fun SharedProgramDetailScreen(
                     top = 2.dp,
                     bottom = bottomPadding + 84.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
                     SharedProgramDetailHeader(program = program, dayCount = detail.days.size)
@@ -897,7 +895,7 @@ private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .performanceSignatureSurface(theme, accent, shape)
-            .padding(18.dp)
+            .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -947,7 +945,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
         modifier = Modifier
             .fillMaxWidth()
             .performanceElevatedSurface(theme, shape)
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -959,7 +957,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
             ) {
                 Text(
                     text = day.index.toString(),
-                    color = accent,
+                    color = theme.accentTextColor,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -998,11 +996,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(accent.copy(0.25f), theme.stroke.copy(0.18f), Color.Transparent)
-                    )
-                )
+                .background(theme.stroke.copy(0.4f))
         )
 
         if (day.exercises.isEmpty()) {
@@ -1071,7 +1065,7 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
                         ) {
                             Text(
                                 text = badge,
-                                color = accent.copy(if (index == 0) 1f else 0.82f),
+                                color = theme.accentTextColor,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -1099,8 +1093,7 @@ private fun EmptyProgramDetailCard() {
             )
             .clip(shape)
             .background(if (theme.isDark) theme.bg2 else theme.bg1)
-            .border(1.dp, theme.stroke.copy(0.72f), shape)
-            .padding(18.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(theme.t("Program içeriği bulunamadı", "Program content not found"), color = theme.text0, fontWeight = FontWeight.Bold)
@@ -1292,7 +1285,7 @@ private fun ApplyButton(
         enabled -> accent
         else -> accent.copy(0.42f)
     }
-    val textColor = if (applied) accent else theme.effectiveOnAccentColor
+    val textColor = if (applied) theme.accentTextColor else theme.effectiveOnAccentColor
     Row(
         modifier = Modifier
             .heightIn(min = if (responsive.isLargeFont) 48.dp else 44.dp)
@@ -1500,16 +1493,7 @@ private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 spotColor = accent.copy(0.40f)
             )
             .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        lerp(accent, Color.White, if (theme.isDark) 0.08f else 0.15f),
-                        accent,
-                        lerp(accent, Color.Black, if (theme.isDark) 0.22f else 0.13f)
-                    )
-                )
-            )
-            .border(1.dp, Color.White.copy(if (theme.isDark) 0.22f else 0.34f), shape)
+            .background(accent)
             .clickable(interactionSource = interaction, indication = null) { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -1535,8 +1519,8 @@ private fun ProgramsSubTabBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = responsive.horizontalPadding)
-            .padding(top = 8.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(top = 12.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SubTabChip(
             label = theme.t("TOPLULUK", "COMMUNITY"),
@@ -1588,8 +1572,8 @@ private fun SubTabChip(
                 scaleY = if (pressed) 0.98f else 1f
             }
             .then(
-                if (selected) Modifier.insetControlSurface(accent, theme, shape)
-                else Modifier.clip(shape).background(theme.bg1)
+                if (selected) Modifier.clip(shape).background(theme.bg3)
+                else Modifier.clip(shape).background(theme.bg2)
             )
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 5.dp, vertical = 8.dp),
@@ -1597,7 +1581,7 @@ private fun SubTabChip(
     ) {
         Text(
             label,
-            color = if (selected) accent else theme.text2.copy(0.7f),
+            color = if (selected) theme.accentTextColor else theme.text2,
             fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.sp,
@@ -1657,7 +1641,7 @@ private fun MySharedProgramsList(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Brush.linearGradient(listOf(accent, accent.copy(0.75f))))
+                        .background(accent)
                         .clickable { onStartShare() }
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -1674,7 +1658,7 @@ private fun MySharedProgramsList(
                     start = 20.dp, end = 20.dp,
                     top = 4.dp, bottom = bottomPadding + 80.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(items, key = { it.id }) { item ->
                     MySharedCard(
@@ -1732,7 +1716,7 @@ private fun MySharedCard(
         modifier = Modifier
             .fillMaxWidth()
             .performanceElevatedSurface(theme, shape)
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Text(
             text = item.title,

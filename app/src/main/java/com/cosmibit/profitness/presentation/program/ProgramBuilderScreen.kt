@@ -928,7 +928,7 @@ private fun BuilderChooseScreen(
             }
         } else if (userPrograms.isNotEmpty()) {
             item {
-                SectionLabel(sectionStrings.activeProtocols, MaterialTheme.colorScheme.primary)
+                SectionLabel(sectionStrings.activeProtocols, theme.accentTextColor)
             }
             items(userPrograms, key = { it.id }) { prog ->
                 SavedProgramTile(
@@ -994,14 +994,14 @@ private fun SectionLabel(text: String, color: Color) {
         text,
         style = MaterialTheme.typography.labelSmall,
         color = color,
-        fontSize = 10.sp,
+        fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = 1.4.sp,
+        letterSpacing = 0.3.sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(
             start = responsive.horizontalPadding,
-            top = 24.dp,
+            top = 32.dp,
             end = responsive.horizontalPadding,
             bottom = 12.dp
         )
@@ -1134,15 +1134,15 @@ private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
+            .padding(horizontal = responsive.horizontalPadding, vertical = 8.dp)
             .scale(scale)
-            .performanceElevatedSurface(theme, shape = RoundedCornerShape(14.dp))
+            .performanceElevatedSurface(theme, shape = RoundedCornerShape(20.dp))
             .clickable(iSource, null, onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 14.dp, top = 15.dp, bottom = 15.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -1311,12 +1311,12 @@ private fun SavedProgramTile(
     val totalExercises = program.days.sumOf { it.exercises.size }
     val dayLabels    = listOf("M", "S", "Ç", "P", "C", "C", "P")
 
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(20.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.horizontalPadding, vertical = 5.dp)
+            .padding(horizontal = responsive.horizontalPadding, vertical = 8.dp)
     ) {
         Column(
             modifier = Modifier
@@ -1334,15 +1334,15 @@ private fun SavedProgramTile(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onEdit)
-                    .padding(start = 0.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
+                    .padding(start = 0.dp, end = 20.dp, top = 0.dp, bottom = 0.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(20.dp))
 
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(top = 12.dp, bottom = 12.dp)
+                        .padding(top = 20.dp, bottom = 16.dp)
                 ) {
                     // ── Top: badge + active indicator ─────────────────────
                     if (showTypeBadge || program.isActive) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1363,7 +1363,7 @@ private fun SavedProgramTile(
                                     Spacer(Modifier.width(4.dp))
                                     Text(
                                         typeLabel,
-                                        color         = accentColor,
+                                        color         = theme.accentTextColor,
                                         fontSize      = 9.sp,
                                         fontWeight    = FontWeight.ExtraBold,
                                         letterSpacing = 0.55.sp,
@@ -1383,7 +1383,7 @@ private fun SavedProgramTile(
                             ) {
                                 Text(
                                     theme.strings.activeLabel,
-                                    color         = primary,
+                                    color         = theme.accentTextColor,
                                     fontSize      = 8.sp,
                                     fontWeight    = FontWeight.ExtraBold,
                                     letterSpacing = 0.6.sp,
@@ -1464,7 +1464,7 @@ private fun SavedProgramTile(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!program.isActive) {
@@ -1501,7 +1501,7 @@ private fun SavedProgramTile(
                             .background(primary.copy(0.13f))
                             .padding(horizontal = 11.dp, vertical = 8.dp)
                     ) {
-                        Text(theme.t("Aktif program", "Active program"), color = primary, style = MaterialTheme.typography.labelMedium)
+                        Text(theme.t("Aktif program", "Active program"), color = theme.accentTextColor, style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -1580,7 +1580,7 @@ private fun ProgramDetailDialog(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                        Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
                         Text(program.localizedLevel(theme), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -1615,7 +1615,7 @@ private fun ProgramDetailDialog(
                 Spacer(Modifier.height(20.dp))
 
                 // Muscle distribution
-                Text(strings.muscleDistLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.muscleDistLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
                 Spacer(Modifier.height(10.dp))
                 program.muscleLabels.forEachIndexed { i, label ->
                     Column(Modifier.padding(bottom = 8.dp)) {
@@ -1647,7 +1647,7 @@ private fun ProgramDetailDialog(
                 Spacer(Modifier.height(20.dp))
 
                 // Schedule
-                Text(strings.scheduleLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                Text(strings.scheduleLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
                 Spacer(Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
@@ -1661,7 +1661,7 @@ private fun ProgramDetailDialog(
                 Spacer(Modifier.height(24.dp))
 
                 PremiumButton(
-                    text = if (isApplying) "UYGULANIYOR" else strings.applyProtocol,
+                    text = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
                     onClick = onApply,
                     modifier = Modifier.fillMaxWidth(),
                     isEnabled = !isApplying,
@@ -1686,11 +1686,11 @@ private fun ProgramDetailDialog(
                         CircularProgressIndicator(color = accent, modifier = Modifier.size(42.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.height(14.dp))
                         Text(
-                            "PROTOKOL UYGULANIYOR",
+                            "PROGRAM UYGULANIYOR",
                             color = theme.text0,
                             fontWeight = FontWeight.Black,
                             fontSize = 13.sp,
-                            letterSpacing = 1.5.sp
+                            letterSpacing = 1.2.sp
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -1818,7 +1818,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     .padding(24.dp)
             ) {
                 Column {
-                    Text(aiTheme.t("TASARIM PARAMETRELERİ", "DESIGN PARAMETERS"), color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                    Text(aiTheme.t("TASARIM PARAMETRELERİ", "DESIGN PARAMETERS"), color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     Spacer(Modifier.height(16.dp))
                     val textFieldScroll = rememberScrollState()
                     BasicTextField(
@@ -1993,7 +1993,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 text = if (selectedBase64 != null) {
                     aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
                 } else {
-                    aiTheme.t("PROTOKOLÜ ANALİZ ET", "ANALYZE PROTOCOL")
+                    aiTheme.t("PROGRAMI ANALİZ ET", "ANALYZE PROGRAM")
                 },
                 onClick = {
                     viewModel.clearAiError()
@@ -2226,7 +2226,7 @@ private fun EditProgramScreen(
                                 color         = editAccent,
                                 fontWeight    = FontWeight.ExtraBold,
                                 fontSize      = 11.sp,
-                                letterSpacing = 1.8.sp
+                                letterSpacing = 1.2.sp
                             )
                             Text(
                                 "Programı nasıl değiştireyim?",
@@ -3138,7 +3138,7 @@ private fun ExerciseEditDialog(
                         color         = accent,
                         fontSize      = 9.sp,
                         fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 1.5.sp
+                        letterSpacing = 1.2.sp
                     )
                     Text(
                         theme.exerciseDisplayName(exercise.name),
@@ -3344,8 +3344,8 @@ private fun DetailHeader(
                 sub,
                 style = MaterialTheme.typography.labelSmall,
                 color = accent,
-                letterSpacing = 2.sp,
-                fontSize = 11.sp,
+                letterSpacing = 0.3.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis

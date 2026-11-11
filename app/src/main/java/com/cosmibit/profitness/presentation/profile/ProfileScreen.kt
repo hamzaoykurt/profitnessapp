@@ -108,7 +108,9 @@ fun ProfileScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
         PageAccentBloom()
+        val profileListState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(
+            state = profileListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 140.dp + timerExtraPad)
         ) {
@@ -176,6 +178,13 @@ fun ProfileScreen(
                 )
             }
         }
+        if (profileListState.canScrollBackward) Box(
+            Modifier.fillMaxWidth()
+            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                listOf(theme.bg0.copy(0.94f), theme.bg0.copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)
+            ))
+    )
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp + timerExtraPad)
@@ -235,7 +244,7 @@ fun ProfileScreen(
                             color         = accent,
                             fontSize      = 11.sp,
                             fontWeight    = FontWeight.Black,
-                            letterSpacing = 4.sp
+                            letterSpacing = 1.2.sp
                         )
                         Text(
                             localizedAchievementText(name, theme),
@@ -440,7 +449,7 @@ private fun ProfileHeroBanner(
                     )
                     Text(
                         chipText,
-                        color      = chipTint,
+                        color      = if (theme.isDark) chipTint else chipTint.darkenForContrast(theme.bg2),
                         fontSize   = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -462,13 +471,13 @@ private fun ProfileHeroBanner(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .performanceSignatureSurface(theme, accent, RoundedCornerShape(18.dp))
+                    .padding(horizontal = 20.dp)
+                    .performanceSignatureSurface(theme, accent, RoundedCornerShape(20.dp))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -516,7 +525,7 @@ private fun ProfileHeroBanner(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         BadgeChip("★ ${rank.uppercase()}", rankColor)
-                        BadgeChip("LVL $level", accent)
+                        BadgeChip("LVL $level", theme.accentTextColor)
                     }
                     }
                     }
@@ -526,8 +535,9 @@ private fun ProfileHeroBanner(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
-                            .padding(horizontal = 14.dp, vertical = 13.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(theme.bg3)
+                            .padding(horizontal = 16.dp, vertical = 16.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -573,12 +583,11 @@ private fun ProfileHeroBanner(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(accent.copy(alpha = 0.13f))
-                                    .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(50))
                                     .padding(horizontal = 10.dp, vertical = 7.dp)
                             ) {
                                 Text(
                                     if (xpLeft == 0) theme.t("HAZIR", "READY") else theme.t("$xpLeft KALDI", "$xpLeft LEFT"),
-                                    color = accent,
+                                    color = theme.accentTextColor,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 0.35.sp
@@ -682,6 +691,8 @@ private fun rankColor(rank: String) = when (rank.lowercase()) {
 
 @Composable
 private fun BadgeChip(label: String, color: Color) {
+    val theme = LocalAppTheme.current
+    val textColor = if (theme.isDark) color else color.darkenForContrast(theme.bg2)
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -690,7 +701,7 @@ private fun BadgeChip(label: String, color: Color) {
     ) {
         Text(
             label,
-            color         = color,
+            color         = textColor,
             fontSize      = 10.sp,
             fontWeight    = FontWeight.Bold
         )
@@ -740,7 +751,7 @@ private fun PerformanceMetricsSection(
         }
     }
 
-    Column(modifier = Modifier.padding(top = 18.dp)) {
+    Column(modifier = Modifier.padding(top = 32.dp)) {
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
@@ -765,7 +776,7 @@ private fun PerformanceMetricsSection(
             ) {
                 Text(
                     strings.seeAll,
-                    color         = accent,
+                    color         = theme.accentTextColor,
                     fontSize      = 10.sp,
                     fontWeight    = FontWeight.Bold
                 )
@@ -782,7 +793,7 @@ private fun PerformanceMetricsSection(
 
         LazyRow(
             contentPadding        = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(metrics) { metric ->
                 MetricCard(
@@ -804,15 +815,15 @@ private fun MetricCard(
     val visualAccent = theme.effectiveAccentColor
     Box(
         modifier = Modifier
-            .width(140.dp)
-            .height(160.dp)
+            .width(148.dp)
+            .height(176.dp)
             .profilePremiumAction(
                 theme = theme,
                 accent = visualAccent,
                 onClick = onClick,
                 shape = RoundedCornerShape(22.dp)
             )
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Column(
             modifier            = Modifier.fillMaxSize(),
@@ -840,7 +851,7 @@ private fun MetricCard(
                     Spacer(Modifier.width(3.dp))
                     Text(
                         metric.unit,
-                        color      = visualAccent,
+                        color      = theme.accentTextColor,
                         fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier   = Modifier.padding(bottom = 3.dp)
@@ -885,8 +896,8 @@ private fun WeeklyActivitySection(
             Text(
                 strings.weeklyActivity,
                 style         = MaterialTheme.typography.labelSmall,
-                color         = accent,
-                letterSpacing = 2.sp
+                color         = theme.accentTextColor,
+                letterSpacing = 1.2.sp
             )
             Text(strings.thisWeekSummary, color = theme.text2, fontSize = 10.sp)
         }
@@ -940,7 +951,7 @@ private fun WeeklyActivitySection(
                         }
                         Text(
                             day,
-                            color      = if (isToday) accent else theme.text2,
+                            color      = if (isToday) theme.accentTextColor else theme.text2,
                             fontSize   = 9.sp,
                             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
                         )
@@ -1005,7 +1016,7 @@ private fun TrophyGallery(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(strings.seeAll, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(strings.seeAll, color = theme.accentTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent, modifier = Modifier.size(10.dp))
                 }
             }
@@ -1022,7 +1033,7 @@ private fun TrophyGallery(
         } else {
             LazyRow(
                 contentPadding        = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(sorted) { ach ->
                     AchievementCard(achievement = ach, theme = theme)
@@ -1067,7 +1078,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             Spacer(Modifier.height(10.dp))
             Text(
                 localizedAchievementText(achievement.name, theme).take(18),
-                color         = if (achievement.isUnlocked) colorFrom else theme.text2,
+                color         = if (achievement.isUnlocked) (if (theme.isDark) colorFrom else colorFrom.darkenForContrast(theme.bg1)) else theme.text2,
                 fontSize      = 11.sp,
                 fontWeight    = FontWeight.Bold
             )
@@ -1105,7 +1116,7 @@ private fun SettingsSection(
             strings.accountSettings,
             style         = MaterialTheme.typography.labelSmall,
             color         = theme.text1,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
 
         Spacer(Modifier.height(16.dp))
@@ -1145,7 +1156,7 @@ private fun SettingsSection(
             Column(Modifier.weight(1f)) {
                 Text(
                     displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
-                    color      = accent,
+                    color      = theme.accentTextColor,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
@@ -1173,7 +1184,7 @@ private fun SettingsSection(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Column(
             modifier = Modifier
@@ -1201,13 +1212,13 @@ private fun SettingsSection(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
             theme.t("VERİLER", "DATA"),
             style         = MaterialTheme.typography.labelSmall,
             color         = theme.text1,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
 
         Spacer(Modifier.height(16.dp))
@@ -1259,7 +1270,7 @@ private fun SettingsSection(
                     onClick = onLogout,
                     shape = RoundedCornerShape(16.dp)
                 )
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -1304,7 +1315,7 @@ private fun SettingsRow(
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
             .then(if (enabled) Modifier else Modifier.alpha(0.55f))
-            .padding(16.dp),
+            .padding(20.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -1312,8 +1323,7 @@ private fun SettingsRow(
             Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(accent.copy(0.12f))
-                .border(1.dp, accent.copy(0.24f), RoundedCornerShape(10.dp)),
+                .background(accent.copy(0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
@@ -1368,7 +1378,7 @@ private fun ThemeSettingsSheet(
         isDark          = previewIsDark,
         themeMode       = themeMode,
         accent           = accent,
-        surfaceStyle     = SurfaceStyle.OLED,
+        surfaceStyle     = SurfaceStyle.GRAPHITE,
         intensity        = intensity,
         customAccentArgb = customAccentArgb
     )
@@ -1455,7 +1465,7 @@ private fun ThemeSettingsSheet(
                         isDark       = previewIsDark,
                         themeMode    = themeMode,
                         accent       = accent,
-                        surfaceStyle = SurfaceStyle.OLED,
+                        surfaceStyle = SurfaceStyle.GRAPHITE,
                         intensity    = intensity,
                         customAccentArgb = customAccentArgb
                     )
@@ -1495,7 +1505,7 @@ private fun SectionLabel(text: String, theme: AppThemeState) {
         color         = theme.text1,
         fontSize      = 11.sp,
         fontWeight    = FontWeight.Bold,
-        letterSpacing = 2.sp
+        letterSpacing = 1.2.sp
     )
 }
 
@@ -1506,8 +1516,8 @@ private fun PreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(preview, RoundedCornerShape(16.dp), acc)
-            .padding(16.dp),
+            .profilePremiumSurface(preview, RoundedCornerShape(20.dp), acc)
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1520,10 +1530,10 @@ private fun PreviewCard(preview: AppThemeState) {
             Spacer(Modifier.width(8.dp))
             Text(
                 preview.accentDisplayLabel,
-                color         = acc,
+                color         = preview.accentTextColor,
                 fontSize      = 12.sp,
                 fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                letterSpacing = 1.2.sp
             )
         }
         Text(
@@ -1549,7 +1559,7 @@ private fun PreviewCard(preview: AppThemeState) {
                 color         = preview.effectiveOnAccentColor,
                 fontSize      = 11.sp,
                 fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                letterSpacing = 1.2.sp
             )
         }
     }
@@ -1582,7 +1592,7 @@ private fun <T> SegmentedSelector(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(9.dp))
-                    .then(if (isSel) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(9.dp)) else Modifier)
+                    .then(if (isSel) Modifier.background(theme.bg3) else Modifier)
                     .clickable { onSelect(value) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
@@ -1624,7 +1634,7 @@ private fun NotificationsSettingsSheet(
             strings.notifSheetTitle,
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
-            letterSpacing = 3.sp,
+            letterSpacing = 1.2.sp,
             fontWeight    = FontWeight.Black
         )
 
@@ -1666,7 +1676,7 @@ private fun NotificationsSettingsSheet(
                 pressedElevation = 2.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = 13.sp)
         }
     }
 }
@@ -1745,7 +1755,7 @@ private fun LanguageSettingsSheet(
             strings.langSheetTitle,
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
-            letterSpacing = 3.sp,
+            letterSpacing = 1.2.sp,
             fontWeight    = FontWeight.Black
         )
 
@@ -1787,7 +1797,7 @@ private fun LanguageSettingsSheet(
                 pressedElevation = 2.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = 13.sp)
         }
     }
 }
@@ -1965,7 +1975,7 @@ private fun BodyMetricsCard(
             theme.t("VÜCUT METRİKLERİ", "BODY METRICS"),
             style = MaterialTheme.typography.labelSmall,
             color = accent,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
         Spacer(Modifier.height(12.dp))
         Row(
@@ -2029,12 +2039,7 @@ private fun BodyMetricTile(
         modifier = modifier
             .heightIn(min = 92.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(color.copy(0.12f), theme.bg1.copy(0.92f))
-                )
-            )
-            .border(1.dp, color.copy(0.30f), RoundedCornerShape(16.dp))
+            .background(theme.bg3)
             .padding(12.dp)
     ) {
         Column(
@@ -2154,7 +2159,7 @@ fun WeightTrackingCard(
             theme.t("PERFORMANS ÖLÇÜTLERİ", "PERFORMANCE METRICS"),
             style         = androidx.compose.material3.MaterialTheme.typography.labelSmall,
             color         = accent,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
         Spacer(Modifier.height(12.dp))
         Row(
@@ -2219,7 +2224,7 @@ fun ExerciseProgressionCard(
             theme.t("SPOR PERFORMANSI", "SPORT PERFORMANCE"),
             style         = MaterialTheme.typography.labelSmall,
             color         = accent,
-            letterSpacing = 2.sp
+            letterSpacing = 1.2.sp
         )
         Spacer(Modifier.height(12.dp))
         Row(
@@ -2306,7 +2311,7 @@ private fun LeaderboardPreviewCard(
                     color         = theme.text0,
                     fontSize      = 13.sp,
                     fontWeight    = FontWeight.Black,
-                    letterSpacing = 1.5.sp
+                    letterSpacing = 1.2.sp
                 )
                 Text(
                     theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),

@@ -62,32 +62,32 @@ data class AppThemeState(
 // stroke ile sağlanır. Bu, "near-black gri" kartların oluşturduğu "kirli"
 // OLED hissini önler.
 val AppThemeState.bg0: Color get() = when {
-    !isDark                               -> Color(0xFFF1F3F4)
+    !isDark                               -> Color(0xFFF6F1EA)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF010203)
-    else                                  -> Color(0xFF050608)
+    else                                  -> Color(0xFF0F0D0C)
 }
 val AppThemeState.bg1: Color get() = when {
-    !isDark                               -> Color(0xFFFAFBFB)
+    !isDark                               -> Color(0xFFFFFDF9)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF050609)
-    else                                  -> Color(0xFF090B0F)
+    else                                  -> Color(0xFF161311)
 }
 val AppThemeState.bg2: Color get() = when {
-    !isDark                               -> Color(0xFFE5E9EC)
+    !isDark                               -> Color(0xFFEEE7DD)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF0C0F14)
-    else                                  -> Color(0xFF11151B)
+    else                                  -> Color(0xFF1D1916)
 }
 val AppThemeState.bg3: Color get() = when {
-    !isDark                               -> Color(0xFFD8DEE2)
+    !isDark                               -> Color(0xFFE3DACE)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF151A21)
-    else                                  -> Color(0xFF19202A)
+    else                                  -> Color(0xFF26211D)
 }
 val AppThemeState.stroke: Color get() = when {
-    !isDark                               -> Color(0xFFCBD2D8)
-    else                                  -> Color(0xFF343D49)
+    !isDark                               -> Color(0xFFD9CFC2)
+    else                                  -> Color(0xFF3A332D)
 }
-val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF7F7F4) else Color(0xFF101419)
-val AppThemeState.text1: Color get() = if (isDark) Color(0xFFB0B5BC) else Color(0xFF4C5863)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFF858E9A) else Color(0xFF6C7883)
+val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF8F4EE) else Color(0xFF1F1A16)
+val AppThemeState.text1: Color get() = if (isDark) Color(0xFFC4BBB1) else Color(0xFF5A5047)
+val AppThemeState.text2: Color get() = if (isDark) Color(0xFF9C9389) else Color(0xFF665B50)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {
@@ -156,6 +156,19 @@ fun Color.toSafeAccentColor(): Color {
 fun Color.readableOnAccentColor(): Color =
     if (contrastRatio(Color.Black) >= contrastRatio(Color.White)) Color.Black else Color.White
 
+/**
+ * Koyulaştırarak [background] üstünde en az [minRatio] kontrast sağlar (siyaha doğru).
+ * Açık temada vurgu renginin METİN olarak kullanımı içindir; dolgu/ikon rengi değişmez.
+ */
+fun Color.darkenForContrast(background: Color, minRatio: Double = 4.5): Color {
+    var adjusted = copy(alpha = 1f)
+    repeat(40) {
+        if (adjusted.contrastRatio(background) >= minRatio) return adjusted
+        adjusted = adjusted.blendToward(Color.Black, 0.06f)
+    }
+    return adjusted
+}
+
 fun Int.toSafeAccentArgb(): Int = Color(this).toSafeAccentColor().toArgb()
 
 val AppThemeState.effectiveAccentColor: Color get() {
@@ -168,6 +181,10 @@ val AppThemeState.effectiveAccentColor: Color get() {
     }
     return styled.toSafeAccentColor()
 }
+/** Vurgu rengiyle yazılan etiket/link metni: koyuda aynı, açıkta bg3 üstünde >=4.5:1. */
+val AppThemeState.accentTextColor: Color get() =
+    if (isDark) effectiveAccentColor else effectiveAccentColor.darkenForContrast(bg3)
+
 val AppThemeState.effectiveOnAccentColor: Color get() =
     effectiveAccentColor.readableOnAccentColor()
 

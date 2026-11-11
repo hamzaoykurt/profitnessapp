@@ -514,18 +514,8 @@ fun AppBackground(modifier: Modifier = Modifier) {
             center = Offset(size.width * 1.28f, -size.height * 0.10f),
             radius = size.width * 1.85f
         )
-        val mineral = Brush.radialGradient(
-            colorStops = arrayOf(
-                0.0f to if (theme.isDark) Color(0xFF315D8A).copy(0.20f) else Color(0xFF6887A7).copy(0.09f),
-                0.48f to if (theme.isDark) Color(0xFF315D8A).copy(0.045f) else Color(0xFFB7C7D7).copy(0.025f),
-                1.0f to Color.Transparent
-            ),
-            center = Offset(-size.width * 0.16f, size.height * 0.66f),
-            radius = size.width * 1.75f
-        )
         onDrawBehind {
             drawRect(theme.bg0)
-            drawRect(mineral)
             drawRect(radial)
         }
     })
@@ -567,7 +557,7 @@ private fun AppNavRail(
                     ambientColor = Color.Transparent
                 )
                 .clip(shape)
-                .background(if (theme.isDark) Color(0xFF090B10) else Color(0xFFF5F7FA))
+                .background(theme.bg1)
                 .padding(vertical = 14.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
@@ -594,7 +584,7 @@ private fun AppNavRail(
                         .clip(itemShape)
                         .then(
                             if (isSelected)
-                                Modifier.background(if (theme.isDark) Color(0xFF171B23) else Color(0xFFE1E7EE))
+                                Modifier.background(theme.bg3)
                             else Modifier
                         )
                         .then(
@@ -761,32 +751,8 @@ fun AppNavBar(
                     ambientColor = Color.Black.copy(if (theme.isDark) 0.62f else 0.12f)
                 )
                 .clip(shape)
-                .drawWithCache {
-                    val base = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to if (theme.isDark) Color(0xFF20242B) else Color.White,
-                            0.36f to if (theme.isDark) Color(0xFF12161B) else Color(0xFFF6F8F9),
-                            1f to if (theme.isDark) Color(0xFF090C10) else Color(0xFFE6EAED)
-                        )
-                    )
-                    onDrawBehind {
-                        drawRect(base)
-                        drawRect(
-                            color = Color.White.copy(if (theme.isDark) 0.10f else 0.72f),
-                            size = Size(size.width, 1.dp.toPx())
-                        )
-                    }
-                }
-                .border(
-                    1.dp,
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(if (theme.isDark) 0.14f else 0.82f),
-                            theme.stroke.copy(0.46f)
-                        )
-                    ),
-                    shape
-                )
+                .background(if (theme.isDark) Color(0xFF221D19) else Color(0xFFFFFDF9))
+                .border(1.dp, theme.stroke.copy(alpha = if (theme.isDark) 0.5f else 0.6f), shape)
                 .pointerInput(tabs) {
                     awaitEachGesture {
                         val downEvent = awaitPointerEvent(PointerEventPass.Initial)
@@ -929,21 +895,8 @@ private fun NavSelectionSurface(
                 ambientColor = Color.Transparent
             )
             .clip(shape)
-            .background(if (theme.isDark) Color(0xFF17121F) else Color(0xFFF3EFF8))
-            .background(
-                Brush.horizontalGradient(
-                    colorStops = arrayOf(
-                        0f to accent.copy(if (theme.isDark) 0.30f else 0.18f),
-                        0.68f to accent.copy(if (theme.isDark) 0.17f else 0.10f),
-                        1f to accent.copy(if (theme.isDark) 0.07f else 0.04f)
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                Color.White.copy(if (theme.isDark) 0.15f else 0.58f),
-                shape
-            )
+            .background(if (theme.isDark) Color(0xFF221D19) else Color(0xFFFFFDF9))
+            .background(accent.copy(if (theme.isDark) 0.20f else 0.12f))
     )
 }
 

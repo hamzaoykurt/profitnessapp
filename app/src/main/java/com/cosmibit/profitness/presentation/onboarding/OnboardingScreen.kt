@@ -302,7 +302,7 @@ private fun StepTheme(
         isDark          = previewIsDark,
         themeMode       = themeMode,
         accent           = accent,
-        surfaceStyle     = SurfaceStyle.OLED,
+        surfaceStyle     = SurfaceStyle.GRAPHITE,
         intensity        = intensity,
         customAccentArgb = customAccentArgb
     )

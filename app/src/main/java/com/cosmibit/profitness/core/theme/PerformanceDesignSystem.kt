@@ -32,10 +32,10 @@ object PerformanceSpacing {
 
 @Immutable
 object PerformanceRadius {
-    val control = 10.dp
-    val button = 12.dp
-    val card = 16.dp
-    val major = 20.dp
+    val control = 14.dp
+    val button = 16.dp
+    val card = 20.dp
+    val major = 24.dp
 }
 
 object PerformanceMotion {
@@ -59,17 +59,19 @@ fun Modifier.performanceSurface(
     return this
         .then(
             if (elevated && !theme.isDark) Modifier.shadow(
-                elevation = 5.dp,
+                elevation = 3.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.07f)
+                ambientColor = WarmShadow.copy(alpha = 0.10f),
+                spotColor = WarmShadow.copy(alpha = 0.10f)
             ) else Modifier
         )
         .clip(shape)
         .background(color)
 }
 
-/** Opaque sculpted material. Continuous light across the face, never a glass strip. */
+private val WarmShadow = Color(0xFF3A2A1A)
+
+/** Flat opaque card: solid fill, one soft shadow, at most one hairline (dark only). */
 fun Modifier.performanceElevatedSurface(
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(PerformanceRadius.card),
@@ -77,68 +79,18 @@ fun Modifier.performanceElevatedSurface(
 ): Modifier = this
     .then(
         if (elevated) Modifier.shadow(
-            if (theme.isDark) 6.dp else 5.dp, shape,
-            ambientColor = Color.Black.copy(if (theme.isDark) 0.18f else 0.08f),
-            spotColor = Color.Black.copy(if (theme.isDark) 0.26f else 0.12f)
+            if (theme.isDark) 4.dp else 3.dp, shape,
+            ambientColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f),
+            spotColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f)
         ) else Modifier
     )
     .clip(shape)
-    .drawWithCache {
-        val face = Brush.linearGradient(
-            colorStops = if (theme.isDark) arrayOf(
-                0f to Color(0xFF1D232C),
-                0.34f to Color(0xFF151A21),
-                0.72f to Color(0xFF0E1218),
-                1f to Color(0xFF090C11)
-            ) else arrayOf(
-                0f to Color(0xFFFFFFFF),
-                0.46f to Color(0xFFF8FAFB),
-                0.78f to Color(0xFFEEF2F4),
-                1f to Color(0xFFE2E7EA)
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(size.width, size.height)
-        )
-        val softKeyLight = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = if (theme.isDark) 0.035f else 0.42f),
-                Color.Transparent
-            ),
-            center = Offset(-size.width * 0.12f, -size.height * 0.34f),
-            radius = size.maxDimension * 1.15f
-        )
-        val lowerDepth = Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.55f to Color.Transparent,
-                1f to Color.Black.copy(if (theme.isDark) 0.22f else 0.055f)
-            )
-        )
-        onDrawBehind {
-            drawRect(face)
-            drawRect(softKeyLight)
-            drawRect(lowerDepth)
-            drawRect(
-                color = Color.White.copy(if (theme.isDark) 0.085f else 0.70f),
-                size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())
-            )
-        }
-    }
-    .border(
-        width = 1.dp,
-        brush = Brush.verticalGradient(
-            listOf(
-                Color.White.copy(if (theme.isDark) 0.14f else 0.84f),
-                theme.stroke.copy(if (theme.isDark) 0.58f else 0.46f),
-                Color.Black.copy(if (theme.isDark) 0.30f else 0.05f)
-            )
-        ),
-        shape = shape
+    .background(if (theme.isDark) theme.bg2 else theme.bg1)
+    .then(
+        if (theme.isDark) Modifier.border(1.dp, theme.stroke.copy(alpha = 0.5f), shape) else Modifier
     )
 
-/**
- * Soft dimensional control inspired by moulded hardware: a translucent face,
- * diffuse key light and a shallow inward response while pressed.
- */
+/** Flat control: solid fill, soft shadow (0dp while pressed). */
 fun Modifier.performanceControlSurface(
     theme: AppThemeState,
     color: Color,
@@ -146,36 +98,13 @@ fun Modifier.performanceControlSurface(
     shape: Shape = RoundedCornerShape(PerformanceRadius.button)
 ): Modifier = this
     .shadow(
-        elevation = if (pressed) 1.dp else 5.dp,
+        elevation = if (pressed) 0.dp else 2.dp,
         shape = shape,
-        ambientColor = Color.Black.copy(if (theme.isDark) 0.20f else 0.10f),
-        spotColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.16f)
+        ambientColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f),
+        spotColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f)
     )
     .clip(shape)
     .background(color)
-    .drawWithCache {
-        val keyLight = Brush.linearGradient(
-            colors = if (pressed) {
-                listOf(Color.Black.copy(0.18f), Color.Transparent, Color.White.copy(0.05f))
-            } else {
-                listOf(Color.White.copy(if (theme.isDark) 0.16f else 0.52f), Color.Transparent, Color.Black.copy(0.14f))
-            },
-            start = Offset.Zero,
-            end = Offset(size.width, size.height)
-        )
-        val innerDepth = Brush.verticalGradient(
-            colors = if (pressed) {
-                listOf(Color.Black.copy(0.22f), Color.Transparent, Color.White.copy(0.04f))
-            } else {
-                listOf(Color.White.copy(0.08f), Color.Transparent, Color.Black.copy(0.10f))
-            }
-        )
-        onDrawWithContent {
-            drawRect(keyLight)
-            drawRect(innerDepth)
-            drawContent()
-        }
-    }
 
 /** Rare hero/selected material: one cached warm aura, never animated. */
 fun Modifier.performanceSignatureSurface(
@@ -185,17 +114,7 @@ fun Modifier.performanceSignatureSurface(
 ): Modifier = this
     .performanceElevatedSurface(theme, shape)
     .drawWithCache {
-        val aura = Brush.radialGradient(
-            colorStops = arrayOf(
-                0f to accent.copy(if (theme.isDark) 0.16f else 0.075f),
-                0.34f to accent.copy(if (theme.isDark) 0.045f else 0.018f),
-                1f to Color.Transparent
-            ),
-            center = Offset(size.width * 1.18f, -size.height * 0.22f),
-            radius = size.maxDimension * 1.28f
-        )
         onDrawBehind {
-            drawRect(aura)
             drawRoundRect(
                 color = accent,
                 topLeft = Offset(0f, size.height * 0.18f),

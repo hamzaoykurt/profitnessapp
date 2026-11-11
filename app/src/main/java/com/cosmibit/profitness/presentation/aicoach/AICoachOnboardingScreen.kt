@@ -97,8 +97,8 @@ fun AICoachOnboardingScreen(
                     "ORACLE",
                     modifier     = Modifier.align(Alignment.Center),
                     style        = MaterialTheme.typography.labelSmall,
-                    color        = accent,
-                    letterSpacing = 6.sp,
+                    color        = theme.accentTextColor,
+                    letterSpacing = 1.2.sp,
                     fontWeight   = FontWeight.ExtraLight
                 )
             }
@@ -328,9 +328,9 @@ private fun StepScaffold(
 
         Text(
             title,
-            color        = accent,
+            color        = theme.accentTextColor,
             fontSize     = if (responsive.isLargeFont) 9.sp else 10.sp,
-            letterSpacing = 1.8.sp,
+            letterSpacing = 1.2.sp,
             fontWeight   = FontWeight.Medium
         )
         Spacer(Modifier.height(8.dp))
@@ -347,7 +347,7 @@ private fun StepScaffold(
         Spacer(Modifier.height(if (responsive.isShortScreen) 22.dp else 32.dp))
 
         Column(
-            verticalArrangement     = Arrangement.spacedBy(10.dp),
+            verticalArrangement     = Arrangement.spacedBy(16.dp),
             horizontalAlignment     = Alignment.CenterHorizontally,
             modifier                = Modifier.fillMaxWidth()
         ) {
@@ -371,11 +371,16 @@ private fun CenteredOptionCard(
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
             .then(
-                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
-                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
+                if (selected) Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(theme.bg1)
+                    .border(1.5.dp, accent, RoundedCornerShape(20.dp))
+                else Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(theme.bg2)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
+            .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -409,9 +414,10 @@ private fun PermissionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(theme.bg2)
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = if (responsive.isSmallPhone) 14.dp else 20.dp, vertical = 14.dp),
+            .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -438,7 +444,7 @@ private fun PermissionCard(
                             .background(accent.copy(0.18f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = accent, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
+                        Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = theme.accentTextColor, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }

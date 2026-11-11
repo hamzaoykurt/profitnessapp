@@ -480,7 +480,7 @@ fun AICoachScreen(
                     .shadow(
                         elevation = if (theme.isDark) 10.dp else 6.dp,
                         shape = RoundedCornerShape(12.dp),
-                        ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF64748B).copy(0.10f),
+                        ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF3A2A1A).copy(0.10f),
                         spotColor = MaterialTheme.colorScheme.primary.copy(if (theme.isDark) 0.16f else 0.08f)
                     )
                     .clip(RoundedCornerShape(12.dp))
@@ -707,8 +707,7 @@ private fun SanctuaryMessage(
                     modifier = Modifier
                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
                         .background(
-                            if (theme.isDark) Color(0xFF10141B)
-                            else Color(0xFFF7F9FC)
+                            if (theme.isDark) theme.bg2 else theme.bg1
                         )
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
@@ -822,12 +821,7 @@ private fun SanctuaryInput(
             .insetControlSurface(accent = accent, theme = theme, shape = shape)
             .border(
                 1.dp,
-                Brush.verticalGradient(
-                    listOf(
-                        theme.stroke.copy(if (theme.isDark) 0.88f else 0.62f),
-                        Color.White.copy(if (theme.isDark) 0.035f else 0.68f)
-                    )
-                ),
+                theme.stroke.copy(0.5f),
                 shape
             )
             .padding(horizontal = 9.dp, vertical = 7.dp),
@@ -977,7 +971,7 @@ private fun SessionHistorySheet(
                 theme.t("GEÇMİŞ SOHBETLER", "CHAT HISTORY"),
                 style        = MaterialTheme.typography.labelSmall,
                 color        = accent,
-                letterSpacing = 3.sp,
+                letterSpacing = 1.2.sp,
                 fontSize     = 10.sp,
                 fontWeight   = FontWeight.Medium
             )
@@ -1143,8 +1137,8 @@ private fun SanctuaryTypingIndicator() {
                     elevation = if (theme.isDark) 8.dp else 6.dp,
                     shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
                     clip = false,
-                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.09f),
-                    spotColor = if (theme.isDark) accent.copy(0.10f) else Color(0xFF64748B).copy(0.10f)
+                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF3A2A1A).copy(0.09f),
+                    spotColor = if (theme.isDark) accent.copy(0.10f) else Color(0xFF3A2A1A).copy(0.10f)
                 )
                 .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
                 .drawBehind {

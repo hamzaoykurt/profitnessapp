@@ -156,7 +156,7 @@ fun CinematicExerciseCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 5.dp)
+            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
             .graphicsLayer {
                 scaleX = cardScale
                 scaleY = cardScale
@@ -191,7 +191,7 @@ fun CinematicExerciseCard(
                             isExpanded = !isExpanded
                             onExpandChanged?.invoke(isExpanded)
                         }
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -649,7 +649,6 @@ private fun ActivityTimerSetupPanel(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(theme.bg3.copy(0.55f))
-            .border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1141,7 +1140,6 @@ fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSe
     Box(
         modifier = Modifier
             .background(theme.bg0.copy(if (theme.isDark) 0.54f else 0.28f), RoundedCornerShape(12.dp))
-            .border(1.dp, theme.stroke.copy(0.76f), RoundedCornerShape(12.dp))
             .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
