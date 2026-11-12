@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -222,43 +223,64 @@ fun SinemaWorkoutPager(
     val animEnabled = rememberAnimationsEnabled()
 
     // Yatay pager = gün. Kaydırınca ViewModel güncellenir, dışarıdan gün değişince pager gider.
+    // Pager ve durumu gün değişiminden bağımsız (key DIŞINDA): kaydırmalar boyunca alt ağaç yeniden kurulmaz.
     val dayCount = days.size
     val hState = rememberPagerState(initialPage = selectedDayIdx.coerceIn(0, (dayCount - 1).coerceAtLeast(0))) { dayCount.coerceAtLeast(1) }
     val selectedNow by rememberUpdatedState(selectedDayIdx)
     val onSelectNow by rememberUpdatedState(onSelectDay)
+    var pendingDay by remember { mutableStateOf<Int?>(null) }   // VM'e bildirilen, onayı beklenen gün
+    var userDriven by remember { mutableStateOf(false) }        // son yatay kaydırma kullanıcı sürüklemesi mi
+    LaunchedEffect(hState) {
+        hState.interactionSource.interactions.collect { if (it is DragInteraction.Start) userDriven = true }
+    }
     LaunchedEffect(hState, dayCount) {
-        snapshotFlow { hState.settledPage }.collect { p ->
-            WorkoutDaySync.dayToSelect(p, selectedNow, dayCount)?.let { onSelectNow(it) }
+        snapshotFlow { hState.isScrollInProgress to hState.settledPage }.collect { (moving, settledDay) ->
+            if (moving || !userDriven) return@collect
+            userDriven = false
+            WorkoutDaySync.dayToSelect(settledDay, selectedNow, dayCount)?.let { pendingDay = it; onSelectNow(it) }
         }
     }
     LaunchedEffect(selectedDayIdx, dayCount) {
-        if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedDayIdx, dayCount)) {
+        pendingDay = WorkoutDaySync.resolvePending(pendingDay, selectedDayIdx)
+        if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedDayIdx, dayCount, userDriven, pendingDay)) {
             hState.animateScrollToPage(selectedDayIdx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+        }
+    }
+    // VM isteği onaylamazsa takılma: bekleme düşer, pager VM'in gününe döner.
+    LaunchedEffect(pendingDay) {
+        if (pendingDay == null) return@LaunchedEffect
+        delay(WorkoutDaySync.PENDING_TIMEOUT_MS)
+        pendingDay = null
+        if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedNow, dayCount, userDriven)) {
+            hState.animateScrollToPage(selectedNow, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
         }
     }
     val hScrolling = hState.isScrollInProgress
 
-    key(selectedDayIdx) {
+    // Dikey pager durumu güne bağlı; yalnız seçili günün yatay sayfası kullanır.
+    val pagerState = key(selectedDayIdx) {
         val initial = remember {
             if (single) 0
             else exercises.indexOfFirst { it.id !in completedIds }.takeIf { it >= 0 } ?: if (allDone) n else 0
         }
-        val pagerState = rememberPagerState(initialPage = initial) { pageCount }
+        rememberPagerState(initialPage = initial) { pageCount }
+    }
+    run {
         val scrolling = pagerState.isScrollInProgress || hScrolling
         LaunchedEffect(scrolling) {
             if (!scrolling) delay(200)
             nav.pagerBusy = scrolling
         }
         val settled = pagerState.settledPage
-        LaunchedEffect(settled, single) {
+        LaunchedEffect(pagerState, settled, single) {
             if (!single) exercises.getOrNull(settled)?.let { actions.onLoadLastSession(it) }
         }
 
         // Oto-geçiş: bir hareketin SON seti işaretlenince (completedIds'e tek id eklenir) ~600ms sonra bir sonraki
         // sayfaya (son hareketteyse kutlama sayfasına) kay. Bu sürede kullanıcı sayfa değiştirir/kaydırırsa iptal.
         // shortcut: yalnız UI scroll; completedIds'in toplu yüklenmesinde (added.size != 1) tetiklenmez.
-        var prevDone by remember { mutableStateOf(completedIds) }
-        LaunchedEffect(completedIds) {
+        var prevDone by remember(selectedDayIdx) { mutableStateOf(completedIds) }
+        LaunchedEffect(pagerState, completedIds) {
             val added = completedIds - prevDone
             prevDone = completedIds
             if (single || added.size != 1) return@LaunchedEffect
@@ -270,17 +292,29 @@ fun SinemaWorkoutPager(
             }
         }
 
-        var sheet by remember { mutableStateOf<Pair<String, Int>?>(null) }   // exerciseId, setIndex
-        var showList by remember { mutableStateOf(false) }
+        var sheet by remember(selectedDayIdx) { mutableStateOf<Pair<String, Int>?>(null) }   // exerciseId, setIndex
+        var showList by remember(selectedDayIdx) { mutableStateOf(false) }
 
         Box(modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(
                 state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
                 key = { it }
             ) { dayPage ->
-              if (dayPage != selectedDayIdx) {
-                DayPreviewPage(days.getOrNull(dayPage))
-              } else {
+              val active = dayPage == selectedDayIdx
+              // Önizleme → gerçek sayfa: aynı foto katmanı (aynı url + istek boyutu = aynı cache key) altta aynı
+              // konumda kalır; gerçek içerik üstünde kısa solarak gelir → sıçrama/yeniden yükleme yok.
+              val reveal = remember { Animatable(if (active) 1f else 0f) }
+              LaunchedEffect(active) {
+                  when {
+                      !active -> reveal.snapTo(0f)
+                      animEnabled -> reveal.animateTo(1f, tween(Sinema.NavMs, easing = FastOutSlowInEasing))
+                      else -> reveal.snapTo(1f)
+                  }
+              }
+              Box(Modifier.fillMaxSize().clipToBounds()) {
+              DayPreviewPage(days.getOrNull(dayPage), showText = !active || reveal.value < 1f)
+              if (active) {
+              Box(Modifier.fillMaxSize().graphicsLayer { alpha = reveal.value }) {
             VerticalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -317,6 +351,8 @@ fun SinemaWorkoutPager(
                 }
                 }
             }
+              }
+              }
               }
             }
 
@@ -758,16 +794,25 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
 
 // ── Dinlenme / atlanan program / kutlama ─────────────────────────────────────────────────────
 
-/** Yatay kaydırma sırasında yan gün önizlemesi: foto + gün adı + hareket sayısı (oturunca gerçek sayfa gelir). */
+/**
+ * Yatay kaydırma sırasında yan gün önizlemesi: foto + gün adı + hareket sayısı (oturunca gerçek sayfa üstüne gelir).
+ * Foto, gerçek sayfanın açılış sayfasıyla aynı: ilk tamamlanmamış hareket; hepsi bittiyse son hareket (kutlama).
+ * [showText] false iken yalnız foto katmanı kalır (gerçek içeriğin altında, sıçramasız geçiş için).
+ */
 @Composable
-private fun DayPreviewPage(st: WorkoutDayState?) {
+private fun DayPreviewPage(st: WorkoutDayState?, showText: Boolean = true) {
     val theme = LocalAppTheme.current
-    if (st == null || (st.day.isRestDay && st.day.exercises.isEmpty())) { RestPage(isSkipped = false); return }
-    val first = st.day.exercises.firstOrNull()
+    if (st == null || (st.day.isRestDay && st.day.exercises.isEmpty())) {
+        if (showText) RestPage(isSkipped = false)
+        else Box(Modifier.fillMaxSize()) { PhotoLayer(categoryImageUrl(""), isSettled = false, animEnabled = false, offset = { 0f }); Scrims() }
+        return
+    }
+    val exs = st.day.exercises
+    val photoEx = exs.firstOrNull { it.id !in st.completedIds } ?: exs.lastOrNull()
     Box(Modifier.fillMaxSize().clipToBounds()) {
-        PhotoLayer(first?.image?.ifBlank { categoryImageUrl(first.category) } ?: categoryImageUrl(""), isSettled = false, animEnabled = false, offset = { 0f })
+        PhotoLayer(photoEx?.let { it.image.ifBlank { categoryImageUrl(it.category) } } ?: categoryImageUrl(""), isSettled = false, animEnabled = false, offset = { 0f })
         Scrims()
-        Column(
+        if (showText) Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = SinemaContentBottom + navInset() + 24.dp),
             verticalArrangement = Arrangement.Bottom
         ) {

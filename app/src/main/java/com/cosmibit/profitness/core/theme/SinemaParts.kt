@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -52,6 +53,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -109,6 +113,8 @@ fun SinemaScene(modifier: Modifier = Modifier) {
  * - `height`: hap 32-36, satır/giriş 52dp. `shape` varsayılan tam yuvarlak.
  * - `onClick` null ise tıklanmaz (giriş çubuğu içinde kendi alanları var).
  * - `light`: açık tema cam (beyaz tint + koyu yazı) — foto üstü sayfalar hep koyu, düz açık sayfada true.
+ * - Tıklanabilirken dokunma hedefi ≥48dp (görsel boyut aynı; minimumInteractiveComponentSize).
+ * - `selectable`: seçilebilir kullanım (filtre/segment) — `selected` erişilebilirlik semantiği yayınlanır.
  */
 @Composable
 fun SinemaCapsule(
@@ -123,6 +129,7 @@ fun SinemaCapsule(
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    selectable: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     val theme = LocalAppTheme.current
@@ -130,6 +137,7 @@ fun SinemaCapsule(
     val fg = if (selected) theme.effectiveOnAccentColor else if (light) Sinema.text(theme) else Color.White
     Row(
         modifier
+            .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .heightIn(min = height)
             .sinemaCapsuleGlass(
                 shape, edge = if (light) Color.Black.copy(0.12f) else edge, blur = 20.dp,
@@ -138,6 +146,7 @@ fun SinemaCapsule(
                 tint = if (light) Color.White else Color.Black,
                 fillAlpha = if (light) 0.55f else 0.35f
             )
+            .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick) else Modifier)
             .padding(contentPadding),
         verticalAlignment = verticalAlignment,
@@ -145,7 +154,7 @@ fun SinemaCapsule(
     ) { content(fg) }
 }
 
-/** `.pill`: 32dp cam hap (içerik + isteğe bağlı tıklama) — SinemaCapsule üzerine. */
+/** `.pill`: 32dp cam hap (içerik + isteğe bağlı tıklama; dokunma hedefi 48dp) — SinemaCapsule üzerine. */
 @Composable
 fun SinemaPill(
     modifier: Modifier = Modifier,
@@ -154,12 +163,18 @@ fun SinemaPill(
     content: @Composable RowScope.() -> Unit
 ) {
     SinemaCapsule(
-        modifier, onClick = onClick, height = 32.dp, shape = CircleShape,
+        modifier.then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
+        onClick = onClick, height = 32.dp, shape = CircleShape,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
     ) { content() }
 }
 
-/** Kapsül içi yuvarlak ikon düğme (cam kapsül dili): seçili/dolu = vurgu + glow. */
+/**
+ * Kapsül içi yuvarlak ikon düğme (cam kapsül dili): seçili/dolu = vurgu + glow.
+ * `description` zorunlu parametre (varsayılanı yok; geriye uyum için `String?`) — ekran okuyucu etiketi, null verme.
+ * Dokunma hedefi ≥48dp, görsel `size` aynı.
+ * `light`: düz açık sayfada pasif hal (koyu %6 zemin + koyu ikon); foto üstü sayfalarda false.
+ */
 @Composable
 fun SinemaCapsuleIconButton(
     icon: ImageVector,
@@ -168,17 +183,19 @@ fun SinemaCapsuleIconButton(
     modifier: Modifier = Modifier,
     selected: Boolean = true,
     enabled: Boolean = true,
-    size: Dp = 38.dp
+    size: Dp = 38.dp,
+    light: Boolean = false
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val fg = if (selected) theme.effectiveOnAccentColor else Color.White
+    val fg = if (selected) theme.effectiveOnAccentColor else if (light) Sinema.text(theme) else Color.White
     Box(
         modifier
+            .minimumInteractiveComponentSize()
             .size(size)
             .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape) else Modifier)
             .clip(CircleShape)
-            .background(if (selected) accent else Color.White.copy(0.14f))
+            .background(if (selected) accent else if (light) Color.Black.copy(0.06f) else Color.White.copy(0.14f))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) { Icon(icon, description, tint = fg, modifier = Modifier.size(18.dp)) }
@@ -240,6 +257,7 @@ fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(
 /**
  * Çizimdeki hap/segment düğmesi: pasif = siyah %35 cam + beyaz %18 kenar,
  * aktif = dolu vurgu + sinemaGlow (vurgu %40, 0 8dp 20dp). `content` aktif/pasif ön plan rengini alır.
+ * Dokunma hedefi ≥48dp. `selectable` = filtre/segment kullanımı: `active` erişilebilirlikte "seçili" okunur.
  */
 @Composable
 fun SinemaChip(
@@ -249,11 +267,12 @@ fun SinemaChip(
     enabled: Boolean = true,
     height: Dp = 32.dp,
     shape: Shape = CircleShape,
+    selectable: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     SinemaCapsule(
         modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.Center, content = content
+        horizontalArrangement = Arrangement.Center, selectable = selectable, content = content
     )
 }

@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -131,16 +132,18 @@ fun Modifier.sinemaCapsuleGlass(
     val light = tint.luminance() > 0.5f
     Modifier
         // dışa kabarık: şeklin DIŞINA düşen alt gölge (içine sızmaz)
-        .drawBehind {
+        // Path/Paint boyut/şekil değişene kadar önbellekte (her karede ayırma yok).
+        .drawWithCache {
             val path = shapePath(shape, size, layoutDirection, this)
-            clipPath(path, ClipOp.Difference) {
-                drawIntoCanvas { canvas ->
-                    val paint = Paint().asFrameworkPaint().apply {
-                        isAntiAlias = true
-                        this.color = android.graphics.Color.TRANSPARENT
-                        setShadowLayer(9.dp.toPx(), 0f, 4.dp.toPx(), Color.Black.copy(if (light) 0.22f else 0.50f).toArgb())
-                    }
-                    canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint)
+            val androidPath = path.asAndroidPath()
+            val paint = Paint().asFrameworkPaint().apply {
+                isAntiAlias = true
+                this.color = android.graphics.Color.TRANSPARENT
+                setShadowLayer(9.dp.toPx(), 0f, 4.dp.toPx(), Color.Black.copy(if (light) 0.22f else 0.50f).toArgb())
+            }
+            onDrawBehind {
+                clipPath(path, ClipOp.Difference) {
+                    drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(androidPath, paint) }
                 }
             }
         }
@@ -158,20 +161,23 @@ fun Modifier.sinemaCapsuleGlass(
                 else -> Modifier.background(tint.copy(alpha = (fillAlpha + 0.22f).coerceAtMost(0.7f)))
             }
         )
-        .drawBehind {
+        .drawWithCache {
             val h = size.height
             val sheenA = if (fill != null) 0.28f else if (light) 0.55f else 0.16f
             // üst parlama: üstten ~%55'e sönen beyaz
-            drawRect(Brush.verticalGradient(0f to Color.White.copy(sheenA), 0.55f to Color.Transparent, startY = 0f, endY = h))
+            val sheen = Brush.verticalGradient(0f to Color.White.copy(sheenA), 0.55f to Color.Transparent, startY = 0f, endY = h)
             // alt iç gölge: kalınlık hissi
-            drawRect(Brush.verticalGradient(0.50f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.16f else if (light) 0.07f else 0.22f), startY = 0f, endY = h))
+            val inner = Brush.verticalGradient(0.50f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.16f else if (light) 0.07f else 0.22f), startY = 0f, endY = h)
             // degrade kenar: üstte parlak, altta sönük (çizgi düz değil)
             val topA = (edge.alpha * 2.2f).coerceAtMost(1f)
-            drawPath(
-                shapePath(shape, size, layoutDirection, this),
-                Brush.verticalGradient(0f to edge.copy(topA), 0.5f to edge.copy(edge.alpha * 0.7f), 1f to edge.copy(edge.alpha * 0.45f), startY = 0f, endY = h),
-                style = Stroke(2.dp.toPx())
-            )
+            val edgePath = shapePath(shape, size, layoutDirection, this)
+            val edgeBrush = Brush.verticalGradient(0f to edge.copy(topA), 0.5f to edge.copy(edge.alpha * 0.7f), 1f to edge.copy(edge.alpha * 0.45f), startY = 0f, endY = h)
+            val stroke = Stroke(2.dp.toPx())
+            onDrawBehind {
+                drawRect(sheen)
+                drawRect(inner)
+                drawPath(edgePath, edgeBrush, style = stroke)
+            }
         }
 }
 
@@ -325,21 +331,12 @@ fun SinemaNavBar(
  * Gerçek yumuşak renkli parlama (çizimdeki `box-shadow: 0 dy blur color`): şeklin arkasına bulanık gölge katmanı çizer.
  * `Modifier.shadow` renk/spot'u cihazda zayıf kaldığı için glow bununla yapılır. Eleman içeriği üstüne çizer, şeklin içi görünmez.
  */
-fun Modifier.sinemaGlow(color: Color, blur: Dp, dy: Dp = 0.dp, shape: Shape): Modifier = this.drawBehind {
-    val outline = shape.createOutline(size, layoutDirection, this)
-    val path = androidx.compose.ui.graphics.Path().apply {
-        when (outline) {
-            is androidx.compose.ui.graphics.Outline.Rectangle -> addRect(outline.rect)
-            is androidx.compose.ui.graphics.Outline.Rounded -> addRoundRect(outline.roundRect)
-            is androidx.compose.ui.graphics.Outline.Generic -> addPath(outline.path)
-        }
+fun Modifier.sinemaGlow(color: Color, blur: Dp, dy: Dp = 0.dp, shape: Shape): Modifier = this.drawWithCache {
+    val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
+    val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
+        isAntiAlias = true
+        this.color = android.graphics.Color.TRANSPARENT
+        setShadowLayer(blur.toPx(), 0f, dy.toPx(), color.toArgb())
     }
-    drawIntoCanvas { canvas ->
-        val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
-            isAntiAlias = true
-            this.color = android.graphics.Color.TRANSPARENT
-            setShadowLayer(blur.toPx(), 0f, dy.toPx(), color.toArgb())
-        }
-        canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint)
-    }
+    onDrawBehind { drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(androidPath, paint) } }
 }
