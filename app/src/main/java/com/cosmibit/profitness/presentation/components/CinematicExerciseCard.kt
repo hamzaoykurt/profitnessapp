@@ -13,6 +13,10 @@ import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FitnessCenter
@@ -27,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
@@ -42,6 +47,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.workout.Exercise
+import com.cosmibit.profitness.presentation.workout.SceneImage
+import com.cosmibit.profitness.presentation.workout.SceneScrimStops
+import com.cosmibit.profitness.presentation.workout.SceneStatusMark
+import com.cosmibit.profitness.presentation.workout.exercisePrescription
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import com.cosmibit.profitness.presentation.workout.ExerciseMetric
 import com.cosmibit.profitness.presentation.workout.activityTrackingSpec
 import com.cosmibit.profitness.presentation.workout.isDurationSetExercise
@@ -54,6 +65,8 @@ fun CinematicExerciseCard(
     exercise: Exercise,
     index: Int,
     isCompleted: Boolean = false,
+    isNext: Boolean = false,
+    compact: Boolean = false,
     doneSetIndices: Set<Int> = emptySet(),
     onToggleSet: (setIndex: Int) -> Unit = {},
     onComplete: () -> Unit = {},
@@ -144,143 +157,114 @@ fun CinematicExerciseCard(
         }
     }
 
-    // Press scale — snappy spring
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
-        targetValue   = if (isPressed) 0.975f else 1f,
-        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
-        label         = "card_scale"
-    )
+    val rowShape = RoundedCornerShape(18.dp)
+    val rowHeight = if (compact) 88.dp else 72.dp
+    val thumbSize = if (compact) 72.dp else 56.dp
+    val prescription = exercisePrescription(exercise, activityBased, theme)
+    val toggleExpanded: () -> Unit = {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        isExpanded = !isExpanded
+        onExpandChanged?.invoke(isExpanded)
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.cardHorizontalPadding, vertical = 8.dp)
-            .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
-                translationY = if (isPressed) 2.dp.toPx() else 0f
-            }
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        ForgeCard(
+        // animateContentSize: satır yerinde genişler (küçük görsel -> 140dp bant)
+        Column(
             modifier = Modifier
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            glowColor = accent,
-            glowStrength = if (isCompleted) 0.70f else 0.38f,
-            elevation = if (isPressed) 1.dp else 8.dp
+                .fillMaxWidth()
+                .glassCardSurface(theme, rowShape, highlighted = isNext)
+                .animateContentSize(animationSpec = tween(220, easing = FastOutSlowInEasing))
         ) {
-            // animateContentSize gives the same bouncy height expansion as before,
-            // but is measured via placement — no explicit height state, no layout-per-frame jank
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness    = Spring.StiffnessLow
-                        )
-                    )
-            ) {
+            if (!isExpanded) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(interactionSource = interactionSource, indication = null) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            isExpanded = !isExpanded
-                            onExpandChanged?.invoke(isExpanded)
-                        }
-                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                        .height(rowHeight)
+                        .clickable(onClick = toggleExpanded)
+                        .padding(start = (rowHeight - thumbSize) / 2, end = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .performanceControlSurface(
-                                theme = theme,
-                                color = if (isCompleted) accent else theme.bg3,
-                                pressed = isPressed,
-                                shape = RoundedCornerShape(13.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isCompleted) {
-                            Icon(Icons.Rounded.CheckCircle, null, tint = onAccent, modifier = Modifier.size(19.dp))
-                        } else {
-                            Text(
-                                text = (index + 1).toString().padStart(2, '0'),
-                                color = theme.text1,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(14.dp))
+                    SceneImage(
+                        url = exercise.image,
+                        modifier = Modifier.size(thumbSize).insetFrame(theme, RoundedCornerShape(14.dp)),
+                        requestWidthPx = 168,
+                        requestHeightPx = 168,
+                        grayscale = isCompleted,
+                        fallbackIconSize = 24.dp
+                    )
+                    Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = theme.exerciseCompactDisplayName(exercise.name),
-                            color = theme.text0,
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        val targetLabel = theme.fitnessTermCompactDisplayName(exercise.target)
-                        Text(
-                            text = targetLabel,
-                            color = theme.text1,
-                            fontSize = 12.sp,
+                            color = if (isCompleted) theme.text1 else theme.text0,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(Modifier.height(4.dp))
-                        val prescription = if (activityBased) {
-                            val minutes = exercise.targetDurationSeconds
-                                ?.takeIf { it > 0 }
-                                ?.let { ((it + 59) / 60).toString() }
-                                ?: exercise.reps
-                            theme.t("$minutes dk hedef", "$minutes min target")
-                        } else {
-                            "${exercise.sets} × ${exercise.reps}"
-                        }
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             text = prescription,
-                            color = theme.text0,
-                            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            color = theme.text1,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
                         )
                     }
-                    if (onShowDetail != null) {
-                        IconButton(
-                            onClick = onShowDetail,
-                            modifier = Modifier
-                                .size(46.dp)
-                                .performanceControlSurface(
-                                    theme,
-                                    accent.copy(if (theme.isDark) 0.16f else 0.10f),
-                                    false,
-                                    RoundedCornerShape(14.dp)
-                                )
-                        ) {
-                            Icon(
-                                Icons.Rounded.PlayCircle,
-                                theme.t("Hareketi gör", "Watch exercise"),
-                                tint = accent,
-                                modifier = Modifier.size(25.dp)
+                    Spacer(Modifier.width(12.dp))
+                    SceneStatusMark(completed = isCompleted, isNext = isNext)
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .clickable(onClick = toggleExpanded)
+                ) {
+                    SceneImage(
+                        url = exercise.image,
+                        modifier = Modifier.fillMaxSize(),
+                        requestWidthPx = 720,
+                        requestHeightPx = 280,
+                        alignment = Alignment.Center,
+                        grayscale = isCompleted,
+                        fallbackIconSize = 48.dp
+                    )
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(colorStops = SceneScrimStops)))
+                    Row(
+                        modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = theme.exerciseCompactDisplayName(exercise.name),
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = prescription,
+                                color = TextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Spacer(Modifier.width(7.dp))
+                        Spacer(Modifier.width(12.dp))
+                        SceneStatusMark(completed = isCompleted, isNext = isNext)
                     }
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = theme.text1,
-                        modifier = Modifier.size(25.dp)
-                    )
                 }
+            }
 
                 // ── Expanded panel — rendered as part of the same Column so
                 //    animateContentSize handles the height change smoothly ──────────
@@ -288,8 +272,7 @@ fun CinematicExerciseCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(theme.bg1)
-                            .padding(16.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
                     ) {
                         if (onShowDetail != null) {
                             Row(
@@ -298,7 +281,7 @@ fun CinematicExerciseCard(
                                     .height(48.dp)
                                     .performanceControlSurface(
                                         theme,
-                                        accent.copy(if (theme.isDark) 0.16f else 0.10f),
+                                        accent.copy(if (theme.isDark) 0.16f else 0.10f).compositeOver(theme.bg1),
                                         false,
                                         RoundedCornerShape(14.dp)
                                     )
@@ -457,12 +440,11 @@ fun CinematicExerciseCard(
                     }
                 }
             }
-        }
     }
 }
 
 @Composable
-private fun ActivityMetricsPanel(
+internal fun ActivityMetricsPanel(
     durationValue: String,
     distanceValue: String,
     elevationValue: String,
@@ -610,9 +592,9 @@ private fun MetricDisplayTile(
         Column(Modifier.weight(1f)) {
             Text(
                 text = label,
-                color = theme.text2,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.ExtraBold,
+                color = theme.supportRest,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.7.sp
             )
             Spacer(Modifier.height(3.dp))
@@ -628,7 +610,7 @@ private fun MetricDisplayTile(
 }
 
 @Composable
-private fun ActivityTimerSetupPanel(
+internal fun ActivityTimerSetupPanel(
     initialMinutes: String,
     initialSeconds: Int? = null,
     onStartCountdown: (Int) -> Unit,
@@ -754,7 +736,7 @@ private fun SmallTimeInput(
 }
 
 @Composable
-private fun CompleteActionButton(
+internal fun CompleteActionButton(
     isCompleted: Boolean,
     accent: Color,
     onAccent: Color,
@@ -800,7 +782,7 @@ private fun CompleteActionButton(
 
 // ── Set Row — ağırlık girişli; set/tekrar programdan gelir ───────────────────
 @Composable
-private fun TimedSetRow(
+internal fun TimedSetRow(
     setNumber: Int,
     durationValue: String,
     isDone: Boolean,
@@ -817,6 +799,7 @@ private fun TimedSetRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(theme.bg2)
+            .then(if (isDone) Modifier.background(theme.supportSuccess.copy(if (theme.isDark) 0.10f else 0.12f)) else Modifier)
             .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -833,9 +816,9 @@ private fun TimedSetRow(
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
-                Text("Set $setNumber", color = if (isDone) accent else theme.text0, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text("Set $setNumber", color = if (isDone) theme.supportSuccess else theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(2.dp))
-                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.width(8.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
@@ -851,9 +834,18 @@ private fun SetToggleButton(
 ) {
     val theme = LocalAppTheme.current
     val haptic = LocalHapticFeedback.current
+    val popScale = remember { Animatable(1f) }
+    var firstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(isDone) {
+        if (isDone && !firstComposition) {
+            popScale.snapTo(0.85f)
+            popScale.animateTo(1f, PerformanceMotion.fast)
+        }
+        firstComposition = false
+    }
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -864,23 +856,27 @@ private fun SetToggleButton(
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .clip(CircleShape)
-                .background(if (isDone) accent.copy(0.22f) else theme.bg1.copy(0.75f))
-                .border(1.dp, if (isDone) accent.copy(0.65f) else theme.text2.copy(0.42f), CircleShape),
+                .graphicsLayer { scaleX = popScale.value; scaleY = popScale.value }
+                .then(
+                    if (isDone) Modifier.raisedButtonSurface(theme, color = theme.supportSuccess, lift = 3.dp)
+                    else Modifier.clip(CircleShape).border(2.dp, theme.text2, CircleShape)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = if (isDone) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (isDone) accent else theme.text2,
-                modifier = Modifier.size(16.dp)
-            )
+            if (isDone) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = theme.onSupportSuccess,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun SetRow(
+internal fun SetRow(
     setNumber: Int,
     reps: String,
     isDone: Boolean,
@@ -897,8 +893,8 @@ private fun SetRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg2)
+            .insetTrackSurface(theme, RoundedCornerShape(14.dp), fill = theme.bg0)
+            .then(if (isDone) Modifier.background(theme.supportSuccess.copy(if (theme.isDark) 0.10f else 0.12f)) else Modifier)
             .padding(10.dp)
     ) {
         // Üst satır: ağırlık input + set no + program tekrarı + checkbox
@@ -923,16 +919,16 @@ private fun SetRow(
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
                 Text(
                     text = "Set $setNumber",
-                    color = if (isDone) accent else theme.text0,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black
+                    color = if (isDone) theme.supportSuccess else theme.text0,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = theme.t("$reps tekrar", "$reps reps"),
-                    color = theme.text2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                    color = theme.text1,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -952,8 +948,8 @@ private fun SetRow(
             }
             Text(
                 text = lastText,
-                color = theme.text2,
-                fontSize = 9.sp,
+                color = theme.text1,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 12.dp)
             )
@@ -962,7 +958,7 @@ private fun SetRow(
 }
 
 @Composable
-private fun WeightInputField(
+internal fun WeightInputField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -976,17 +972,15 @@ private fun WeightInputField(
     val theme = LocalAppTheme.current
     Column(
         modifier = modifier
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .insetControlSurface(accent, theme, RoundedCornerShape(13.dp))
+            .heightIn(min = 60.dp)
             .padding(horizontal = 10.dp, vertical = 7.dp)
     ) {
         if (label != null) {
             Text(
                 text = label,
-                color = theme.text2,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.ExtraBold,
+                color = theme.text1,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.7.sp
             )
             Spacer(Modifier.height(3.dp))
@@ -1000,9 +994,10 @@ private fun WeightInputField(
                     onValueChange(filtered)
                 },
                 textStyle = TextStyle(
-                    color = if (isDone) accent else theme.text0,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
+                    color = if (isDone) theme.supportSuccess else theme.text0,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFeatureSettings = "tnum",
                     textAlign = TextAlign.Start
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -1014,8 +1009,9 @@ private fun WeightInputField(
                             Text(
                                 text = placeholder,
                                 color = theme.text2.copy(0.82f),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Black,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = TextStyle(fontFeatureSettings = "tnum"),
                                 textAlign = TextAlign.Start
                             )
                         }
@@ -1025,9 +1021,9 @@ private fun WeightInputField(
             )
             Text(
                 text = suffix,
-                color = if (isDone) accent.copy(0.72f) else theme.text2,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
+                color = if (isDone) theme.supportSuccess.copy(0.80f) else theme.text1,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 6.dp)
             )
         }
@@ -1162,7 +1158,7 @@ private fun String.toDurationSetDisplayLabel(theme: AppThemeState): String {
     return if (seconds.isBlank()) this else "$seconds ${theme.t("sn", "sec")}"
 }
 
-private fun String.toDurationSetSecondsLabel(): String {
+internal fun String.toDurationSetSecondsLabel(): String {
     val normalized = lowercase().normalizeTurkishForWorkout().trim()
     if (normalized.isBlank()) return ""
     val numeric = normalized
@@ -1186,7 +1182,7 @@ private fun String.normalizeTurkishForWorkout(): String =
         .replace('\u00f6', 'o')
         .replace('\u00e7', 'c')
 
-private fun String.toDurationSeconds(): Int =
+internal fun String.toDurationSeconds(): Int =
     replace(',', '.')
         .toFloatOrNull()
         ?.let { (it * 60f).toInt().coerceAtLeast(1) }
@@ -1204,3 +1200,5 @@ private fun String.toDurationLabel(): String {
         if (seconds > 0 || isEmpty()) append("${seconds}s")
     }.trim()
 }
+
+private val AppThemeState.onSupportSuccess: Color get() = if (isDark) Color.Black else Color.White

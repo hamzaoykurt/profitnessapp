@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +52,12 @@ fun AICoachOnboardingScreen(
     var allowProfile    by remember { mutableStateOf(initialPrefs.allowProfileAccess) }
     var allowThirdParty by remember { mutableStateOf(initialPrefs.allowThirdPartyProcessing) }
 
+    val navState = LocalSinemaNav.current
+    DisposableEffect(theme.isDark) {
+        navState.lightPage = !theme.isDark
+        onDispose { navState.lightPage = false }
+    }
+
     BackHandler(enabled = step > 0 || onCancel != null) {
         if (step > 0) {
             step--
@@ -59,17 +66,7 @@ fun AICoachOnboardingScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        if (theme.isDark) {
-            PageAccentBloom()
-        } else {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .background(Brush.verticalGradient(listOf(theme.bg1, Color.Transparent)))
-            )
-        }
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
 
         Column(
             modifier = Modifier
@@ -98,8 +95,8 @@ fun AICoachOnboardingScreen(
                     modifier     = Modifier.align(Alignment.Center),
                     style        = MaterialTheme.typography.labelSmall,
                     color        = theme.accentTextColor,
-                    letterSpacing = 1.2.sp,
-                    fontWeight   = FontWeight.ExtraLight
+                    letterSpacing = 1.6.sp,
+                    fontWeight   = FontWeight.ExtraBold
                 )
             }
 
@@ -122,7 +119,7 @@ fun AICoachOnboardingScreen(
                                 when {
                                     isActive -> accent
                                     isDone   -> accent.copy(0.5f)
-                                    else     -> theme.stroke.copy(0.4f)
+                                    else     -> Sinema.line(theme)
                                 }
                             )
                     )
@@ -157,56 +154,28 @@ fun AICoachOnboardingScreen(
             }
 
             // ── Next / Finish button ───────────────────────────────────────────
-            val actionInteraction = remember { MutableInteractionSource() }
-            val actionPressed by actionInteraction.collectIsPressedAsState()
-            val actionScale by animateFloatAsState(
-                if (actionPressed) 0.98f else 1f,
-                tween(120),
-                label = "oracle_setup_cta_scale"
-            )
-            val actionShape = RoundedCornerShape(16.dp)
-            Box(
+            SinemaGoButton(
+                label = (if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("Oracle'ı Başlat", "Start Oracle")).sinemaUpper(theme),
+                icon = Icons.Rounded.Check,
                 modifier = Modifier
                     .padding(horizontal = responsive.horizontalPadding)
-                    .padding(bottom = bottomPadding + 16.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = responsive.controlMinHeight)
-                    .graphicsLayer {
-                        scaleX = actionScale
-                        scaleY = actionScale
-                    }
-                    .clip(actionShape)
-                    .background(accent)
-                    .clickable(interactionSource = actionInteraction, indication = null) {
-                        if (step < TOTAL_STEPS - 1) {
-                            step++
-                        } else {
-                            onComplete(
-                                AICoachPrefs(
-                                    responseLength          = selectedLength,
-                                    communicationStyle      = selectedStyle,
-                                    allowProfileAccess      = allowProfile,
-                                    allowThirdPartyProcessing = allowThirdParty,
-                                    onboardingCompleted     = true
-                                )
+                    .padding(bottom = bottomPadding + 16.dp),
+                onClick = {
+                    if (step < TOTAL_STEPS - 1) {
+                        step++
+                    } else {
+                        onComplete(
+                            AICoachPrefs(
+                                responseLength          = selectedLength,
+                                communicationStyle      = selectedStyle,
+                                allowProfileAccess      = allowProfile,
+                                allowThirdPartyProcessing = allowThirdParty,
+                                onboardingCompleted     = true
                             )
-                        }
+                        )
                     }
-                    .padding(horizontal = 16.dp, vertical = if (responsive.isLargeFont) 15.dp else 18.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text      = if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("Oracle'ı Başlat", "Start Oracle"),
-                    color     = theme.effectiveOnAccentColor,
-                    style     = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.2.sp,
-                    lineHeight = 20.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-            }
+                }
+            )
         }
     }
 }
@@ -329,18 +298,18 @@ private fun StepScaffold(
         Text(
             title,
             color        = theme.accentTextColor,
-            fontSize     = if (responsive.isLargeFont) 9.sp else 10.sp,
-            letterSpacing = 1.2.sp,
-            fontWeight   = FontWeight.Medium
+            fontSize     = if (responsive.isLargeFont) 10.sp else 11.sp,
+            letterSpacing = 1.6.sp,
+            fontWeight   = FontWeight.ExtraBold
         )
         Spacer(Modifier.height(8.dp))
         Text(
             subtitle,
-            color      = theme.text1,
+            color      = theme.text0,
             style      = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Light,
+            fontWeight = FontWeight.ExtraBold,
             textAlign  = TextAlign.Center,
-            lineHeight = 22.sp,
+            lineHeight = 28.sp,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
@@ -370,15 +339,9 @@ private fun CenteredOptionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .then(
-                if (selected) Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(theme.bg1)
-                    .border(1.5.dp, accent, RoundedCornerShape(20.dp))
-                else Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(theme.bg2)
-            )
+            .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, RoundedCornerShape(24.dp)) else Modifier)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(24.dp)) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.CenterVertically,
@@ -393,8 +356,8 @@ private fun CenteredOptionCard(
             )
         )
         Column(Modifier.weight(1f)) {
-            Text(title, color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(description, color = theme.text2, fontWeight = FontWeight.Light, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(description, color = theme.text2, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -414,8 +377,7 @@ private fun PermissionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg2)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.Top,
@@ -428,7 +390,7 @@ private fun PermissionCard(
                 checkedThumbColor   = Color.White,
                 checkedTrackColor   = accent,
                 uncheckedThumbColor = theme.text2,
-                uncheckedTrackColor = theme.bg0
+                uncheckedTrackColor = Sinema.line(theme)
             )
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
@@ -436,13 +398,13 @@ private fun PermissionCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text(title, color = theme.text1, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, lineHeight = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (recommended) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(accent.copy(0.18f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .clip(CircleShape)
+                            .background(Sinema.line(theme))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = theme.accentTextColor, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
                     }

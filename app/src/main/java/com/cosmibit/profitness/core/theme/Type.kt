@@ -4,25 +4,22 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.unit.sp
 import com.cosmibit.profitness.R
 
-private val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage  = "com.google.android.gms",
-    certificates     = R.array.com_google_android_gms_fonts_certs
+/** Sora (SIL OFL 1.1, docs/legal/OFL-Sora.txt): uygulamaya gömülü değişken font; ağırlıklar Light–ExtraBold. */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+private fun sora(w: FontWeight) = Font(
+    R.font.sora_var, weight = w,
+    variationSettings = FontVariation.Settings(FontVariation.weight(w.weight))
 )
 
-private val Sora = GoogleFont("Sora")
-
 val AppFontFamily = FontFamily(
-    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Light),
-    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = Sora, fontProvider = provider, weight = FontWeight.Bold),
+    sora(FontWeight.Light), sora(FontWeight.Normal), sora(FontWeight.Medium),
+    sora(FontWeight.SemiBold), sora(FontWeight.Bold), sora(FontWeight.ExtraBold),
+    sora(FontWeight.Black)
 )
 
 val Typography = Typography(

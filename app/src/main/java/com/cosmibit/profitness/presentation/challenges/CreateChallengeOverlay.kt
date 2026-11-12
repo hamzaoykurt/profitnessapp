@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.sinemaCard
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -248,7 +250,7 @@ fun CreateChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
-    Box(Modifier.fillMaxSize().background(theme.bg0)) {
+    Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
         PageAccentBloom()
         Column(
             Modifier
@@ -275,7 +277,7 @@ fun CreateChallengeOverlay(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .insetControlSurface(accent, theme, CircleShape)
+                            .sinemaCard(theme, CircleShape)
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center
                     ) {
@@ -293,7 +295,7 @@ fun CreateChallengeOverlay(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .insetControlSurface(accent, theme, CircleShape),
+                            .sinemaCard(theme, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -331,7 +333,7 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 7.dp)
+                    .sinemaCard(theme, RoundedCornerShape(14.dp))
                     .padding(4.dp)
             ) {
                 KindChip(
@@ -448,7 +450,7 @@ fun CreateChallengeOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 3.dp)
+                    .sinemaCard(theme, RoundedCornerShape(14.dp))
                     .padding(4.dp)
             ) {
                 VisibilityChip(
@@ -500,10 +502,10 @@ fun CreateChallengeOverlay(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFFF5252).copy(0.14f))
+                        .background(Sinema.surface(theme))
                         .padding(12.dp)
                 ) {
-                    Text(it, color = Color(0xFFFF8A80), fontSize = 12.sp)
+                    Text(it, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -611,7 +613,7 @@ fun CreateChallengeOverlay(
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
-                    .background(theme.bg1)
+                    .background(Sinema.surface(theme))
                     .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -748,7 +750,7 @@ private fun EventForm(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
+            .background(Sinema.surface(theme))
             .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             .padding(4.dp)
     ) {
@@ -889,7 +891,7 @@ private fun EventForm(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg1.copy(0.72f))
+                    .background(Sinema.surface(theme))
                     .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             ) {
                 if (movements.isEmpty()) {
@@ -938,8 +940,8 @@ private fun EventForm(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 10.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(0.18f))
-                    .border(1.dp, accent.copy(0.45f), RoundedCornerShape(12.dp))
+                    .background(Sinema.line(theme))
+                    .border(1.dp, accent, RoundedCornerShape(12.dp))
                     .clickable(onClick = onOpenMultiPicker)
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
@@ -987,7 +989,7 @@ private fun LazySportTypeRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(if (active) accent else theme.bg1.copy(0.72f))
+                    .background(if (active) accent else Sinema.surface(theme))
                     .border(1.dp, if (active) accent else theme.stroke.copy(0.68f), RoundedCornerShape(999.dp))
                     .clickable { onSelect(sport) }
                     .padding(horizontal = 14.dp, vertical = 9.dp)
@@ -1022,7 +1024,7 @@ private fun OptionalMetricTargetSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(theme.bg1.copy(0.72f))
+            .background(Sinema.surface(theme))
             .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             .clickable { onEnabled(!enabled) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -1090,7 +1092,7 @@ private fun ParticipantLimitSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 3.dp)
+            .sinemaCard(theme, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Row(
@@ -1214,7 +1216,7 @@ private fun PlaceSearchField(
                 .fillMaxWidth()
                 .heightIn(min = 58.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(theme.bg1.copy(0.72f))
+                .background(Sinema.surface(theme))
                 .border(
                     1.dp,
                     if (hasResolvedValue) MaterialTheme.colorScheme.primary.copy(0.70f) else theme.stroke.copy(0.70f),
@@ -1285,7 +1287,7 @@ private fun PlaceSearchField(
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(theme.bg1.copy(0.84f))
+                    .background(Sinema.surface(theme))
                     .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
             ) {
                 candidates.forEachIndexed { index, candidate ->
@@ -1477,7 +1479,7 @@ private fun TextInputBox(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .heightIn(min = if (minLines == 1) 58.dp else 84.dp)
-            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
+            .sinemaCard(theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
@@ -1513,7 +1515,7 @@ private fun TextInputInline(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
+            .sinemaCard(theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
@@ -1546,7 +1548,7 @@ private fun NumberInputInline(value: String, onValueChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
+            .sinemaCard(theme, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         BasicTextField(
@@ -1574,7 +1576,7 @@ private fun PickerField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
+            .sinemaCard(theme, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1682,8 +1684,8 @@ private fun TargetTypeOption(
             .padding(vertical = 3.dp)
             .clip(RoundedCornerShape(14.dp))
             .then(
-                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
-                else Modifier.background(theme.bg1)
+                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(14.dp))
+                else Modifier.background(Sinema.surface(theme))
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1694,7 +1696,7 @@ private fun TargetTypeOption(
                 .size(30.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isActive) accent.copy(0.22f) else theme.bg2.copy(0.64f)
+                    if (isActive) accent.copy(0.22f) else Sinema.line(theme)
                 )
                 ,
             contentAlignment = Alignment.Center
@@ -1719,7 +1721,7 @@ private fun TargetTypeOption(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .background(
-                    if (isActive) accent.copy(0.20f) else theme.bg2.copy(0.5f)
+                    if (isActive) accent.copy(0.20f) else Sinema.line(theme)
                 )
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
@@ -1763,7 +1765,7 @@ private fun KindChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
@@ -1794,7 +1796,7 @@ private fun EventModeChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)
@@ -1828,7 +1830,7 @@ private fun VisibilityChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
                 else Modifier
             )
             .clickable(onClick = onClick)

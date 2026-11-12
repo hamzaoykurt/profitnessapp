@@ -87,7 +87,7 @@ val AppThemeState.stroke: Color get() = when {
 }
 val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF8F4EE) else Color(0xFF1F1A16)
 val AppThemeState.text1: Color get() = if (isDark) Color(0xFFC4BBB1) else Color(0xFF5A5047)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFF9C9389) else Color(0xFF665B50)
+val AppThemeState.text2: Color get() = if (isDark) Color(0xFFA9A095) else Color(0xFF665B50)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {
@@ -229,3 +229,18 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
         )
     }
 )
+
+// ── Destek renkleri: vurgu preset'inden bağımsız 5 sabit anlam rengi ──────────
+/** Başarı / tamamlandı. */
+val AppThemeState.supportSuccess: Color get() = if (isDark) Color(0xFF46CC8C) else Color(0xFF167544)
+/** Dinlenme / kardiyo / su. */
+val AppThemeState.supportRest: Color get() = if (isDark) Color(0xFF3DB5E8) else Color(0xFF086596)
+/** Kuvvet / hacim / kas. */
+val AppThemeState.supportStrength: Color get() = if (isDark) Color(0xFFA48BF7) else Color(0xFF6648CF)
+/** Ödül: XP / rütbe / seri değeri. */
+val AppThemeState.supportReward: Color get() = if (isDark) Color(0xFFF2C23F) else Color(0xFF7F5B00)
+/** Uyarı / hata / atlandı. */
+val AppThemeState.supportAlert: Color get() = if (isDark) Color(0xFFF4748A) else Color(0xFFB52D49)
+/** Dolgu (çip/satır) için yumuşak ton: koyu α.16, açık α.12. */
+val AppThemeState.supportSoftAlpha: Float get() = if (isDark) 0.16f else 0.12f
+fun AppThemeState.soft(support: Color): Color = support.copy(alpha = supportSoftAlpha)

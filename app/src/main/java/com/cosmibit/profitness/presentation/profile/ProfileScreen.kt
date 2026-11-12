@@ -41,6 +41,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
+import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.workout.SceneImage
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.presentation.components.AccentColorSwatch
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
@@ -106,8 +116,7 @@ fun ProfileScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         val profileListState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(
             state = profileListState,
@@ -122,17 +131,29 @@ fun ProfileScreen(
                     level            = state.level,
                     xp               = state.xp,
                     xpPerLevel       = state.xpPerLevel,
-                    currentStreak     = state.currentStreak,
-                    streakRankPosition = state.streakRankPosition,
+                    currentStreak    = state.currentStreak,
+                    longestStreak    = state.longestStreak,
+                    totalExercises   = state.totalExercises,
                     userPlan         = state.userPlan,
                     aiCredits        = state.aiCredits,
                     accent           = accent,
                     theme            = theme,
-                    onSettingsClick  = { showAppearance = true },
+                    scrollOffset     = {
+                        if (profileListState.firstVisibleItemIndex == 0) profileListState.firstVisibleItemScrollOffset else 0
+                    },
                     onNavigateToStore = onNavigateToStore,
                     onOpenXpRanking   = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
                     onOpenRankRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Achievements) },
                     onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) }
+                )
+            }
+            item {
+                TrophyGallery(
+                    accent       = accent,
+                    theme        = theme,
+                    strings      = strings,
+                    achievements = state.achievements,
+                    onSeeAll     = onNavigateToAchievements
                 )
             }
             item {
@@ -149,20 +170,12 @@ fun ProfileScreen(
                 )
             }
             item {
-                TrophyGallery(
-                    accent       = accent,
-                    theme        = theme,
-                    strings      = strings,
-                    achievements = state.achievements,
-                    onSeeAll     = onNavigateToAchievements
-                )
-            }
-            item {
                 SettingsSection(
                     theme                = theme,
                     accent               = accent,
                     strings              = strings,
                     onLogout             = onLogout,
+                    onAppearanceClick    = { showAppearance = true },
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
@@ -182,7 +195,7 @@ fun ProfileScreen(
             Modifier.fillMaxWidth()
             .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
             .background(androidx.compose.ui.graphics.Brush.verticalGradient(
-                listOf(theme.bg0.copy(0.94f), theme.bg0.copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)
+                listOf(Sinema.page(theme).copy(0.94f), Sinema.page(theme).copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)
             ))
     )
         SnackbarHost(
@@ -288,7 +301,7 @@ fun ProfileScreen(
     if (showAppearance) {
         ModalBottomSheet(
             onDismissRequest = { showAppearance = false },
-            containerColor   = theme.bg1,
+            containerColor   = Sinema.surface(theme),
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             ThemeSettingsSheet(
@@ -306,7 +319,7 @@ fun ProfileScreen(
     if (showNotifications) {
         ModalBottomSheet(
             onDismissRequest = { showNotifications = false },
-            containerColor   = theme.bg1,
+            containerColor   = Sinema.surface(theme),
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             NotificationsSettingsSheet(
@@ -326,7 +339,7 @@ fun ProfileScreen(
     if (showLanguagePicker) {
         ModalBottomSheet(
             onDismissRequest = { showLanguagePicker = false },
-            containerColor   = theme.bg1,
+            containerColor   = Sinema.surface(theme),
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             LanguageSettingsSheet(
@@ -344,10 +357,61 @@ fun ProfileScreen(
 
 }
 
-// ── Profile Hero Banner ───────────────────────────────────────────────────────
+// ── Profile Hero (SİNEMA çizimi: kapak foto + XP + sheet) ───────────────────────
+
+private fun rankColor(rank: String) = when (rank.lowercase()) {
+    "silver"   -> Color(0xFFB0BEC5)
+    "gold"     -> Color(0xFFF2C23F)
+    "platinum" -> Color(0xFF3DB5E8)
+    "diamond"  -> Color(0xFF64B5F6)
+    else       -> Color(0xFFCD7F32)  // Bronze
+}
+
+/** Çizimdeki `.chip.metal`: silver için birebir 135° C0C4CC→8E949E; diğer rütbelerde rütbe renginden türetilir. */
+private fun rankBrush(rank: String): Brush {
+    if (rank.equals("silver", ignoreCase = true)) return Brush.linearGradient(listOf(Color(0xFFC0C4CC), Color(0xFF8E949E)))
+    val c = rankColor(rank)
+    return Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(c, Color.White, 0.18f), androidx.compose.ui.graphics.lerp(c, Color.Black, 0.22f)))
+}
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
+private fun profileMotionOn(): Boolean {
+    val context = LocalContext.current
+    return remember(context) {
+        runCatching {
+            android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+        }.getOrDefault(true)
+    }
+}
+
+/** Çizimdeki `.chip`: 28dp, r14, 12sp bold, harf aralığı .06em. */
+@Composable
+private fun ProfileChip(
+    text: String,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+    brush: Brush? = null,
+    fill: Color = Color.Transparent,
+    onClick: (() -> Unit)? = null
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier
+            .height(28.dp)
+            .clip(shape)
+            .then(if (brush != null) Modifier.background(brush) else Modifier.background(fill))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            letterSpacing = 0.06.em, maxLines = 1
+        )
+    }
+}
+
+@Composable
 private fun ProfileHeroBanner(
     name           : String,
     avatar         : String,
@@ -356,302 +420,180 @@ private fun ProfileHeroBanner(
     xp             : Int,
     xpPerLevel     : Int,
     currentStreak  : Int,
-    streakRankPosition: Long,
+    longestStreak  : Int,
+    totalExercises : Int,
     userPlan        : UserPlan = UserPlan.FREE,
     aiCredits       : Int = 0,
     accent          : Color,
     theme           : AppThemeState,
-    onSettingsClick : () -> Unit,
+    scrollOffset    : () -> Int,
     onNavigateToStore: () -> Unit = {},
     onOpenXpRanking : () -> Unit = {},
     onOpenRankRanking: () -> Unit = {},
     onOpenStreakRanking: () -> Unit = {}
 ) {
+    val page = Sinema.page(theme)
+    val textMain = Sinema.text(theme)
+    val textSub = Sinema.textSecondary(theme)
+    val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
+    val xpProgress = if (xpPerLevel > 0) xpInLevel.toFloat() / xpPerLevel else 0f
+    val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
+    val fill = remember { Animatable(0f) }
+    LaunchedEffect(xpProgress) { fill.animateTo(xpProgress.coerceIn(0f, 1f), tween(900, easing = FastOutSlowInEasing)) }
+    val motionOn = profileMotionOn()
+    val kenBurns by rememberInfiniteTransition(label = "profile_kb").animateFloat(
+        initialValue = 1f, targetValue = if (motionOn) 1.08f else 1f,
+        animationSpec = infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse),
+        label = "kb"
+    )
+
     Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(124.dp)
-                .background(
+        // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
+        Box(Modifier.fillMaxWidth().height(320.dp).clipToBounds()) {
+            SceneImage(
+                url = categoryImageUrl(""),
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    translationY = scrollOffset() * 0.5f
+                    scaleX = kenBurns; scaleY = kenBurns
+                },
+                requestWidthPx = 1080, requestHeightPx = 960,
+                fallbackGradient = true
+            )
+            Box(
+                Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            accent.copy(alpha = if (theme.isDark) 0.07f else 0.025f),
-                            Color.Transparent
-                        )
+                        0f to Color.Black.copy(0.50f), 0.40f to Color.Transparent, 1f to Color.Black.copy(0.75f)
                     )
                 )
-        )
+            )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(top = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
+            // XP satırı (çizim `.xpb`: üstten 206dp)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                    .padding(start = 16.dp, end = 16.dp, top = 206.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        theme.t("Profil", "Profile"),
-                        color = theme.text0,
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1
+                        "$xpInLevel / $xpPerLevel XP",
+                        color = Sinema.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
                     )
-                    Row(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .profilePremiumAction(
-                                theme = theme,
-                                accent = accent,
-                                onClick = onSettingsClick,
-                                recessed = true,
-                                shape = RoundedCornerShape(10.dp)
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(Icons.Rounded.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
-                    }
+                    Text(
+                        if (xpLeft == 0) theme.t("hazır", "ready") else theme.t("$xpLeft kaldı", "$xpLeft left"),
+                        color = Sinema.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                    )
                 }
-
-                // Enerji / Plan chip — sağ üst köşe, tıklanınca store'a gider
-                val isPaid     = userPlan != UserPlan.FREE
-                val chipTint   = if (isPaid) Color(0xFFFFD700) else accent
-                // Plan varsa: "Elite · 5"  |  Sadece free: "5 Enerji"
-                val chipText   = if (isPaid) "${userPlan.displayName} · $aiCredits" else theme.t("$aiCredits Enerji", "$aiCredits Energy")
-
-                Row(
-                    modifier = Modifier
-                        .height(34.dp)
-                        .profilePremiumAction(
-                            theme = theme,
-                            accent = chipTint,
-                            onClick = onNavigateToStore,
-                            recessed = true,
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Sinema.White.copy(0.28f))
                 ) {
-                    Icon(
-                        if (isPaid) Icons.Rounded.WorkspacePremium else Icons.Rounded.Bolt,
-                        null, tint = chipTint, modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        chipText,
-                        color      = if (theme.isDark) chipTint else chipTint.darkenForContrast(theme.bg2),
-                        fontSize   = 12.sp,
-                        fontWeight = FontWeight.Bold
+                    Box(
+                        Modifier
+                            .fillMaxWidth(fill.value)
+                            .fillMaxHeight()
+                            .sinemaGlow(accent, 12.dp, 0.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(accent)
                     )
                 }
             }
+        }
 
-            val xpProgress = if (xpPerLevel > 0) (xp % xpPerLevel).toFloat() / xpPerLevel else 0f
-            val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
-            val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
-            val animatedXpProgress by animateFloatAsState(
-                targetValue = xpProgress.coerceIn(0f, 1f),
-                animationSpec = tween(560, easing = FastOutSlowInEasing),
-                label = "profile_xp_progress"
-            )
-            val rankColor = rankColor(rank)
+        // ── Sheet (çizim `.sheet`: üstten 300dp, r28, üstte 1dp çizgi) ───────────────
+        val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        val lineColor = Sinema.line(theme)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 300.dp)
+                .drawBehind {
+                    drawRoundRect(
+                        lineColor, topLeft = Offset(0f, -1.dp.toPx()), size = size,
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx())
+                    )
+                }
+                .background(page, sheetShape)
+        ) {
+            // Avatar (96dp, 4dp sayfa renginde halka, vurgu dolgusu) + ad (sol 128dp, üst 14dp)
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(62.dp)) {
+                Box(
+                    Modifier
+                        .offset(y = (-48 + (96 - 62) / 2).dp) // requiredSize 62dp satırda ortalanır; avatar üstü sheet üstünden 48dp yukarıda
+                        .requiredSize(96.dp)
+                        .clip(CircleShape)
+                        .background(page)
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (avatar.startsWith("http")) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    } else {
+                        Text(avatar, fontSize = 40.sp, color = theme.effectiveOnAccentColor)
+                    }
+                }
+                Text(
+                    name,
+                    color = textMain, style = Sinema.Title,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 112.dp, top = 14.dp)
+                )
+            }
 
-            Spacer(Modifier.height(12.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .performanceSignatureSurface(theme, accent, RoundedCornerShape(20.dp))
+            // Çipler (sol 16dp, üstten 62dp): rütbe (metal) · seviye · plan/enerji
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
+                ProfileChip(
+                    rank.uppercase(), Color(0xFF0A0A0B), brush = rankBrush(rank), onClick = onOpenRankRanking
+                )
+                ProfileChip(theme.t("Seviye $level", "Level $level"), textMain, fill = Sinema.surface(theme))
+                val isPaid = userPlan != UserPlan.FREE
+                ProfileChip(
+                    if (isPaid) "${userPlan.displayName} · $aiCredits" else theme.t("$aiCredits Enerji", "$aiCredits Energy"),
+                    textMain, fill = Sinema.surface(theme), onClick = onNavigateToStore
+                )
+            }
+
+            // 3 metrik (üstten 118dp; 28dp aralık → 78dp yükseklik: 196'daki XP çizgisine kadar)
+            Spacer(Modifier.height(28.dp))
+            Row(
+                Modifier.fillMaxWidth().height(78.dp).padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HeroMetric(currentStreak.toString(), theme.t("Seri · gün", "Streak · days"), theme, Modifier.weight(1f), onOpenStreakRanking)
+                HeroMetric(longestStreak.toString(), theme.t("En uzun seri", "Longest streak"), theme, Modifier.weight(1f))
+                HeroMetric(totalExercises.toString(), theme.t("Egzersiz", "Exercises"), theme, Modifier.weight(1f))
+            }
+
+            // Toplam XP (çizim `.tot`: üst çizgi, 14dp iç boşluk, 30sp rakam); sonraki bölüm 284dp çevresinden başlar
+            Box(Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 16.dp)) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(lineColor))
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(top = 1.dp)
+                        .clickable(onClick = onOpenXpRanking)
+                        .padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(68.dp), contentAlignment = Alignment.Center) {
-                        Box(
-                            modifier = Modifier
-                                .size(68.dp)
-                                .clip(CircleShape)
-                                .background(accent)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg0),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (avatar.startsWith("http")) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
-                                    contentDescription = "Avatar",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                )
-                            } else {
-                                Text(avatar, fontSize = 34.sp)
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
                     Text(
-                        name,
-                        color = theme.text0,
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        theme.t("TOPLAM XP", "TOTAL XP"), color = textSub, style = Sinema.Label.copy(fontSize = 11.sp),
+                        modifier = Modifier.alignByBaseline()
                     )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        BadgeChip("★ ${rank.uppercase()}", rankColor)
-                        BadgeChip("LVL $level", theme.accentTextColor)
-                    }
-                    }
-                    }
-
-                    Spacer(Modifier.height(14.dp))
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(theme.bg3)
-                            .padding(horizontal = 16.dp, vertical = 16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(accent.copy(alpha = 0.15f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Bolt,
-                                        contentDescription = null,
-                                        tint = accent,
-                                        modifier = Modifier.size(21.dp)
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        theme.t("SEVİYE $level → ${level + 1}", "LEVEL $level → ${level + 1}"),
-                                        color = theme.text2,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.7.sp
-                                    )
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        "$xpInLevel / $xpPerLevel XP",
-                                        color = theme.text0,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(accent.copy(alpha = 0.13f))
-                                    .padding(horizontal = 10.dp, vertical = 7.dp)
-                            ) {
-                                Text(
-                                    if (xpLeft == 0) theme.t("HAZIR", "READY") else theme.t("$xpLeft KALDI", "$xpLeft LEFT"),
-                                    color = theme.accentTextColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 0.35.sp
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(11.dp))
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(7.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg0.copy(alpha = 0.72f))
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(animatedXpProgress)
-                                    .fillMaxHeight()
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            listOf(accent.copy(alpha = 0.72f), accent)
-                                        )
-                                    )
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        HeroMiniStat(
-                            label = theme.t("TOPLAM XP", "TOTAL XP"),
-                            value = "$xp",
-                            icon = Icons.Rounded.Bolt,
-                            color = accent,
-                            theme = theme,
-                            modifier = Modifier.weight(1f),
-                            onClick = onOpenXpRanking
-                        )
-                        HeroMiniStat(
-                            label = theme.t("RÜTBE", "RANK"),
-                            value = rank.uppercase(),
-                            icon = Icons.Rounded.EmojiEvents,
-                            color = rankColor,
-                            theme = theme,
-                            modifier = Modifier.weight(1f),
-                            onClick = onOpenRankRanking
-                        )
-                        HeroMiniStat(
-                            label = theme.t("SERİ", "STREAK"),
-                            value = theme.t("$currentStreak gün", "$currentStreak days"),
-                            icon = Icons.Rounded.LocalFireDepartment,
-                            color = accent,
-                            theme = theme,
-                            modifier = Modifier.weight(1f),
-                            onClick = onOpenStreakRanking
-                        )
-                    }
+                    Text(
+                        "$xp", color = textMain,
+                        style = Sinema.Title.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.03).em),
+                        maxLines = 1, modifier = Modifier.alignByBaseline()
+                    )
                 }
             }
         }
@@ -659,52 +601,60 @@ private fun ProfileHeroBanner(
 }
 
 @Composable
-private fun HeroMiniStat(
-    label: String,
-    value: String,
-    icon: ImageVector,
-    color: Color,
-    theme: AppThemeState,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
+private fun HeroMetric(value: String, label: String, theme: AppThemeState, modifier: Modifier, onClick: (() -> Unit)? = null) {
     Column(
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.height(8.dp))
-        Text(value, color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(
+            value,
+            color = Sinema.text(theme),
+            style = if (value.length >= 4) Sinema.Metric.copy(fontSize = 34.sp) else Sinema.Metric,
+            maxLines = 1, softWrap = false
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label.sinemaUpper(theme), color = Sinema.textSecondary(theme),
+            style = Sinema.Label.copy(fontSize = 10.sp, lineHeight = 13.sp), maxLines = 2
+        )
     }
 }
 
-private fun rankColor(rank: String) = when (rank.lowercase()) {
-    "silver"   -> Color(0xFFB0BEC5)
-    "gold"     -> Color(0xFFFFD700)
-    "platinum" -> Color(0xFF00E5FF)
-    "diamond"  -> Color(0xFF64B5F6)
-    else       -> Color(0xFFCD7F32)  // Bronze
+/** Bölüm başlığı: 32dp ara + 1dp çizgi + Label (ikincil) + isteğe bağlı sağ öğe. */
+@Composable
+private fun SinemaSection(
+    theme: AppThemeState,
+    title: String,
+    trailing: (@Composable RowScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(32.dp))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(Sinema.line(theme)))
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp).heightIn(min = 56.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f))
+            trailing?.invoke(this)
+        }
+        content()
+    }
 }
 
 @Composable
-private fun BadgeChip(label: String, color: Color) {
-    val theme = LocalAppTheme.current
-    val textColor = if (theme.isDark) color else color.darkenForContrast(theme.bg2)
-    Box(
+private fun SeeAllLink(theme: AppThemeState, text: String, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(0.12f))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            label,
-            color         = textColor,
-            fontSize      = 10.sp,
-            fontWeight    = FontWeight.Bold
-        )
+        Text(text, color = Sinema.text(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Icon(Icons.Rounded.ArrowForwardIos, null, tint = Sinema.text(theme), modifier = Modifier.size(11.dp))
     }
 }
 
@@ -740,139 +690,59 @@ private fun PerformanceMetricsSection(
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = buildList {
-        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, CardCoral))
-        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, CardGreen))
-        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, CardCyan))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.effectiveAccentColor))
+        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
+        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.supportStrength))
         if (totalDurationSeconds > 0) {
-            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, CardGreen))
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, theme.supportSuccess))
         }
         if (totalDistanceMeters > 0f) {
-            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, Color(0xFF64D2FF)))
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.supportRest))
         }
     }
 
-    Column(modifier = Modifier.padding(top = 32.dp)) {
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(
-                theme.t("Performans", "Performance"),
-                style         = MaterialTheme.typography.titleLarge,
-                color         = theme.text0,
-                letterSpacing = (-0.2).sp
-            )
-            Row(
-                modifier          = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(accent.copy(0.1f))
-                    .clickable(onClick = onNavigateToDetail)
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    strings.seeAll,
-                    color         = theme.accentTextColor,
-                    fontSize      = 10.sp,
-                    fontWeight    = FontWeight.Bold
-                )
-                Icon(
-                    Icons.Rounded.ArrowForwardIos,
-                    null,
-                    tint     = accent,
-                    modifier = Modifier.size(10.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
+    SinemaSection(
+        theme = theme,
+        title = theme.t("Performans", "Performance"),
+        trailing = { SeeAllLink(theme, strings.seeAll, onNavigateToDetail) }
+    ) {
         LazyRow(
             contentPadding        = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(28.dp)
         ) {
-            items(metrics) { metric ->
-                MetricCard(
-                    metric = metric,
-                    theme = theme,
-                    onClick = onNavigateToDetail
-                )
-            }
+            items(metrics) { metric -> MetricCell(metric, theme, onNavigateToDetail) }
         }
     }
 }
 
 @Composable
-private fun MetricCard(
-    metric: PerformanceMetric,
-    theme: AppThemeState,
-    onClick: () -> Unit
-) {
-    val visualAccent = theme.effectiveAccentColor
-    Box(
+private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick: () -> Unit) {
+    Column(
         modifier = Modifier
-            .width(148.dp)
-            .height(176.dp)
-            .profilePremiumAction(
-                theme = theme,
-                accent = visualAccent,
-                onClick = onClick,
-                shape = RoundedCornerShape(22.dp)
-            )
-            .padding(20.dp)
+            .width(132.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp)
     ) {
-        Column(
-            modifier            = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(visualAccent.copy(if (theme.isDark) 0.14f else 0.09f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(metric.icon, null, tint = visualAccent, modifier = Modifier.size(22.dp))
-            }
-
-            Column {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        metric.value,
-                        color      = theme.text0,
-                        fontSize   = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        lineHeight = 28.sp
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        metric.unit,
-                        color      = theme.accentTextColor,
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier   = Modifier.padding(bottom = 3.dp)
-                    )
-                }
-                Text(
-                    metric.label,
-                    color         = theme.text2,
-                    fontSize      = 10.sp,
-                    fontWeight    = FontWeight.SemiBold
-                )
-            }
-
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .clip(CircleShape)
-                    .background(theme.stroke.copy(0.35f))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                metric.value,
+                color = Sinema.text(theme), style = Sinema.Metric,
+                maxLines = 1, softWrap = false,
+                modifier = Modifier.alignByBaseline()
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                metric.unit,
+                color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier.alignByBaseline()
             )
         }
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.width(28.dp).height(3.dp).clip(CircleShape).background(metric.color))
+        Spacer(Modifier.height(10.dp))
+        Text(metric.label, color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
     }
 }
 
@@ -964,14 +834,6 @@ private fun WeeklyActivitySection(
 
 // ── Trophy Gallery (Gerçek Başarımlar) ────────────────────────────────────────
 
-private fun achievementColor(category: String): Pair<Color, Color> = when (category) {
-    "streak"    -> Pair(Color(0xFFF97316), Color(0xFFEF4444))
-    "volume"    -> Pair(Color(0xFF9B59FF), Color(0xFF6C35DE))
-    "xp"        -> Pair(Color(0xFFFFD700), Color(0xFFFF8C00))
-    "milestone" -> Pair(Color(0xFF00E5D3), Color(0xFF3B82F6))
-    else        -> Pair(Color(0xFFEC4899), Color(0xFFA855F7))
-}
-
 @Composable
 private fun TrophyGallery(
     accent       : Color,
@@ -982,62 +844,39 @@ private fun TrophyGallery(
 ) {
     // Önce açılanlar, sonra kilitliler; max 12 göster
     val sorted = achievements.sortedByDescending { it.isUnlocked }.take(12)
+    val unlockedCount = achievements.count { it.isUnlocked }
+    val sub = Sinema.textSecondary(theme)
 
-    Column(modifier = Modifier.padding(top = 36.dp)) {
+    // Çizim `.bst`: başlık (12sp, harf aralığı .1em) + sayaç, altında 60dp daire şeridi (10dp aralık).
+    // Başlık satırı "tümünü gör"e gider (çizimde ayrı bağlantı yok).
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier              = Modifier
+            Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
+                .heightIn(min = 44.dp)
+                .clickable(onClick = onSeeAll)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                theme.t("Başarımlar", "Achievements"),
-                style         = MaterialTheme.typography.titleLarge,
-                color         = theme.text0,
-                letterSpacing = (-0.2).sp
+                theme.t("Başarımlar", "Achievements").sinemaUpper(theme), color = sub, style = Sinema.Label,
+                modifier = Modifier.weight(1f)
             )
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val unlockedCount = achievements.count { it.isUnlocked }
-                Text(
-                    "$unlockedCount/${achievements.size}",
-                    color    = theme.text2,
-                    fontSize = 11.sp
-                )
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(accent.copy(0.1f))
-                        .clickable(onClick = onSeeAll)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(strings.seeAll, color = theme.accentTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Icon(Icons.Rounded.ArrowForwardIos, null, tint = accent, modifier = Modifier.size(10.dp))
-                }
-            }
+            Text("$unlockedCount / ${achievements.size}", color = sub, style = Sinema.Label)
         }
-        Spacer(Modifier.height(14.dp))
         if (sorted.isEmpty()) {
-            // Loading placeholder
             Text(
                 theme.t("Başarımlar yükleniyor...", "Loading achievements..."),
-                color    = theme.text2,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(horizontal = 20.dp)
+                color    = sub,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         } else {
             LazyRow(
-                contentPadding        = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding        = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(sorted) { ach ->
-                    AchievementCard(achievement = ach, theme = theme)
-                }
+                items(sorted) { ach -> AchievementCard(achievement = ach, theme = theme) }
             }
         }
     }
@@ -1045,52 +884,17 @@ private fun TrophyGallery(
 
 @Composable
 private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeState) {
-    val (colorFrom, colorTo) = achievementColor(achievement.category)
-    val alpha = if (achievement.isUnlocked) 1f else 0.35f
-
+    val unlocked = achievement.isUnlocked
+    val label = localizedAchievementText(achievement.name, theme)
     Box(
-        modifier = Modifier
-            .size(118.dp, 158.dp)
-            .profilePremiumSurface(
-                theme = theme,
-                shape = RoundedCornerShape(20.dp),
-                accent = if (achievement.isUnlocked) colorFrom else null,
-                elevation = if (achievement.isUnlocked && theme.isDark) 12.dp else 6.dp
-            )
+        Modifier
+            .size(60.dp)
+            .clip(CircleShape)
+            .background(Sinema.surface(theme))
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier            = Modifier.fillMaxSize().padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(colorFrom.copy(if (achievement.isUnlocked) 0.15f else 0.06f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (achievement.isUnlocked) achievement.icon else "🔒",
-                    fontSize = 26.sp
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                localizedAchievementText(achievement.name, theme).take(18),
-                color         = if (achievement.isUnlocked) (if (theme.isDark) colorFrom else colorFrom.darkenForContrast(theme.bg1)) else theme.text2,
-                fontSize      = 11.sp,
-                fontWeight    = FontWeight.Bold
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                localizedAchievementText(achievement.description, theme).take(42),
-                color      = theme.text2.copy(alpha),
-                fontSize   = 9.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 12.sp
-            )
-        }
+        Text(achievement.icon, fontSize = 24.sp, modifier = Modifier.alpha(if (unlocked) 1f else 0.3f))
     }
 }
 
@@ -1102,6 +906,7 @@ private fun SettingsSection(
     accent              : Color,
     strings             : AppStrings,
     onLogout            : () -> Unit = {},
+    onAppearanceClick   : () -> Unit = {},
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
@@ -1111,142 +916,90 @@ private fun SettingsSection(
     displayName         : String     = "",
     avatar              : String     = "🏋️"
 ) {
-    Column(modifier = Modifier.padding(20.dp, 40.dp, 20.dp, 0.dp)) {
-        Text(
-            strings.accountSettings,
-            style         = MaterialTheme.typography.labelSmall,
-            color         = theme.text1,
-            letterSpacing = 1.2.sp
-        )
+    val groupShape = RoundedCornerShape(20.dp)
+    val surface = Sinema.surface(theme)
+    val divider: @Composable () -> Unit = {
+        Box(Modifier.fillMaxWidth().padding(start = 72.dp, end = 20.dp).height(1.dp).background(Sinema.line(theme)))
+    }
 
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .profilePremiumAction(
-                    theme = theme,
-                    accent = accent,
-                    onClick = onEditProfile,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(16.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+    SinemaSection(theme = theme, title = strings.accountSettings) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
         ) {
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.18f))
-                    .border(1.5.dp, accent.copy(0.45f), CircleShape),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onEditProfile)
+                    .heightIn(min = 72.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                if (avatar.startsWith("http")) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
-                        contentDescription = "Avatar",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape)
-                    )
-                } else {
-                    Text(avatar, fontSize = 22.sp)
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(Sinema.page(theme)).border(2.dp, accent, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (avatar.startsWith("http")) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    } else {
+                        Text(avatar, fontSize = 20.sp)
+                    }
                 }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
-                    color      = theme.accentTextColor,
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
-                )
-                Text(
-                    strings.editProfileHint,
-                    color    = theme.text2,
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
-            }
-            Box(
-                Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent.copy(0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.Edit,
-                    null,
-                    tint     = accent,
-                    modifier = Modifier.size(15.dp)
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
+                        color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Text(strings.editProfileHint, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(Icons.Rounded.Edit, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
+            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
         ) {
-            val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive
-                              else strings.notificationsOff
+            val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive else strings.notificationsOff
             SettingsRow(
-                icon    = Icons.Rounded.Notifications,
-                label   = strings.notificationsLabel,
-                sub     = notifStatus,
-                theme   = theme,
-                accent  = accent,
-                onClick = onNotificationsClick
+                Icons.Rounded.Tune, theme.t("Görünüm", "Appearance"),
+                theme.t("Tema ve vurgu rengi", "Theme and accent color"), theme, accent, onClick = onAppearanceClick
             )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsRow(
-                icon    = Icons.Rounded.Language,
-                label   = strings.languageLabel,
-                sub     = strings.currentLanguageName,
-                theme   = theme,
-                accent  = accent,
-                onClick = onLanguageClick
-            )
+            divider()
+            SettingsRow(Icons.Rounded.Notifications, strings.notificationsLabel, notifStatus, theme, accent, onClick = onNotificationsClick)
+            divider()
+            SettingsRow(Icons.Rounded.Language, strings.languageLabel, strings.currentLanguageName, theme, accent, onClick = onLanguageClick)
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            theme.t("VERİLER", "DATA"),
-            style         = MaterialTheme.typography.labelSmall,
-            color         = theme.text1,
-            letterSpacing = 1.2.sp
-        )
-
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(32.dp))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(Sinema.line(theme)))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
+            Text(theme.t("VERİLER", "DATA"), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        }
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
+            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
         ) {
             SettingsRow(
                 icon    = Icons.Rounded.UploadFile,
                 label   = theme.t("Verileri Dışa Aktar", "Export Data"),
                 sub     = if (isTransferring) theme.t("İşlem sürüyor…", "Working…") else
                     theme.t("Profil, program ve antrenman yedeği oluştur", "Create a profile, program and workout backup"),
-                theme   = theme,
-                accent  = accent,
-                enabled = !isTransferring,
-                onClick = onExportData
+                theme = theme, accent = accent, enabled = !isTransferring, onClick = onExportData
             )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            divider()
             SettingsRow(
                 icon    = Icons.Rounded.Download,
                 label   = theme.t("Verileri İçe Aktar", "Import Data"),
                 sub     = theme.t("Mevcut verileri silmeden bir yedeği birleştir", "Merge a backup without deleting current data"),
-                theme   = theme,
-                accent  = accent,
-                enabled = !isTransferring,
-                onClick = onImportData
+                theme = theme, accent = accent, enabled = !isTransferring, onClick = onImportData
             )
         }
 
@@ -1255,47 +1008,34 @@ private fun SettingsSection(
                 "XP, kredi, sıralama ve sosyal veriler yedeğe dahil edilmez.",
                 "XP, credits, rankings and social data are not included."
             ),
-            color = theme.text2,
-            fontSize = 10.sp,
-            lineHeight = 14.sp,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp)
+            color = Sinema.textSecondary(theme),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
         )
 
+        val coral = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(surface)
         Row(
             modifier = Modifier
+                .padding(horizontal = 20.dp)
                 .fillMaxWidth()
-                .profilePremiumAction(
-                    theme = theme,
-                    accent = CardCoral,
-                    onClick = onLogout,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(20.dp),
+                .clip(groupShape)
+                .background(surface)
+                .clickable(onClick = onLogout)
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 16.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(CardCoral.copy(0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Logout, null, tint = CardCoral, modifier = Modifier.size(21.dp))
-            }
+            Icon(Icons.Rounded.Logout, null, tint = coral, modifier = Modifier.size(22.dp))
             Text(
                 strings.logoutLabel,
-                color      = CardCoral,
-                fontSize   = 14.sp,
+                color      = coral,
+                fontSize   = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier   = Modifier.weight(1f)
             )
-            Icon(
-                Icons.Rounded.ChevronRight,
-                null,
-                tint     = CardCoral.copy(0.4f),
-                modifier = Modifier.size(16.dp)
-            )
+            Icon(Icons.Rounded.ChevronRight, null, tint = coral.copy(0.6f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -1315,24 +1055,19 @@ private fun SettingsRow(
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
             .then(if (enabled) Modifier else Modifier.alpha(0.55f))
-            .padding(20.dp),
+            .heightIn(min = 64.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(accent.copy(0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(label, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(sub,   color = theme.text2, fontSize = 11.sp)
+            Text(label, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(sub, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = accent.copy(0.62f), modifier = Modifier.size(18.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -1516,7 +1251,7 @@ private fun PreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(preview, RoundedCornerShape(20.dp), acc)
+            .sinemaCard(preview, RoundedCornerShape(24.dp))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -1578,28 +1313,25 @@ private fun <T> SegmentedSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(12.dp),
-                accent,
-                if (theme.isDark) 8.dp else 4.dp
-            )
+            .sinemaCard(theme, RoundedCornerShape(18.dp))
             .padding(4.dp)
     ) {
         options.forEach { (value, label) ->
             val isSel = value == selected
+            val segShape = RoundedCornerShape(14.dp)
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(9.dp))
-                    .then(if (isSel) Modifier.background(theme.bg3) else Modifier)
+                    .then(if (isSel) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, segShape) else Modifier)
+                    .clip(segShape)
+                    .then(if (isSel) Modifier.background(accent) else Modifier)
                     .clickable { onSelect(value) }
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     label,
-                    color         = if (isSel) theme.text0 else theme.text1,
+                    color         = if (isSel) onAccent else theme.text1,
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp
@@ -1749,8 +1481,6 @@ private fun LanguageSettingsSheet(
             .padding(24.dp, 8.dp, 24.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        SheetHandle(theme)
-
         Text(
             strings.langSheetTitle,
             style         = MaterialTheme.typography.labelSmall,
@@ -1762,7 +1492,7 @@ private fun LanguageSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
+                .sinemaCard(theme, RoundedCornerShape(24.dp))
         ) {
             LanguageOptionRow(
                 flag       = "🇹🇷",
@@ -1772,7 +1502,7 @@ private fun LanguageSettingsSheet(
                 theme      = theme,
                 onClick    = { selected = AppLanguage.TURKISH }
             )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(color = Sinema.line(theme), modifier = Modifier.padding(horizontal = 16.dp))
             LanguageOptionRow(
                 flag       = "🇬🇧",
                 name       = strings.englishLabel,
@@ -1815,7 +1545,6 @@ private fun LanguageOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(if (isSelected) accent.copy(0.07f) else Color.Transparent)
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1823,9 +1552,9 @@ private fun LanguageOptionRow(
         Text(flag, fontSize = 24.sp)
         Text(
             name,
-            color      = if (isSelected) accent else theme.text0,
+            color      = theme.text0,
             fontSize   = 15.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
             modifier   = Modifier.weight(1f)
         )
         if (isSelected) {

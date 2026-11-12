@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.sinemaCard
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -153,7 +155,7 @@ fun ChallengeDetailOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-    Box(Modifier.fillMaxSize().background(theme.bg0)) {
+    Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
         PageAccentBloom()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -182,7 +184,7 @@ fun ChallengeDetailOverlay(
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
-                                    .insetControlSurface(accent, theme, CircleShape)
+                                    .sinemaCard(theme, CircleShape)
                                     .clickable { showOwnerMenu = true },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -215,10 +217,10 @@ fun ChallengeDetailOverlay(
                     Box(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFF5252).copy(0.14f))
+                            .background(Sinema.surface(theme))
                             .padding(16.dp)
                     ) {
-                        Text(state.error ?: "", color = Color(0xFFFF8A80), fontSize = 12.sp)
+                        Text(state.error ?: "", color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 state.detail != null -> {
@@ -531,7 +533,7 @@ private fun PrivateJoinPasswordDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 20.dp)
+                .sinemaCard(theme, RoundedCornerShape(24.dp))
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -558,7 +560,7 @@ private fun PrivateJoinPasswordDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(theme.bg2)
+                    .background(Sinema.line(theme))
                     .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
@@ -590,7 +592,7 @@ private fun PrivateJoinPasswordDialog(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(theme.bg2)
+                        .background(Sinema.line(theme))
                         .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
                         .clickable(onClick = onCancel)
                         .padding(vertical = 12.dp),
@@ -639,7 +641,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .premiumSolidSurface(accent, theme, RoundedCornerShape(18.dp), elevation = 12.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .padding(14.dp)
     ) {
         // ── Mode header pill ──
@@ -652,7 +654,7 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                    .sinemaCard(theme, RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -847,7 +849,7 @@ private fun EventMetaChip(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
+            .background(Sinema.line(theme))
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -886,7 +888,7 @@ private fun LocationRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
+            .background(Sinema.line(theme))
             .then(if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -895,7 +897,7 @@ private fun LocationRow(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(accent.copy(0.18f)),
+                .background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(14.dp))
@@ -923,7 +925,7 @@ private fun LocationRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(accent.copy(0.20f))
+                    .background(Sinema.line(theme))
                     .clickable(onClick = onAction)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -956,8 +958,8 @@ private fun SkipProgramToggle(
             .padding(horizontal = 20.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(12.dp))
             .then(
-                if (enabled) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
-                else Modifier.background(theme.bg1)
+                if (enabled) Modifier.sinemaCard(theme, RoundedCornerShape(12.dp))
+                else Modifier.background(Sinema.surface(theme))
             )
             .clickable(onClick = onToggle)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -1020,8 +1022,8 @@ private fun MovementRow(
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
             .then(
-                if (done) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
-                else Modifier.background(theme.bg1)
+                if (done) Modifier.sinemaCard(theme, RoundedCornerShape(12.dp))
+                else Modifier.background(Sinema.surface(theme))
             )
             .clickable(enabled = !pending, onClick = onToggle)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1130,7 +1132,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
                 when {
                     highlight -> accent.copy(0.12f)
                     isMedal && medalColor != null -> medalColor.copy(0.08f)
-                    else -> theme.bg1.copy(0.5f)
+                    else -> Sinema.surface(theme)
                 }
             )
             .padding(horizontal = 10.dp, vertical = 10.dp),
@@ -1144,7 +1146,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(theme.bg2),
+                .background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
             val av = entry.avatarUrl
@@ -1173,7 +1175,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(accent.copy(0.25f))
+                            .background(Sinema.line(theme))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(theme.t("SEN", "YOU"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
@@ -1216,7 +1218,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .performanceSignatureSurface(theme, accent, RoundedCornerShape(20.dp))
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
     ) {
         Column(Modifier.padding(18.dp)) {
             // Üst row: kategori + status pill
@@ -1233,7 +1235,7 @@ private fun ChallengeHero(c: ChallengeSummary, accent: Color, isEvent: Boolean) 
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(statusColor.copy(0.18f))
+                        .background(Sinema.line(theme))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1342,7 +1344,7 @@ private fun RankBadge(rank: Int, accent: Color, theme: com.cosmibit.profitness.c
         modifier = Modifier
             .size(28.dp)
             .clip(CircleShape)
-            .background(if (isMedal) color.copy(0.22f) else theme.bg2.copy(0.6f))
+            .background(if (isMedal) Sinema.line(theme) else Sinema.line(theme))
             .border(1.dp, if (isMedal) color.copy(0.6f) else theme.stroke.copy(0.4f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -1378,7 +1380,7 @@ private fun OwnerActionMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        containerColor = theme.bg1,
+        containerColor = Sinema.surface(theme),
         shape = RoundedCornerShape(14.dp),
         shadowElevation = 8.dp,
         tonalElevation = 0.dp
@@ -1441,7 +1443,7 @@ private fun DeleteConfirmDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .premiumSolidSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
+                .sinemaCard(theme, RoundedCornerShape(24.dp))
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -1473,7 +1475,7 @@ private fun DeleteConfirmDialog(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(12.dp))
+                        .sinemaCard(theme, RoundedCornerShape(12.dp))
                         .clickable(enabled = !inFlight, onClick = onCancel)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -1540,7 +1542,7 @@ private fun AddProgressDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .premiumSolidSurface(accent, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
+                .sinemaCard(theme, RoundedCornerShape(24.dp))
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
@@ -1564,7 +1566,7 @@ private fun AddProgressDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
+                    .sinemaCard(theme, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 BasicTextField(
@@ -1598,7 +1600,7 @@ private fun AddProgressDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
+                        .sinemaCard(theme, RoundedCornerShape(14.dp))
                         .padding(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1632,7 +1634,7 @@ private fun AddProgressDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (swRunning) Color(0xFFFF5252).copy(0.22f) else accent.copy(0.22f))
+                                .background(if (swRunning) Sinema.line(theme) else Sinema.line(theme))
                                 .clickable {
                                     if (swRunning) {
                                         // Durdur — biriken süreyi accum'a kaydet
@@ -1659,7 +1661,7 @@ private fun AddProgressDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
+                                .sinemaCard(theme, RoundedCornerShape(10.dp))
                                 .clickable(enabled = !swRunning && swElapsedMs > 0L) {
                                     swAccumMs = 0L
                                     swStartMs = 0L
@@ -1718,7 +1720,7 @@ private fun AddProgressDialog(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .insetControlSurface(accent, theme, RoundedCornerShape(12.dp))
+                        .sinemaCard(theme, RoundedCornerShape(12.dp))
                         .clickable(onClick = onCancel)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -1781,7 +1783,7 @@ private fun EditMetricChallengeOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-        Box(Modifier.fillMaxSize().background(theme.bg0)) {
+        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
             PageAccentBloom()
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -1889,12 +1891,12 @@ private fun MetricTargetTypeOption(
             .padding(vertical = 3.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (isActive) Brush.horizontalGradient(listOf(accent.copy(0.18f), accent.copy(0.08f)))
-                else Brush.horizontalGradient(listOf(theme.bg1.copy(0.72f), theme.bg1.copy(0.54f)))
+                if (isActive) Brush.horizontalGradient(listOf(Sinema.line(theme), Sinema.line(theme)))
+                else Brush.horizontalGradient(listOf(Sinema.surface(theme), Sinema.surface(theme)))
             )
             .border(
                 1.dp,
-                if (isActive) accent.copy(0.58f) else theme.stroke.copy(0.55f),
+                if (isActive) accent else Sinema.line(theme),
                 RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
@@ -1905,10 +1907,10 @@ private fun MetricTargetTypeOption(
             modifier = Modifier
                 .size(30.dp)
                 .clip(CircleShape)
-                .background(if (isActive) accent.copy(0.22f) else theme.bg2.copy(0.64f))
+                .background(if (isActive) Sinema.line(theme) else Sinema.line(theme))
                 .border(
                     1.dp,
-                    if (isActive) accent.copy(0.50f) else theme.stroke.copy(0.50f),
+                    if (isActive) accent else Sinema.line(theme),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -1931,7 +1933,7 @@ private fun MetricTargetTypeOption(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isActive) accent.copy(0.20f) else theme.bg2.copy(0.50f))
+                .background(if (isActive) Sinema.line(theme) else Sinema.line(theme))
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
@@ -2010,7 +2012,7 @@ private fun EditEventChallengeOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-        Box(Modifier.fillMaxSize().background(theme.bg0)) {
+        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
             PageAccentBloom()
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -2114,7 +2116,7 @@ private fun EditField(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(theme.bg1)
+                .background(Sinema.surface(theme))
                 .border(1.dp, theme.stroke, RoundedCornerShape(12.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
@@ -2148,10 +2150,10 @@ private fun StatChip(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(accent.copy(0.16f), accent.copy(0.04f))
+                    listOf(Sinema.line(theme), Sinema.line(theme))
                 )
             )
-            .border(1.dp, accent.copy(0.32f), RoundedCornerShape(16.dp))
+            .border(1.dp, accent, RoundedCornerShape(16.dp))
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -2184,11 +2186,12 @@ private fun TravelModeChip(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(accent.copy(0.16f))
-            .border(1.dp, accent.copy(0.4f), RoundedCornerShape(12.dp))
+            .background(Sinema.line(theme))
+            .border(1.dp, accent, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally

@@ -61,6 +61,9 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.core.theme.SinemaChip
+import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.domain.social.UserSummary
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.profile.PublicProfileOverlay
@@ -113,7 +116,7 @@ fun FriendsTab(
                         fontSize = 10.sp,
                         letterSpacing = 3.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
 
@@ -180,13 +183,13 @@ private fun SearchBar(
     accent: Color
 ) {
     val theme = LocalAppTheme.current
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(24.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .insetControlSurface(accent, theme, shape)
-            .padding(horizontal = 15.dp, vertical = 13.dp),
+            .padding(horizontal = 16.dp)
+            .sinemaCard(theme, shape)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -226,7 +229,7 @@ private fun UserRow(
     onFollow: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -234,17 +237,17 @@ private fun UserRow(
         animationSpec = androidx.compose.animation.core.tween(120),
         label = "friend_row_scale"
     )
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .performanceElevatedSurface(theme, shape)
+            .sinemaCard(theme, shape)
             .clickable(interactionSource = interaction, indication = null) { onTap() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -278,8 +281,8 @@ private fun UserRow(
             Text(
                 user.displayName,
                 color = theme.text0,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 1
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -303,40 +306,18 @@ private fun UserRow(
 @Composable
 private fun FollowButton(isFollowing: Boolean, onClick: () -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(120),
-        label = "follow_button_scale"
-    )
-    val textColor = if (isFollowing) theme.text1 else theme.effectiveOnAccentColor
-    val shape = RoundedCornerShape(50)
-    val fill = if (isFollowing) theme.bg2 else accent
-
-    Row(
-        modifier = Modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(shape)
-            .background(fill)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
+    SinemaChip(active = !isFollowing, onClick = onClick, height = 36.dp) { fg ->
         if (!isFollowing) {
-            Icon(Icons.Rounded.PersonAdd, null, tint = textColor, modifier = Modifier.size(13.dp))
+            Icon(Icons.Rounded.PersonAdd, null, tint = fg, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(5.dp))
         }
         Text(
             if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
-            color = textColor,
-            fontSize = 10.sp,
+            color = fg,
+            fontSize = 11.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp
+            letterSpacing = 0.8.sp,
+            maxLines = 1
         )
     }
 }

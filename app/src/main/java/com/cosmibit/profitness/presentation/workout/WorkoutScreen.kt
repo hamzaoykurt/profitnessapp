@@ -34,6 +34,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,7 +79,7 @@ import kotlinx.coroutines.delay
 private const val FIRST_REMOTE_SYNC_DELAY_MS = 1_500L
 private const val FIRST_DASHBOARD_EVENTS_DELAY_MS = 1_700L
 
-private fun localizedWorkoutDayLabel(value: String, theme: AppThemeState): String = when (value.lowercase()) {
+internal fun localizedWorkoutDayLabel(value: String, theme: AppThemeState): String = when (value.lowercase()) {
     "pzt" -> theme.t("Pzt", "Mon")
     "sal" -> theme.t("Sal", "Tue")
     "çar", "car" -> theme.t("Çar", "Wed")
@@ -106,7 +109,7 @@ private val WorkoutTitlePrefix = Regex(
     option = RegexOption.IGNORE_CASE
 )
 
-private fun compactWorkoutTitle(value: String, theme: AppThemeState): String {
+internal fun compactWorkoutTitle(value: String, theme: AppThemeState): String {
     val localized = localizedWorkoutTitle(value, theme).trim()
     val compact = localized.replaceFirst(WorkoutTitlePrefix, "").trim().ifBlank { localized }
     if (compact.any { it.isLowerCase() }) return compact
@@ -316,14 +319,14 @@ fun WorkoutScreen(
     val timerActive  = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
     val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize()) {
 
         // ── İçerik ────────────────────────────────────────────────────────────
         when {
             state.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                // Yükleniyor: 000000 sayfa + SceneImage düşüş gradyanı, metin yok.
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+                    SceneImage(url = "", modifier = Modifier.fillMaxSize(), fallbackGradient = true)
                 }
             }
             state.dayStates.isEmpty() -> {
@@ -608,296 +611,143 @@ private fun WorkoutContent(
         }
     }
 
-    val listState = rememberLazyListState()
-    // Açılan kartı ekranın ortasına scroll et
-    var expandedExIdx by remember { mutableStateOf(-1) }
+    BackHandler(enabled = detailChallengeId != null) { detailChallengeId = null }
 
-    BackHandler(enabled = detailChallengeId != null || expandedExIdx >= 0) {
-        when {
-            detailChallengeId != null -> detailChallengeId = null
-            expandedExIdx >= 0        -> expandedExIdx = -1
-        }
-    }
-
-    val itemsBeforeExercises = remember(
-        hasUpcomingSection,
-        hasTodayBanner
-    ) {
-        3 + // streak + dashboard header + day selector
-            (if (hasUpcomingSection) 1 else 0) +
-            (if (hasTodayBanner) 1 else 0)
-    }
-
-    val topInsetPx = WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current)
-    LaunchedEffect(expandedExIdx, itemsBeforeExercises) {
-        if (expandedExIdx >= 0) {
-            val lazyIdx = itemsBeforeExercises + expandedExIdx
-            kotlinx.coroutines.delay(150)  // expand animasyonunun başlamasını bekle
-            val viewportHeight = listState.layoutInfo.viewportSize.height
-            listState.animateScrollToItem(lazyIdx, scrollOffset = -(topInsetPx + viewportHeight / 40))
-        }
-    }
-
-    // Timer başladığında o egzersizin kartını otomatik aç ve scroll et
-    val timer = restTimer
-    LaunchedEffect(timer.isRunning, timer.exerciseName) {
-        if (timer.isRunning && timer.exerciseName.isNotEmpty()) {
-            val exIdx = visibleExercises.indexOfFirst { it.name == timer.exerciseName }
-            if (exIdx >= 0) {
-                expandedExIdx = exIdx
-            }
-        }
-    }
-
-    // Timer aktifken içerik pill'in altına kayar, kapanınca geri döner
+    // Timer aktifken üst çubuk pill'in altına kayar, kapanınca geri döner
     val extraTopPad by animateDpAsState(
         targetValue   = if (timerActive) (timerBannerH - 60.dp).coerceAtLeast(0.dp) else 0.dp,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
         label         = "timer_top_pad"
     )
 
-    Box(Modifier.fillMaxSize()) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = extraTopPad, bottom = bottomPadding + 16.dp)
-    ) {
-        // ── Streak Banner ─────────────────────────────────────────────────
-        item(key = "streak", contentType = "header") {
-            StreakBanner(streak = state.currentStreak)
-        }
+    val allDone = currentState.totalCount > 0 && currentState.completedCount >= currentState.totalCount
+    val isRestHero = currentDay.isRestDay && visibleExercises.isEmpty()
+    var detailExercise by remember { mutableStateOf<Exercise?>(null) }
 
-        // ── FAZ 7J-9: Upcoming events (next 7 days) — streak banner'ın hemen altında ──
-        if (hasUpcomingSection) {
-            item(key = "upcoming_events", contentType = "events") {
-                UpcomingEventsSection(
-                    events = upcomingEvents,
-                    onOpen = { detailChallengeId = it.id }
-                )
-            }
-        }
-
-        // ── FAZ 7J-9: Today's joined challenge events (above program) ────
-        if (hasTodayBanner) {
-            item(key = "today_events", contentType = "events") {
-                ChallengeTodayBanner(
-                    events = todayEvents,
-                    onOpen = { detailChallengeId = it.id }
-                )
-            }
-        }
-
-        // ── Header: Greeting + Progress Ring ─────────────────────────────
-        item(key = "dashboard_header", contentType = "header") {
-            AnimatedContent(
-                targetState = selectedDayIdx,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { it / 4 } +
-                            fadeIn(tween(160))) togetherWith
-                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { -it / 5 } +
-                            fadeOut(tween(120)))
-                    } else {
-                        (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { -it / 4 } +
-                            fadeIn(tween(160))) togetherWith
-                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { it / 5 } +
-                            fadeOut(tween(120)))
-                    }
-                },
-                label = "day_header"
-            ) { dayIdx ->
-                WorkoutDashboardHeader(dayStates[dayIdx].day, dayStates[dayIdx].progress)
-            }
-        }
-
-        // ── Day Selector Strip ────────────────────────────────────────────
-        item(key = "day_selector", contentType = "day_selector") {
-            DaySelector(
-                days        = dayStates,
-                selectedIndex = selectedDayIdx,
-                onSelect    = { viewModel.selectDay(it) }
-            )
-        }
-
-        // ── Content: Rest day or exercise cards ──────────────────────────
-        if (currentDay.isRestDay && visibleExercises.isEmpty()) {
-            item(key = "rest_day", contentType = "rest") { RestDayView() }
-        } else if (skipProgramToday) {
-            item(key = "skipped_program", contentType = "rest") { SkippedProgramNotice() }
-        } else {
-            itemsIndexed(
-                visibleExercises,
-                key = { _, ex -> ex.id },
-                contentType = { _, _ -> "exercise_card" }
-            ) { idx, exercise ->
-                val previousExercise = visibleExercises.getOrNull(idx - 1)
-                if (exercise.section.isNotBlank() && !exercise.section.equals(previousExercise?.section, ignoreCase = true)) {
-                    Row(
-                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            exercise.section.lowercase(java.util.Locale.forLanguageTag("tr-TR")).replaceFirstChar { it.titlecase(java.util.Locale.forLanguageTag("tr-TR")) },
-                            color = theme.text1,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.2.sp
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        HorizontalDivider(
-                            color = theme.stroke.copy(alpha = 0.35f),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-                if (!exercise.groupId.isNullOrBlank() && exercise.groupId != previousExercise?.groupId) {
-                    val groupTitle = exercise.groupLabel.ifBlank {
-                        when (exercise.groupType) {
-                            "giant_set" -> theme.t("Dev Set", "Giant Set")
-                            "circuit" -> theme.t("Devre", "Circuit")
-                            else -> theme.t("Süperset", "Superset")
-                        }
-                    }
-                    Surface(
-                        color = theme.bg2,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            groupTitle,
-                            color = theme.text1,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                        )
-                    }
-                }
-                val isCompleted = exercise.id in currentState.completedIds
-                var showDetail by remember { mutableStateOf(false) }
-                val completionKey = SetCompletionKey(
-                    programDayId = currentState.day.programDayId,
-                    exerciseId = exercise.exerciseTableId.ifBlank { exercise.id }
-                )
-                val persistedSetCompletions = state.setCompletions[completionKey]
-                val doneSetIndices = remember(isCompleted, exercise.sets, persistedSetCompletions) {
-                    if (isCompleted) {
-                        (0 until exercise.sets).toSet()
-                    } else {
-                        persistedSetCompletions ?: emptySet()
-                    }
-                }
-                // Bu karttaki timer bilgisi: timer o egzersiz için mi çalışıyor?
-                val timer = restTimer
-                val isThisExTimer = timer.exerciseId == exercise.id ||
-                    (timer.exerciseId.isBlank() && timer.exerciseName == exercise.name)
-                val exerciseDrafts = remember(draftInputs, exercise.id, exercise.sets) {
-                    draftInputs.draftsForExercise(exercise.id, exercise.sets)
-                }
-                val savedWeights = state.setWeights[exercise.id].orEmpty()
-                val savedDurations = state.setDurations[exercise.id].orEmpty()
-                val setWeights = remember(savedWeights, exerciseDrafts.setWeights) {
-                    if (exerciseDrafts.setWeights.isEmpty()) savedWeights else savedWeights + exerciseDrafts.setWeights
-                }
-                val setDurations = remember(savedDurations, exerciseDrafts.setDurations) {
-                    if (exerciseDrafts.setDurations.isEmpty()) savedDurations else savedDurations + exerciseDrafts.setDurations
-                }
-                CinematicExerciseCard(
-                    exercise          = exercise,
-                    index             = idx,
-                    isCompleted       = isCompleted,
-                    doneSetIndices    = doneSetIndices,
-                    onToggleSet       = { setIndex -> viewModel.toggleSet(exercise.id, setIndex) },
-                    onComplete        = {
-                        if (exercise.challengeId != null) viewModel.toggleChallengeActivity(selectedDayIdx, exercise)
-                        else viewModel.toggleExercise(selectedDayIdx, exercise.id)
-                    },
-                    onShowDetail      = { showDetail = true },
-                    onExpandChanged   = { expanded ->
-                        expandedExIdx = if (expanded) idx else -1
-                        if (expanded) viewModel.loadLastSession(exercise.id)
-                    },
-                    setWeights        = setWeights,
-                    setDurations      = setDurations,
-                    lastSessionData   = state.lastSessionData[exercise.id] ?: emptyMap(),
-                    profileWeightKg   = state.profileWeightKg,
-                    activityDuration  = state.activityDurations[exercise.id]
-                        ?: exercise.targetDurationSeconds?.let { (it / 60f).trimmedUi() }
-                        ?: exercise.inferredHoldDurationSeconds()?.let { (it / 60f).trimmedUi() }
-                        ?: "",
-                    activityDistance  = state.activityDistances[exercise.id]
-                        ?: exercise.targetDistanceMeters?.trimmedUi()
-                        ?: "",
-                    activityElevation = state.activityElevations[exercise.id]
-                        ?: exercise.targetElevationMeters?.trimmedUi()
-                        ?: "",
-                    activityIncline   = state.activityInclines[exercise.id]
-                        ?: exercise.targetInclinePercent?.trimmedUi()
-                        ?: "",
-                    activityReps      = state.activityReps[exercise.id]
-                        ?: exercise.reps.takeIf {
-                            exercise.trackingMode == "duration_reps" || exercise.sportType == "jump_rope_hiit"
-                        }
-                        ?: "",
-                    onSetWeightChanged = { si, v -> viewModel.updateSetWeight(exercise.id, si, v) },
-                    onSetDurationChanged = { si, v -> viewModel.updateSetDuration(exercise.id, si, v) },
-                    onActivityDurationChanged = { v -> viewModel.updateActivityDuration(exercise.id, v) },
-                    onActivityDistanceChanged = { v -> viewModel.updateActivityDistance(exercise.id, v) },
-                    onActivityElevationChanged = { v -> viewModel.updateActivityElevation(exercise.id, v) },
-                    onActivityInclineChanged = { v -> viewModel.updateActivityIncline(exercise.id, v) },
-                    onActivityRepsChanged = { v -> viewModel.updateActivityReps(exercise.id, v) },
-                    timerSeconds      = if (isThisExTimer) timer.displaySeconds else exercise.restSeconds,
-                    timerRunning      = isThisExTimer && timer.isRunning,
-                    timerDone         = isThisExTimer && timer.isDone,
-                    onStartTimer      = { secs ->
-                        runWithNotificationPermission {
-                            viewModel.startActivityCountdownTimer(exercise.id, exercise.name, secs.takeIf { it > 0 } ?: 60)
-                        }
-                    },
-                    onStartSetTimer   = { setIndex, secs ->
-                        runWithNotificationPermission {
-                            viewModel.startTimedSetCountdownTimer(exercise.id, exercise.name, setIndex, secs.takeIf { it > 0 } ?: 60)
-                        }
-                    },
-                    onStartSetStopwatchTimer = { setIndex ->
-                        runWithNotificationPermission {
-                            viewModel.startTimedSetStopwatchTimer(exercise.id, exercise.name, setIndex)
-                        }
-                    },
-                    onStartStopwatchTimer = {
-                        runWithNotificationPermission {
-                            viewModel.startActivityStopwatchTimer(exercise.id, exercise.name)
-                        }
-                    },
-                    onStopTimer       = { viewModel.stopVisibleTimer() }
-                )
-                if (showDetail) {
-                    LaunchedEffect(exercise.id) {
-                        viewModel.loadExerciseHistory(exercise.id)
-                    }
-                    ExerciseDetailSheet(
-                        exercise          = exercise,
-                        dayNotes          = currentDay.notes,
-                        onDismiss         = { showDetail = false },
-                        weightHistory     = state.exerciseHistory[exercise.id] ?: emptyList(),
-                        aiInsight         = state.exerciseAiInsight[exercise.id] ?: "",
-                        isAiLoading       = exercise.id in state.exerciseAiLoading,
-                        isFree            = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
-                        aiCredits         = state.aiCredits,
-                        onRequestAiInsight = { viewModel.analyzeProgression(exercise.id, exercise.name) }
-                    )
-                }
-            }
-        }
-
+    // Açık temada durum çubuğu ikonları foto sayfaların (koyu karartma) üstünde açık renk olmalı.
+    val view = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(theme.isDark) {
+        val window = (view.context as? android.app.Activity)?.window
+        val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        if (controller != null && !theme.isDark) controller.isAppearanceLightStatusBars = false
+        onDispose { if (controller != null && previous != null) controller.isAppearanceLightStatusBars = previous }
     }
-    // Kaydırılan içerik durum çubuğu ikonlarının altına girmesin
-    if (listState.canScrollBackward) Box(
-        Modifier.fillMaxWidth()
-            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(
-                listOf(theme.bg0.copy(0.94f), theme.bg0.copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)
-            ))
+
+    val actions = remember(viewModel, selectedDayIdx, runWithNotificationPermission) {
+        SinemaWorkoutActions(
+            onToggleSet = { ex, si -> viewModel.toggleSet(ex.id, si) },
+            onComplete = { ex ->
+                if (ex.challengeId != null) viewModel.toggleChallengeActivity(selectedDayIdx, ex)
+                else viewModel.toggleExercise(selectedDayIdx, ex.id)
+            },
+            onSetWeightChanged = { ex, si, v -> viewModel.updateSetWeight(ex.id, si, v) },
+            onSetDurationChanged = { ex, si, v -> viewModel.updateSetDuration(ex.id, si, v) },
+            onActivityDurationChanged = { ex, v -> viewModel.updateActivityDuration(ex.id, v) },
+            onActivityDistanceChanged = { ex, v -> viewModel.updateActivityDistance(ex.id, v) },
+            onActivityElevationChanged = { ex, v -> viewModel.updateActivityElevation(ex.id, v) },
+            onActivityInclineChanged = { ex, v -> viewModel.updateActivityIncline(ex.id, v) },
+            onActivityRepsChanged = { ex, v -> viewModel.updateActivityReps(ex.id, v) },
+            onStartTimer = { ex, secs ->
+                runWithNotificationPermission {
+                    viewModel.startActivityCountdownTimer(ex.id, ex.name, secs.takeIf { it > 0 } ?: 60)
+                }
+            },
+            onStartSetTimer = { ex, si, secs ->
+                runWithNotificationPermission {
+                    viewModel.startTimedSetCountdownTimer(ex.id, ex.name, si, secs.takeIf { it > 0 } ?: 60)
+                }
+            },
+            onStartSetStopwatch = { ex, si ->
+                runWithNotificationPermission { viewModel.startTimedSetStopwatchTimer(ex.id, ex.name, si) }
+            },
+            onStartStopwatch = { ex ->
+                runWithNotificationPermission { viewModel.startActivityStopwatchTimer(ex.id, ex.name) }
+            },
+            onLoadLastSession = { ex -> viewModel.loadLastSession(ex.id) },
+            onShowDetail = { ex -> detailExercise = ex }
+        )
+    }
+
+    val dataFor: (Exercise) -> SinemaExerciseData = { exercise ->
+        val isCompleted = exercise.id in currentState.completedIds
+        val completionKey = SetCompletionKey(
+            programDayId = currentState.day.programDayId,
+            exerciseId = exercise.exerciseTableId.ifBlank { exercise.id }
+        )
+        val persistedSetCompletions = state.setCompletions[completionKey]
+        val doneSetIndices = if (isCompleted) (0 until exercise.sets).toSet() else persistedSetCompletions ?: emptySet()
+        val exerciseDrafts = draftInputs.draftsForExercise(exercise.id, exercise.sets)
+        val savedWeights = state.setWeights[exercise.id].orEmpty()
+        val savedDurations = state.setDurations[exercise.id].orEmpty()
+        SinemaExerciseData(
+            doneSetIndices = doneSetIndices,
+            setWeights = if (exerciseDrafts.setWeights.isEmpty()) savedWeights else savedWeights + exerciseDrafts.setWeights,
+            setDurations = if (exerciseDrafts.setDurations.isEmpty()) savedDurations else savedDurations + exerciseDrafts.setDurations,
+            lastSessionData = state.lastSessionData[exercise.id] ?: emptyMap(),
+            profileWeightKg = state.profileWeightKg,
+            activityDuration = state.activityDurations[exercise.id]
+                ?: exercise.targetDurationSeconds?.let { (it / 60f).trimmedUi() }
+                ?: exercise.inferredHoldDurationSeconds()?.let { (it / 60f).trimmedUi() }
+                ?: "",
+            activityDistance = state.activityDistances[exercise.id]
+                ?: exercise.targetDistanceMeters?.trimmedUi()
+                ?: "",
+            activityElevation = state.activityElevations[exercise.id]
+                ?: exercise.targetElevationMeters?.trimmedUi()
+                ?: "",
+            activityIncline = state.activityInclines[exercise.id]
+                ?: exercise.targetInclinePercent?.trimmedUi()
+                ?: "",
+            activityReps = state.activityReps[exercise.id]
+                ?: exercise.reps.takeIf {
+                    exercise.trackingMode == "duration_reps" || exercise.sportType == "jump_rope_hiit"
+                }
+                ?: ""
+        )
+    }
+
+    SinemaWorkoutPager(
+        programTitle = compactWorkoutTitle(currentDay.title, theme),
+        exercises = visibleExercises,
+        completedIds = currentState.completedIds,
+        days = dayStates,
+        selectedDayIdx = selectedDayIdx,
+        onSelectDay = { viewModel.selectDay(it) },
+        streak = state.currentStreak,
+        progress = currentState.progress,
+        isRestDay = isRestHero,
+        isSkipped = skipProgramToday,
+        allDone = allDone,
+        dataFor = dataFor,
+        actions = actions,
+        topExtra = extraTopPad,
+        listExtras = { dismiss ->
+            if (hasUpcomingSection) {
+                UpcomingEventsSection(events = upcomingEvents, onOpen = { dismiss(); detailChallengeId = it.id })
+            }
+            if (hasTodayBanner) {
+                ChallengeTodayBanner(events = todayEvents, onOpen = { dismiss(); detailChallengeId = it.id })
+            }
+        }
     )
+
+    // "Hareketi gör": hareketin detay sheet'i.
+    detailExercise?.let { ex ->
+        LaunchedEffect(ex.id) {
+            viewModel.loadExerciseHistory(ex.id)
+        }
+        ExerciseDetailSheet(
+            exercise          = ex,
+            dayNotes          = currentDay.notes,
+            onDismiss         = { detailExercise = null },
+            weightHistory     = state.exerciseHistory[ex.id] ?: emptyList(),
+            aiInsight         = state.exerciseAiInsight[ex.id] ?: "",
+            isAiLoading       = ex.id in state.exerciseAiLoading,
+            isFree            = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
+            aiCredits         = state.aiCredits,
+            onRequestAiInsight = { viewModel.analyzeProgression(ex.id, ex.name) }
+        )
     }
 
     // ── FAZ 7J-9: Challenge detail overlay (banner/upcoming tap target) ──
@@ -1028,164 +878,6 @@ private fun SkippedProgramNotice() {
     }
 }
 
-@Composable
-private fun StreakBanner(streak: Int) {
-    val streakDays = streak
-    val accent = MaterialTheme.colorScheme.primary
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-
-    val shape = RoundedCornerShape(22.dp)
-    val title = if (streakDays > 0) {
-        theme.t("$streakDays günlük serin aktif", "$streakDays-day streak")
-    } else {
-        theme.t("Serini başlat", "Start your streak")
-    }
-    val supportingText = if (streakDays > 0) {
-        theme.t("Ritmi bugün de koru", "Keep your rhythm today")
-    } else {
-        theme.t("Bugün ilk adımı tamamla", "Complete today's first step")
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(
-                start = responsive.horizontalPadding,
-                top = if (responsive.isShortScreen) 6.dp else 10.dp,
-                end = responsive.horizontalPadding,
-                bottom = 8.dp
-            )
-            .clip(shape)
-            .background(theme.bg2)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(accent.copy(alpha = if (theme.isDark) 0.22f else 0.14f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.LocalFireDepartment,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(23.dp)
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = theme.text0,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                lineHeight = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = supportingText,
-                color = theme.text2,
-                fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,
-                lineHeight = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(Modifier.width(10.dp))
-
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(13.dp))
-                .background(theme.bg3)
-                .padding(horizontal = 11.dp, vertical = 7.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = streakDays.coerceAtLeast(0).toString(),
-                color = theme.accentTextColor,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 14.sp,
-                lineHeight = 14.sp
-            )
-            Text(
-                text = theme.t("GÜN", "DAYS"),
-                color = theme.accentTextColor.copy(alpha = 0.85f),
-                fontWeight = FontWeight.Bold,
-                fontSize = 7.sp,
-                letterSpacing = 0.8.sp,
-                lineHeight = 9.sp
-            )
-        }
-    }
-}
-
-// ── Dashboard Header with Progress Ring ───────────────────────────────────────
-@Composable
-private fun WorkoutDashboardHeader(day: WorkoutDay, progress: Float) {
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = responsive.horizontalPadding,
-                vertical = 12.dp
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f).padding(end = 16.dp)) {
-            Text(
-                text = theme.t("Bugünün programı", "Today's program"),
-                color = theme.accentTextColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.4.sp
-            )
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = compactWorkoutTitle(day.title, theme),
-                color = theme.text0,
-                fontSize = if (responsive.isLargeFont) 19.sp else 22.sp,
-                lineHeight = if (responsive.isLargeFont) 23.sp else 27.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.35).sp,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            if (!day.isRestDay && day.exercises.isNotEmpty()) {
-                Spacer(Modifier.height(7.dp))
-                Text(
-                    text = theme.t(
-                        "${day.exercises.size} hareket  ·  ${(progress * day.exercises.size).toInt()} tamamlandı",
-                        "${day.exercises.size} exercises  ·  ${(progress * day.exercises.size).toInt()} completed"
-                    ),
-                    color = theme.text1,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-        if (!day.isRestDay && day.exercises.isNotEmpty()) {
-            CircularProgressRing(
-                progress = progress,
-                size = if (responsive.isLargeFont) 62.dp else 66.dp,
-                label = "${(progress * 100).toInt()}%"
-            )
-        }
-    }
-}
-
 // ── Circular Progress Ring ─────────────────────────────────────────────────
 @Composable
 fun CircularProgressRing(
@@ -1197,8 +889,13 @@ fun CircularProgressRing(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val resolvedRingColor = if (ringColor == Color.Unspecified) MaterialTheme.colorScheme.primary else ringColor
-    val resolvedTrackColor = if (trackColor == Color.Unspecified) theme.bg3 else trackColor
+    val complete = progress >= 1f
+    val resolvedRingColor = when {
+        ringColor != Color.Unspecified -> ringColor
+        complete -> theme.supportSuccess
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val resolvedTrackColor = if (trackColor == Color.Unspecified) theme.supportRest.copy(0.10f) else trackColor
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -1206,26 +903,21 @@ fun CircularProgressRing(
         label = "progress"
     )
     // Memoize sweep brush — recreating it on every animation frame (60fps × 1.2s) is expensive
-    val sweepBrush = remember(resolvedRingColor) {
-        Brush.sweepGradient(listOf(resolvedRingColor, resolvedRingColor.copy(0.75f), resolvedRingColor))
+    val arcColor = if (theme.isDark) resolvedRingColor else resolvedRingColor.darkenForContrast(theme.bg2, 3.0)
+    val sweepBrush = remember(arcColor) {
+        Brush.sweepGradient(listOf(arcColor.copy(0.65f), arcColor))
     }
+    val bigRing = size >= 56.dp
 
     Box(
         modifier = modifier
             .size(size)
-            .shadow(
-                elevation = if (progress > 0f) 10.dp else 6.dp,
-                shape = CircleShape,
-                spotColor = if (progress > 0f) resolvedRingColor.copy(if (theme.isDark) 0.22f else 0.08f)
-                            else Color.Black.copy(if (theme.isDark) 0.40f else 0.08f),
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f)
-            )
-            .clip(CircleShape)
-            .background(theme.bg2),
+            .performanceInsetSurface(theme, CircleShape)
+            .then(if (complete) Modifier.background(resolvedRingColor.copy(0.12f)) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(7.dp)) {
-            val strokeWidth = 6.dp.toPx()
+            val strokeWidth = (if (bigRing) 8.dp else 6.dp).toPx()
             val radius = (this.size.minDimension - strokeWidth) / 2f
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val startAngle = -90f
@@ -1237,181 +929,29 @@ fun CircularProgressRing(
             )
 
             if (animatedProgress > 0f) {
-                drawArc(
-                    brush = sweepBrush,
-                    startAngle = startAngle,
-                    sweepAngle = animatedProgress * 360f,
-                    useCenter = false,
-                    style = Stroke(strokeWidth, cap = StrokeCap.Round),
-                    size = Size(radius * 2, radius * 2),
-                    topLeft = Offset(center.x - radius, center.y - radius)
-                )
+                rotate(startAngle, center) {
+                    drawArc(
+                        brush = sweepBrush,
+                        startAngle = 0f,
+                        sweepAngle = animatedProgress * 360f,
+                        useCenter = false,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round),
+                        size = Size(radius * 2, radius * 2),
+                        topLeft = Offset(center.x - radius, center.y - radius)
+                    )
+                }
             }
         }
 
         val responsive = rememberResponsiveLayoutInfo()
         Text(
             text = label,
-            color = if (progress > 0) resolvedRingColor else theme.text1,
-            fontSize = if (responsive.isLargeFont) 11.sp else 13.sp,
-            fontWeight = FontWeight.Black,
+            color = if (progress > 0) (if (ringColor == Color.Unspecified) (if (complete) theme.supportSuccess else theme.accentTextColor) else resolvedRingColor) else theme.text1,
+            fontSize = if (!bigRing) 13.sp else if (responsive.isLargeFont) 13.sp else 16.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(fontFeatureSettings = "tnum"),
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 10.dp)
         )
-    }
-}
-
-// ── Day Selector Strip ─────────────────────────────────────────────────────
-@Composable
-private fun DaySelector(
-    days: ImmutableList<WorkoutDayState>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit
-) {
-    val accent   = MaterialTheme.colorScheme.primary
-    val theme    = LocalAppTheme.current
-    val haptic   = LocalHapticFeedback.current
-    val responsive = rememberResponsiveLayoutInfo()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.bg2)
-            .padding(5.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        days.forEachIndexed { idx, state ->
-            val day        = state.day
-            val isSelected = idx == selectedIndex
-            val iSource    = remember { MutableInteractionSource() }
-            val isPressed  by iSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                if (isPressed) 0.98f else 1f,
-                spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh),
-                label = "scale"
-            )
-            val hasProgress = state.progress > 0f && !day.isRestDay
-            val dayShape = RoundedCornerShape(14.dp)
-
-            Box(
-                modifier = Modifier
-                    .scale(scale)
-                    .weight(1f)
-                    .height(if (responsive.isLargeFont) 46.dp else 43.dp)
-                    .then(
-                        if (isSelected)
-                            Modifier
-                                .clip(dayShape)
-                                .background(theme.bg3)
-                        else
-                            Modifier
-                    )
-                    .clickable(iSource, null) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onSelect(idx)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = localizedWorkoutDayLabel(day.day, theme),
-                        color = if (isSelected) theme.accentTextColor else theme.text2,
-                        fontSize = if (responsive.isLargeFont) 8.sp else 10.sp,
-                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                        letterSpacing = if (isSelected) 0.35.sp else 0.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                    if (hasProgress) {
-                        Spacer(Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(3.dp)
-                                .clip(CircleShape)
-                                .background(accent)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RestDayView() {
-    val accent  = MaterialTheme.colorScheme.primary
-    val theme   = LocalAppTheme.current
-    val strings = theme.strings
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(20.dp, 40.dp, 20.dp, 0.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-                .background(accent.copy(0.08f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.Hotel,
-                null,
-                tint = accent.copy(0.6f),
-                modifier = Modifier.size(56.dp)
-            )
-        }
-        Spacer(Modifier.height(24.dp))
-        Text(
-            strings.restDayTitle, color = theme.text0,
-            fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 0.sp
-        )
-        Text(
-            strings.restDaySubtitle,
-            color = theme.text1, fontSize = 15.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(0.dp, 8.dp, 0.dp, 0.dp)
-        )
-        Spacer(Modifier.height(32.dp))
-        val tips = listOf(
-            Triple(Icons.Rounded.WaterDrop, CardCyan, strings.recoveryTip1),
-            Triple(Icons.Rounded.Bedtime, CardPurple, strings.recoveryTip2),
-            Triple(Icons.Rounded.Restaurant, CardGreen, strings.recoveryTip3)
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            tips.forEach { (icon, color, tip) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .glassCard(color, theme, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 20.dp, vertical = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(color.copy(0.14f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-                    }
-                    Text(
-                        tip,
-                        color = theme.text0,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(40.dp))
     }
 }

@@ -202,6 +202,9 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
 
+    // Haze: gerçek bulanık cam (Sinema alt menü)
+    implementation(libs.haze)
+
     // Google Places autocomplete
     implementation(libs.google.places)
     implementation(libs.google.material)

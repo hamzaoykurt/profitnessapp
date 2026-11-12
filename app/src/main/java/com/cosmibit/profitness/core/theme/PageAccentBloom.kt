@@ -45,8 +45,7 @@ fun PageAccentBloom(modifier: Modifier = Modifier) {
                     radius = size.width * 2.05f
                 )
                 onDrawBehind {
-                    drawRect(mineralAtmosphere)
-                    drawRect(accentAtmosphere)
+                    // Sinema: sayfa arkasında kahve/sıcak atmosfer yok (düz sayfa rengi)
                 }
             }
     )

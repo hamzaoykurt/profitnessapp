@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -84,6 +85,13 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaChip
+import com.cosmibit.profitness.core.theme.SinemaGoButton
+import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
+import com.cosmibit.profitness.core.theme.sinemaCard
+import com.cosmibit.profitness.core.theme.sinemaGlow
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
@@ -110,7 +118,7 @@ fun ChallengesTab(
     timerExtraPad: Dp = 0.dp
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val vm: ChallengesViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     var kindFilter by rememberSaveable { mutableStateOf(ChallengeKindFilter.All) }
@@ -131,8 +139,9 @@ fun ChallengesTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
-                    .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 6.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .height(44.dp)
+                    .sinemaCapsuleGlass(RoundedCornerShape(22.dp), blur = 16.dp)
                     .padding(3.dp)
             ) {
                 ScopeChip(
@@ -159,14 +168,12 @@ fun ChallengesTab(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 6.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFFF5252).copy(0.14f))
-                        .border(1.dp, Color(0xFFFF5252).copy(0.5f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .sinemaCard(theme, RoundedCornerShape(20.dp))
                         .clickable { vm.clearError() }
-                        .padding(12.dp)
+                        .padding(14.dp)
                 ) {
-                    Text(err, color = Color(0xFFFF8A80), fontSize = 12.sp)
+                    Text(err, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -243,8 +250,8 @@ fun ChallengesTab(
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
-                                    start  = 20.dp,
-                                    end    = 20.dp,
+                                    start  = 16.dp,
+                                    end    = 16.dp,
                                     top    = 4.dp,
                                     bottom = bottomPadding + 80.dp
                                 )
@@ -274,16 +281,25 @@ fun ChallengesTab(
         }
 
         // ── Create FAB ─────────────────────────────────────────────────
-        PremiumIconButton(
-            icon = Icons.Rounded.Add,
-            contentDescription = theme.t("Yeni challenge", "New challenge"),
-            onClick = { vm.openCreate() },
+        val fabAccent = theme.effectiveAccentColor
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = bottomPadding + 12.dp)
-                .size(54.dp),
-            shape = CircleShape
-        )
+                .size(56.dp)
+                .sinemaGlow(fabAccent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                .clip(CircleShape)
+                .background(fabAccent)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = { vm.openCreate() }),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Add,
+                contentDescription = theme.t("Yeni challenge", "New challenge"),
+                tint = theme.effectiveOnAccentColor,
+                modifier = Modifier.size(26.dp)
+            )
+        }
 
         // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
         state.openDetailId?.let { id ->
@@ -356,15 +372,15 @@ private fun InviteFriendsDialog(
                     .widthIn(max = 460.dp)
                     .heightIn(max = 560.dp)
                     .padding(horizontal = 16.dp)
-                    .premiumSolidSurface(accent, theme, RoundedCornerShape(24.dp), elevation = 20.dp)
-                    .padding(18.dp)
+                    .sinemaCard(theme, RoundedCornerShape(28.dp))
+                    .padding(20.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(accent.copy(0.16f)),
+                            .background(Sinema.line(theme)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(20.dp))
@@ -392,8 +408,8 @@ private fun InviteFriendsDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(150.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(theme.bg2.copy(0.55f)),
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Sinema.line(theme)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -431,45 +447,20 @@ private fun InviteFriendsDialog(
 
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(theme.bg2)
-                            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(14.dp))
-                            .clickable(enabled = !inFlight) { onSkip() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(theme.t("GEÇ", "SKIP"), color = theme.text1, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    SinemaChip(active = false, onClick = onSkip, enabled = !inFlight, height = 48.dp, modifier = Modifier.weight(1f)) { fg ->
+                        Text(theme.t("GEÇ", "SKIP"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1.4f)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected.isEmpty()) accent.copy(0.35f) else accent)
-                            .clickable(enabled = selected.isNotEmpty() && !inFlight) { onSend() },
-                        contentAlignment = Alignment.Center
-                    ) {
+                    SinemaChip(active = selected.isNotEmpty(), onClick = onSend, enabled = selected.isNotEmpty() && !inFlight, height = 48.dp, modifier = Modifier.weight(1.4f)) { fg ->
                         if (inFlight) {
-                            CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         } else {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.Send, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    if (selected.isEmpty()) {
-                                        theme.t("DAVET GÖNDER", "SEND INVITE")
-                                    } else {
-                                        theme.t("${selected.size} DAVET GÖNDER", "SEND ${selected.size} INVITES")
-                                    },
-                                    color = theme.effectiveOnAccentColor,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 1.sp
-                                )
-                            }
+                            Icon(Icons.Rounded.Send, null, tint = fg, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (selected.isEmpty()) theme.t("DAVET GÖNDER", "SEND INVITE")
+                                else theme.t("${selected.size} DAVET GÖNDER", "SEND ${selected.size} INVITES"),
+                                color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
+                            )
                         }
                     }
                 }
@@ -490,11 +481,8 @@ private fun InviteFriendRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .then(
-                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
-                else Modifier.background(theme.bg2)
-            )
+            .sinemaCard(theme, RoundedCornerShape(20.dp))
+            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(20.dp)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -516,7 +504,7 @@ private fun InviteFriendRow(
                 .size(26.dp)
                 .clip(CircleShape)
                 .background(if (selected) accent else Color.Transparent)
-                .border(1.dp, if (selected) accent else theme.stroke, CircleShape),
+                .border(1.dp, if (selected) accent else Sinema.line(theme), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (selected) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))
@@ -556,14 +544,12 @@ private fun ChallengeInvitesSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(accent.copy(0.14f))
-                    .border(1.dp, accent.copy(0.36f), RoundedCornerShape(999.dp))
+                    .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -619,9 +605,7 @@ private fun ChallengeInviteRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(theme.bg1.copy(0.78f))
-            .border(1.dp, statusColor.copy(0.34f), RoundedCornerShape(18.dp))
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .clickable(onClick = onOpen)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -629,9 +613,8 @@ private fun ChallengeInviteRow(
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(statusColor.copy(0.16f))
-                .border(1.dp, statusColor.copy(0.28f), RoundedCornerShape(14.dp)),
+                .clip(CircleShape)
+                .background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -666,10 +649,11 @@ private fun ChallengeInviteRow(
         Box(
             modifier = Modifier
                 .height(38.dp)
-                .clip(RoundedCornerShape(13.dp))
+                .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                .clip(CircleShape)
                 .background(accent)
                 .clickable(enabled = !inFlight && status != CardStatus.Ended && !challenge.isCompleted) { onAccept() }
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             if (inFlight) {
@@ -717,21 +701,17 @@ private fun ChallengeFilterBar(
             .padding(bottom = 6.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(theme.bg1)
-                    .clickable { showFilters = true }.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.Tune, null, tint = if (activeFilterCount > 0) accent else theme.text1, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(8.dp))
+            SinemaChip(active = activeFilterCount > 0, onClick = { showFilters = true }, height = 36.dp) { fg ->
+                Icon(Icons.Rounded.Tune, null, tint = fg, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     if (activeFilterCount > 0) theme.t("Filtreler · $activeFilterCount", "Filters · $activeFilterCount") else theme.t("Filtreler", "Filters"),
-                    color = theme.text0,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    color = fg,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
             if (hasSecondaryFilter || mineStatusFilter != MyChallengeStatusFilter.All) {
@@ -776,7 +756,7 @@ private fun ChallengeFiltersDialog(
 ) {
     val theme = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(theme.bg1).padding(20.dp)) {
+        Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(theme.t("Challenge filtreleri", "Challenge filters"), style = MaterialTheme.typography.headlineSmall, color = theme.text0, modifier = Modifier.weight(1f))
                 IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, null, tint = theme.text1) }
@@ -809,7 +789,7 @@ private fun ChallengeFiltersDialog(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Text(theme.t("Sonuçları göster", "Show results")) }
+            SinemaGoButton(label = theme.t("SONUÇLARI GÖSTER", "SHOW RESULTS"), icon = Icons.Rounded.Check, onClick = onDismiss)
         }
     }
 }
@@ -830,9 +810,7 @@ private fun FilterPickerDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 420.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke.copy(0.45f), RoundedCornerShape(22.dp))
+                .sinemaCard(theme, RoundedCornerShape(28.dp))
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -878,29 +856,8 @@ private fun FilterChip(
     accent: Color,
     onClick: () -> Unit
 ) {
-    val theme = LocalAppTheme.current
-    Box(
-        modifier = Modifier
-            .height(34.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (active) accent.copy(0.22f) else theme.bg1.copy(0.62f))
-            .border(
-                1.dp,
-                if (active) accent.copy(0.56f) else theme.stroke.copy(0.42f),
-                RoundedCornerShape(999.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (active) accent else theme.text2,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.8.sp,
-            maxLines = 1
-        )
+    SinemaChip(active = active, onClick = onClick, height = 34.dp) { fg ->
+        Text(label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
 }
 
@@ -956,27 +913,21 @@ private fun ScopeChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
+    val shape = RoundedCornerShape(19.dp)
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isActive) Modifier.background(
-                    Brush.horizontalGradient(listOf(accent.copy(0.22f), accent.copy(0.10f)))
-                ) else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .fillMaxHeight()
+            .then(if (isActive) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
+            .clip(shape)
+            .then(if (isActive) Modifier.background(accent) else Modifier)
+            .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (isActive) accent else theme.text2, modifier = Modifier.size(14.dp))
+        val fg = if (isActive) theme.effectiveOnAccentColor else Color.White.copy(0.75f)
+        Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text(
-            label,
-            color      = if (isActive) theme.text0 else theme.text2,
-            fontSize   = 11.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text(label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -1071,11 +1022,11 @@ private fun ChallengeCard(
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            .performanceElevatedSurface(theme, RoundedCornerShape(22.dp))
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
         Row(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
                 // ── Header chips + status ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     KindBadge(isEvent = isEvent, accent = accent, theme = theme)
@@ -1107,8 +1058,8 @@ private fun ChallengeCard(
                     Text(
                         c.title,
                         color      = theme.text0,
-                        fontSize   = 18.sp,
-                        fontWeight = FontWeight.Black,
+                        fontSize   = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         maxLines   = 2,
                         overflow   = TextOverflow.Ellipsis,
                         lineHeight  = 22.sp
@@ -1126,9 +1077,9 @@ private fun ChallengeCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(cardAccent.copy(0.14f)),
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Sinema.line(theme)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1143,9 +1094,10 @@ private fun ChallengeCard(
                         Text(
                             "${c.targetValue}",
                             color = theme.text0,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Black,
-                            lineHeight = 28.sp
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-1).sp,
+                            lineHeight = 42.sp
                         )
                         Spacer(Modifier.width(5.dp))
                         Text(
@@ -1183,9 +1135,9 @@ private fun ChallengeCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(theme.bg2.copy(0.5f))
-                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Sinema.line(theme))
+                            .padding(horizontal = 12.dp, vertical = 9.dp)
                     ) {
                         Icon(Icons.Rounded.CalendarMonth, null, tint = cardAccent, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(5.dp))
@@ -1320,18 +1272,16 @@ private fun StatusPill(
     theme: com.cosmibit.profitness.core.theme.AppThemeState
 ) {
     val endedColor = challengeStatusAccent(CardStatus.Ended, false, accent)
-    val (label, fg, bg) = when {
-        completed -> Triple("TAMAM", accent, accent.copy(0.22f))
-        status == CardStatus.NotStarted -> Triple("YAKINDA", Color(0xFFFFB74D), Color(0xFFFFB74D).copy(0.18f))
-        status == CardStatus.Live       -> Triple("DEVAM EDİYOR", accent, accent.copy(0.18f))
-        else                            -> Triple("SONA ERDİ", endedColor, endedColor.copy(0.12f))
+    val (label, fg) = when {
+        completed -> "TAMAM" to accent
+        status == CardStatus.NotStarted -> "YAKINDA" to Color(0xFFFFB74D)
+        status == CardStatus.Live       -> "DEVAM EDİYOR" to accent
+        else                            -> "SONA ERDİ" to endedColor
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(bg)
-            .border(1.dp, fg.copy(0.42f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 9.dp, vertical = 5.dp),
+            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -1363,42 +1313,14 @@ private fun JoinPill(
     theme: com.cosmibit.profitness.core.theme.AppThemeState,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed && canAct && !inFlight) 0.98f else 1f,
-        animationSpec = tween(120),
-        label = "challenge_join_press"
-    )
-    val bg: Color = when {
-        !canAct  -> theme.bg2
-        isJoined -> theme.bg2
-        else     -> accent
-    }
-    Row(
-        modifier = Modifier
-            .heightIn(min = 46.dp)
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
-            .clip(RoundedCornerShape(15.dp))
-            .background(bg)
-            .clickable(
-                enabled = !inFlight && canAct,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    SinemaChip(
+        active = canAct && !isJoined,
+        onClick = onClick,
+        enabled = !inFlight && canAct,
+        height = 44.dp
+    ) { fg ->
         if (inFlight) {
-            CircularProgressIndicator(
-                color = if (isJoined) accent else theme.effectiveOnAccentColor,
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(14.dp)
-            )
+            CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
         } else {
             val icon = when {
                 !canAct  -> Icons.Rounded.Lock
@@ -1412,24 +1334,9 @@ private fun JoinPill(
                 isInvited -> theme.t("DAVET", "INVITE")
                 else     -> theme.t("KATIL", "JOIN")
             }
-            val fg = when {
-                !canAct  -> theme.text2
-                isJoined -> accent
-                else     -> theme.effectiveOnAccentColor
-            }
             Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text(
-                label,
-                color = fg,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp
-            )
-            if (!isJoined && canAct) {
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Rounded.ChevronRight, null, tint = fg, modifier = Modifier.size(14.dp))
-            }
+            Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
         }
     }
 }
@@ -1441,7 +1348,7 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
             .fillMaxWidth()
             .height(6.dp)
             .clip(RoundedCornerShape(3.dp))
-            .background(strokeColor.copy(0.25f))
+            .background(Color.White.copy(0.12f))
     ) {
         Box(
             modifier = Modifier
@@ -1466,14 +1373,8 @@ private fun KindBadge(
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isEvent) accent.copy(0.16f) else theme.bg2.copy(0.72f))
-            .border(
-                1.dp,
-                if (isEvent) accent.copy(0.45f) else theme.stroke.copy(0.5f),
-                RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 9.dp, vertical = 6.dp),
+            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(10.dp))
@@ -1495,10 +1396,8 @@ private fun InviteBadge(
 ) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(accent.copy(0.16f))
-            .border(1.dp, accent.copy(0.38f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 8.dp, vertical = 5.dp),
+            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(12.dp))
@@ -1525,10 +1424,8 @@ private fun EventModeBadge(
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(theme.bg2.copy(0.42f))
-            .border(1.dp, theme.stroke.copy(0.5f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 9.dp, vertical = 6.dp),
+            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = theme.text2, modifier = Modifier.size(10.dp))

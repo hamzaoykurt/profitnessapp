@@ -75,7 +75,6 @@ fun AccentColorSwatch(
         modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(if (isSelected) safeColor.copy(0.15f) else Color.Transparent)
             .border(
                 width = if (isSelected) 2.dp else 0.dp,
                 color = if (isSelected) safeColor else Color.Transparent,
@@ -115,8 +114,7 @@ fun CustomAccentSwatch(
         modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(if (isSelected) safeColor.copy(0.15f) else Color.Transparent)
-            .border(2.dp, safeColor.copy(if (isSelected) 1f else 0.45f), CircleShape)
+            .border(2.dp, if (isSelected) safeColor else androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(0.25f), CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

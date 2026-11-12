@@ -49,6 +49,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import com.cosmibit.profitness.presentation.workout.SceneImage
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.data.program.ManualExerciseInput
 import com.cosmibit.profitness.data.store.UserPlan
@@ -137,7 +140,7 @@ private fun ProgramSportFilter.matches(program: ReadyProgram): Boolean {
 }
 
 @Composable
-private fun ProgramSportFilter.localizedLabel(): String {
+internal fun ProgramSportFilter.localizedLabel(): String {
     val theme = LocalAppTheme.current
     return theme.t(trLabel, enLabel)
 }
@@ -279,9 +282,9 @@ private val ReadyProgramEnglishText = mapOf(
 private fun ReadyProgram.localizedText(value: String, theme: AppThemeState): String =
     if (theme.language == AppLanguage.ENGLISH) ReadyProgramEnglishText[value] ?: value else value
 
-private fun ReadyProgram.localizedTitle(theme: AppThemeState): String = localizedText(title, theme)
+internal fun ReadyProgram.localizedTitle(theme: AppThemeState): String = localizedText(title, theme)
 private fun ReadyProgram.localizedSubtitle(theme: AppThemeState): String = localizedText(subtitle, theme)
-private fun ReadyProgram.localizedLevel(theme: AppThemeState): String = localizedText(level, theme)
+internal fun ReadyProgram.localizedLevel(theme: AppThemeState): String = localizedText(level, theme)
 private fun ReadyProgram.localizedGoal(theme: AppThemeState): String = localizedText(goal, theme)
 private fun ReadyProgram.localizedDescription(theme: AppThemeState): String =
     if (theme.language == AppLanguage.ENGLISH) {
@@ -605,6 +608,8 @@ fun ProgramBuilderScreen(
     timerExtraPad    : androidx.compose.ui.unit.Dp = 0.dp,
     onNavigateToStore: () -> Unit = {},
     onProgramShared  : () -> Unit = {},
+    todayInfo        : ProgramTodayInfo? = null,
+    onStartWorkout   : () -> Unit = {},
     viewModel        : ProgramViewModel = hiltViewModel()
 ) {
     var showPaywall by remember { mutableStateOf(false) }
@@ -670,14 +675,18 @@ fun ProgramBuilderScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize()) {
 
         Crossfade(
             targetState = mode,
             animationSpec = tween(140, easing = FastOutSlowInEasing),
             label = "builder_fade"
         ) { m ->
+            Box(
+                Modifier.fillMaxSize().then(
+                    if (m is BuilderMode.Choose) Modifier else Modifier.background(Sinema.page(theme))
+                )
+            ) {
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
@@ -703,6 +712,8 @@ fun ProgramBuilderScreen(
                         shareFeatureInitialized = true
                         shareTarget = prog
                     },
+                    todayInfo        = todayInfo,
+                    onStartWorkout   = onStartWorkout,
                     timerExtraPad    = timerExtraPad
                 )
                 is BuilderMode.AI -> AIBuilderScreen(
@@ -721,6 +732,7 @@ fun ProgramBuilderScreen(
                     onBack        = { mode = BuilderMode.Choose },
                     timerExtraPad = timerExtraPad
                 )
+            }
             }
         }
 
@@ -793,12 +805,13 @@ private fun BuilderChooseScreen(
     onDeleteProgram: (String) -> Unit,
     onEditProgram  : (Program) -> Unit,
     onShareProgram : (Program) -> Unit,
+    todayInfo      : ProgramTodayInfo? = null,
+    onStartWorkout : () -> Unit = {},
     timerExtraPad  : androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var selectedProgram by remember { mutableStateOf<ReadyProgram?>(null) }
     var activeSport by remember { mutableStateOf(ProgramSportFilter.ALL) }
     var activeCategory by remember { mutableStateOf(ProgramCategory.ALL) }
-    var showCreateSheet by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var closeDialogAfterApply by remember { mutableStateOf(false) }
     val isApplyingTemplate = applyingTemplateKey != null
@@ -836,32 +849,10 @@ private fun BuilderChooseScreen(
     val sectionStrings = theme.strings
     val responsive = rememberResponsiveLayoutInfo()
 
-    if (showCreateSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showCreateSheet = false },
-            containerColor = theme.bg1,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = theme.text2.copy(0.45f)) }
-        ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
-                Text(theme.t("Yeni program", "New program"), style = MaterialTheme.typography.headlineMedium, color = theme.text0)
-                Spacer(Modifier.height(8.dp))
-                Text(theme.t("Nasıl oluşturmak istediğini seç.", "Choose how you want to build it."), style = MaterialTheme.typography.bodyMedium, color = theme.text1)
-                Spacer(Modifier.height(24.dp))
-                QuickCreateButton(Modifier.fillMaxWidth(), Icons.Rounded.AutoAwesome, sectionStrings.createWithAI, true) {
-                    showCreateSheet = false; onMode(BuilderMode.AI)
-                }
-                Spacer(Modifier.height(12.dp))
-                QuickCreateButton(Modifier.fillMaxWidth(), Icons.Rounded.Draw, sectionStrings.createManually, false) {
-                    showCreateSheet = false; onMode(BuilderMode.Manual)
-                }
-            }
-        }
-    }
-
     if (showFilterSheet) {
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },
-            containerColor = theme.bg1,
+            containerColor = Sinema.surface(theme),
             dragHandle = { BottomSheetDefaults.DragHandle(color = theme.text2.copy(0.45f)) }
         ) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
@@ -884,103 +875,136 @@ private fun BuilderChooseScreen(
         }
     }
 
-    LazyColumn(
+    Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+    val activeProgram = userPrograms.firstOrNull { it.isActive }
+    androidx.compose.foundation.lazy.LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = responsive.bottomNavHeight + 48.dp + timerExtraPad)
+        contentPadding = PaddingValues(bottom = com.cosmibit.profitness.core.theme.SinemaNavHeight + 24.dp + timerExtraPad)
     ) {
-        // ── Header ────────────────────────────────────────────────────────────
+        item { ProgramsHero(active = activeProgram, today = todayInfo, onStart = onStartWorkout) }
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = responsive.horizontalPadding)
-                    .padding(top = 4.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    theme.t("Programlar", "Programs"),
-                    color = theme.text0,
-                    style = MaterialTheme.typography.headlineMedium,
-                    maxLines = 1
-                )
-            }
-        }
-
-        // ── Quick Create Buttons ──────────────────────────────────────────────
-        item {
-            PremiumCreationControl(
-                title = theme.t("Yeni program", "New program"),
-                supportingText = theme.t("AI ile oluştur veya kendin tasarla", "Build with AI or design it yourself"),
-                onClick = { showCreateSheet = true },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = responsive.horizontalPadding),
-                icon = Icons.Rounded.Add
-            )
-        }
-
-        // ── My Programs ───────────────────────────────────────────────────────
-        if (isLoading) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                }
-            }
-        } else if (userPrograms.isNotEmpty()) {
-            item {
-                SectionLabel(sectionStrings.activeProtocols, theme.accentTextColor)
-            }
-            items(userPrograms, key = { it.id }) { prog ->
-                SavedProgramTile(
-                    program     = prog,
-                    onSetActive = { onSetActive(prog.id) },
-                    onDelete    = { onDeleteProgram(prog.id) },
-                    onEdit      = { onEditProgram(prog) },
-                    onShare     = { onShareProgram(prog) }
-                )
-            }
-        }
-
-        // ── Ready Programs Header ─────────────────────────────────────────────
-        item {
-            SectionLabel(sectionStrings.readyPrograms, theme.text2)
-        }
-
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = responsive.horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    Box(
-                        Modifier.clip(RoundedCornerShape(14.dp)).background(theme.bg2)
-                            .clickable { showFilterSheet = true }.padding(horizontal = 12.dp, vertical = 8.dp)
+            Box(Modifier.offset(y = (-28).dp)) {
+                ProgramsSheet {
+                    ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) })
+                    if (isLoading) {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        }
+                    } else if (userPrograms.isNotEmpty()) {
+                        ProgramsSection(theme.t("Kayıtlı programlar", "Saved programs"), userPrograms.size)
+                        SavedProgramsRow(
+                            programs = userPrograms,
+                            onSetActive = { onSetActive(it.id) }, onDelete = { onDeleteProgram(it.id) },
+                            onEdit = { onEditProgram(it) }, onShare = { onShareProgram(it) }
+                        )
+                    }
+                    ProgramsSection(sectionStrings.readyPrograms, filtered.size, topGap = if (userPrograms.isNotEmpty() && !isLoading) 4.dp else 26.dp)
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Tune, null, tint = if (activeCategory == ProgramCategory.ALL) theme.text1 else MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(theme.t("Filtreler", "Filters"), color = theme.text0, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        item {
+                            ProgramFilterPill(
+                                label = theme.t("Filtreler", "Filters"), icon = Icons.Rounded.Tune,
+                                selected = activeCategory != ProgramCategory.ALL, onClick = { showFilterSheet = true }
+                            )
+                        }
+                        items(ProgramSportFilter.values()) { sport ->
+                            ProgramFilterPill(
+                                label = sport.localizedLabel(), icon = null,
+                                selected = sport == activeSport, onClick = { activeSport = sport }
+                            )
                         }
                     }
-                }
-                items(ProgramSportFilter.values()) { sport ->
-                    SportFilterChip(
-                        sport = sport,
-                        selected = sport == activeSport,
-                        onClick = { activeSport = sport }
-                    )
+                    filtered.forEach { prog ->
+                        ReadyProgramCard(
+                            title = prog.localizedTitle(theme),
+                            tag = prog.category.localizedLabel(),
+                            chips = listOf(
+                                "${prog.days} ${sectionStrings.dayLabel}",
+                                "${prog.weeks} ${sectionStrings.weekLabel}",
+                                prog.localizedLevel(theme)
+                            ),
+                            photoUrl = com.cosmibit.profitness.core.ui.categoryImageUrl(prog.muscleLabels.firstOrNull().orEmpty()),
+                            onClick = { selectedProgram = prog }
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.height(14.dp))
         }
+    }
+    Box(Modifier.align(Alignment.TopStart)) { ProgramsTopScrim() }
+    }
+}
 
-        // ── Program Cards ─────────────────────────────────────────────────────
-        items(filtered, key = { it.title }) { prog ->
-            ProgramCard(
-                program = prog,
-                onClick = { selectedProgram = prog }
+// ── Kapak (SİNEMA) ────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProgramsCover(active: Program?, theme: AppThemeState, scrollOffset: () -> Int) {
+    val accent = theme.effectiveAccentColor
+    val imageUrl = remember(active) {
+        active?.days?.asSequence()
+            ?.flatMap { it.exercises.asSequence() }
+            ?.firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
+    }
+    // Düz vurgu gradyanında karartma hafif (beyaz/vurgu >= 4.5:1 kalır); fotoğrafta tam yoğunluk.
+    val scrimK = if (imageUrl.isNotBlank()) 1f else 0.60f
+    Box(Modifier.fillMaxWidth().height(260.dp).clipToBounds()) {
+        if (imageUrl.isNotBlank()) {
+            SceneImage(
+                url = imageUrl,
+                modifier = Modifier.fillMaxSize().graphicsLayer { translationY = scrollOffset() * 0.5f },
+                requestWidthPx = 1080, requestHeightPx = 780, fallbackGradient = true
             )
+        } else {
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.linearGradient(listOf(accent, androidx.compose.ui.graphics.lerp(accent, Color.Black, 0.40f)))
+                )
+            ) {
+                Icon(
+                    Icons.Rounded.FitnessCenter, null,
+                    tint = Color.White.copy(0.12f),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 20.dp).size(96.dp)
+                )
+            }
+        }
+        // üst karartma: 0:.70 / 88dp:.60 / 160dp: 0
+        Box(
+            Modifier.fillMaxWidth().height(160.dp).background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(Sinema.TopScrimStrongAlpha * scrimK),
+                    0.55f to Color.Black.copy(Sinema.TopScrimMidAlpha * scrimK),
+                    1f to Color.Transparent
+                )
+            )
+        )
+        // alt karartma 0 -> .80
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(0.80f * scrimK.coerceAtLeast(0.75f)))
+            )
+        )
+        Text(
+            theme.t("Programlar", "Programs"),
+            color = Sinema.White, style = Sinema.ScreenTitle, maxLines = 1,
+            modifier = Modifier.statusBarsPadding().padding(start = 20.dp, top = 8.dp)
+        )
+        if (active != null) {
+            val workoutDays = active.days.count { !it.isRestDay }
+            val totalExercises = active.days.sumOf { it.exercises.size }
+            val info = if (totalExercises > 0) "$workoutDays antrenman günü · $totalExercises egzersiz" else "$workoutDays antrenman günü"
+            Column(
+                Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+            ) {
+                Text(
+                    active.name, color = Sinema.White, style = Sinema.Title,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(info.sinemaUpper(theme), color = Sinema.White.copy(0.80f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
@@ -988,51 +1012,53 @@ private fun BuilderChooseScreen(
 // ── Section Label ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun SectionLabel(text: String, color: Color) {
+private fun SectionLabel(text: String) {
     val responsive = rememberResponsiveLayoutInfo()
-    Text(
-        text,
-        style = MaterialTheme.typography.labelSmall,
-        color = color,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 0.3.sp,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(
-            start = responsive.horizontalPadding,
-            top = 32.dp,
-            end = responsive.horizontalPadding,
-            bottom = 12.dp
+    val theme = LocalAppTheme.current
+    Column(Modifier.fillMaxWidth().padding(top = 32.dp)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = responsive.horizontalPadding).height(1.dp).background(Sinema.line(theme)))
+        Text(
+            text.sinemaUpper(theme),
+            style = Sinema.Label,
+            color = Sinema.textSecondary(theme),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = responsive.horizontalPadding, vertical = 16.dp)
         )
-    )
+    }
 }
 
-// ── Quick Create Button ───────────────────────────────────────────────────────
+// ── Eylem tuşu (AI kabarık vurgu / Manuel kabarık hap) ────────────────────────
 
 @Composable
-private fun QuickCreateButton(
+private fun SinemaActionButton(
     modifier: Modifier,
     icon: ImageVector,
     label: String,
     prominent: Boolean,
     onClick: () -> Unit
 ) {
-    val buttonModifier = modifier.height(72.dp)
-    if (prominent) {
-        PremiumButton(
-            text = label,
-            onClick = onClick,
-            modifier = buttonModifier,
-            leadingIcon = icon
-        )
-    } else {
-        GhostButton(
-            text = label,
-            onClick = onClick,
-            modifier = buttonModifier,
-            leadingIcon = icon
-        )
+    val theme = LocalAppTheme.current
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val shape = RoundedCornerShape(18.dp)
+    val contentColor = if (prominent) theme.effectiveOnAccentColor else Sinema.text(theme)
+    Row(
+        modifier = modifier
+            .height(56.dp)
+            .then(
+                if (prominent) Modifier.raisedButtonSurface(theme, pressed, shape = shape)
+                else Modifier.raisedPillSurface(theme, pressed, color = Sinema.surface(theme), shape = shape)
+                    .border(1.dp, Sinema.line(theme), shape)
+            )
+            .clickable(interactionSource = src, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, null, tint = contentColor, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1045,33 +1071,25 @@ private fun SportFilterChip(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val textColor = if (selected) accent else theme.text1
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .then(
-                if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(50))
-                else Modifier.background(theme.bg2)
-            )
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 7.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                sport.icon,
-                null,
-                tint = if (selected) accent else theme.text2,
-                modifier = Modifier.size(12.dp)
-            )
-            Spacer(Modifier.width(5.dp))
+    val textColor = if (selected) theme.effectiveOnAccentColor else Sinema.text(theme)
+    Box(Modifier.heightIn(min = 48.dp).clickable { onClick() }, contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier
+                .height(36.dp)
+                .then(
+                    if (selected) Modifier.raisedPillSurface(theme)
+                    else Modifier.clip(RoundedCornerShape(18.dp)).background(Sinema.surface(theme))
+                )
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(sport.icon, null, tint = textColor, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
             Text(
                 sport.localizedLabel(),
                 color = textColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.2.sp,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1124,83 +1142,64 @@ private fun CategoryChip(
 
 @Composable
 private fun ProgramCard(program: ReadyProgram, onClick: () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
     val theme  = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
     val responsive = rememberResponsiveLayoutInfo()
-    val iSource = remember { MutableInteractionSource() }
-    val isPressed by iSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "pscale")
+    val cardS = theme.strings
 
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.horizontalPadding, vertical = 8.dp)
-            .scale(scale)
-            .performanceElevatedSurface(theme, shape = RoundedCornerShape(20.dp))
-            .clickable(iSource, null, onClick = onClick)
+            .padding(horizontal = responsive.horizontalPadding - 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .heightIn(min = 88.dp)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Brush.linearGradient(listOf(accent, androidx.compose.ui.graphics.lerp(accent, Color.Black, 0.40f)))),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(theme.bg3),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(program.category.icon, null, tint = accent, modifier = Modifier.size(18.dp))
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    program.localizedTitle(theme),
-                    color = theme.text0,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    lineHeight = 18.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    program.localizedSubtitle(theme),
-                    color = theme.text1,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Light,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(6.dp))
-                val cardS = LocalAppTheme.current.strings
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "${program.days} ${cardS.dayLabel}  •  ${program.weeks} ${cardS.weekLabel}",
-                        color = theme.text2,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Box(Modifier.size(3.dp).clip(CircleShape).background(accent.copy(0.55f)))
-                    Text(
-                        program.localizedLevel(theme),
-                        color = accent.copy(0.76f),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            Icon(
-                Icons.Rounded.ChevronRight,
-                null,
-                tint = accent.copy(0.6f),
-                modifier = Modifier.size(20.dp)
+            Icon(program.category.icon, null, tint = Color.White, modifier = Modifier.size(30.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                program.localizedTitle(theme),
+                color = Sinema.text(theme),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                program.localizedSubtitle(theme),
+                color = Sinema.textSecondary(theme),
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${program.days} ${cardS.dayLabel}  •  ${program.weeks} ${cardS.weekLabel}  •  ${program.localizedLevel(theme)}",
+                color = Sinema.textSecondary(theme),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Icon(
+            Icons.Rounded.ChevronRight,
+            null,
+            tint = Sinema.textSecondary(theme),
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -1303,241 +1302,122 @@ private fun SavedProgramTile(
         )
     }
 
-    // Program type is conveyed by icon + label; actions share the theme accent.
-    val accentColor = primary
-
     // ── Program stats ─────────────────────────────────────────────────────────
     val workoutDays  = program.days.count { !it.isRestDay }
     val totalExercises = program.days.sumOf { it.exercises.size }
-    val dayLabels    = listOf("M", "S", "Ç", "P", "C", "C", "P")
+    val accent = theme.effectiveAccentColor
+    val photoUrl = remember(program) {
+        program.days.asSequence().flatMap { it.exercises.asSequence() }
+            .firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
+    }
+    val statsText = if (totalExercises > 0) "$workoutDays antrenman günü · $totalExercises egzersiz" else "$workoutDays antrenman günü"
+    val tagLine = listOfNotNull(
+        typeLabel.takeIf { showTypeBadge },
+        theme.strings.activeLabel.takeIf { program.isActive }
+    ).joinToString(" · ")
 
-    val shape = RoundedCornerShape(20.dp)
-
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = responsive.horizontalPadding, vertical = 8.dp)
+            .padding(horizontal = responsive.horizontalPadding - 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onEdit)
+            .heightIn(min = 88.dp)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (program.isActive) {
-                        Modifier.performanceSignatureSurface(theme, primary, shape)
-                    } else {
-                        Modifier.performanceElevatedSurface(theme, shape)
-                    }
-                )
-        ) {
-            // ── Main content (tappable → edit) ────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onEdit)
-                    .padding(start = 0.dp, end = 20.dp, top = 0.dp, bottom = 0.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Spacer(Modifier.width(20.dp))
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(top = 20.dp, bottom = 16.dp)
+        // aktif olanın solunda 3dp vurgu şeridi
+        Box(
+            Modifier
+                .width(3.dp)
+                .height(64.dp)
+                .clip(CircleShape)
+                .background(if (program.isActive) accent else Color.Transparent)
+        )
+        Spacer(Modifier.width(5.dp))
+        Box(Modifier.size(72.dp).clip(RoundedCornerShape(16.dp))) {
+            if (photoUrl.isNotBlank()) {
+                SceneImage(url = photoUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 288, requestHeightPx = 288, fallbackGradient = true)
+            } else {
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.linearGradient(listOf(accent, androidx.compose.ui.graphics.lerp(accent, theme.effectiveOnAccentColor, 0.12f)))
+                    ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // ── Top: badge + active indicator ─────────────────────
-                    if (showTypeBadge || program.isActive) Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Type badge
-                        if (showTypeBadge) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(7.dp))
-                                    .background(accentColor.copy(0.14f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        typeIcon, null,
-                                        tint     = accentColor,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        typeLabel,
-                                        color         = theme.accentTextColor,
-                                        fontSize      = 9.sp,
-                                        fontWeight    = FontWeight.ExtraBold,
-                                        letterSpacing = 0.55.sp,
-                                        maxLines      = 1
-                                    )
-                                }
-                            }
-                        }
-
-                        if (program.isActive) {
-                            if (showTypeBadge) Spacer(Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(primary.copy(0.15f))
-                                    .padding(horizontal = 7.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    theme.strings.activeLabel,
-                                    color         = theme.accentTextColor,
-                                    fontSize      = 8.sp,
-                                    fontWeight    = FontWeight.ExtraBold,
-                                    letterSpacing = 0.6.sp,
-                                    maxLines      = 1
-                                )
-                            }
-                        }
-                    }
-
-                    if (showTypeBadge || program.isActive) Spacer(Modifier.height(9.dp))
-
-                    // ── Program name ──────────────────────────────────────
                     Text(
-                        program.name,
-                        color      = theme.text0,
-                        fontWeight = FontWeight.Bold,
-                        fontSize   = 14.sp,
-                        lineHeight = 18.sp,
-                        maxLines   = 2,
-                        overflow   = TextOverflow.Ellipsis
+                        program.name.trim().take(1).uppercase(),
+                        color = theme.effectiveOnAccentColor, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold
                     )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // ── Stats row ─────────────────────────────────────────
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Rounded.CalendarMonth, null,
-                            tint     = theme.text2.copy(0.6f),
-                            modifier = Modifier.size(11.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        val statsText = if (totalExercises > 0) {
-                            "$workoutDays antrenman günü · $totalExercises egzersiz"
-                        } else {
-                            "$workoutDays antrenman günü"
-                        }
-                        Text(
-                            statsText,
-                            color    = theme.text2.copy(0.7f),
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(Modifier.height(9.dp))
-
-                    // ── Day dots strip ────────────────────────────────────
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        dayLabels.forEachIndexed { idx, label ->
-                            val day     = program.days.firstOrNull { it.dayIndex == idx }
-                            val isWork  = day != null && !day.isRestDay
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(if (isWork) 6.dp else 4.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (isWork) accentColor
-                                            else theme.text2.copy(0.18f)
-                                        )
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    label,
-                                    color    = if (isWork) accentColor.copy(0.8f) else theme.text2.copy(0.3f),
-                                    fontSize = 7.sp,
-                                    fontWeight = if (isWork) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        }
-                    }
                 }
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            if (tagLine.isNotEmpty()) {
+                Text(tagLine, color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(2.dp))
+            }
+            Text(
+                program.name,
+                color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            Text(statsText, color = Sinema.textSecondary(theme), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(6.dp))
+            if (!program.isActive) {
+                Row(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .raisedPillSurface(theme)
+                        .clickable(onClick = onSetActive)
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(theme.t("Aktif et", "Activate"), color = theme.effectiveOnAccentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Sinema.surface(theme))
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
+                    Spacer(Modifier.width(8.dp))
+                    Text(theme.t("Aktif program", "Active program"), color = Sinema.text(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        // ⋮ menü: düzenle / paylaş / sil
+        Box {
+            IconButton(onClick = { showActionsMenu = true }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.MoreVert, theme.t("Diğer", "More"), tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
+            }
+            DropdownMenu(
+                expanded = showActionsMenu,
+                onDismissRequest = { showActionsMenu = false },
+                containerColor = Sinema.surface(theme)
             ) {
-                if (!program.isActive) {
-                    Box(
-                        modifier = Modifier
-                            .performanceControlSurface(
-                                theme,
-                                primary,
-                                false,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .clickable(onClick = onSetActive)
-                            .padding(horizontal = 13.dp, vertical = 10.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.PlayArrow,
-                                null,
-                                tint = theme.effectiveOnAccentColor,
-                                modifier = Modifier.size(19.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                theme.t("Aktif et", "Activate"),
-                                color = theme.effectiveOnAccentColor,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(primary.copy(0.13f))
-                            .padding(horizontal = 11.dp, vertical = 8.dp)
-                    ) {
-                        Text(theme.t("Aktif program", "Active program"), color = theme.accentTextColor, style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(Icons.Rounded.Edit, theme.t("Düzenle", "Edit"), tint = theme.text0, modifier = Modifier.size(20.dp))
-                }
-                Spacer(Modifier.width(7.dp))
-                IconButton(
-                    onClick = onShare,
-                    modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(Icons.Rounded.Share, theme.t("Paylaş", "Share"), tint = theme.text0, modifier = Modifier.size(20.dp))
-                }
-                Spacer(Modifier.width(7.dp))
-                Box {
-                    IconButton(
-                        onClick = { showActionsMenu = true },
-                        modifier = Modifier.size(40.dp).performanceControlSurface(theme, theme.bg3, false, RoundedCornerShape(12.dp))
-                    ) {
-                        Icon(Icons.Rounded.MoreVert, theme.t("Diğer", "More"), tint = theme.text0, modifier = Modifier.size(21.dp))
-                    }
-                    DropdownMenu(
-                        expanded = showActionsMenu,
-                        onDismissRequest = { showActionsMenu = false },
-                        containerColor = theme.bg2
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(theme.t("Programı sil", "Delete program"), color = CardCoral) },
-                            leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, tint = CardCoral) },
-                            onClick = { showActionsMenu = false; showDeleteConfirm = true }
-                        )
-                    }
-                }
+                DropdownMenuItem(
+                    text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme)) },
+                    leadingIcon = { Icon(Icons.Rounded.Edit, null, tint = Sinema.text(theme)) },
+                    onClick = { showActionsMenu = false; onEdit() }
+                )
+                DropdownMenuItem(
+                    text = { Text(theme.t("Paylaş", "Share"), color = Sinema.text(theme)) },
+                    leadingIcon = { Icon(Icons.Rounded.Share, null, tint = Sinema.text(theme)) },
+                    onClick = { showActionsMenu = false; onShare() }
+                )
+                DropdownMenuItem(
+                    text = { Text(theme.t("Programı sil", "Delete program"), color = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(Sinema.surface(theme))) },
+                    leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, tint = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(Sinema.surface(theme))) },
+                    onClick = { showActionsMenu = false; showDeleteConfirm = true }
+                )
             }
         }
     }
@@ -1560,34 +1440,38 @@ private fun ProgramDetailDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassCard(accent, theme, RoundedCornerShape(32.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(Sinema.page(theme))
         ) {
             Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(28.dp)
+                modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                // Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Kapak 280dp: vurgu gradyanı + kategori ikonu + başlık
+                Box(
+                    Modifier.fillMaxWidth().height(280.dp).background(
+                        Brush.linearGradient(listOf(accent, androidx.compose.ui.graphics.lerp(accent, Color.Black, 0.40f)))
+                    )
+                ) {
+                    Icon(
+                        program.category.icon, null, tint = Color.White.copy(0.12f),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 20.dp).size(96.dp)
+                    )
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(accent.copy(0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(program.category.icon, null, tint = accent, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(program.category.localizedLabel(), color = accent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
-                        Text(program.localizedLevel(theme), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(0.15f to Color.Black.copy(0.30f), 0.50f to Color.Black.copy(0.50f), 1f to Color.Black.copy(0.85f))
+                        )
+                    )
+                    Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
+                        Text(
+                            "${program.category.localizedLabel()} · ${program.localizedLevel(theme)}".sinemaUpper(theme),
+                            color = Sinema.White.copy(0.80f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(program.localizedTitle(theme), color = Sinema.White, style = Sinema.Title, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
-
-                Spacer(Modifier.height(16.dp))
-                Text(program.localizedTitle(theme), style = MaterialTheme.typography.headlineMedium, color = theme.text0, fontWeight = FontWeight.Bold)
-                Text(program.localizedSubtitle(theme), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Light)
+                Column(Modifier.padding(24.dp)) {
+                Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp)
 
                 Spacer(Modifier.height(20.dp))
 
@@ -1621,7 +1505,7 @@ private fun ProgramDetailDialog(
                     Column(Modifier.padding(bottom = 8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(program.localizedText(label, theme), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                            Text(program.musclePct[i], color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(program.musclePct[i], color = Sinema.text(theme), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(4.dp))
                         Box(
@@ -1667,13 +1551,14 @@ private fun ProgramDetailDialog(
                     isEnabled = !isApplying,
                     isLoading = isApplying
                 )
+                }
             }
 
             if (isApplying) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .clip(RoundedCornerShape(32.dp))
+                        .clip(RoundedCornerShape(28.dp))
                         .background(theme.bg0.copy(alpha = 0.58f))
                         .clickable(
                             indication = null,
@@ -1947,7 +1832,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 .imePadding()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, aiTheme.bg0),
+                        colors = listOf(Color.Transparent, Sinema.page(aiTheme)),
                         startY = 0f,
                         endY = 60f
                     )
@@ -2262,7 +2147,7 @@ private fun EditProgramScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(editTheme.bg0)
+                            .background(Sinema.page(editTheme))
                             .border(1.dp, editAccent.copy(0.34f), RoundedCornerShape(14.dp))
                             .padding(16.dp)
                     ) {
@@ -2415,7 +2300,7 @@ private fun EditProgramScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(editTheme.bg0)
+            .background(Sinema.page(editTheme))
             .drawWithCache {
                 val accentBloom = Brush.radialGradient(
                     colorStops = arrayOf(
@@ -2520,7 +2405,7 @@ private fun EditProgramScreen(
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, editTheme.bg0),
+                        colors = listOf(Color.Transparent, Sinema.page(editTheme)),
                         startY = 0f, endY = 60f
                     )
                 )

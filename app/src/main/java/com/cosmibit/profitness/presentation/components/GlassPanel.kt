@@ -34,8 +34,12 @@ fun ForgeCard(
     val theme = LocalAppTheme.current
     Box(
         modifier = modifier
-            .performanceElevatedSurface(theme, shape = shape, elevated = elevation > 0.dp)
-    ) { content() } // glowColor/glowStrength: API uyumu için kabul edilir, düz yüzeyde çizilmez
+            .performanceElevatedSurface(
+                theme, shape = shape, elevated = elevation > 0.dp,
+                accent = if (glowColor == Color.Transparent) Color.Unspecified else glowColor,
+                glowStrength = glowStrength
+            )
+    ) { content() }
 }
 
 @Composable
@@ -60,9 +64,7 @@ fun Modifier.premiumSolidSurface(
     shape: Shape = RoundedCornerShape(20.dp),
     elevation: Dp = if (theme.isDark) 8.dp else 5.dp
 ): Modifier = composed {
-    // Ordinary content cards stay neutral. Accent reflections are reserved for
-    // selected/hero surfaces so a page never becomes a patchwork of colour.
-    this.performanceElevatedSurface(theme, shape = shape, elevated = elevation > 0.dp)
+    this.performanceElevatedSurface(theme, shape = shape, elevated = elevation > 0.dp, accent = accent)
 }
 
 /** Compatibility alias; content cards intentionally remain readable and opaque. */
@@ -87,7 +89,8 @@ fun Modifier.floatingGlassSurface(
             ambientColor = Color.Transparent
         )
         .clip(shape)
-        .background(if (theme.isDark) Color(0xFF221D19) else Color(0xFFFFFDF9))
+        .background(if (theme.isDark) Color(0xFF141416) else Color.White)
+        .border(1.dp, if (theme.isDark) Color.White.copy(0.12f) else Color(0xFF0E0F11).copy(0.10f), shape)
 }
 
 /** Recessed well for inputs and filters; depth points into the screen. */
@@ -96,7 +99,5 @@ fun Modifier.insetControlSurface(
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(10.dp)
 ): Modifier = composed {
-    this
-        .clip(shape)
-        .background(if (theme.isDark) Color(0xFF120F0D) else Color(0xFFEEE7DD))
+    this.performanceInsetSurface(theme, shape)
 }

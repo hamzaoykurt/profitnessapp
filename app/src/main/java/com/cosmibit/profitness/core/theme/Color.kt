@@ -28,10 +28,10 @@ val AmberDark     = Color(0xFFB84914)
 val AmberGlow     = Color(0x24F36A21)
 
 // ── Vibrant Card Category Colors (Ref. Image 1) ───────────────────────────────
-val CardCyan      = Color(0xFF5F9FA3)
-val CardCoral     = Color(0xFFE16B5A)
-val CardPurple    = Color(0xFF8B7BB8)
-val CardGreen     = Color(0xFF6E9B7A)
+val CardCyan      = Color(0xFF3DB5E8)
+val CardCoral     = Color(0xFFF4748A)
+val CardPurple    = Color(0xFFA48BF7)
+val CardGreen     = Color(0xFF46CC8C)
 
 // ── Text Hierarchy ────────────────────────────────────────────────────────────
 val TextPrimary   = Color(0xFFF8F4EE)

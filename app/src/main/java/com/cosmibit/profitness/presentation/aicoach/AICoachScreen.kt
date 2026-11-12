@@ -29,6 +29,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
@@ -177,219 +182,137 @@ fun AICoachScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.bg0)
-            .drawWithCache {
-                val atmosphere = Brush.radialGradient(
-                    listOf(
-                        theme.effectiveAccentColor.copy(if (theme.isDark) 0.045f else 0.022f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.82f, size.height * 0.18f),
-                    radius = size.width * 0.92f
-                )
-                onDrawBehind { drawRect(atmosphere) }
-            }
             .imePadding()           // keyboard resizes this Box from the bottom
     ) {
-        // ── Message feed fills full Box, has bottom padding for the input area ─
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        val inputAreaHeight = if (imeVisible) {
-            if (responsive.isLargeFont) 112.dp else 88.dp
-        } else if (state.messages.size <= 1) {
-            (if (responsive.isLargeFont) 124.dp else 104.dp) + bottomPadding
-        } else {
-            (if (responsive.isLargeFont) 172.dp else 148.dp) + bottomPadding
-        }
-        LazyColumn(
-            state           = listState,
-            modifier        = Modifier.fillMaxSize(),
-            contentPadding  = PaddingValues(top = 92.dp, bottom = inputAreaHeight),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            if (state.messages.size <= 1) {
-                item(key = "performance_intelligence") {
-                    PerformanceIntelligenceOverview(trainingSummary, onAction = ::sendMessage)
+        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val hazeState = remember { dev.chrisbanes.haze.HazeState() }
+        val darkTheme = remember(theme) { theme.copy(isDark = true) }   // sahne her zaman koyu
+        val chatting = state.messages.size > 1
+        val bottomGap = if (imeVisible) 8.dp else bottomPadding   // çizim: msg alt boşluğu = menü 60 + 16
+
+        // Sahne (haze kaynağı): kapsül/haplar bunu bulanıklaştırır
+        Box(Modifier.fillMaxSize().hazeSource(hazeState)) { SinemaScene() }
+
+        CompositionLocalProvider(LocalAppTheme provides darkTheme, LocalSinemaHaze provides hazeState) {
+            // ── Sohbet akışı (konuşma başladıysa) ─────────────────────────────
+            if (chatting || state.isLoading) {
+                LazyColumn(
+                    state           = listState,
+                    modifier        = Modifier.fillMaxSize(),
+                    contentPadding  = PaddingValues(
+                        top = statusTop + 72.dp,
+                        bottom = bottomGap + 52.dp + (if (imeVisible) 12.dp else 58.dp)
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(if (chatting) state.messages else emptyList(), key = { it.id }) { msg ->
+                        SanctuaryMessage(
+                            msg            = msg,
+                            onApplyProgram = { programDialogMsg = it; programNameInput = "" }
+                        )
+                    }
+                    if (state.isLoading) {
+                        item(key = "typing") { SanctuaryTypingIndicator() }
+                    }
+                }
+            } else {
+                // ── Karşılama (çizim `.aict`): Bugünkü plan + dev sayaç + ilerleme + ana düğme ──
+                AnimatedVisibility(
+                    visible = !imeVisible,
+                    enter = fadeIn(), exit = fadeOut(),
+                    modifier = Modifier.padding(top = statusTop + 152.dp)
+                ) {
+                    OracleTodayBlock(trainingSummary, onAction = ::sendMessage)
                 }
             }
-            items(if (state.messages.size > 1) state.messages else emptyList(), key = { it.id }) { msg ->
-                SanctuaryMessage(
-                    msg            = msg,
-                    onApplyProgram = { programDialogMsg = it; programNameInput = "" }
-                )
-            }
-            if (state.isLoading) {
-                item(key = "typing") { SanctuaryTypingIndicator() }
-            }
-        }
 
-        // ── Input + chips pinned to bottom of the (keyboard-adjusted) Box ────
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .then(if (!imeVisible) Modifier.navigationBarsPadding() else Modifier)
-                .padding(bottom = if (imeVisible) 8.dp else bottomPadding + 8.dp)
-        ) {
-            AnimatedVisibility(
-                visible = !imeVisible && state.messages.size > 1,
-                enter   = fadeIn() + expandVertically(),
-                exit    = fadeOut() + shrinkVertically()
+            // ── Alt yığın: hızlı soru kapsülleri + mesaj çubuğu ───────────────
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = bottomGap)
             ) {
-                LazyRow(
-                    contentPadding        = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier              = Modifier.padding(bottom = 10.dp)
-                ) {
-                    items(quickChips) { chip ->
-                        val chipTheme = LocalAppTheme.current
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(chipTheme.bg1)
-                                .clickable(enabled = !state.isLoading) { sendMessage(chip) }
-                                .padding(14.dp, 7.dp)
-                        ) {
-                            Text(
-                                chip,
-                                color         = chipTheme.text1,
-                                fontSize      = 11.sp,
-                                fontWeight    = FontWeight.Light,
-                                letterSpacing = 0.sp
-                            )
+                if (!imeVisible) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        quickChips.forEach { chip ->
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(36.dp)
+                                    .sinemaCapsuleGlass(RoundedCornerShape(18.dp))
+                                    .clickable(enabled = !state.isLoading, role = Role.Button) { inputText = chip },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    chip.substringBefore(" "), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 6.dp)
+                                )
+                            }
                         }
                     }
+                    Spacer(Modifier.height(10.dp))
                 }
+                SanctuaryInput(
+                    value         = inputText,
+                    onValueChange = { inputText = it },
+                    onSend        = { sendMessage(inputText) },
+                    isTyping      = state.isLoading
+                )
             }
 
-            SanctuaryInput(
-                value         = inputText,
-                onValueChange = { inputText = it },
-                onSend        = { sendMessage(inputText) },
-                isTyping      = state.isLoading
-            )
+            // ── Üst satır (çizim `.prow`): Oracle + cam hap(lar) ────────────
+            val hasPlan = state.userPlan != UserPlan.FREE
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = statusTop + 20.dp)
+                    .padding(horizontal = 16.dp)
+                    .height(32.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(SinemaIcons.Spark, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+                    Text("Oracle", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                }
+                // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
+                SinemaPill(onClick = { viewModel.openHistory() }) {
+                    Icon(Icons.Rounded.History, theme.t("Geçmiş", "History"), tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                SinemaPill(onClick = {
+                    viewModel.startNewSession()
+                    viewModel.initWelcome(strings.oracleWelcome)
+                }) {
+                    Icon(Icons.Rounded.Add, theme.t("Yeni Sohbet", "New Chat"), tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                SinemaPill(onClick = { viewModel.openPreferences() }) {
+                    Icon(Icons.Rounded.Settings, theme.t("Ayarlar", "Settings"), tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                SinemaPill(onClick = onNavigateToStore) {
+                    Icon(SinemaIcons.Bolt, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        if (hasPlan) state.userPlan.displayName
+                        else if (state.isBillingLoaded) theme.t("${state.aiCredits} kredi", "${state.aiCredits} credits") else "…",
+                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1
+                    )
+                }
+            }
         }
 
-        // ── App Logo / Title (en üstte render edilmeli — touch almak için) ───
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .background(Color.Transparent)
-                .padding(horizontal = 8.dp)
-                .padding(top = 8.dp)
-        ) {
-            val hasPlan = state.userPlan != UserPlan.FREE
-
-            // Sol: Geçmiş + Enerji / plan rozeti
-            Row(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { viewModel.openHistory() },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
-                ) {
-                    Icon(
-                        Icons.Rounded.History,
-                        contentDescription = theme.t("Geçmiş", "History"),
-                        tint     = theme.text0,
-                        modifier = Modifier.size(22.dp)
-                    )
+        // Paywall Dialog
+        if (showPaywall) {
+            PaywallDialog(
+                onDismiss   = { showPaywall = false },
+                onGoToStore = {
+                    showPaywall = false
+                    onNavigateToStore()
                 }
-                Spacer(Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
-                        .clickable { onNavigateToStore() }
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        verticalAlignment      = Alignment.CenterVertically,
-                        horizontalArrangement  = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            if (hasPlan) Icons.Rounded.AllInclusive else Icons.Rounded.Bolt,
-                            null,
-                            tint     = if (hasPlan) CardPurple else Forge500,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            if (hasPlan) state.userPlan.displayName.uppercase()
-                            else if (state.isBillingLoaded) "${state.aiCredits}" else "...",
-                            color         = if (hasPlan) CardPurple else Forge500,
-                            fontSize      = 12.sp,
-                            fontWeight    = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-            }
-
-            // Orta: Başlık
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .padding(top = 12.dp)
-                    .align(Alignment.Center)
-            ) {
-                Text(
-                    "Oracle",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.45).sp,
-                    color = theme.text0
-                )
-            }
-
-            // Sağ: Yeni Sohbet + Ayarlar
-            Row(
-                modifier          = Modifier.align(Alignment.CenterEnd),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {
-                        viewModel.startNewSession()
-                        viewModel.initWelcome(strings.oracleWelcome)
-                    },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
-                ) {
-                    Icon(
-                        Icons.Rounded.Add,
-                        contentDescription = theme.t("Yeni Sohbet", "New Chat"),
-                        tint     = theme.text0,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                IconButton(
-                    onClick = { viewModel.openPreferences() },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .performanceControlSurface(theme, theme.bg2, false, RoundedCornerShape(13.dp))
-                ) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = theme.t("Ayarlar", "Settings"),
-                        tint     = theme.text0,
-                        modifier = Modifier.size(21.dp)
-                    )
-                }
-            }
-
-            // Paywall Dialog
-            if (showPaywall) {
-                PaywallDialog(
-                    onDismiss   = { showPaywall = false },
-                    onGoToStore = {
-                        showPaywall = false
-                        onNavigateToStore()
-                    }
-                )
-            }
+            )
         }
 
         // ── Program Oluşturma Dialog ──────────────────────────────────────────
@@ -543,64 +466,50 @@ fun AICoachScreen(
 
 // ── Sub-Components ────────────────────────────────────────────────────────────
 
+/** Çizim `.aict`: eyebrow + 104sp sayaç + ilerleme çubuğu + özet satırı + ana düğme. Veri yoksa sayaç/çubuk gösterilmez. */
 @Composable
-private fun PerformanceIntelligenceOverview(summary: OracleTrainingSummary?, onAction: (String) -> Unit) {
+private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String) -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val heroShape = RoundedCornerShape(26.dp)
-
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .performanceSignatureSurface(theme, accent, heroShape)
-                .padding(20.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(accent.copy(0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(21.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            theme.t("Bugünkü plan", "Today's plan"),
-                            color = theme.text0,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        summary?.let { data ->
-                            Text(
-                                theme.t(
-                                    "${data.trainingDays} gün · ${data.exercises} hareket · ${data.completed} tamamlandı",
-                                    "${data.trainingDays} days · ${data.exercises} exercises · ${data.completed} completed"
-                                ),
-                                color = theme.text1,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } ?: Text(
-                            theme.t("Programını birlikte netleştirelim.", "Let's refine your program."),
-                            color = theme.text1,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+    val accent = theme.effectiveAccentColor
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Text(
+            theme.t("Bugünkü plan", "Today's plan").sinemaUpper(theme), color = accent, style = Sinema.Label
+        )
+        if (summary != null && summary.exercises > 0) {
+            val frac = (summary.completed.toFloat() / summary.exercises).coerceIn(0f, 1f)
+            val fill by animateFloatAsState(frac, tween(900, easing = FastOutSlowInEasing), label = "oracle_fill")
+            Spacer(Modifier.height(6.dp))
+            Text("${summary.completed}/${summary.exercises}", style = Sinema.Display, color = Color.White, maxLines = 1, softWrap = false)
+            Spacer(Modifier.height(16.dp))
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
+                Box(
+                    Modifier.fillMaxWidth(fill).fillMaxHeight()
+                        .sinemaGlow(accent, 12.dp, 0.dp, CircleShape)
+                        .clip(CircleShape).background(accent)
+                )
             }
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
+                Text(
+                    theme.t("${summary.trainingDays} gün · ${summary.exercises} hareket", "${summary.trainingDays} days · ${summary.exercises} exercises"),
+                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                )
+                Text(
+                    theme.t("${summary.exercises - summary.completed} kaldı", "${summary.exercises - summary.completed} left"),
+                    color = Color.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                theme.t("Programını birlikte netleştirelim.", "Let's refine your program."),
+                color = Color.White, style = Sinema.Title
+            )
+            Spacer(Modifier.height(18.dp))
         }
-        Spacer(Modifier.height(12.dp))
-        PremiumButton(
-            text = theme.t("Planımı değerlendir", "Review my plan"),
-            onClick = { onAction(theme.t("Bugünkü antrenmanımı optimize et", "Optimize today's workout")) },
-            leadingIcon = Icons.Rounded.AutoAwesome,
-            modifier = Modifier.fillMaxWidth()
+        SinemaGoButton(
+            label = theme.t("Planımı değerlendir", "Review my plan"),
+            icon = SinemaIcons.Spark,
+            onClick = { onAction(theme.t("Bugünkü antrenmanımı optimize et", "Optimize today's workout")) }
         )
     }
 }
@@ -802,6 +711,7 @@ private fun looksLikeProgram(text: String): Boolean {
     return false
 }
 
+/** Çizim `.msg`: 52dp cam kapsül, 14sp girdi, sağda 38dp vurgu gönder düğmesi. */
 @Composable
 private fun SanctuaryInput(
     value: String,
@@ -810,102 +720,50 @@ private fun SanctuaryInput(
     isTyping: Boolean
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val shape  = RoundedCornerShape(22.dp)
+    val accent = theme.effectiveAccentColor
     val responsive = rememberResponsiveLayoutInfo()
-
+    val sendActive = value.isNotBlank() && !isTyping
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .insetControlSurface(accent = accent, theme = theme, shape = shape)
-            .border(
-                1.dp,
-                theme.stroke.copy(0.5f),
-                shape
-            )
-            .padding(horizontal = 9.dp, vertical = 7.dp),
+            .heightIn(min = 52.dp)
+            .sinemaCapsuleGlass(RoundedCornerShape(26.dp))
+            .padding(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .performanceControlSurface(
-                    theme,
-                    accent.copy(if (theme.isDark) 0.16f else 0.10f),
-                    false,
-                    RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(5.dp))
-        TextField(
-            value         = value,
-            onValueChange = onValueChange,
-            placeholder   = {
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) {
                 Text(
-                    theme.t("Oracle'a sor...", "Ask Oracle..."),
-                    color = theme.text2.copy(0.72f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
+                    theme.t("Oracle'a bir şey sor…", "Ask Oracle anything…"),
+                    color = Color.White.copy(0.6f), fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor   = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor        = theme.text0,
-                unfocusedTextColor      = theme.text0,
-                selectionColors         = TextSelectionColors(handleColor = accent, backgroundColor = accent.copy(0.2f)),
-                focusedIndicatorColor   = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            modifier       = Modifier.weight(1f),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend() }),
-            singleLine     = false,
-            maxLines       = if (responsive.isShortScreen) 3 else 4
-        )
-
-        val sendActive = value.isNotBlank() && !isTyping
-        val sendInteraction = remember { MutableInteractionSource() }
-        val sendPressed by sendInteraction.collectIsPressedAsState()
-        val sendScale by animateFloatAsState(
-            if (sendPressed && sendActive) 0.98f else 1f,
-            tween(120),
-            label = "oracle_send_scale"
-        )
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                cursorBrush = SolidColor(accent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                maxLines = if (responsive.isShortScreen) 3 else 4,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        val src = remember { MutableInteractionSource() }
+        val pressed by src.collectIsPressedAsState()
+        val scale by animateFloatAsState(if (pressed && sendActive) 0.92f else 1f, tween(120), label = "oracle_send_scale")
         Box(
-            modifier = Modifier
-                .padding(end = 4.dp)
-                .size(44.dp)
-                .graphicsLayer {
-                    scaleX = sendScale
-                    scaleY = sendScale
-                }
-                .performanceControlSurface(
-                    theme,
-                    if (sendActive) accent else theme.bg3,
-                    sendPressed && sendActive,
-                    RoundedCornerShape(14.dp)
-                )
-                .clickable(
-                    enabled = sendActive,
-                    interactionSource = sendInteraction,
-                    indication = null,
-                    onClick = onSend
-                ),
+            Modifier
+                .size(38.dp)
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .clip(CircleShape)
+                .background(accent)
+                .clickable(enabled = sendActive, interactionSource = src, indication = null, role = Role.Button, onClick = onSend),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.Send,
-                contentDescription = null,
-                tint     = if (sendActive) theme.effectiveOnAccentColor else theme.text2.copy(0.72f),
-                modifier = Modifier.size(22.dp)
-            )
+            Icon(SinemaIcons.Send, theme.t("Gönder", "Send"), tint = theme.effectiveOnAccentColor, modifier = Modifier.size(18.dp))
         }
     }
 }
