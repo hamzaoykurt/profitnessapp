@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -2258,8 +2259,8 @@ private fun EditProgramScreen(
                             colors   = ButtonDefaults.buttonColors(
                                 containerColor = editAccent,
                                 contentColor = editOnAccent,
-                                disabledContainerColor = editTheme.bg3,
-                                disabledContentColor = editTheme.text2
+                                disabledContainerColor = Color.White.copy(0.10f),
+                                disabledContentColor = Color.White.copy(0.40f)
                             )
                         ) {
                             if (uiState.aiEditLoading) {
@@ -2301,70 +2302,22 @@ private fun EditProgramScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Sinema.page(editTheme))
-            .drawWithCache {
-                val accentBloom = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.0f to editAccent.copy(alpha = 0.12f),
-                        0.42f to editAccent.copy(alpha = 0.045f),
-                        1.0f to Color.Transparent
-                    ),
-                    center = Offset(size.width, 0f),
-                    radius = size.width * 1.45f
-                )
-                onDrawBehind { drawRect(accentBloom) }
-            }
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 80.dp + timerExtraPad)) {
-            DetailHeader(title = "Düzenle", sub = "Programı güncelle", onBack = onBack, accent = editAccent)
-
-            // Program adı
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .insetControlSurface(editAccent, editTheme, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(editAccent.copy(0.10f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.EditNote, null, tint = editAccent, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    androidx.compose.foundation.text.BasicTextField(
-                        value       = programName,
-                        onValueChange = { programName = it },
-                        textStyle   = MaterialTheme.typography.titleMedium.copy(
-                            color      = editTheme.text0,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        singleLine  = true,
-                        modifier    = Modifier.weight(1f),
-                        decorationBox = { inner ->
-                            if (programName.isEmpty()) {
-                                Text(
-                                    "Program adı...",
-                                    color      = editTheme.text2,
-                                    fontWeight = FontWeight.Light,
-                                    fontSize   = 16.sp
-                                )
-                            }
-                            inner()
-                        }
-                    )
-                }
-            }
+        Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + 88.dp + timerExtraPad)) {
+            BuilderSceneHeader(
+                title = editTheme.t("Düzenle", "Edit"),
+                sub = editTheme.t("Programı güncelle", "Update program"),
+                name = programName,
+                onNameChange = { programName = it },
+                namePlaceholder = editTheme.t("Program adı...", "Program name..."),
+                onBack = onBack
+            )
 
             // Günler listesi
             LazyColumn(
                 modifier      = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 itemsIndexed(days, key = { _, day -> day.id }) { index, day ->
                     ManualDayCard(
@@ -2378,19 +2331,7 @@ private fun EditProgramScreen(
                 }
                 item {
                     if (days.size < 7) {
-                        TextButton(
-                            onClick  = { days.add(MutableManualDay()) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Rounded.Add, null, tint = editAccent, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "+ YENİ GÜN  (${days.size}/7)",
-                                color      = editAccent,
-                                fontWeight = FontWeight.Bold,
-                                fontSize   = 13.sp
-                            )
-                        }
+                        NewDayBlock(count = days.size, onClick = { days.add(MutableManualDay()) })
                     }
                 }
             }
@@ -2398,8 +2339,8 @@ private fun EditProgramScreen(
 
         // Alt aksiyon butonları
         val isLoading = uiState.isLoading
+        val actionsEnabled = !isLoading && !uiState.aiEditLoading
         Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-        // Gradient sadece buton alanını kapsar, altı transparan
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2409,7 +2350,7 @@ private fun EditProgramScreen(
                         startY = 0f, endY = 60f
                     )
                 )
-                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp, top = 16.dp)
+                .padding(start = 20.dp, end = 20.dp, bottom = 16.dp, top = 16.dp)
         ) {
             Row(
                 modifier            = Modifier.fillMaxWidth(),
@@ -2417,20 +2358,32 @@ private fun EditProgramScreen(
                 verticalAlignment   = Alignment.CenterVertically
             ) {
                 // AI ile Düzenle butonu
-                GhostButton(
-                    text = editTheme.t("AI ile düzenle", "Edit with AI"),
-                    onClick = { showAiEditDialog = true },
-                    isEnabled = !isLoading && !uiState.aiEditLoading,
-                    leadingIcon = Icons.Rounded.AutoAwesome,
+                SinemaCapsule(
                     modifier = Modifier
-                        .width(132.dp)
-                        .height(64.dp)
-                )
+                        .width(148.dp)
+                        .graphicsLayer { alpha = if (actionsEnabled) 1f else 0.5f },
+                    onClick = { showAiEditDialog = true },
+                    enabled = actionsEnabled,
+                    height = 56.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    light = !editTheme.isDark,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) { fg ->
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = fg, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        editTheme.t("AI ile düzenle", "Edit with AI"),
+                        color = fg, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1
+                    )
+                }
 
                 // Kaydet butonu
-                PremiumButton(
-                    text = editTheme.t("Kaydet", "Save"),
+                SinemaGoButton(
+                    label = editTheme.t("Kaydet", "Save"),
+                    icon = Icons.Rounded.Check,
                     onClick = {
+                        if (!actionsEnabled) return@SinemaGoButton
                         val dayDrafts = days.mapIndexed { i, d ->
                             ManualDayDraft(
                                 title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
@@ -2463,10 +2416,8 @@ private fun EditProgramScreen(
                             days      = dayDrafts
                         )
                     },
-                    modifier = Modifier.weight(1f).height(64.dp),
-                    isEnabled = !isLoading && !uiState.aiEditLoading,
-                    isLoading = isLoading,
-                    leadingIcon = Icons.Rounded.Check
+                    modifier = Modifier.weight(1f),
+                    dim = !actionsEnabled
                 )
             }
         }
@@ -2541,45 +2492,28 @@ private fun ManualBuilderScreen(
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = contentPad + timerExtraPad)) {
-        DetailHeader(title = manTheme.t("Manuel", "Manual"), sub = manStrings.manualBuilderSub, onBack = onBack, accent = manAccent)
+    val isLoading = uiState.isLoading
 
-        // ── Program name input ────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp)
-                .insetControlSurface(manAccent, manTheme, RoundedCornerShape(16.dp))
-                .padding(horizontal = 18.dp, vertical = 14.dp)
-        ) {
-            BasicTextField(
-                value = programName,
-                onValueChange = { programName = it },
-                textStyle = MaterialTheme.typography.titleMedium.copy(
-                    color = manTheme.text0,
-                    fontWeight = FontWeight.Bold
-                ),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                decorationBox = { inner ->
-                    if (programName.isEmpty()) {
-                        Text(
-                            manTheme.t("Program adı...", "Program name..."),
-                            color = manTheme.text2,
-                            fontWeight = FontWeight.Light,
-                            fontSize = 16.sp
-                        )
-                    }
-                    inner()
-                }
-            )
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Sinema.page(manTheme))
+            .padding(bottom = contentPad + timerExtraPad)
+    ) {
+        BuilderSceneHeader(
+            title = manTheme.t("Manuel", "Manual"),
+            sub = manStrings.manualBuilderSub,
+            name = programName,
+            onNameChange = { programName = it },
+            namePlaceholder = manTheme.t("Program adı...", "Program name..."),
+            onBack = onBack
+        )
 
         // ── Days list ─────────────────────────────────────────────────────────
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             itemsIndexed(days, key = { _, day -> day.id }) { index, day ->
                 ManualDayCard(
@@ -2594,28 +2528,17 @@ private fun ManualBuilderScreen(
 
             item {
                 if (days.size < 7) {
-                    TextButton(
-                        onClick = { days.add(MutableManualDay()) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Rounded.Add, null, tint = manAccent, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            manTheme.t("+ YENİ GÜN", "+ NEW DAY") + "  (${days.size}/7)",
-                            color = manAccent,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
+                    NewDayBlock(count = days.size, onClick = { days.add(MutableManualDay()) })
                 }
             }
         }
 
         // ── Save button ───────────────────────────────────────────────────────
-        val isLoading = uiState.isLoading
-        PremiumButton(
-            text = manStrings.saveProtocol,
+        SinemaGoButton(
+            label = manStrings.saveProtocol,
+            icon = Icons.Rounded.Check,
             onClick = {
+                if (isLoading) return@SinemaGoButton
                 val dayDrafts = days.mapIndexed { i, d ->
                     ManualDayDraft(
                         title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
@@ -2647,17 +2570,140 @@ private fun ManualBuilderScreen(
                     days = dayDrafts
                 )
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            isEnabled = !isLoading,
-            isLoading = isLoading,
-            leadingIcon = Icons.Rounded.Check
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            dim = isLoading
         )
     }
 }
 
 // ── Manual Day Card ───────────────────────────────────────────────────────────
+
+@Composable
+private fun BuilderSceneHeader(
+    title: String,
+    sub: String,
+    name: String,
+    onNameChange: (String) -> Unit,
+    namePlaceholder: String,
+    onBack: () -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+    ) {
+        SinemaScene(Modifier.matchParentSize())
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 22.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SinemaCapsuleIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    description = theme.t("Geri", "Back"),
+                    onClick = onBack,
+                    selected = false,
+                    size = 48.dp
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        sub.sinemaUpper(theme),
+                        color = Color.White.copy(0.72f),
+                        style = Sinema.Label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        title,
+                        color = Color.White,
+                        style = Sinema.ScreenTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            SinemaCapsule(
+                modifier = Modifier.fillMaxWidth(),
+                height = 68.dp,
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp)
+            ) {
+                BasicTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = Color.White,
+                        fontFamily = AppFontFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 22.sp
+                    ),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { inner ->
+                        if (name.isEmpty()) {
+                            Text(
+                                namePlaceholder,
+                                color = Color.White.copy(0.45f),
+                                fontFamily = AppFontFamily,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 22.sp,
+                                maxLines = 1
+                            )
+                        }
+                        inner()
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** "Yeni gün" kabarık blok: tek artı ikonu, sayaç. */
+@Composable
+private fun NewDayBlock(count: Int, onClick: () -> Unit) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .sinemaGlow(accent.copy(0.4f), 16.dp, 6.dp, CircleShape)
+                .clip(CircleShape)
+                .background(accent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Add, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(
+            theme.t("Yeni gün", "New day"),
+            color = Sinema.text(theme),
+            fontFamily = AppFontFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "$count/7",
+            color = Sinema.textSecondary(theme),
+            style = Sinema.Label
+        )
+    }
+}
 
 @Composable
 private fun ManualDayCard(
@@ -2669,121 +2715,126 @@ private fun ManualDayCard(
     onEditExercise  : (Int) -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
-    val accent = if (day.isRestDay) Mist else theme.effectiveAccentColor
+    val accent = theme.effectiveAccentColor
+    val onAccent = theme.effectiveOnAccentColor
+    val textPrimary = Sinema.text(theme)
+    val textSec = Sinema.textSecondary(theme)
+    val line = Sinema.line(theme)
+    val rest = day.isRestDay
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(18.dp))
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(16.dp)
     ) {
         // Day header row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(44.dp)
+                    .then(if (!rest) Modifier.sinemaGlow(accent.copy(0.4f), 16.dp, 6.dp, CircleShape) else Modifier)
                     .clip(CircleShape)
-                    .background(accent.copy(0.12f)),
+                    .background(if (rest) line else accent),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     dayNumber.toString(),
-                    color = accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black
+                    color = if (rest) textSec else onAccent,
+                    style = Sinema.Metric.copy(fontSize = 20.sp)
                 )
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
 
             // Editable title
             BasicTextField(
                 value = day.title,
                 onValueChange = { day.title = it },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = theme.text0,
-                    fontWeight = FontWeight.Bold
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = textPrimary,
+                    fontFamily = AppFontFamily,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
                 ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
                 decorationBox = { inner ->
                     if (day.title.isEmpty()) {
                         Text(
-                            if (day.isRestDay) theme.t("DİNLENME GÜNÜ", "REST DAY")
+                            if (rest) theme.t("DİNLENME GÜNÜ", "REST DAY")
                             else theme.t("GÜN $dayNumber", "DAY $dayNumber"),
-                            color = theme.text2,
-                            fontWeight = FontWeight.Light,
-                            fontSize = 14.sp
+                            color = textSec,
+                            fontFamily = AppFontFamily,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            maxLines = 1
                         )
                     }
                     inner()
                 }
             )
+            Spacer(Modifier.width(8.dp))
 
             // Rest day toggle
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { day.isRestDay = !day.isRestDay }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    theme.t("Dinlenme", "Rest"),
-                    color = if (day.isRestDay) accent else theme.text2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.width(4.dp))
-                Switch(
-                    checked = day.isRestDay,
-                    onCheckedChange = { day.isRestDay = it },
-                    modifier = Modifier.size(width = 36.dp, height = 20.dp).scale(0.7f),
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = Mist,
-                        uncheckedTrackColor = theme.bg3
-                    )
-                )
+            SinemaCapsule(
+                selected = rest,
+                onClick = { day.isRestDay = !day.isRestDay },
+                height = 36.dp,
+                light = !theme.isDark,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+            ) { fg ->
+                Text(theme.t("Dinlenme", "Rest"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
 
-            IconButton(onClick = onRemoveDay, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Rounded.Close, null, tint = theme.text2.copy(0.4f), modifier = Modifier.size(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRemoveDay),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Close, theme.t("Günü sil", "Remove day"), tint = textSec, modifier = Modifier.size(18.dp))
             }
         }
 
-        BasicTextField(
-            value = day.notes,
-            onValueChange = { day.notes = it.take(600) },
-            textStyle = MaterialTheme.typography.bodySmall.copy(color = theme.text1),
+        Spacer(Modifier.height(10.dp))
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            decorationBox = { inner ->
-                if (day.notes.isBlank()) {
-                    Text(
-                        theme.t("Gün notu (isteğe bağlı)", "Day note (optional)"),
-                        color = theme.text2,
-                        fontSize = 11.sp
-                    )
+                .clip(RoundedCornerShape(16.dp))
+                .background(Sinema.page(theme))
+                .border(1.dp, line, RoundedCornerShape(16.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            BasicTextField(
+                value = day.notes,
+                onValueChange = { day.notes = it.take(600) },
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = textPrimary, fontSize = 13.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    if (day.notes.isBlank()) {
+                        Text(
+                            theme.t("Gün notu (isteğe bağlı)", "Day note (optional)"),
+                            color = textSec,
+                            fontSize = 13.sp
+                        )
+                    }
+                    inner()
                 }
-                inner()
-            }
-        )
+            )
+        }
 
         // Exercises section (hidden when rest day)
-        if (!day.isRestDay) {
+        if (!rest) {
             if (day.exercises.isNotEmpty()) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = theme.stroke,
-                    thickness = 0.5.dp
-                )
                 Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     day.exercises.forEachIndexed { i, ex ->
                         val previous = day.exercises.getOrNull(i - 1)
@@ -2791,9 +2842,7 @@ private fun ManualDayCard(
                             Text(
                                 ex.section.uppercase(java.util.Locale.forLanguageTag("tr-TR")),
                                 color = accent,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 1.sp,
+                                style = Sinema.Label,
                                 modifier = Modifier.padding(start = 4.dp, top = 6.dp)
                             )
                         }
@@ -2812,7 +2861,7 @@ private fun ManualDayCard(
                             Text(
                                 listOf(groupName, groupDetails).filter { it.isNotBlank() }.joinToString(" · "),
                                 color = accent,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
                             )
@@ -2820,98 +2869,91 @@ private fun ManualDayCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .premiumSolidSurface(accent, theme, RoundedCornerShape(12.dp), elevation = 3.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Sinema.page(theme))
+                                .border(1.dp, line, RoundedCornerShape(20.dp))
                                 .clickable { onEditExercise(i) }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(accent)
-                            )
-                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     theme.exerciseDisplayName(ex.name),
-                                    color = theme.text0,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 13.sp
+                                    color = textPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
                                 )
-                                Spacer(Modifier.height(4.dp))
+                                Spacer(Modifier.height(6.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    manualDraftBadges(ex, theme).forEachIndexed { badgeIndex, badge ->
+                                    manualDraftBadges(ex, theme).forEach { badge ->
                                         Box(
                                             modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(accent.copy(if (badgeIndex == 0) 0.15f else 0.10f))
-                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(line)
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
                                         ) {
                                             Text(
                                                 badge,
-                                                color = accent.copy(if (badgeIndex == 0) 1f else 0.8f),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold
+                                                color = textPrimary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
                                             )
                                         }
                                     }
                                 }
                                 if (ex.notes.isNotBlank()) {
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(6.dp))
                                     Text(
                                         ex.notes,
-                                        color = theme.text2,
-                                        fontSize = 10.sp,
+                                        color = textSec,
+                                        fontSize = 11.sp,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
-                            Spacer(Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(accent.copy(0.2f))
-                                    .clickable { onEditExercise(i) },
+                                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onEditExercise(i) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.Edit, theme.t("Düzenle", "Edit"), tint = textPrimary, modifier = Modifier.size(18.dp))
                             }
-                            Spacer(Modifier.width(6.dp))
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(theme.bg3)
-                                    .clickable { onRemoveExercise(i) },
+                                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onRemoveExercise(i) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Rounded.Close, null, tint = theme.text1, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.Close, theme.t("Kaldır", "Remove"), tint = textSec, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
             }
 
-            TextButton(
-                onClick = onAddExercise,
+            SinemaCapsule(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                    .padding(top = 12.dp),
+                onClick = onAddExercise,
+                height = 48.dp,
+                light = !theme.isDark,
+                horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    theme.t("Hareket Ekle", "Add Exercise"),
-                    color = accent,
+                    theme.t("Hareket ekle", "Add exercise"),
+                    color = fg,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
+                    fontSize = 14.sp
                 )
             }
-        } else {
-            Spacer(Modifier.height(12.dp))
         }
     }
 }
@@ -2996,12 +3038,13 @@ private fun ExerciseEditDialog(
     val theme  = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val onAccent = theme.effectiveOnAccentColor
+    val line = Sinema.line(theme)
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .premiumSolidSurface(accent, theme, RoundedCornerShape(24.dp), elevation = 8.dp)
+                .sinemaCard(theme, RoundedCornerShape(28.dp))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -3009,27 +3052,27 @@ private fun ExerciseEditDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(44.dp)
+                        .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(accent.copy(0.15f)),
+                        .background(accent),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Edit, null, tint = onAccent, modifier = Modifier.size(18.dp))
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
                         theme.t("HAREKETİ DÜZENLE", "EDIT EXERCISE"),
-                        color         = accent,
-                        fontSize      = 9.sp,
-                        fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 1.2.sp
+                        color = Sinema.textSecondary(theme),
+                        style = Sinema.Label
                     )
                     Text(
                         theme.exerciseDisplayName(exercise.name),
-                        color      = theme.text0,
-                        fontWeight = FontWeight.Bold,
-                        fontSize   = 15.sp
+                        color      = Sinema.text(theme),
+                        fontFamily = AppFontFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize   = 18.sp
                     )
                 }
             }
@@ -3038,7 +3081,9 @@ private fun ExerciseEditDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Sinema.page(theme))
+                    .border(1.dp, line, RoundedCornerShape(20.dp))
                     .padding(horizontal = 16.dp)
             ) {
                 if (spec.metric == ExerciseMetric.Strength) {
@@ -3049,7 +3094,7 @@ private fun ExerciseEditDialog(
                         onIncrement = { if (sets < 10) sets++ },
                         accent      = accent
                     )
-                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                    HorizontalDivider(color = line, thickness = 1.dp)
                     EditCounterField(
                         label       = theme.t("TEKRAR", "REPS"),
                         value       = reps,
@@ -3057,7 +3102,7 @@ private fun ExerciseEditDialog(
                         onIncrement = { if (reps < 100) reps++ },
                         accent      = accent
                     )
-                    HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                    HorizontalDivider(color = line, thickness = 1.dp)
                     EditCounterField(
                         label       = theme.t("BAŞLANGIÇ KİLOSU", "STARTING WEIGHT"),
                         value       = weightTenths,
@@ -3076,7 +3121,7 @@ private fun ExerciseEditDialog(
                         displayOverride = formatDraftDuration(targetDurationSec, theme)
                     )
                     if (spec.metric == ExerciseMetric.DurationDistance) {
-                        HorizontalDivider(color = theme.stroke, thickness = 0.5.dp)
+                        HorizontalDivider(color = line, thickness = 1.dp)
                         EditCounterField(
                             label       = theme.t("MESAFE", "DISTANCE"),
                             value       = targetDistanceM,
@@ -3092,16 +3137,19 @@ private fun ExerciseEditDialog(
             BasicTextField(
                 value = notes,
                 onValueChange = { notes = it.take(600) },
-                textStyle = MaterialTheme.typography.bodySmall.copy(color = theme.text0),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Sinema.text(theme)),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
-                    .padding(14.dp),
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Sinema.page(theme))
+                    .border(1.dp, line, RoundedCornerShape(20.dp))
+                    .padding(16.dp),
                 decorationBox = { inner ->
                     if (notes.isBlank()) Text(
                         theme.t("Hareket notu / uygulama talimatı", "Exercise note / instruction"),
-                        color = theme.text2,
-                        fontSize = 12.sp
+                        color = Sinema.textSecondary(theme),
+                        fontSize = 13.sp
                     )
                     inner()
                 }
@@ -3110,18 +3158,24 @@ private fun ExerciseEditDialog(
             // Action buttons
             Row(
                 modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment     = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick  = onDismiss,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape    = RoundedCornerShape(14.dp),
-                    border   = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
-                ) {
-                    Text(theme.t("İptal", "Cancel"), color = theme.text1, fontWeight = FontWeight.Medium)
+                SinemaCapsule(
+                    modifier = Modifier.weight(1f),
+                    onClick = onDismiss,
+                    height = 56.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    light = !theme.isDark,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) { fg ->
+                    Text(theme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
                 }
-                Button(
-                    onClick  = {
+                SinemaGoButton(
+                    label = theme.t("Kaydet", "Save"),
+                    icon = Icons.Rounded.Check,
+                    onClick = {
                         onConfirm(
                             sets,
                             reps,
@@ -3132,14 +3186,8 @@ private fun ExerciseEditDialog(
                             notes.trim()
                         )
                     },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
-                    shape    = RoundedCornerShape(14.dp)
-                ) {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(theme.t("Kaydet", "Save"), color = onAccent, fontWeight = FontWeight.Bold)
-                }
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -3156,49 +3204,48 @@ private fun EditCounterField(
     displayOverride: String?  = null
 ) {
     val theme = LocalAppTheme.current
+    val onAccent = theme.effectiveOnAccentColor
     Row(
         modifier          = modifier
             .fillMaxWidth()
-            .padding(vertical = 13.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             label,
-            color         = accent,
-            fontSize      = 13.sp,
-            fontWeight    = FontWeight.ExtraBold,
-            letterSpacing = 0.5.sp,
+            color         = Sinema.textSecondary(theme),
+            style         = Sinema.Label,
             modifier      = Modifier.weight(1f)
         )
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(CircleShape)
-                .background(accent.copy(0.15f))
-                .border(1.dp, accent.copy(0.35f), CircleShape)
-                .clickable(onClick = onDecrement),
+                .background(Sinema.line(theme))
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onDecrement),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Remove, null, tint = accent, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Remove, null, tint = Sinema.text(theme), modifier = Modifier.size(18.dp))
         }
         Text(
             displayOverride ?: value.toString(),
-            color      = theme.text0,
-            fontWeight = FontWeight.Black,
+            color      = Sinema.text(theme),
+            fontFamily = AppFontFamily,
+            fontWeight = FontWeight.ExtraBold,
             fontSize   = 22.sp,
             textAlign  = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier   = Modifier.widthIn(min = 60.dp)
+            modifier   = Modifier.widthIn(min = 64.dp)
         )
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
+                .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                 .clip(CircleShape)
-                .background(accent.copy(0.15f))
-                .border(1.dp, accent.copy(0.35f), CircleShape)
-                .clickable(onClick = onIncrement),
+                .background(accent)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, null, tint = onAccent, modifier = Modifier.size(18.dp))
         }
     }
 }

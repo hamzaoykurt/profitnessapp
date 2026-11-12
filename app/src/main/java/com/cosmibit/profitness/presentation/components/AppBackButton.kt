@@ -59,7 +59,10 @@ fun AppBackButton(
                 scaleY = scale
                 translationY = 0f
             }
-            .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
+            // Sinema: nötr düz kart + kenar; eski inset yüzeyin alt rim çizgisi kalktı.
+            .clip(RoundedCornerShape(14.dp))
+            .background(Sinema.surface(theme))
+            .border(1.dp, Sinema.line(theme), RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
