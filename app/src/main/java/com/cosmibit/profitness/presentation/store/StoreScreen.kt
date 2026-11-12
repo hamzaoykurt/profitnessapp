@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
@@ -38,6 +39,11 @@ import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.GhostButton
 import com.cosmibit.profitness.presentation.components.PremiumButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaGlassField
+import com.cosmibit.profitness.presentation.components.SinemaGlowBar
+import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
+import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 
@@ -258,10 +264,8 @@ fun StoreScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.bg0)
+            .background(Sinema.page(theme))
     ) {
-        PageAccentBloom()
-
         Column(modifier = Modifier.fillMaxSize()) {
 
             // Top bar
@@ -352,18 +356,14 @@ fun StoreScreen(
                     kotlinx.coroutines.delay(2500)
                     toastMsg = null
                 }
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 28.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(theme.bg2)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
+                SinemaCapsule(
+                    modifier = Modifier.padding(horizontal = 28.dp),
+                    height = 44.dp,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                ) { fg ->
                     Icon(Icons.Rounded.CheckCircle, null,
-                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    Text(msg, color = theme.text0, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+                    Text(msg, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
             }
         }
@@ -391,7 +391,9 @@ private fun PendingOrderPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
+    val textMain = Sinema.text(theme)
+    val textSub = Sinema.textSecondary(theme)
     var cardNumber by remember { mutableStateOf("4242 4242 4242 4242") }
     var expiry by remember { mutableStateOf("12/30") }
     var cvc by remember { mutableStateOf("123") }
@@ -402,42 +404,34 @@ private fun PendingOrderPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(18.dp))
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) { }
-            .padding(14.dp)
+            .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.ReceiptLong, null, tint = accent, modifier = Modifier.size(19.dp))
-            }
+            Icon(Icons.AutoMirrored.Rounded.ReceiptLong, null, tint = accent, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(theme.t("Demo ödeme", "Demo payment"), color = theme.text0, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(theme.t("Demo ödeme", "Demo payment"), color = textMain, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     if (state.sandboxAvailable) theme.t("Test kartı ile satın alma akışını tamamla.", "Complete the purchase flow with a test card.")
                     else theme.t("Demo ödeme modu şu an kapalı.", "Demo payment mode is currently off."),
-                    color = theme.text2,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp
+                    color = textSub,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
                 )
             }
-            IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Rounded.Close, null, tint = theme.text2, modifier = Modifier.size(18.dp))
+            IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.Close, theme.t("Kapat", "Close"), tint = textSub, modifier = Modifier.size(20.dp))
             }
         }
 
         if (state.sandboxAvailable) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             DemoField(
                 value = cardNumber,
                 onValueChange = {
@@ -451,8 +445,8 @@ private fun PendingOrderPanel(
                 placeholder = "4242 4242 4242 4242",
                 theme = theme
             )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DemoField(
                     value = expiry,
                     onValueChange = {
@@ -473,32 +467,31 @@ private fun PendingOrderPanel(
                     modifier = Modifier.weight(1f)
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 theme.t("Test kartı hazır dolduruldu. Gerçek ödeme alınmaz.", "The test card is prefilled. No real payment is charged."),
-                color = theme.text2.copy(0.72f),
-                fontSize = 10.sp,
-                lineHeight = 14.sp
+                color = textSub,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
             )
-            Spacer(Modifier.height(10.dp))
-            PremiumButton(
-                text = theme.t("Demo ödemeyi tamamla", "Complete demo payment"),
-                onClick = onSandboxComplete,
-                modifier = Modifier.fillMaxWidth(),
-                isEnabled = !state.isLoading && canSubmit,
-                isLoading = state.isLoading,
-                leadingIcon = Icons.Rounded.Science
+            Spacer(Modifier.height(14.dp))
+            StoreGoButton(
+                label = theme.t("Demo ödemeyi tamamla", "Complete demo payment"),
+                icon = Icons.Rounded.Science,
+                enabled = canSubmit,
+                loading = state.isLoading,
+                onClick = onSandboxComplete
             )
         } else {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 theme.t(
                     "Ödeme tamamlandığında üyelik ve Enerji hakların otomatik olarak hesabına yansır.",
                     "Membership and Energy benefits are applied automatically after payment is completed."
                 ),
-                color = theme.text2.copy(0.65f),
-                fontSize = 10.sp,
-                lineHeight = 14.sp
+                color = textSub,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
             )
         }
     }
@@ -510,44 +503,36 @@ private fun PaymentModeBand(
     theme: AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(16.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(accent.copy(0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
-                null,
-                tint = accent,
-                modifier = Modifier.size(17.dp)
-            )
-        }
+    val accent = theme.effectiveAccentColor
+    SinemaCapsule(
+        modifier = modifier.fillMaxWidth(),
+        height = 56.dp,
+        shape = RoundedCornerShape(28.dp),
+        light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    ) { fg ->
+        Icon(
+            if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
+            null,
+            tint = accent,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 if (state.billingSandboxAvailable) theme.t("Demo ödeme modu açık", "Demo payment mode on") else theme.t("Demo ödeme modu kapalı", "Demo payment mode off"),
-                color = theme.text0,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black
+                color = fg,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold
             )
             Text(
                 if (state.billingSandboxAvailable)
                     theme.t("Gerçek çekim yapılmadan akışı deneyebilirsin.", "Test the flow without a real charge.")
                 else
                     theme.t("Ödeme tamamlanınca haklar hesabına işlenir.", "Benefits are applied when payment is completed."),
-                color = theme.text2,
-                fontSize = 10.sp,
-                lineHeight = 13.sp
+                color = fg.copy(0.7f),
+                fontSize = 11.sp,
+                lineHeight = 14.sp
             )
         }
     }
@@ -562,29 +547,13 @@ private fun DemoField(
     theme: AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    OutlinedTextField(
+    SinemaGlassField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, fontSize = 11.sp) },
-        placeholder = { Text(placeholder, fontSize = 12.sp, color = theme.text2.copy(0.55f)) },
-        singleLine = true,
-        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 54.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = theme.text0,
-            unfocusedTextColor = theme.text0,
-            focusedBorderColor = accent.copy(0.55f),
-            unfocusedBorderColor = theme.stroke,
-            focusedLabelColor = accent,
-            unfocusedLabelColor = theme.text2,
-            cursorColor = accent,
-            focusedContainerColor = theme.bg0,
-            unfocusedContainerColor = theme.bg0
-        ),
-        shape = RoundedCornerShape(12.dp)
+        label = label,
+        placeholder = placeholder,
+        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+        modifier = modifier.fillMaxWidth()
     )
 }
 
@@ -599,102 +568,81 @@ private fun StoreTopBar(
     onBack     : () -> Unit,
     onTabChange: (Int) -> Unit
 ) {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
+            .height(220.dp + topInset)
     ) {
-        Row(
-            modifier          = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppBackButton(onClick = onBack, accent = accent, size = 44.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    theme.t("Program Merkezi", "Program Hub"),
-                    color      = theme.text0,
-                    fontSize   = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.sp
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    theme.t("Planın, Enerjin ve AI hamlelerin", "Your plan, Energy, and AI moves"),
-                    color      = theme.text2,
-                    fontSize   = 11.sp,
-                    lineHeight = 13.sp
-                )
-            }
-
-            val isPaid    = plan != UserPlan.FREE
-            val chipColor = if (isPaid) accent.copy(0.12f) else accent.copy(0.08f)
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(chipColor)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    if (isPaid) Icons.Rounded.WorkspacePremium else Icons.Rounded.Bolt,
-                    null, tint = accent, modifier = Modifier.size(13.dp)
-                )
-                Text(
-                    if (isPaid) "${plan.localizedDisplayName(theme)} · $credits" else "$credits",
-                    color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold
-                )
-                if (!isPaid) {
-                    Text(theme.t("Enerji", "Energy"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .glassCard(accent, theme, RoundedCornerShape(16.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            listOf(theme.t("Üyelik", "Membership") to Icons.Rounded.WorkspacePremium,
-                   theme.t("Enerji", "Energy")  to Icons.Rounded.Bolt
-            ).forEachIndexed { idx, (label, icon) ->
-                val isActive = activeTab == idx
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .then(if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp)) else Modifier)
-                        .clickable(
-                            indication        = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) { onTabChange(idx) },
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Icon(icon, null,
-                        tint     = if (isActive) accent else theme.text2,
-                        modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        label,
-                        color      = if (isActive) accent else theme.text2,
-                        fontSize   = 13.sp,
-                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+        // Salon fotoğrafı; yüklenmezse SinemaScene
+        coil.compose.SubcomposeAsyncImage(
+            model = com.cosmibit.profitness.core.ui.categoryImageUrl(""),
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            loading = { SinemaScene() },
+            error = { SinemaScene() }
+        )
+        // Karartma: beyaz yazı için alt bölgede >= %85 siyah
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(0.40f),
+                        0.5f to Color.Black.copy(0.46f),
+                        1f to Color.Black.copy(0.85f)
                     )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SinemaCapsuleIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    description = theme.t("Geri", "Back"),
+                    onClick = onBack,
+                    selected = false,
+                    size = 48.dp
+                )
+                // Foto üstü: her zaman koyu cam segment
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(theme.t("Üyelik", "Membership"), theme.t("Enerji", "Energy")).forEachIndexed { idx, label ->
+                        SinemaCapsule(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == idx,
+                            onClick = { onTabChange(idx) },
+                            height = 48.dp,
+                            horizontalArrangement = Arrangement.Center,
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) { fg ->
+                            Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+                }
+                SinemaCapsule(
+                    height = 48.dp,
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) { fg ->
+                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(16.dp))
+                    Text("$credits", color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 }
             }
+            Spacer(Modifier.weight(1f))
+            StoreAccountStrip(plan = plan, theme = theme)
         }
-
-        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -718,13 +666,6 @@ private fun SubscriptionTab(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            StoreAccountStrip(
-                plan = state.plan,
-                theme = theme
-            )
-        }
-
         if (state.billingSandboxAvailable) {
             item {
                 PaymentModeBand(state = state, theme = theme)
@@ -762,13 +703,16 @@ private fun SubscriptionTab(
 
         if (hasPaidPlan) {
             item {
-                TextButton(
+                SinemaCapsule(
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 48.dp,
+                    light = !theme.isDark,
                     onClick = onCancelPlan,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Rounded.Cancel, null, tint = theme.text2.copy(0.55f), modifier = Modifier.size(14.dp))
+                    horizontalArrangement = Arrangement.Center
+                ) { fg ->
+                    Icon(Icons.Rounded.Cancel, null, tint = fg.copy(0.6f), modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(theme.t("Aboneliği iptal et", "Cancel subscription"), color = theme.text2.copy(0.62f), fontSize = 12.sp)
+                    Text(theme.t("Aboneliği iptal et", "Cancel subscription"), color = fg.copy(0.8f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -781,26 +725,23 @@ private fun StoreAccountStrip(
     plan: UserPlan,
     theme: AppThemeState
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                theme.t("AKTİF PLAN", "ACTIVE PLAN"),
-                color = accent,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.sp
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(plan.localizedDisplayName(theme), color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        }
-        Icon(Icons.Rounded.WorkspacePremium, null, tint = accent, modifier = Modifier.size(24.dp))
+    // Foto üstünde: her zaman beyaz (karartma altı)
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "${theme.t("Program Merkezi", "Program Hub")} · ${theme.t("AKTİF PLAN", "ACTIVE PLAN")}".sinemaUpper(theme),
+            color = Color.White.copy(0.78f), style = Sinema.Label.copy(fontSize = 11.sp), maxLines = 1
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            plan.localizedDisplayName(theme),
+            color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.01).em, maxLines = 1
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            theme.t("Planın, Enerjin ve AI hamlelerin", "Your plan, Energy, and AI moves"),
+            color = Color.White.copy(0.78f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1
+        )
     }
 }
 
@@ -810,29 +751,19 @@ private fun BillingCycleSelector(
     onToggle: (Boolean) -> Unit,
     theme: AppThemeState
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassCard(accent, theme, RoundedCornerShape(16.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        BillingCycleOption(
-            label = theme.t("Aylık", "Monthly"),
-            sub = theme.t("Esnek", "Flexible"),
-            selected = !isYearly,
-            theme = theme,
-            modifier = Modifier.weight(1f),
-            onClick = { onToggle(false) }
-        )
-        BillingCycleOption(
-            label = theme.t("Yıllık", "Yearly"),
-            sub = theme.t("%40'a varan avantaj", "Up to 40% value"),
+    Column(Modifier.fillMaxWidth()) {
+        SinemaSegmentRow(
+            options = listOf(false, true),
             selected = isYearly,
-            theme = theme,
-            modifier = Modifier.weight(1f),
-            onClick = { onToggle(true) }
+            label = { yearly -> if (yearly) theme.t("Yıllık", "Yearly") else theme.t("Aylık", "Monthly") },
+            onSelect = onToggle,
+            height = 48.dp
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (isYearly) theme.t("%40'a varan avantaj", "Up to 40% value") else theme.t("Esnek", "Flexible"),
+            color = Sinema.textSecondary(theme), fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 4.dp)
         )
     }
 }
@@ -878,8 +809,9 @@ private fun PlanOfferCard(
     onSelect: () -> Unit,
     onPurchase: () -> Unit
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    val onAccent = MaterialTheme.colorScheme.onPrimary
+    val accent = theme.effectiveAccentColor
+    val textMain = Sinema.text(theme)
+    val textSub = Sinema.textSecondary(theme)
     val isCurrent = currentPlan == tier.plan
     val price = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
     val period = when {
@@ -896,73 +828,59 @@ private fun PlanOfferCard(
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "plan_offer_press")
+    val priceSize = if (selected) 56.sp else 28.sp
 
     Column(
         modifier = Modifier
             .scale(cardScale)
             .fillMaxWidth()
-            .then(
-                if (selected || isCurrent) Modifier.performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
-                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(22.dp), elevated = !theme.isDark)
-            )
+            .storeCard(theme, accent, selected, if (selected) 28.dp else 24.dp)
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                role = androidx.compose.ui.semantics.Role.Button,
                 onClick = onSelect
             )
-            .padding(16.dp)
+            .padding(if (selected) 20.dp else 16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+        Text(
+            when (tier.plan) {
+                UserPlan.FREE -> theme.t("GÜNLÜK MOD", "DAILY MODE")
+                UserPlan.PRO -> theme.t("PRO MODU", "PRO MODE")
+                UserPlan.ELITE -> theme.t("ELITE MOD", "ELITE MODE")
+            },
+            color = textSub, style = Sinema.Label.copy(fontSize = 11.sp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(tier.localizedLabel(theme), color = textMain, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            tier.localizedBadge(theme)?.let { badge -> StoreChip(badge, filled = true, theme = theme) }
+            if (isCurrent) StoreChip(theme.t("AKTİF", "ACTIVE"), filled = true, theme = theme)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = 13.sp, lineHeight = 18.sp)
+
+        Spacer(Modifier.height(if (selected) 14.dp else 10.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                price, color = textMain, fontSize = priceSize, fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.04).em, maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (period.isNotEmpty()) {
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    when (tier.plan) {
-                        UserPlan.FREE -> theme.t("GÜNLÜK MOD", "DAILY MODE")
-                        UserPlan.PRO -> theme.t("PRO MODU", "PRO MODE")
-                        UserPlan.ELITE -> theme.t("ELITE MOD", "ELITE MODE")
-                    },
-                    color = accent,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.sp
+                    period, color = textSub, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = if (selected) 10.dp else 4.dp)
                 )
-                Spacer(Modifier.height(5.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tier.localizedLabel(theme), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    tier.localizedBadge(theme)?.let { badge ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(accent.copy(0.12f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(badge, color = accent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-                        }
-                    }
-                    if (isCurrent) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(accent.copy(0.12f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(theme.t("AKTİF", "ACTIVE"), color = accent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(planOneLiner(tier.plan, theme), color = theme.text2, fontSize = 11.sp, lineHeight = 15.sp)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(price, color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                if (period.isNotEmpty()) Text(period, color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
         if (isYearly && tier.discountBadge.isNotEmpty()) {
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tier.yearlyPerMonth, color = theme.text2, fontSize = 11.sp)
-                Text(tier.discountBadge, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                Text(tier.yearlyPerMonth, color = textSub, fontSize = 12.sp)
+                StoreChip(tier.discountBadge, filled = false, theme = theme)
             }
         }
 
@@ -972,23 +890,76 @@ private fun PlanOfferCard(
         }
 
         Spacer(Modifier.height(14.dp))
-        if (isCurrent) {
-            GhostButton(
-                text = ctaLabel,
-                onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                isEnabled = false
+        when {
+            isCurrent -> SinemaGoOrIdle(
+                label = ctaLabel,
+                icon = Icons.Rounded.WorkspacePremium,
+                enabled = false,
+                onClick = {}
             )
-        } else {
-            PremiumButton(
-                text = ctaLabel,
+            selected -> StoreGoButton(
+                label = ctaLabel,
+                icon = Icons.Rounded.WorkspacePremium,
+                enabled = !isLoading,
+                loading = isLoading,
+                onClick = onPurchase
+            )
+            else -> SinemaCapsule(
+                modifier = Modifier.fillMaxWidth().alpha(if (isLoading) 0.5f else 1f),
+                height = 52.dp,
+                light = !theme.isDark,
                 onClick = onPurchase,
-                modifier = Modifier.fillMaxWidth(),
-                isEnabled = !isLoading,
-                isLoading = isLoading && selected,
-                leadingIcon = Icons.Rounded.WorkspacePremium
-            )
+                enabled = !isLoading,
+                horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Text(ctaLabel, color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            }
         }
+    }
+}
+
+/** Mağaza kartı: öne çıkan = accent 1.5dp kenar + glow; diğerleri nötr sinemaCard. */
+private fun Modifier.storeCard(theme: AppThemeState, accent: Color, featured: Boolean, radius: Dp): Modifier {
+    val shape = RoundedCornerShape(radius)
+    return if (featured) {
+        this
+            .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape)
+            .clip(shape)
+            .background(Sinema.surface(theme))
+            .border(1.5.dp, accent, shape)
+    } else {
+        this.sinemaCard(theme, shape)
+    }
+}
+
+/** Küçük cam rozet (SinemaCapsule ailesi): dolu = accent + glow. */
+@Composable
+private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
+    SinemaCapsule(
+        height = 24.dp,
+        shape = CircleShape,
+        selected = filled,
+        light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.Center
+    ) { fg ->
+        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+    }
+}
+
+/** Ana eylem: yükleniyor = aynı düğme dim + kilitli; pasif = nötr gri. */
+@Composable
+private fun StoreGoButton(
+    label: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    when {
+        loading -> SinemaGoButton(label = label, icon = icon, onClick = {}, dim = true)
+        !enabled -> SinemaGoOrIdle(label = label, icon = icon, enabled = false, onClick = onClick)
+        else -> SinemaGoButton(label = label, icon = icon, onClick = onClick)
     }
 }
 
@@ -1002,10 +973,10 @@ private fun CompactPlanFeature(
     Row(
         modifier = Modifier.padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(15.dp))
-        Text(text, color = theme.text1, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.weight(1f))
+        Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
+        Text(text, color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
     }
 }
 
@@ -1167,26 +1138,18 @@ private fun StoreSectionHeader(
     theme: AppThemeState,
     trailing: @Composable (() -> Unit)? = null
 ) {
-    val accent = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp),
+            .padding(top = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(34.dp)
-                .clip(CircleShape)
-                .background(Brush.verticalGradient(listOf(accent, accent.copy(0.32f))))
-        )
         Column(Modifier.weight(1f)) {
-            Text(title, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
             if (subtitle.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, color = theme.text2, fontSize = 10.sp, lineHeight = 14.sp)
+                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
             }
         }
         trailing?.invoke()
@@ -1465,7 +1428,6 @@ private fun SimpleEnergyBalanceCard(
     state: StoreState,
     theme: AppThemeState
 ) {
-    val accent = MaterialTheme.colorScheme.primary
     val capacity = energyCapacityFor(state.credits)
     val fillTarget = (state.credits.toFloat() / capacity.toFloat()).coerceIn(0.04f, 1f)
     val fill by animateFloatAsState(
@@ -1474,72 +1436,21 @@ private fun SimpleEnergyBalanceCard(
         label = "energy_reserve_fill"
     )
     val creditsText = state.credits.toString()
-    val countSize = when {
-        creditsText.length >= 5 -> 38.sp
-        creditsText.length == 4 -> 44.sp
-        creditsText.length == 3 -> 52.sp
-        else -> 56.sp
-    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
-            .padding(18.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(20.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    theme.t("ENERJİ", "ENERGY"),
-                    color = accent,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.sp
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        creditsText,
-                        color = theme.text0,
-                        fontSize = countSize,
-                        lineHeight = countSize,
-                        fontWeight = FontWeight.Black
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        theme.t("Enerji", "Energy"),
-                        color = accent,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(bottom = 7.dp)
-                    )
-                }
-            }
-            EnergyReserveBattery(
-                fill = fill,
-                accent = accent,
-                theme = theme
-            )
-        }
-        Spacer(Modifier.height(14.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(12.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(theme.bg0.copy(0.52f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fill)
-                    .fillMaxHeight()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(accent.copy(0.58f), accent, Color.White.copy(0.22f))
-                        )
-                    )
-            )
-        }
+        SinemaBigStat(
+            value = creditsText,
+            label = theme.t("ENERJİ", "ENERGY"),
+            unit = theme.t("Enerji", "Energy"),
+            size = if (creditsText.length >= 5) 64 else 88
+        )
+        Spacer(Modifier.height(18.dp))
+        SinemaGlowBar(progress = fill, height = 10.dp)
     }
 }
 
@@ -1597,8 +1508,8 @@ private fun SimpleEnergyPackageRow(
     isLoading: Boolean,
     onPurchase: () -> Unit
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    val intensity = energyPackageIntensity(pkg.amount)
+    val accent = theme.effectiveAccentColor
+    val featured = pkg.localizedBadge(theme) != null
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
     val rowScale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "energy_pack_press")
@@ -1607,58 +1518,43 @@ private fun SimpleEnergyPackageRow(
         modifier = Modifier
             .scale(rowScale)
             .fillMaxWidth()
-            .performanceElevatedSurface(theme, RoundedCornerShape(18.dp), elevated = !theme.isDark)
+            .alpha(if (isLoading) 0.5f else 1f)
+            .storeCard(theme, accent, featured, 24.dp)
             .clickable(
                 enabled = !isLoading,
                 indication = null,
                 interactionSource = interaction,
+                role = androidx.compose.ui.semantics.Role.Button,
                 onClick = onPurchase
             )
-            .padding(14.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(theme.bg2),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(22.dp))
-        }
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(energyLabel(pkg.amount, theme), color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                pkg.localizedBadge(theme)?.let { badge ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(accent.copy(0.12f))
-                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                    ) {
-                        Text(badge, color = accent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    pkg.amount.toString(),
+                    color = Sinema.text(theme), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.04).em, maxLines = 1
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    theme.t("Enerji", "Energy"),
+                    color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 5.dp)
+                )
             }
-            Spacer(Modifier.height(7.dp))
-            EnergyPackSignal(level = intensity, accent = accent, theme = theme)
-        }
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
-        } else {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(accent.copy(0.10f))
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(pkg.price, color = accent, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                Icon(Icons.AutoMirrored.Rounded.ArrowForwardIos, null, tint = accent, modifier = Modifier.size(10.dp))
+            pkg.localizedBadge(theme)?.let { badge ->
+                Spacer(Modifier.height(8.dp))
+                StoreChip(badge, filled = true, theme = theme)
             }
         }
+        Text(
+            pkg.price,
+            color = Sinema.text(theme), fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.02).em, maxLines = 1
+        )
     }
 }
 
@@ -2503,90 +2399,40 @@ private fun CancelPlanDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(0.6f))
-            .clickable(
-                indication = null, interactionSource = remember { MutableInteractionSource() }
-            ) { onDismiss() },
-        contentAlignment = Alignment.BottomCenter
-    ) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(theme.bg1)
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(theme.stroke.copy(0.5f), Color.Transparent)
-                    ),
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                )
-                .clickable(
-                    indication = null, interactionSource = remember { MutableInteractionSource() }
-                ) {}
-                .padding(horizontal = 24.dp)
-                .navigationBarsPadding(),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(40.dp, 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(theme.stroke)
+            Text(
+                theme.t("Aboneliği İptal Et", "Cancel Subscription"),
+                style = Sinema.Title.copy(fontWeight = FontWeight.ExtraBold), color = Sinema.text(theme)
             )
-            Spacer(Modifier.height(24.dp))
-
-            Icon(Icons.Rounded.Cancel, null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(40.dp))
-
-            Spacer(Modifier.height(12.dp))
-            Text(theme.t("Aboneliği İptal Et", "Cancel Subscription"),
-                color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(8.dp))
             Text(
                 theme.t(
                     "$planName aboneliğini iptal etmek istediğine emin misin?\nMevcut dönem sonunda ücretsiz plana geçilecek.",
                     "Are you sure you want to cancel your $planName subscription?\nYou will move to the free plan at the end of the current period."
                 ),
-                color     = theme.text2,
-                fontSize  = 13.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 19.sp
+                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
             )
-
             Spacer(Modifier.height(24.dp))
-
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                TextButton(
-                    onClick  = onDismiss,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(theme.t("Vazgeç", "Keep Plan"), color = theme.text2, fontSize = 14.sp)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.error.copy(0.1f))
-                        .clickable { onConfirm() }
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(theme.t("İptal Et", "Cancel"),
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
+            SinemaGoButton(
+                label = theme.t("Vazgeç", "Keep Plan"),
+                icon = Icons.Rounded.WorkspacePremium,
+                onClick = onDismiss
+            )
+            Spacer(Modifier.height(12.dp))
+            // İptal eylemi nötr kapsül (ödeme akışı: onConfirm aynı)
+            SinemaCapsule(
+                modifier = Modifier.fillMaxWidth(),
+                height = 52.dp,
+                light = !theme.isDark,
+                onClick = onConfirm,
+                horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Text(theme.t("İptal Et", "Cancel"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
             }
-
-            Spacer(Modifier.height(20.dp))
         }
     }
 }
@@ -2599,76 +2445,16 @@ fun PaywallDialog(
     onGoToStore: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(0.65f))
-            .clickable(
-                indication = null, interactionSource = remember { MutableInteractionSource() }
-            ) { onDismiss() },
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
-                .background(theme.bg1)
-                .clickable(
-                    indication = null, interactionSource = remember { MutableInteractionSource() }
-                ) {}
-                .padding(horizontal = 26.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(40.dp, 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(theme.stroke)
-            )
-            Spacer(Modifier.height(24.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(theme.bg2),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Lock, null,
-                    tint = accent, modifier = Modifier.size(26.dp))
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Text(theme.t("AI Enerji Gerekli", "AI Energy Required"),
-                color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                theme.t(
-                    "Bu özelliği kullanmak için Enerjin bitmiş.\nPremium'a geç veya Enerji yükle.",
-                    "You are out of Energy for this feature.\nUpgrade to Premium or top up Energy."
-                ),
-                color     = theme.text2,
-                fontSize  = 13.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            PremiumButton(
-                text = theme.t("Planları gör", "View plans"),
-                onClick = onGoToStore,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(10.dp))
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text(theme.t("Vazgeç", "Cancel"), color = theme.text2, fontSize = 13.sp)
-            }
-            Spacer(Modifier.height(12.dp))
-        }
-    }
+    com.cosmibit.profitness.presentation.components.SinemaDialog(
+        onDismiss = onDismiss,
+        title = theme.t("AI Enerji Gerekli", "AI Energy Required"),
+        body = theme.t(
+            "Bu özelliği kullanmak için Enerjin bitmiş.\nPremium'a geç veya Enerji yükle.",
+            "You are out of Energy for this feature.\nUpgrade to Premium or top up Energy."
+        ),
+        confirmLabel = theme.t("Planları gör", "View plans"),
+        confirmIcon = Icons.Rounded.WorkspacePremium,
+        onConfirm = onGoToStore,
+        dismissLabel = theme.t("Vazgeç", "Cancel")
+    )
 }
