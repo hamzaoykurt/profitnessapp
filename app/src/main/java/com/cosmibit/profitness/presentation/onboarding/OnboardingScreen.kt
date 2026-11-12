@@ -310,16 +310,23 @@ private fun StepScaffold(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-        ) {
-            Spacer(Modifier.height(12.dp))
-            content()
-            Spacer(Modifier.height(16.dp))
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val viewport = maxHeight
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Kısa adımlarda kalan yüksekliği orb sahnesi doldurur (ölü alan yok); uzunsa kayar.
+                Column(Modifier.fillMaxWidth().heightIn(min = viewport)) {
+                    Column(Modifier.padding(horizontal = 24.dp)) {
+                        Spacer(Modifier.height(12.dp))
+                        content()
+                        Spacer(Modifier.height(16.dp))
+                    }
+                    OnboardingOrb(LocalAppTheme.current, Modifier.weight(1f).fillMaxWidth())
+                }
+            }
         }
         Column(
             modifier = Modifier
