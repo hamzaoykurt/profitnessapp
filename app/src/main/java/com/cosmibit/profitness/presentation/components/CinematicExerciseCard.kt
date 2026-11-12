@@ -467,8 +467,7 @@ internal fun ActivityMetricsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg2)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .padding(12.dp)
     ) {
         Text(
@@ -477,10 +476,9 @@ internal fun ActivityMetricsPanel(
                 supportsReps -> theme.t("$specLabel · süre ve sayı", "$specLabel · duration and reps")
                 else -> theme.t("$specLabel · süre", "$specLabel · duration")
             },
-            color = if (isDone) accent else theme.text0,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.2.sp
+            color = if (isDone) accent else Sinema.textSecondary(theme),
+            style = Sinema.Label,
+            modifier = Modifier.padding(horizontal = 4.dp)
         )
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -629,9 +627,8 @@ internal fun ActivityTimerSetupPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg3.copy(0.55f))
-            .padding(10.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(12.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TimerModeChip(
@@ -655,33 +652,24 @@ internal fun ActivityTimerSetupPanel(
                 SmallTimeInput(seconds, { seconds = it }, theme.t("sn", "sec"), Modifier.weight(1f))
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         val countdownSeconds = (hours.toIntOrNull() ?: 0) * 3600 +
             (minutes.toIntOrNull() ?: 0) * 60 +
             (seconds.toIntOrNull() ?: 0)
         val enabled = mode == "stopwatch" || countdownSeconds > 0
-        Button(
+        SinemaGoOrIdle(
+            label = if (mode == "stopwatch") {
+                theme.t("KRONOMETREYİ BAŞLAT", "START STOPWATCH")
+            } else {
+                theme.t("GERİ SAYIMI BAŞLAT", "START COUNTDOWN")
+            },
+            icon = Icons.Rounded.Timer,
+            enabled = enabled,
             onClick = {
                 if (mode == "stopwatch") onStartStopwatch()
                 else onStartCountdown(countdownSeconds)
-            },
-            enabled = enabled,
-            colors = ButtonDefaults.buttonColors(containerColor = accent),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = if (mode == "stopwatch") {
-                    theme.t("KRONOMETREYİ BAŞLAT", "START STOPWATCH")
-                } else {
-                    theme.t("GERİ SAYIMI BAŞLAT", "START COUNTDOWN")
-                },
-                fontWeight = FontWeight.Black,
-                fontSize = 11.sp
-            )
-        }
+            }
+        )
     }
 }
 
@@ -692,25 +680,14 @@ private fun TimerModeChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) accent.copy(0.22f) else theme.bg3.copy(0.6f))
-            .border(1.dp, if (selected) accent.copy(0.5f) else theme.stroke.copy(0.72f), RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    SinemaCapsule(
+        modifier = modifier, selected = selected, onClick = onClick, height = 40.dp,
+        horizontalArrangement = Arrangement.Center,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+    ) { fg ->
         Text(
-            text = label,
-            color = if (selected) accent else theme.text2,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.7.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            text = label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -743,39 +720,15 @@ internal fun CompleteActionButton(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .widthIn(min = 136.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isCompleted) theme.bg2 else accent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    SinemaCapsule(
+        modifier = Modifier.widthIn(min = 136.dp), selected = !isCompleted, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(if (isCompleted) theme.bg1.copy(0.74f) else Color.White.copy(0.22f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.CheckCircle,
-                null,
-                tint = if (isCompleted) theme.text1 else onAccent,
-                modifier = Modifier.size(16.dp)
-            )
-        }
+    ) { fg ->
+        Icon(Icons.Rounded.Check, null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(
             text = if (isCompleted) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
-            color = if (isCompleted) theme.text1 else onAccent,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.2.sp,
-            maxLines = 1
+            color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1
         )
     }
 }
@@ -797,9 +750,7 @@ internal fun TimedSetRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg2)
-            .then(if (isDone) Modifier.background(theme.supportSuccess.copy(if (theme.isDark) 0.10f else 0.12f)) else Modifier)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -816,9 +767,9 @@ internal fun TimedSetRow(
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
-                Text("Set $setNumber", color = if (isDone) theme.supportSuccess else theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("SET $setNumber", color = if (isDone) accent else Sinema.text(theme), style = Sinema.Label)
                 Spacer(Modifier.height(2.dp))
-                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(8.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
@@ -970,36 +921,35 @@ internal fun WeightInputField(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    Column(
-        modifier = modifier
-            .heightIn(min = 60.dp)
-            .padding(horizontal = 10.dp, vertical = 7.dp)
-    ) {
+    Column(modifier) {
         if (label != null) {
             Text(
-                text = label,
-                color = theme.text1,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.7.sp
+                text = label.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(6.dp))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Cam giriş (çizgisiz): dev rakam + küçük birim
+        SinemaCapsule(
+            modifier = Modifier.fillMaxWidth(), height = 60.dp, shape = RoundedCornerShape(20.dp),
+            light = !theme.isDark,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)
+        ) { fg ->
+            val digitColor = if (isDone) accent else fg
             BasicTextField(
                 value = value,
                 onValueChange = { newVal ->
                     // Sadece sayısal karakter ve nokta/virgül izin ver
-                    val filtered = newVal.filter { it.isDigit() || it == '.' || it == ',' }
-                    onValueChange(filtered)
+                    onValueChange(newVal.filter { it.isDigit() || it == '.' || it == ',' })
                 },
                 textStyle = TextStyle(
-                    color = if (isDone) theme.supportSuccess else theme.text0,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = digitColor,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     fontFeatureSettings = "tnum",
                     textAlign = TextAlign.Start
                 ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -1008,9 +958,9 @@ internal fun WeightInputField(
                         if (value.isEmpty()) {
                             Text(
                                 text = placeholder,
-                                color = theme.text2.copy(0.82f),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
+                                color = fg.copy(0.35f),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
                                 style = TextStyle(fontFeatureSettings = "tnum"),
                                 textAlign = TextAlign.Start
                             )
@@ -1021,9 +971,9 @@ internal fun WeightInputField(
             )
             Text(
                 text = suffix,
-                color = if (isDone) theme.supportSuccess.copy(0.80f) else theme.text1,
+                color = if (isDone) accent else fg.copy(0.6f),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.dp)
             )
         }
