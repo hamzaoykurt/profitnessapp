@@ -457,19 +457,24 @@ fun SavedProgramCard(
                             .clickable(role = Role.Button) { menu = true },
                         contentAlignment = Alignment.Center
                     ) { Icon(SinemaIcons.More, theme.t("Diğer", "More"), tint = Color.White, modifier = Modifier.size(18.dp)) }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Sinema.surface(theme)) {
+                    DropdownMenu(
+                        expanded = menu, onDismissRequest = { menu = false },
+                        containerColor = Sinema.surface(theme), shape = RoundedCornerShape(20.dp),
+                        tonalElevation = 0.dp, shadowElevation = 12.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Sinema.line(theme))
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme)) },
+                            text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme), fontWeight = FontWeight.Bold) },
                             leadingIcon = { Icon(Icons.Rounded.Edit, null, tint = Sinema.text(theme)) },
                             onClick = { menu = false; onEdit() }
                         )
                         DropdownMenuItem(
-                            text = { Text(theme.t("Paylaş", "Share"), color = Sinema.text(theme)) },
+                            text = { Text(theme.t("Paylaş", "Share"), color = Sinema.text(theme), fontWeight = FontWeight.Bold) },
                             leadingIcon = { Icon(Icons.Rounded.Share, null, tint = Sinema.text(theme)) },
                             onClick = { menu = false; onShare() }
                         )
                         DropdownMenuItem(
-                            text = { Text(theme.t("Programı sil", "Delete program"), color = coral) },
+                            text = { Text(theme.t("Programı sil", "Delete program"), color = coral, fontWeight = FontWeight.Bold) },
                             leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, tint = coral) },
                             onClick = { menu = false; confirmDelete = true }
                         )

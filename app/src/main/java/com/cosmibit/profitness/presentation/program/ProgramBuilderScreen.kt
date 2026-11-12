@@ -1402,20 +1402,24 @@ private fun SavedProgramTile(
             DropdownMenu(
                 expanded = showActionsMenu,
                 onDismissRequest = { showActionsMenu = false },
-                containerColor = Sinema.surface(theme)
+                containerColor = Sinema.surface(theme),
+                shape = RoundedCornerShape(20.dp),
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Sinema.line(theme))
             ) {
                 DropdownMenuItem(
-                    text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme)) },
+                    text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme), fontWeight = FontWeight.Bold) },
                     leadingIcon = { Icon(Icons.Rounded.Edit, null, tint = Sinema.text(theme)) },
                     onClick = { showActionsMenu = false; onEdit() }
                 )
                 DropdownMenuItem(
-                    text = { Text(theme.t("Paylaş", "Share"), color = Sinema.text(theme)) },
+                    text = { Text(theme.t("Paylaş", "Share"), color = Sinema.text(theme), fontWeight = FontWeight.Bold) },
                     leadingIcon = { Icon(Icons.Rounded.Share, null, tint = Sinema.text(theme)) },
                     onClick = { showActionsMenu = false; onShare() }
                 )
                 DropdownMenuItem(
-                    text = { Text(theme.t("Programı sil", "Delete program"), color = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(Sinema.surface(theme))) },
+                    text = { Text(theme.t("Programı sil", "Delete program"), color = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(Sinema.surface(theme)), fontWeight = FontWeight.Bold) },
                     leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, tint = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(Sinema.surface(theme))) },
                     onClick = { showActionsMenu = false; showDeleteConfirm = true }
                 )

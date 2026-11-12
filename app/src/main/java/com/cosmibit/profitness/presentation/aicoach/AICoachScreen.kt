@@ -433,7 +433,7 @@ fun AICoachScreen(
         if (state.showHistory) {
             ModalBottomSheet(
                 onDismissRequest  = { viewModel.closeHistory() },
-                containerColor    = theme.bg1,
+                containerColor    = Sinema.page(theme),
                 scrimColor        = Color.Black.copy(0.6f),
                 dragHandle        = {
                     Box(
@@ -441,7 +441,7 @@ fun AICoachScreen(
                             .padding(top = 12.dp, bottom = 8.dp)
                             .size(36.dp, 4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(theme.stroke)
+                            .background(Sinema.line(theme))
                     )
                 }
             ) {
@@ -557,26 +557,28 @@ private fun SanctuaryMessage(
             horizontalArrangement = Arrangement.End
         ) {
             Column(horizontalAlignment = Alignment.End) {
+                val userShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 6.dp)
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
-                        .background(theme.bg2)
+                        .sinemaGlow(accent.copy(0.25f), 14.dp, 5.dp, userShape)
+                        .clip(userShape)
+                        .background(accent)
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Text(
                         text       = msg.text,
-                        color      = theme.text0,
+                        color      = theme.effectiveOnAccentColor,
                         fontSize   = 15.sp,
                         lineHeight = 23.sp,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text       = msg.timestamp,
-                    color      = theme.text2.copy(0.45f),
+                    color      = Color.White.copy(0.5f),
                     fontSize   = 10.sp,
-                    fontWeight = FontWeight.Light
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -592,7 +594,7 @@ private fun SanctuaryMessage(
                 modifier = Modifier
                     .padding(top = 2.dp, end = 8.dp)
                     .size(30.dp)
-                    .background(theme.bg2, CircleShape),
+                    .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
@@ -602,9 +604,9 @@ private fun SanctuaryMessage(
                 // Sender label
                 Text(
                     "Oracle",
-                    color         = theme.text1,
+                    color         = Color.White.copy(0.7f),
                     fontSize      = 11.sp,
-                    fontWeight    = FontWeight.SemiBold,
+                    fontWeight    = FontWeight.ExtraBold,
                     letterSpacing = 0.sp,
                     modifier      = Modifier.padding(start = 4.dp, bottom = 4.dp)
                 )
@@ -612,16 +614,13 @@ private fun SanctuaryMessage(
                 // Glass bubble
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
-                        .background(
-                            if (theme.isDark) theme.bg2 else theme.bg1
-                        )
+                        .sinemaCapsuleGlass(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), blur = 16.dp)
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
                     SelectionContainer {
                         Text(
                             text          = msg.text,
-                            color         = theme.text0.copy(0.92f),
+                            color         = Color.White,
                             fontSize      = 14.sp,
                             lineHeight    = 22.sp,
                             fontWeight    = FontWeight.Normal,
@@ -638,9 +637,9 @@ private fun SanctuaryMessage(
                 ) {
                     Text(
                         text       = msg.timestamp,
-                        color      = theme.text2.copy(0.40f),
+                        color      = Color.White.copy(0.5f),
                         fontSize   = 10.sp,
-                        fontWeight = FontWeight.Light
+                        fontWeight = FontWeight.Medium
                     )
                     IconButton(
                         onClick = {
@@ -652,24 +651,23 @@ private fun SanctuaryMessage(
                         Icon(
                             imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
                             contentDescription = theme.t("Mesajı kopyala", "Copy message"),
-                            tint = if (copied) accent else theme.text2.copy(0.62f),
+                            tint = if (copied) accent else Color.White.copy(0.62f),
                             modifier = Modifier.size(14.dp)
                         )
                     }
                     if (showProgramButton) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(theme.bg2)
-                                .clickable { onApplyProgram(msg) }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+                                .clickable(role = Role.Button) { onApplyProgram(msg) }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Row(
                                 verticalAlignment     = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(11.dp))
-                                Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -775,35 +773,22 @@ private fun SessionHistorySheet(
     bottomPadding   : Dp = 0.dp
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     var deleteTarget by remember { mutableStateOf<ChatSession?>(null) }
 
     // Silme onay dialogu
     val target = deleteTarget
     if (target != null) {
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            containerColor   = theme.bg1,
-            title = { Text(theme.t("Sohbeti Sil", "Delete Chat"), color = theme.text1, fontWeight = FontWeight.SemiBold) },
-            text  = {
-                Text(
-                    theme.t(
-                        "\"${target.title}\" sohbeti silinecek. Bu işlem geri alınamaz.",
-                        "\"${target.title}\" chat will be deleted. This cannot be undone."
-                    ),
-                    color = theme.text2, fontSize = 13.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { onDeleteSession(target.id); deleteTarget = null }) {
-                    Text(theme.t("Sil", "Delete"), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) {
-                    Text(theme.t("İptal", "Cancel"), color = theme.text2)
-                }
-            }
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { deleteTarget = null },
+            title = theme.t("Sohbeti Sil", "Delete Chat"),
+            body = theme.t(
+                "\"${target.title}\" sohbeti silinecek. Bu işlem geri alınamaz.",
+                "\"${target.title}\" chat will be deleted. This cannot be undone."
+            ),
+            confirmLabel = theme.t("Sil", "Delete"),
+            confirmIcon = Icons.Rounded.DeleteOutline,
+            onConfirm = { onDeleteSession(target.id); deleteTarget = null },
+            dismissLabel = theme.t("İptal", "Cancel")
         )
     }
 
@@ -821,42 +806,19 @@ private fun SessionHistorySheet(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                theme.t("GEÇMİŞ SOHBETLER", "CHAT HISTORY"),
-                style        = MaterialTheme.typography.labelSmall,
-                color        = accent,
-                letterSpacing = 1.2.sp,
-                fontSize     = 10.sp,
-                fontWeight   = FontWeight.Medium
+                theme.t("Geçmiş sohbetler", "Chat history").sinemaUpper(theme),
+                style = Sinema.Label,
+                color = Sinema.textSecondary(theme)
             )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(accent.copy(0.12f))
-                    .border(1.dp, accent.copy(0.3f), RoundedCornerShape(20.dp))
-                    .clickable { onNewChat() }
-                    .padding(horizontal = 14.dp, vertical = 7.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Add,
-                        contentDescription = null,
-                        tint     = accent,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        theme.t("Yeni Sohbet", "New Chat"),
-                        color    = accent,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            SinemaCapsule(
+                selected = true, onClick = onNewChat, height = 36.dp,
+                contentPadding = PaddingValues(horizontal = 14.dp)
+            ) { fg ->
+                Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(theme.t("Yeni Sohbet", "New Chat"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
-
-        HorizontalDivider(color = theme.stroke.copy(0.4f), modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(4.dp))
 
         if (sessions.isEmpty()) {
@@ -871,73 +833,74 @@ private fun SessionHistorySheet(
                     Icon(
                         Icons.Rounded.History,
                         contentDescription = null,
-                        tint     = theme.text2.copy(0.3f),
+                        tint     = Sinema.textSecondary(theme).copy(0.5f),
                         modifier = Modifier.size(40.dp)
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         theme.t("Henüz kaydedilmiş sohbet yok", "No saved chats yet"),
-                        color    = theme.text2.copy(0.5f),
-                        fontSize = 13.sp
+                        color    = Sinema.textSecondary(theme),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
         } else {
             LazyColumn(
                 modifier        = Modifier.fillMaxWidth(),
-                contentPadding  = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                contentPadding  = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(sessions, key = { it.id }) { session ->
                     val isActive = session.id == currentId
+                    val rowShape = RoundedCornerShape(20.dp)
+                    val accent = theme.effectiveAccentColor
+                    val fg = if (isActive) theme.effectiveOnAccentColor else Sinema.text(theme)
+                    val fg2 = if (isActive) theme.effectiveOnAccentColor.copy(0.7f) else Sinema.textSecondary(theme)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .then(
-                                if (isActive)
-                                    Modifier.background(accent.copy(0.1f)).border(1.dp, accent.copy(0.25f), RoundedCornerShape(12.dp))
-                                else
-                                    Modifier.background(theme.bg0.copy(0.5f))
-                            )
-                            .clickable { onSelectSession(session) }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .then(if (isActive) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, rowShape) else Modifier)
+                            .then(if (isActive) Modifier.clip(rowShape).background(accent) else Modifier.sinemaCard(theme, rowShape))
+                            .clickable(role = Role.Button) { onSelectSession(session) }
+                            .heightIn(min = 56.dp)
+                            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text     = session.title,
-                                color    = if (isActive) accent else theme.text1,
-                                fontSize = 13.sp,
-                                fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+                                color    = fg,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 text     = formatSessionDate(session.updatedAt, theme),
-                                color    = theme.text2.copy(0.6f),
-                                fontSize = 10.sp
+                                color    = fg2,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
-                        Spacer(Modifier.width(8.dp))
                         IconButton(
                             onClick  = { deleteTarget = session },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
                                 Icons.Rounded.DeleteOutline,
                                 contentDescription = theme.t("Sil", "Delete"),
-                                tint     = theme.text2.copy(0.4f),
-                                modifier = Modifier.size(16.dp)
+                                tint     = fg2,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
             }
         }
-}
+    }
 }
 
 private fun formatSessionDate(millis: Long, theme: AppThemeState): String {
@@ -964,7 +927,6 @@ private fun SanctuaryTypingIndicator() {
     val dot2 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 320), RepeatMode.Reverse), label = "d2")
 
     val accent = MaterialTheme.colorScheme.primary
-    val theme  = LocalAppTheme.current
 
     Row(
         modifier          = Modifier.padding(start = 16.dp, top = 6.dp),
@@ -974,11 +936,7 @@ private fun SanctuaryTypingIndicator() {
             modifier = Modifier
                 .padding(top = 2.dp, end = 8.dp)
                 .size(30.dp)
-                .drawBehind {
-                    drawCircle(color = accent.copy(0.18f))
-                    drawCircle(brush = Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent), 0f, size.height))
-                }
-                .border(0.8.dp, accent.copy(0.35f), CircleShape),
+                .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
@@ -986,23 +944,7 @@ private fun SanctuaryTypingIndicator() {
 
         Box(
             modifier = Modifier
-                .shadow(
-                    elevation = if (theme.isDark) 8.dp else 6.dp,
-                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
-                    clip = false,
-                    ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF3A2A1A).copy(0.09f),
-                    spotColor = if (theme.isDark) accent.copy(0.10f) else Color(0xFF3A2A1A).copy(0.10f)
-                )
-                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp))
-                .drawBehind {
-                    drawRect(color = if (theme.isDark) theme.bg2 else theme.bg1)
-                    drawRect(color = accent.copy(0.55f), topLeft = Offset(0f, 0f), size = Size(2.dp.toPx(), size.height))
-                }
-                .border(
-                    0.8.dp,
-                    if (theme.isDark) accent.copy(0.25f) else theme.stroke,
-                    RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
-                )
+                .sinemaCapsuleGlass(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), blur = 16.dp)
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             Row(

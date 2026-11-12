@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
@@ -955,15 +956,16 @@ private fun DayPill(
                 properties = PopupProperties(focusable = true)
             ) {
                 Column(
-                    // Çizim `.dd`: 96 genişlik, 6 iç boşluk, r18, siyah %60 + kenar (pencere dışı olduğundan blur yok)
-                    Modifier.width(96.dp).sinemaCapsuleGlass(RoundedCornerShape(18.dp), fillAlpha = 0.6f).padding(6.dp)
+                    // Sinema menü yüzeyi: sinemaCard r20 (pencere dışı olduğundan blur yok), satırlar 48dp
+                    Modifier.width(132.dp).sinemaCard(theme, RoundedCornerShape(20.dp)).padding(6.dp)
                 ) {
                     days.forEachIndexed { i, st ->
                         val sel = i == selectedIdx
                         Box(
                             Modifier
-                                .fillMaxWidth().height(36.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .fillMaxWidth().height(48.dp)
+                                .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, RoundedCornerShape(14.dp)) else Modifier)
+                                .clip(RoundedCornerShape(14.dp))
                                 .then(if (sel) Modifier.background(accent) else Modifier)
                                 .clickable(role = Role.Button) { open = false; onSelect(i) }
                                 .padding(horizontal = 12.dp),
@@ -971,8 +973,8 @@ private fun DayPill(
                         ) {
                             Text(
                                 localizedWorkoutDayLabel(st.day.day, theme),
-                                color = if (sel) theme.effectiveOnAccentColor else Color.White,
-                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                                color = if (sel) theme.effectiveOnAccentColor else Sinema.text(theme),
+                                fontSize = 14.sp, fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }

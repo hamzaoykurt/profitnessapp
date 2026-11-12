@@ -25,7 +25,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -55,7 +57,8 @@ import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
-import com.cosmibit.profitness.core.theme.raisedButtonSurface
+import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
+import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.sinemaGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
@@ -232,9 +235,21 @@ private fun StrengthSetContent(
         modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(12.dp))
+    val step = 2.5f
+    fun nudge(delta: Float) {
+        val base = value.replace(',', '.').toFloatOrNull() ?: defaultWeightKg
+        val next = (base + delta).coerceAtLeast(0f)
+        val text = if (next % 1f == 0f) next.toInt().toString() else "%.1f".format(java.util.Locale.US, next)
+        actions.onSetWeightChanged(exercise, setIndex, text)
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        SinemaCapsuleIconButton(
+            icon = Icons.Rounded.Remove, description = theme.t("Azalt", "Decrease"),
+            onClick = { nudge(-step) }, selected = false, size = 48.dp
+        )
+        Spacer(Modifier.width(12.dp))
         val big = TextStyle(
-            fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 56.sp,
+            fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
             fontFeatureSettings = "tnum", textAlign = TextAlign.Center, color = Color.White
         )
         BasicTextField(
@@ -244,7 +259,7 @@ private fun StrengthSetContent(
             cursorBrush = SolidColor(accent),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
-            modifier = Modifier.width(170.dp),
+            modifier = Modifier.width(150.dp),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.Center) {
                     if (value.isEmpty()) Text(placeholder, style = big.copy(color = Color.White.copy(0.35f)))
@@ -252,11 +267,16 @@ private fun StrengthSetContent(
                 }
             }
         )
-        Text(
-            "kg", color = Color.White.copy(0.70f), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 6.dp)
+        Spacer(Modifier.width(12.dp))
+        SinemaCapsuleIconButton(
+            icon = Icons.Rounded.Add, description = theme.t("Artır", "Increase"),
+            onClick = { nudge(step) }, selected = false, size = 48.dp
         )
     }
+    Text(
+        "KG", color = Color.White.copy(0.70f), style = Sinema.Label,
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp), textAlign = TextAlign.Center
+    )
     val last = data.lastSessionData[setIndex]
     if (last != null && (last.first != null || last.second != null)) {
         Spacer(Modifier.height(8.dp))
@@ -272,19 +292,9 @@ private fun StrengthSetContent(
         )
     }
     Spacer(Modifier.height(20.dp))
-    // Ana eylem: yalnız ikon (yeni metin yok); erişilebilirlik metni mevcut "TAMAMLA / GERİ AL".
-    val src = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
     val label = if (done) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE")
-    Box(
-        Modifier
-            .fillMaxWidth().height(56.dp)
-            .alpha(if (done) 0.6f else 1f)
-            .raisedButtonSurface(theme, pressed = pressed, shape = RoundedCornerShape(28.dp))
-            .semantics { contentDescription = label }
-            .clickable(src, null, role = Role.Button) { actions.onToggleSet(exercise, setIndex); onDismiss() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(28.dp))
-    }
+    SinemaGoButton(
+        label = label, icon = Icons.Rounded.Check, dim = done,
+        onClick = { actions.onToggleSet(exercise, setIndex); onDismiss() }
+    )
 }
