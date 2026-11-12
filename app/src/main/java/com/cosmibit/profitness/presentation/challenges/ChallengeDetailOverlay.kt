@@ -132,6 +132,7 @@ fun ChallengeDetailOverlay(
     var showDeleteConfirm      by remember { mutableStateOf(false) }
     var showProgressDialog     by remember { mutableStateOf(false) }
     var showEditOverlay        by remember { mutableStateOf(false) }
+    var showLeaveConfirm       by remember { mutableStateOf(false) }
 
     LaunchedEffect(challengeId) { vm.load(challengeId) }
     LaunchedEffect(state.deleted) {
@@ -347,7 +348,7 @@ fun ChallengeDetailOverlay(
                     ev.mode != EventMode.MovementList && c.targetValue > 0
                 val action = {
                     when {
-                        c.isJoined -> { vm.leave(); onChanged() }
+                        c.isJoined -> { showLeaveConfirm = true }
                         c.visibility == ChallengeVisibility.Private && !c.isInvited -> {
                             showJoinPasswordDialog = true
                         }
@@ -397,6 +398,25 @@ fun ChallengeDetailOverlay(
                         )
                     }
                 }
+            }
+
+            if (showLeaveConfirm) {
+                val isPrivate = state.detail?.summary?.visibility == ChallengeVisibility.Private
+                com.cosmibit.profitness.presentation.components.SinemaDialog(
+                    onDismiss = { showLeaveConfirm = false },
+                    title = theme.t("Ayrılmak istiyor musun?", "Leave this challenge?"),
+                    body = if (isPrivate) theme.t(
+                        "Bu challenge özel. Ayrılırsan şifre olmadan geri giremezsin.",
+                        "This challenge is private. If you leave, you can't rejoin without the password."
+                    ) else theme.t(
+                        "Ayrılırsan ilerlemen listende görünmez.",
+                        "If you leave, it will no longer appear in your joined list."
+                    ),
+                    confirmLabel = strings.leaveLabel.sinemaUpper(theme),
+                    confirmIcon = Icons.Rounded.Check,
+                    onConfirm = { showLeaveConfirm = false; vm.leave(); onChanged() },
+                    dismissLabel = theme.t("Vazgeç", "Cancel")
+                )
             }
 
             if (showJoinPasswordDialog) {

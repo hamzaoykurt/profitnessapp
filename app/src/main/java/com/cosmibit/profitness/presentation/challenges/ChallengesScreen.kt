@@ -132,6 +132,7 @@ fun ChallengesTab(
     var sportFilterRaw by rememberSaveable { mutableStateOf<String?>(null) }
     var targetFilterRaw by rememberSaveable { mutableStateOf<String?>(null) }
     var mineStatusFilter by rememberSaveable { mutableStateOf(MyChallengeStatusFilter.All) }
+    var leaveTarget by remember { mutableStateOf<ChallengeSummary?>(null) }
 
     Box(Modifier.fillMaxSize()) {
         val pendingInvites = remember(state.browseList) {
@@ -242,7 +243,7 @@ fun ChallengesTab(
                             }
                             visibleBase
                                 .filteredFor(state.scope, kindFilter, sportFilterRaw, targetFilterRaw, mineStatusFilter)
-                                .sortedFor(sort)
+                                .sortedFor(DiscoverSort.NEWEST) // shortcut: Yeni/Trend menüsü Challenge listesini etkilemez
                         }
                         if (list.isEmpty()) {
                             EmptyBlock(
@@ -284,7 +285,9 @@ fun ChallengesTab(
                                         onTap      = { vm.openDetail(c.id) },
                                         onToggle   = {
                                             // Private + not joined → detail'e git (password dialog orada)
-                                            if (!c.isJoined && c.visibility == com.cosmibit.profitness.domain.challenges.ChallengeVisibility.Private && !c.isInvited) {
+                                            if (c.isJoined) {
+                                                leaveTarget = c
+                                            } else if (!c.isJoined && c.visibility == com.cosmibit.profitness.domain.challenges.ChallengeVisibility.Private && !c.isInvited) {
                                                 vm.openDetail(c.id)
                                             } else {
                                                 vm.toggleJoin(c)
@@ -297,6 +300,25 @@ fun ChallengesTab(
                     }
                 }
             }
+        }
+
+        leaveTarget?.let { c ->
+            val isPrivate = c.visibility == com.cosmibit.profitness.domain.challenges.ChallengeVisibility.Private
+            com.cosmibit.profitness.presentation.components.SinemaDialog(
+                onDismiss = { leaveTarget = null },
+                title = theme.t("Ayrılmak istiyor musun?", "Leave this challenge?"),
+                body = if (isPrivate) theme.t(
+                    "Bu challenge özel. Ayrılırsan şifre olmadan geri giremezsin.",
+                    "This challenge is private. If you leave, you can't rejoin without the password."
+                ) else theme.t(
+                    "Ayrılırsan ilerlemen listende görünmez.",
+                    "If you leave, it will no longer appear in your joined list."
+                ),
+                confirmLabel = theme.t("AYRIL", "LEAVE"),
+                confirmIcon = Icons.Rounded.Close,
+                onConfirm = { val t = c; leaveTarget = null; vm.toggleJoin(t) },
+                dismissLabel = theme.t("Vazgeç", "Cancel")
+            )
         }
 
         // ── Create FAB ─────────────────────────────────────────────────
@@ -560,6 +582,7 @@ private fun ChallengeInvitesSection(
     onAccept: (ChallengeSummary) -> Unit
 ) {
     val theme = LocalAppTheme.current
+    var showAll by rememberSaveable { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -593,7 +616,7 @@ private fun ChallengeInvitesSection(
 
         Spacer(Modifier.height(8.dp))
 
-        invites.take(3).forEach { challenge ->
+        (if (showAll) invites else invites.take(3)).forEach { challenge ->
             ChallengeInviteRow(
                 challenge = challenge,
                 accent = accent,
@@ -602,6 +625,17 @@ private fun ChallengeInvitesSection(
                 onAccept = { onAccept(challenge) }
             )
             Spacer(Modifier.height(8.dp))
+        }
+        if (invites.size > 3) {
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable { showAll = !showAll },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (showAll) theme.t("Daha az göster", "Show less") else theme.t("Tümünü gör (${invites.size})", "See all (${invites.size})"),
+                    color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold
+                )
+            }
         }
     }
 }
@@ -667,7 +701,7 @@ private fun ChallengeInviteRow(
         Spacer(Modifier.width(10.dp))
         Box(
             modifier = Modifier
-                .height(38.dp)
+                .height(48.dp)
                 .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                 .clip(CircleShape)
                 .background(accent)
