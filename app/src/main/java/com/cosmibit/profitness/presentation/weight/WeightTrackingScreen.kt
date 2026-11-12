@@ -383,16 +383,27 @@ private fun AiInsightCard(
                 Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label)
                 if (isFree && !isLoading) {
                     Text(
-                        theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
-                        color = Sinema.textSecondary(theme), fontSize = 12.sp
+                        if (credits <= 0) theme.t("Enerjin bitti · Enerji yükle veya plana yükselt", "Out of energy · Get more energy or upgrade")
+                        else theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
+                        color = if (credits <= 0) Sinema.text(theme) else Sinema.textSecondary(theme),
+                        fontSize = 12.sp, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
             if (!isLoading) {
-                SinemaCapsuleIconButton(
-                    icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
-                    onClick = onRefresh, selected = true, size = 40.dp
-                )
+                if (isFree && credits <= 0) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(Sinema.line(theme)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Refresh, theme.t("Enerji yok", "No energy"), tint = Sinema.textSecondary(theme).copy(0.6f), modifier = Modifier.size(18.dp))
+                    }
+                } else {
+                    SinemaCapsuleIconButton(
+                        icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
+                        onClick = onRefresh, selected = true, size = 40.dp
+                    )
+                }
             }
         }
 

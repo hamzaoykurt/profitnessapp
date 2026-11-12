@@ -113,7 +113,7 @@ fun PerformanceDetailScreen(
             item {
                 MetricSection(
                     title = theme.t("ANTRENMAN VERİLERİ", "WORKOUT DATA"),
-                    metrics = trainingMetrics(state, theme.effectiveAccentColor, theme),
+                    metrics = trainingMetrics(state, theme),
                     theme = theme,
                     topPadding = 24.dp
                 )
@@ -122,7 +122,7 @@ fun PerformanceDetailScreen(
             item {
                 MetricSection(
                     title = theme.t("VÜCUT VERİLERİ", "BODY DATA"),
-                    metrics = bodyMetrics(state, theme.effectiveAccentColor, theme),
+                    metrics = bodyMetrics(state, theme),
                     theme = theme,
                     topPadding = 12.dp
                 )
@@ -131,7 +131,7 @@ fun PerformanceDetailScreen(
             item {
                 MetricSection(
                     title = theme.t("SERİ VE SEVİYE", "STREAK & LEVEL"),
-                    metrics = consistencyMetrics(state, theme.effectiveAccentColor, theme),
+                    metrics = consistencyMetrics(state, theme),
                     theme = theme,
                     topPadding = 12.dp
                 )
@@ -159,7 +159,6 @@ fun PerformanceDetailScreen(
         ) {
             CalculationsSheet(
                 state = state,
-                accent = theme.effectiveAccentColor,
                 theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -230,7 +229,6 @@ private val activityFactors = listOf(
 @Composable
 private fun CalculationsSheet(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState,
     modifier: Modifier = Modifier
 ) {
@@ -253,20 +251,19 @@ private fun CalculationsSheet(
         CalculatorModeGrid(
             selectedMode = selectedMode,
             onModeSelected = { selectedMode = it },
-            accent = accent,
             theme = theme
         )
 
         Spacer(Modifier.height(20.dp))
 
         when (selectedMode) {
-            CalculatorMode.OneRm -> OneRepMaxCalculator(accent = accent, theme = theme)
-            CalculatorMode.Bmi -> BmiCalculator(state = state, accent = accent, theme = theme)
-            CalculatorMode.BodyFat -> BodyFatCalculator(state = state, accent = accent, theme = theme)
-            CalculatorMode.Bmr -> BmrCalculator(state = state, accent = accent, theme = theme)
-            CalculatorMode.HeartRate -> HeartRateCalculator(state = state, accent = accent, theme = theme)
-            CalculatorMode.Protein -> ProteinCalculator(state = state, accent = accent, theme = theme)
-            CalculatorMode.Vo2Max -> Vo2MaxCalculator(accent = accent, theme = theme)
+            CalculatorMode.OneRm -> OneRepMaxCalculator(theme = theme)
+            CalculatorMode.Bmi -> BmiCalculator(state = state, theme = theme)
+            CalculatorMode.BodyFat -> BodyFatCalculator(state = state, theme = theme)
+            CalculatorMode.Bmr -> BmrCalculator(state = state, theme = theme)
+            CalculatorMode.HeartRate -> HeartRateCalculator(state = state, theme = theme)
+            CalculatorMode.Protein -> ProteinCalculator(state = state, theme = theme)
+            CalculatorMode.Vo2Max -> Vo2MaxCalculator(theme = theme)
         }
     }
 }
@@ -275,7 +272,6 @@ private fun CalculationsSheet(
 private fun CalculatorModeGrid(
     selectedMode: CalculatorMode,
     onModeSelected: (CalculatorMode) -> Unit,
-    accent: Color,
     theme: AppThemeState
 ) {
     val modes = listOf(
@@ -297,7 +293,6 @@ private fun CalculatorModeGrid(
                     CalculatorModeButton(
                         mode = mode,
                         selected = mode == selectedMode,
-                        accent = accent,
                         theme = theme,
                         onClick = { onModeSelected(mode) },
                         modifier = Modifier.weight(1f)
@@ -313,7 +308,6 @@ private fun CalculatorModeGrid(
 private fun CalculatorModeButton(
     mode: CalculatorMode,
     selected: Boolean,
-    accent: Color,
     theme: AppThemeState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -330,7 +324,6 @@ private fun CalculatorModeButton(
 
 @Composable
 private fun OneRepMaxCalculator(
-    accent: Color,
     theme: AppThemeState
 ) {
     var liftedWeight by remember { mutableStateOf("100") }
@@ -346,7 +339,6 @@ private fun OneRepMaxCalculator(
         title = theme.t("Tek Tekrar Maksimumu", "One-Rep Max"),
         subtitle = theme.t("Calculator.net 1RM formülleri", "Calculator.net 1RM formulas"),
         icon = Icons.Rounded.FitnessCenter,
-        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -370,7 +362,6 @@ private fun OneRepMaxCalculator(
         FormulaSelector(
             selectedFormula = formula,
             onFormulaSelected = { formula = it },
-            accent = accent,
             theme = theme
         )
 
@@ -381,7 +372,6 @@ private fun OneRepMaxCalculator(
                 title = theme.t("Tahmini 1RM", "Estimated 1RM"),
                 value = "${formatOneDecimal(oneRm)} kg",
                 subtitle = theme.t("${oneRmFormulaLabel(formula)} formülü", "${oneRmFormulaLabel(formula)} formula"),
-                accent = accent,
                 theme = theme
             )
 
@@ -403,7 +393,6 @@ private fun OneRepMaxCalculator(
 @Composable
 private fun BmiCalculator(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState
 ) {
     var weight by remember(state.weightKg) { mutableStateOf(profileNumberInput(state.weightKg)) }
@@ -412,13 +401,11 @@ private fun BmiCalculator(
     val heightCm = height.toPositiveDoubleOrNull()
     val bmi = calculateBmi(weightKg, heightCm)
     val category = bmi?.let { bmiCategoryLabel(it, theme) }
-    val resultColor = bmi?.let(::bmiCategoryColor) ?: accent
 
     CalculatorPanel(
         title = theme.t("Vücut Kitle İndeksi", "Body Mass Index"),
         subtitle = theme.t("CDC metrik BMI hesabı", "CDC metric BMI calculation"),
         icon = Icons.Rounded.Analytics,
-        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -443,7 +430,6 @@ private fun BmiCalculator(
                 title = "BMI",
                 value = formatOneDecimal(bmi),
                 subtitle = category.orEmpty(),
-                accent = resultColor,
                 theme = theme
             )
         } else {
@@ -455,7 +441,6 @@ private fun BmiCalculator(
 @Composable
 private fun BodyFatCalculator(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState
 ) {
     var gender by remember(state.gender) { mutableStateOf(profileGender(state.gender)) }
@@ -487,13 +472,11 @@ private fun BodyFatCalculator(
         title = theme.t("Vücut Yağ Oranı", "Body Fat Percentage"),
         subtitle = theme.t("U.S. Navy ve BMI yöntemi", "U.S. Navy and BMI method"),
         icon = Icons.Rounded.Person,
-        accent = accent,
         theme = theme
     ) {
         GenderSelector(
             selectedGender = gender,
             onGenderSelected = { gender = it },
-            accent = accent,
             theme = theme
         )
 
@@ -560,7 +543,6 @@ private fun BodyFatCalculator(
                 title = "U.S. Navy",
                 value = "%${formatOneDecimal(navy)}",
                 subtitle = bodyFatCategory(navy, gender, theme),
-                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
@@ -571,7 +553,6 @@ private fun BodyFatCalculator(
                 title = theme.t("BMI yöntemi", "BMI method"),
                 value = "%${formatOneDecimal(bmiBased)}",
                 subtitle = theme.t("Hızlı tahmin", "Quick estimate"),
-                accent = accent,
                 theme = theme
             )
         }
@@ -585,7 +566,6 @@ private fun BodyFatCalculator(
 @Composable
 private fun BmrCalculator(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState
 ) {
     var gender by remember(state.gender) { mutableStateOf(profileGender(state.gender)) }
@@ -606,13 +586,11 @@ private fun BmrCalculator(
         title = theme.t("Kalori İhtiyacı", "Calorie Needs"),
         subtitle = theme.t("Mifflin-St Jeor BMR + aktivite", "Mifflin-St Jeor BMR + activity"),
         icon = Icons.Rounded.LocalFireDepartment,
-        accent = accent,
         theme = theme
     ) {
         GenderSelector(
             selectedGender = gender,
             onGenderSelected = { gender = it },
-            accent = accent,
             theme = theme
         )
 
@@ -648,7 +626,6 @@ private fun BmrCalculator(
         ActivitySelector(
             selectedActivity = activity,
             onActivitySelected = { activity = it },
-            accent = accent,
             theme = theme
         )
 
@@ -659,7 +636,6 @@ private fun BmrCalculator(
                 title = "BMR",
                 value = "${formatWhole(bmr)} kcal",
                 subtitle = theme.t("Dinlenme metabolizması", "Resting metabolism"),
-                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
@@ -667,7 +643,6 @@ private fun BmrCalculator(
                 title = theme.t("Günlük ihtiyaç", "Daily needs"),
                 value = "${formatWhole(tdee)} kcal",
                 subtitle = theme.t("${activity.label} aktivite", "${activity.localizedLabel(theme)} activity"),
-                accent = accent,
                 theme = theme
             )
         } else {
@@ -679,7 +654,6 @@ private fun BmrCalculator(
 @Composable
 private fun HeartRateCalculator(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState
 ) {
     var age by remember(state.birthDate) { mutableStateOf(profileAgeInput(state)) }
@@ -696,7 +670,6 @@ private fun HeartRateCalculator(
         title = theme.t("Nabız Bölgeleri", "Heart Rate Zones"),
         subtitle = theme.t("Tanaka max nabız + Karvonen HRR", "Tanaka max heart rate + Karvonen HRR"),
         icon = Icons.Rounded.Favorite,
-        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -723,7 +696,6 @@ private fun HeartRateCalculator(
                 title = theme.t("Tahmini max nabız", "Estimated max heart rate"),
                 value = "${maxHr.roundToInt()} bpm",
                 subtitle = theme.t("208 - 0.7 x yaş", "208 - 0.7 x age"),
-                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -743,7 +715,6 @@ private fun HeartRateCalculator(
 @Composable
 private fun ProteinCalculator(
     state: ProfileState,
-    accent: Color,
     theme: AppThemeState
 ) {
     var weight by remember(state.weightKg) { mutableStateOf(profileNumberInput(state.weightKg)) }
@@ -755,7 +726,6 @@ private fun ProteinCalculator(
         title = theme.t("Protein Hedefi", "Protein Target"),
         subtitle = theme.t("Sporcu g/kg aralıkları", "Athlete g/kg ranges"),
         icon = Icons.Rounded.Restaurant,
-        accent = accent,
         theme = theme
     ) {
         CalculationInput(
@@ -770,7 +740,6 @@ private fun ProteinCalculator(
         ProteinGoalSelector(
             selectedGoal = goal,
             onGoalSelected = { goal = it },
-            accent = accent,
             theme = theme
         )
 
@@ -781,7 +750,6 @@ private fun ProteinCalculator(
                 title = theme.t("Günlük protein", "Daily protein"),
                 value = "${formatWhole(range.first)}-${formatWhole(range.second)} g",
                 subtitle = proteinGoalLabel(goal, theme),
-                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -795,7 +763,6 @@ private fun ProteinCalculator(
 
 @Composable
 private fun Vo2MaxCalculator(
-    accent: Color,
     theme: AppThemeState
 ) {
     var distance by remember { mutableStateOf("2400") }
@@ -806,7 +773,6 @@ private fun Vo2MaxCalculator(
         title = "VO2 Max",
         subtitle = theme.t("Cooper 12 dakika koşu tahmini", "Cooper 12-minute run estimate"),
         icon = Icons.Rounded.DirectionsRun,
-        accent = accent,
         theme = theme
     ) {
         CalculationInput(
@@ -824,7 +790,6 @@ private fun Vo2MaxCalculator(
                 title = theme.t("Tahmini VO2 max", "Estimated VO2 max"),
                 value = formatOneDecimal(vo2Max),
                 subtitle = theme.t("ml/kg/dk", "ml/kg/min"),
-                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -839,7 +804,6 @@ private fun Vo2MaxCalculator(
 private fun FormulaSelector(
     selectedFormula: OneRmFormula,
     onFormulaSelected: (OneRmFormula) -> Unit,
-    accent: Color,
     theme: AppThemeState
 ) {
     SinemaSegmentRow(
@@ -854,7 +818,6 @@ private fun FormulaSelector(
 private fun GenderSelector(
     selectedGender: CalcGender,
     onGenderSelected: (CalcGender) -> Unit,
-    accent: Color,
     theme: AppThemeState
 ) {
     SinemaSegmentRow(
@@ -869,7 +832,6 @@ private fun GenderSelector(
 private fun ActivitySelector(
     selectedActivity: ActivityFactor,
     onActivitySelected: (ActivityFactor) -> Unit,
-    accent: Color,
     theme: AppThemeState
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -888,7 +850,6 @@ private fun ActivitySelector(
 private fun ProteinGoalSelector(
     selectedGoal: ProteinGoal,
     onGoalSelected: (ProteinGoal) -> Unit,
-    accent: Color,
     theme: AppThemeState
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -908,7 +869,6 @@ private fun CalculatorPanel(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    accent: Color,
     theme: AppThemeState,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -970,7 +930,6 @@ private fun CalculationResultCard(
     title: String,
     value: String,
     subtitle: String,
-    accent: Color,
     theme: AppThemeState
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1027,8 +986,6 @@ private fun calculatorModeIcon(mode: CalculatorMode): ImageVector = when (mode) 
     CalculatorMode.Vo2Max -> Icons.Rounded.DirectionsRun
 }
 
-private fun calculatorModeColor(mode: CalculatorMode, accent: Color): Color = accent
-
 private fun CalcGender.localizedLabel(theme: AppThemeState): String =
     if (this == CalcGender.Male) theme.t("Erkek", "Male") else theme.t("Kadın", "Female")
 
@@ -1066,13 +1023,6 @@ private fun bmiCategoryLabel(bmi: Double, theme: AppThemeState): String = when {
     bmi < 25.0 -> "Normal"
     bmi < 30.0 -> theme.t("Fazla kilolu", "Overweight")
     else       -> theme.t("Obez", "Obese")
-}
-
-private fun bmiCategoryColor(bmi: Double): Color = when {
-    bmi < 18.5 -> Color(0xFF64B5F6)
-    bmi < 25.0 -> CardGreen
-    bmi < 30.0 -> Color(0xFFFFB74D)
-    else       -> CardCoral
 }
 
 private fun navyBodyFatPct(
@@ -1293,8 +1243,7 @@ private data class RealMetric(
     val value : String,
     val unit  : String,
     val label : String,
-    val icon  : ImageVector,
-    val color : Color
+    val icon  : ImageVector
 )
 
 @Composable
@@ -1456,29 +1405,22 @@ private fun PerformanceRecordsSection(
     }
 }
 
-private fun trainingMetrics(state: ProfileState, accent: Color, theme: AppThemeState): List<RealMetric> {
+private fun trainingMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> {
     val weeklyAverage = if (state.weeklyWorkoutCounts.isNotEmpty())
         String.format("%.1f", state.weeklyWorkoutCounts.sum().toFloat() / state.weeklyWorkoutCounts.size)
     else "0"
 
     return listOf(
-        RealMetric(state.totalWorkouts.toString(), theme.t("antrenman", "workouts"), theme.t("TOPLAM ANTRENMAN", "TOTAL WORKOUTS"), Icons.Rounded.FitnessCenter, accent),
-        RealMetric(state.totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.Timer, accent),
-        RealMetric(formatDetailDurationValue(state.totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, accent),
-        RealMetric(formatDetailDistanceValue(state.totalDistanceMeters), formatDetailDistanceUnit(state.totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, accent),
-        RealMetric((state.weeklyWorkoutCounts.lastOrNull() ?: 0).toString(), theme.t("ant", "wkts"), theme.t("BU HAFTA", "THIS WEEK"), Icons.Rounded.CalendarMonth, accent),
-        RealMetric(weeklyAverage, theme.t("ant/hf", "wkts/wk"), theme.t("13 HAFTA ORT.", "13 WEEK AVG."), Icons.Rounded.BarChart, Color(0xFFFFD700))
+        RealMetric(state.totalWorkouts.toString(), theme.t("antrenman", "workouts"), theme.t("TOPLAM ANTRENMAN", "TOTAL WORKOUTS"), Icons.Rounded.FitnessCenter),
+        RealMetric(state.totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.Timer),
+        RealMetric(formatDetailDurationValue(state.totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer),
+        RealMetric(formatDetailDistanceValue(state.totalDistanceMeters), formatDetailDistanceUnit(state.totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten),
+        RealMetric((state.weeklyWorkoutCounts.lastOrNull() ?: 0).toString(), theme.t("ant", "wkts"), theme.t("BU HAFTA", "THIS WEEK"), Icons.Rounded.CalendarMonth),
+        RealMetric(weeklyAverage, theme.t("ant/hf", "wkts/wk"), theme.t("13 HAFTA ORT.", "13 WEEK AVG."), Icons.Rounded.BarChart)
     )
 }
 
-private fun bodyMetrics(state: ProfileState, accent: Color, theme: AppThemeState): List<RealMetric> {
-    val bmiColor = when {
-        state.bmi <= 0   -> accent
-        state.bmi < 18.5 -> Color(0xFF64B5F6)
-        state.bmi < 25.0 -> Color(0xFF4CAF50)
-        state.bmi < 30.0 -> Color(0xFFFFB74D)
-        else             -> Color(0xFFEF5350)
-    }
+private fun bodyMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> {
     val bmiLabel = when {
         state.bmi <= 0   -> null
         state.bmi < 18.5 -> theme.t("ZAYIF", "UNDERWEIGHT")
@@ -1489,28 +1431,28 @@ private fun bodyMetrics(state: ProfileState, accent: Color, theme: AppThemeState
 
     return listOfNotNull(
         state.heightCm.takeIf { it > 0 }?.let {
-            RealMetric(it.toInt().toString(), "cm", theme.t("BOY", "HEIGHT"), Icons.Rounded.Straighten, accent)
+            RealMetric(it.toInt().toString(), "cm", theme.t("BOY", "HEIGHT"), Icons.Rounded.Straighten)
         },
         state.weightKg.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "kg", theme.t("KİLO", "WEIGHT"), Icons.Rounded.ShowChart, accent)
+            RealMetric("%.1f".format(it), "kg", theme.t("KİLO", "WEIGHT"), Icons.Rounded.ShowChart)
         },
         state.bmi.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "BMI", bmiLabel ?: theme.t("VÜCUT KİTLE İND.", "BODY MASS INDEX"), Icons.Rounded.Analytics, bmiColor)
+            RealMetric("%.1f".format(it), "BMI", bmiLabel ?: theme.t("VÜCUT KİTLE İND.", "BODY MASS INDEX"), Icons.Rounded.Analytics)
         },
         state.bodyFatPct.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "%", theme.t("VÜCUT YAĞ ORANI", "BODY FAT"), Icons.Rounded.Person, accent)
+            RealMetric("%.1f".format(it), "%", theme.t("VÜCUT YAĞ ORANI", "BODY FAT"), Icons.Rounded.Person)
         }
     )
 }
 
-private fun consistencyMetrics(state: ProfileState, accent: Color, theme: AppThemeState): List<RealMetric> =
+private fun consistencyMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> =
     listOfNotNull(
-        RealMetric(state.currentStreak.toString(), theme.t("gün", "days"), theme.t("AKTİF SERİ", "CURRENT STREAK"), Icons.Rounded.Whatshot, accent),
-        RealMetric(state.longestStreak.toString(), theme.t("gün", "days"), theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents, accent),
-        RealMetric(state.level.toString(), theme.t("seviye", "level"), theme.t("MEVCUT SEVİYE", "CURRENT LEVEL"), Icons.Rounded.Star, Color(0xFFFFD700)),
-        RealMetric(state.xp.toString(), "XP", theme.t("TOPLAM XP", "TOTAL XP"), Icons.Rounded.Bolt, accent),
+        RealMetric(state.currentStreak.toString(), theme.t("gün", "days"), theme.t("AKTİF SERİ", "CURRENT STREAK"), Icons.Rounded.Whatshot),
+        RealMetric(state.longestStreak.toString(), theme.t("gün", "days"), theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents),
+        RealMetric(state.level.toString(), theme.t("seviye", "level"), theme.t("MEVCUT SEVİYE", "CURRENT LEVEL"), Icons.Rounded.Star),
+        RealMetric(state.xp.toString(), "XP", theme.t("TOPLAM XP", "TOTAL XP"), Icons.Rounded.Bolt),
         state.streakRankPosition.takeIf { it > 0L }?.let {
-            RealMetric(it.toString(), theme.t("sıra", "rank"), theme.t("SERİ SIRALAMASI", "STREAK RANKING"), Icons.Rounded.Leaderboard, accent)
+            RealMetric(it.toString(), theme.t("sıra", "rank"), theme.t("SERİ SIRALAMASI", "STREAK RANKING"), Icons.Rounded.Leaderboard)
         }
     )
 

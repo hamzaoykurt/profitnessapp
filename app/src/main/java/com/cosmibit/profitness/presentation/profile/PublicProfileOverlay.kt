@@ -1,9 +1,6 @@
 package com.cosmibit.profitness.presentation.profile
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,24 +8,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
-import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.HourglassBottom
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,12 +25,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -55,15 +47,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.AppLanguage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
-import com.cosmibit.profitness.core.theme.PageAccentBloom
-import com.cosmibit.profitness.core.theme.bg0
-import com.cosmibit.profitness.core.theme.bg1
-import com.cosmibit.profitness.core.theme.bg2
-import com.cosmibit.profitness.core.theme.stroke
-import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text2
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaCapsule
+import com.cosmibit.profitness.core.theme.SinemaScene
+import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.sinemaCard
+import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
-import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.discover.SharedProgram
@@ -71,6 +61,9 @@ import com.cosmibit.profitness.domain.social.PublicProfile
 import com.cosmibit.profitness.presentation.challenges.ChallengeDetailOverlay
 import com.cosmibit.profitness.presentation.challenges.displayUnit
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaGlowBar
+import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -87,7 +80,7 @@ fun PublicProfileOverlay(
     timerExtraPad: Dp = 0.dp
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val vm: PublicProfileViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     var openChallengeId by remember { mutableStateOf<String?>(null) }
@@ -103,9 +96,7 @@ fun PublicProfileOverlay(
             dismissOnClickOutside = false
         )
     ) {
-        Box(Modifier.fillMaxSize().background(theme.bg0)) {
-            PageAccentBloom()
-
+        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
             when {
                 state.isLoading && state.profile == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -118,9 +109,12 @@ fun PublicProfileOverlay(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(theme.t("Profil yüklenemedi", "Profile could not be loaded"), color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(6.dp))
-                        Text(state.error ?: "", color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
+                        Text(
+                            theme.t("Profil yüklenemedi", "Profile could not be loaded"),
+                            color = Sinema.text(theme), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(state.error ?: "", color = Sinema.textSecondary(theme), fontSize = 14.sp, textAlign = TextAlign.Center)
                     }
                 }
                 state.profile != null -> {
@@ -169,7 +163,6 @@ private fun ProfileContent(
     timerExtraPad: Dp
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val scroll = rememberScrollState()
 
     // XP hesaplama: level^2 * 100 → bir sonraki seviyeye kaç XP
@@ -197,233 +190,131 @@ private fun ProfileContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scroll)
-            .padding(top = 96.dp, bottom = 40.dp + timerExtraPad)
-            .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Avatar
-        Box(
-            modifier = Modifier
-                .size(104.dp)
-                .profilePremiumSurface(
-                    theme = theme,
-                    shape = CircleShape,
-                    accent = accent,
-                    elevation = if (theme.isDark) 18.dp else 9.dp
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+        // ── Kapak: foto (yoksa Sinema sahnesi) + alt karartma + ad ─────────
+        Box(Modifier.fillMaxWidth().height(400.dp)) {
             if (profile.avatarUrl != null) {
                 AsyncImage(
                     model = profile.avatarUrl,
                     contentDescription = null,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
+                SinemaScene(Modifier.fillMaxSize())
                 Text(
                     profile.displayName.take(1).uppercase(),
-                    color = theme.text0,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black
+                    color = Color.White.copy(0.9f), fontSize = 110.sp, fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.align(Alignment.Center).padding(bottom = 60.dp)
                 )
+            }
+            Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
+            Column(
+                Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 44.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+                        Text(theme.t("Seviye ${profile.level}", "Level ${profile.level}"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    if (profile.isMutual) {
+                        SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+                            Text(theme.t("Karşılıklı takip", "Mutual follow"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    profile.displayName, color = Color.White, style = Sinema.ScreenTitle,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                profile.username?.let {
+                    Text("@$it", color = Color.White.copy(0.72f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                }
+                Spacer(Modifier.height(16.dp))
+                FollowActionButton(isFollowing = profile.isFollowing, onClick = onToggleFollow)
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        // Seviye rozeti
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(accent.copy(0.15f))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(12.dp))
-            Text(
-                theme.t("Seviye ${profile.level}", "Level ${profile.level}"),
-                color = accent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        // Ad + @kullanici
-        Text(profile.displayName, color = theme.text0, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        profile.username?.let {
-            Text("@$it", color = theme.text2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        }
-
-        if (profile.isMutual) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                theme.t("Karşılıklı takip", "Mutual follow"),
-                color = accent,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(accent.copy(0.12f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Follow / Unfollow
-        FollowActionButton(isFollowing = profile.isFollowing, onClick = onToggleFollow)
-
-        Spacer(Modifier.height(24.dp))
-
-        // XP Progress bar
+        // ── Sheet ───────────────────────────────────────────────────────────
         Column(
             modifier = Modifier
-                .padding(horizontal = 24.dp)
                 .fillMaxWidth()
+                .offset(y = (-28).dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(Sinema.page(theme))
+                .padding(horizontal = 20.dp)
+                .padding(top = 28.dp, bottom = 40.dp + timerExtraPad)
+                .navigationBarsPadding()
         ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Rounded.Workspaces, null, tint = accent, modifier = Modifier.size(13.dp))
+            // XP
+            Column(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                    SinemaBigStat("${profile.totalXp}", "XP", size = 52, color = theme.effectiveAccentColor)
                     Text(
-                        "${profile.totalXp} XP",
-                        color = theme.text0,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
+                        color = Sinema.textSecondary(theme), fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
-                Text(
-                    theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
-                    color = theme.text2,
-                    fontSize = 11.sp
-                )
+                Spacer(Modifier.height(12.dp))
+                SinemaGlowBar(xpProgress)
             }
-            Spacer(Modifier.height(6.dp))
-            LinearProgressIndicator(
-                progress = { xpProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = accent,
-                trackColor = theme.bg2,
-                strokeCap = StrokeCap.Round
+
+            Spacer(Modifier.height(24.dp))
+
+            Row(
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SinemaBigStat(profile.totalWorkouts.toString(), theme.t("Antrenman", "Workouts"), Modifier.weight(1f), size = 36)
+                SinemaBigStat(profile.achievementsCount.toString(), theme.t("Başarım", "Achievements"), Modifier.weight(1f), size = 36)
+                SinemaBigStat(profile.currentStreak.toString(), theme.t("Gün seri", "Day streak"), Modifier.weight(1f), size = 36)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SinemaBigStat(profile.followersCount.toString(), theme.t("Takipçi", "Followers"), Modifier.weight(1f), size = 36)
+                SinemaBigStat(profile.followingCount.toString(), theme.t("Takip", "Following"), Modifier.weight(1f), size = 36)
+                SinemaBigStat(profile.currentRank.take(8), "Rank", Modifier.weight(1f), size = 22)
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Text(
+                theme.t("Üyelik", "Member since") + ": " +
+                    joinDate.uppercase(if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")),
+                color = Sinema.textSecondary(theme), fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp)
+            )
+
+            Spacer(Modifier.height(12.dp))
+            ActivitySection(
+                challenges = challenges,
+                sharedPrograms = sharedPrograms,
+                loading = activityLoading,
+                onOpenChallenge = onOpenChallenge
             )
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        // Stats row: başarım / rank / antrenman
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatTile(profile.achievementsCount.toString(), theme.t("BAŞARIM", "ACHIEVEMENTS"), Icons.Rounded.EmojiEvents)
-            StatTile(profile.currentRank.uppercase().take(6), "RANK", Icons.Rounded.MilitaryTech)
-            StatTile(profile.totalWorkouts.toString(), theme.t("ANTRENMAN", "WORKOUTS"), Icons.Rounded.FitnessCenter)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Streak + Üyelik tarihi
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-                .padding(vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Seri
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.LocalFireDepartment, null, tint = Color(0xFFFF6B35), modifier = Modifier.size(18.dp))
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(
-                        theme.t("${profile.currentStreak} GÜN", "${profile.currentStreak} DAYS"),
-                        color = theme.text0,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(theme.t("Güncel seri", "Current streak"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                }
-            }
-
-            Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke.copy(0.3f)))
-
-            // Üyelik tarihi
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.CalendarMonth, null, tint = accent.copy(0.8f), modifier = Modifier.size(18.dp))
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(
-                        joinDate.uppercase(if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")),
-                        color = theme.text0,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(theme.t("Üyelik", "Member since"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Followers / Following row
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-                .padding(vertical = 14.dp)
-        ) {
-            FollowCountBlock(profile.followersCount, theme.t("TAKİPÇİ", "FOLLOWERS"), Modifier.weight(1f))
-            Box(Modifier.width(1.dp).height(32.dp).background(theme.stroke.copy(0.3f)))
-            FollowCountBlock(profile.followingCount, theme.t("TAKİP", "FOLLOWING"), Modifier.weight(1f))
-        }
-
-        Spacer(Modifier.height(18.dp))
-        ActivitySection(
-            challenges = challenges,
-            sharedPrograms = sharedPrograms,
-            loading = activityLoading,
-            onOpenChallenge = onOpenChallenge
-        )
     }
 }
 
+/** Takip et = dolu vurgu + glow; takipte = cam. */
 @Composable
 private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val bg = if (isFollowing) theme.bg2 else accent
-    val fg = if (isFollowing) theme.text0 else theme.effectiveOnAccentColor
-
-    Row(
-        modifier = Modifier
-            .profilePremiumAction(
-                theme = theme,
-                accent = accent,
-                onClick = onClick,
-                shape = RoundedCornerShape(50)
-            )
-            .background(bg)
-            .padding(horizontal = 22.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        if (!isFollowing) Icon(Icons.Rounded.PersonAdd, null, tint = fg, modifier = Modifier.size(15.dp))
+    SinemaCapsule(
+        selected = !isFollowing, onClick = onClick, height = 48.dp,
+        modifier = Modifier.widthIn(min = 160.dp),
+        horizontalArrangement = Arrangement.Center,
+        contentPadding = PaddingValues(horizontal = 24.dp)
+    ) { fg ->
+        if (isFollowing) Icon(Icons.Rounded.Check, null, tint = fg, modifier = Modifier.size(16.dp))
+        else Icon(Icons.Rounded.PersonAdd, null, tint = fg, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
-            color = fg,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.5.sp
+            color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp
         )
     }
 }
@@ -436,24 +327,9 @@ private fun ActivitySection(
     onOpenChallenge: (String) -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                theme.t("AKTİVİTE", "ACTIVITY"),
-                color = theme.text0,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            )
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.weight(1f).height(1.dp).background(theme.stroke.copy(0.25f)))
-        }
-        Spacer(Modifier.height(10.dp))
+    val accent = theme.effectiveAccentColor
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.offset(x = (-20).dp)) { SinemaSectionLabel(theme.t("Aktivite", "Activity")) }
         if (loading) {
             Box(Modifier.fillMaxWidth().height(70.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = accent, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
@@ -462,23 +338,14 @@ private fun ActivitySection(
         }
 
         if (challenges.isEmpty() && sharedPrograms.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .profilePremiumSurface(theme, RoundedCornerShape(18.dp), accent)
-                    .padding(18.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    theme.t(
-                        "Henüz görünür challenge veya program paylaşımı yok.",
-                        "No visible challenges or program shares yet."
-                    ),
-                    color = theme.text2,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Text(
+                theme.t(
+                    "Henüz görünür challenge veya program paylaşımı yok.",
+                    "No visible challenges or program shares yet."
+                ),
+                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
             return@Column
         }
 
@@ -491,7 +358,6 @@ private fun ActivitySection(
             .forEach { challenge ->
                 ChallengeActivityCard(
                     challenge = challenge,
-                    accent = accent,
                     onOpen = { onOpenChallenge(challenge.id) }
                 )
                 Spacer(Modifier.height(8.dp))
@@ -505,7 +371,6 @@ private fun ActivitySection(
                     "${program.downloadsCount} uygulama · ${program.likesCount} beğeni",
                     "${program.downloadsCount} applies · ${program.likesCount} likes"
                 ),
-                accent = accent,
                 onClick = null
             )
             Spacer(Modifier.height(8.dp))
@@ -537,80 +402,56 @@ private fun profileChallengeStatusRank(challenge: ChallengeSummary): Int = when 
 @Composable
 private fun ChallengeActivityCard(
     challenge: ChallengeSummary,
-    accent: Color,
     onOpen: () -> Unit
 ) {
     val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
     val status = profileChallengeStatus(challenge)
-    val (label, color, icon) = when (status) {
-        ProfileChallengeStatus.Active -> Triple(theme.t("AKTİF", "ACTIVE"), accent, Icons.Rounded.Event)
-        ProfileChallengeStatus.Upcoming -> Triple(theme.t("YAKINDA", "UPCOMING"), Color(0xFFFFB74D), Icons.Rounded.HourglassBottom)
-        ProfileChallengeStatus.Completed -> Triple(theme.t("TAMAM", "DONE"), Color(0xFF38BDF8), Icons.Rounded.Check)
-        ProfileChallengeStatus.Ended -> Triple(theme.t("SONA ERDİ", "ENDED"), Color(0xFF9CA3AF), Icons.Rounded.Schedule)
+    val (label, icon) = when (status) {
+        ProfileChallengeStatus.Active -> theme.t("AKTİF", "ACTIVE") to Icons.Rounded.Event
+        ProfileChallengeStatus.Upcoming -> theme.t("YAKINDA", "UPCOMING") to Icons.Rounded.HourglassBottom
+        ProfileChallengeStatus.Completed -> theme.t("TAMAM", "DONE") to Icons.Rounded.Check
+        ProfileChallengeStatus.Ended -> theme.t("SONA ERDİ", "ENDED") to Icons.Rounded.Schedule
     }
     val canOpen = status == ProfileChallengeStatus.Active || status == ProfileChallengeStatus.Upcoming
     Row(
-        modifier = (if (canOpen) Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumAction(theme, color, onOpen, RoundedCornerShape(16.dp))
-        else Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), color))
-            .padding(12.dp),
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .then(if (canOpen) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(color.copy(0.15f)),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 if (challenge.kind == ChallengeKind.Event) icon else Icons.Rounded.EmojiEvents,
-                null,
-                tint = color,
-                modifier = Modifier.size(18.dp)
+                null, tint = accent, modifier = Modifier.size(20.dp)
             )
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    challenge.title,
-                    color = theme.text0,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    label,
-                    color = color,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(color.copy(0.12f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
-                )
-            }
+            Text(
+                challenge.title, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
             Text(
                 theme.t(
                     "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}",
                     "${challenge.participantsCount} participants · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}"
                 ),
-                color = theme.text2,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
+        Spacer(Modifier.width(8.dp))
+        SinemaCapsule(
+            selected = status == ProfileChallengeStatus.Active, height = 26.dp, light = !theme.isDark,
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) { fg -> Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1) }
         if (canOpen) {
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Rounded.ChevronRight, null, tint = color, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -620,62 +461,27 @@ private fun ActivityMiniCard(
     icon: ImageVector,
     title: String,
     meta: String,
-    accent: Color,
     onClick: (() -> Unit)? = null
 ) {
     val theme = LocalAppTheme.current
     Row(
-        modifier = (if (onClick != null) Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumAction(theme, accent, onClick, RoundedCornerShape(16.dp))
-        else Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent))
-            .padding(12.dp),
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(accent.copy(0.14f)),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(meta, color = theme.text2, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(meta, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-    }
-}
-
-@Composable
-private fun StatTile(value: String, label: String, icon: ImageVector) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(accent.copy(0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(value, color = theme.text0, fontSize = 17.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun FollowCountBlock(count: Int, label: String, modifier: Modifier = Modifier) {
-    val theme = LocalAppTheme.current
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(count.toString(), color = theme.text0, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     }
 }

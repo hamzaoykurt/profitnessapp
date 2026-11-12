@@ -173,7 +173,10 @@ fun SinemaGlassField(
     suffix: String? = null,
     keyboardType: KeyboardType = KeyboardType.Decimal,
     imeAction: ImeAction = ImeAction.Next,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    capitalization: androidx.compose.ui.text.input.KeyboardCapitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+    singleLine: Boolean = true
 ) {
     val theme = LocalAppTheme.current
     Column(modifier) {
@@ -190,10 +193,11 @@ fun SinemaGlassField(
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    singleLine = true,
+                    singleLine = singleLine,
+                    visualTransformation = visualTransformation,
                     textStyle = TextStyle(color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold),
                     cursorBrush = SolidColor(theme.effectiveAccentColor),
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction, capitalization = capitalization),
                     keyboardActions = keyboardActions,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -272,6 +276,32 @@ fun <T> SinemaSegmentRow(
             ) { fg ->
                 Text(label(opt), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+    }
+}
+
+/** Aktif: SinemaGoButton. Pasif: nötr gri (beyaz %10 zemin, %40 yazı; açıkta siyah %8). */
+@Composable
+fun SinemaGoOrIdle(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalAppTheme.current
+    if (enabled) {
+        SinemaGoButton(label = label, icon = icon, onClick = onClick, modifier = modifier)
+    } else {
+        val fg = Sinema.textSecondary(theme).copy(0.7f)
+        Row(
+            modifier = modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(Sinema.line(theme)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            androidx.compose.material3.Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }

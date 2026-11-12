@@ -39,6 +39,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaGlassField
+import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
+import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 
 data class ProfileData(
     val name  : String = "Kullanıcı",
@@ -292,60 +296,45 @@ fun EditProfileScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(accent.copy(if (theme.isDark) 0.14f else 0.045f), Color.Transparent)
-                    )
-                )
-        )
-
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // ── Kapak: foto (yoksa Sinema sahnesi) + avatar halkası ─────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 52.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Text(theme.t("Profili düzenle", "Edit profile"), color = theme.text0, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
-                    Spacer(Modifier.size(48.dp))
-                }
-            }
-
-            item { Spacer(Modifier.height(28.dp)) }
-
-            // Avatar
-            item {
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier.size(124.dp)) {
-                        Box(modifier = Modifier.size(120.dp).align(Alignment.Center).clip(CircleShape).background(accent))
+                Box(Modifier.fillMaxWidth().height(300.dp)) {
+                    if (state.avatar.startsWith("http")) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        SinemaScene(Modifier.fillMaxSize())
+                    }
+                    Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
+                    Box(
+                        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)
+                    ) {
+                        AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
+                    }
+                    // Avatar: vurgu halkası + glow
+                    Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 36.dp).size(132.dp)) {
                         Box(
-                            modifier = Modifier
-                                .size(110.dp)
+                            Modifier
+                                .size(124.dp)
                                 .align(Alignment.Center)
-                                .profilePremiumAction(
-                                    theme = theme,
-                                    accent = accent,
-                                    onClick = { showAvatarPicker = true },
-                                    shape = CircleShape
-                                ),
+                                .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                                .clip(CircleShape)
+                                .background(accent)
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(Sinema.surface(theme))
+                                .clickable(role = androidx.compose.ui.semantics.Role.Button) { showAvatarPicker = true },
                             contentAlignment = Alignment.Center
                         ) {
                             val currentAvatar = state.avatar
                             if (state.isSaving) {
-                                CircularProgressIndicator(
-                                    color = accent,
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 3.dp
-                                )
+                                CircularProgressIndicator(color = accent, modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
                             } else if (currentAvatar.startsWith("http")) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context).data(currentAvatar).crossfade(true).build(),
@@ -354,153 +343,93 @@ fun EditProfileScreen(
                                     modifier = Modifier.fillMaxSize().clip(CircleShape)
                                 )
                             } else {
-                                Text(avatar, fontSize = 46.sp)
+                                Text(avatar, fontSize = 50.sp)
                             }
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp).align(Alignment.BottomEnd).clip(CircleShape)
-                                .background(theme.bg0).padding(3.dp).clip(CircleShape)
-                                .background(accent).clickable { photoPickerLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Rounded.CameraAlt, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp)) }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(theme.t("Emoji Seç", "Choose Emoji"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { showAvatarPicker = true })
-                        Text("•", color = theme.text2, fontSize = 13.sp)
-                        Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { photoPickerLauncher.launch("image/*") })
-                    }
-                    avatarError?.let {
-                        Spacer(Modifier.height(6.dp))
-                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                        SinemaCapsuleIconButton(
+                            icon = Icons.Rounded.CameraAlt,
+                            description = theme.t("Fotoğraf Yükle", "Upload Photo"),
+                            onClick = { photoPickerLauncher.launch("image/*") },
+                            modifier = Modifier.align(Alignment.BottomEnd),
+                            size = 44.dp
+                        )
                     }
                 }
             }
 
-            item { Spacer(Modifier.height(32.dp)) }
+            item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(theme.t("Profili düzenle", "Edit profile"), style = Sinema.ScreenTitle, color = Sinema.text(theme))
+                    Spacer(Modifier.height(14.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SinemaCapsule(onClick = { showAvatarPicker = true }, height = 40.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                            Text(theme.t("Emoji Seç", "Choose Emoji"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        SinemaCapsule(onClick = { photoPickerLauncher.launch("image/*") }, height = 40.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                            Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    avatarError?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    }
+                }
+            }
 
-            // Form fields
+            item { Spacer(Modifier.height(28.dp)) }
+
+            // Form
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(22.dp)
                 ) {
-                    // Name
-                    ProfileTextField(
-                        value = name, onValue = { name = it }, label = theme.t("AD SOYAD", "FULL NAME"),
-                        placeholder = theme.t("Adınızı girin", "Enter your name"), icon = Icons.Rounded.Person,
-                        accent = accent, theme = theme, imeAction = ImeAction.Next
+                    SinemaGlassField(
+                        value = name, onValueChange = { name = it },
+                        label = theme.t("Ad soyad", "Full name"),
+                        placeholder = theme.t("Adınızı girin", "Enter your name"),
+                        keyboardType = KeyboardType.Text, capitalization = KeyboardCapitalization.Words
                     )
 
-                    // Gender
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(theme.t("CİNSİYET", "GENDER"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .profilePremiumSurface(
-                                    theme = theme,
-                                    shape = RoundedCornerShape(14.dp),
-                                    accent = accent,
-                                    elevation = if (theme.isDark) 10.dp else 5.dp
-                                )
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            GENDER_OPTIONS.forEach { (label, dbValue) ->
-                                val selected = gender == dbValue
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(if (selected) accent else Color.Transparent)
-                                        .clickable { gender = dbValue }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        theme.genderLabel(dbValue, label),
-                                        color      = if (selected) theme.effectiveOnAccentColor else theme.text2,
-                                        fontSize   = 12.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Height & Weight — side by side
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(theme.t("BOY (cm)", "HEIGHT (cm)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                            OutlinedTextField(
-                                value = heightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) heightText = d },
-                                placeholder = { Text("175", color = theme.text2, fontSize = 14.sp) },
-                                leadingIcon = { Text("📏", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                    focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                    unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                    cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
-                                )
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(theme.t("KİLO (kg)", "WEIGHT (kg)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                            OutlinedTextField(
-                                value = weightText, onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) weightText = d },
-                                placeholder = { Text("75", color = theme.text2, fontSize = 14.sp) },
-                                leadingIcon = { Text("⚖️", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                    focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                    unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                    cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
-                                )
-                            )
-                        }
-                    }
-
-                    // Doğum Tarihi — DD/MM/YYYY otomatik formatlı (VisualTransformation)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(theme.t("DOĞUM TARİHİ", "BIRTH DATE"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        OutlinedTextField(
-                            value = birthDigits,
-                            onValueChange = { raw ->
-                                val d = raw.filter { it.isDigit() }
-                                if (d.length <= 8) birthDigits = d
-                            },
-                            placeholder = { Text("15/06/1995", color = theme.text2, fontSize = 14.sp) },
-                            leadingIcon = { Icon(Icons.Rounded.CalendarMonth, null, tint = accent, modifier = Modifier.size(20.dp)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            visualTransformation = DateVisualTransformation,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                                focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                                cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
-                            )
+                    Column {
+                        Text(theme.t("Cinsiyet", "Gender").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                        Spacer(Modifier.height(8.dp))
+                        SinemaSegmentRow(
+                            options = GENDER_OPTIONS.map { it.second },
+                            selected = gender,
+                            label = { db -> theme.genderLabel(db, GENDER_OPTIONS.first { it.second == db }.first) },
+                            onSelect = { gender = it },
+                            height = 44.dp
                         )
                     }
 
-                    // BMI preview
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SinemaGlassField(
+                            value = heightText,
+                            onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) heightText = d },
+                            label = theme.t("Boy (cm)", "Height (cm)"), placeholder = "175", suffix = "cm",
+                            keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f)
+                        )
+                        SinemaGlassField(
+                            value = weightText,
+                            onValueChange = { v -> val d = v.filter { it.isDigit() }; if (d.length <= 3) weightText = d },
+                            label = theme.t("Kilo (kg)", "Weight (kg)"), placeholder = "75", suffix = "kg",
+                            keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Doğum Tarihi — DD/MM/YYYY otomatik formatlı (VisualTransformation)
+                    SinemaGlassField(
+                        value = birthDigits,
+                        onValueChange = { raw ->
+                            val d = raw.filter { it.isDigit() }
+                            if (d.length <= 8) birthDigits = d
+                        },
+                        label = theme.t("Doğum tarihi", "Birth date"), placeholder = "15/06/1995",
+                        keyboardType = KeyboardType.Number, visualTransformation = DateVisualTransformation
+                    )
+
+                    // BMI önizleme — dev rakam
                     val h = heightText.toDoubleOrNull() ?: 0.0
                     val w = weightText.toDoubleOrNull() ?: 0.0
                     if (h > 0 && w > 0) {
@@ -511,86 +440,53 @@ fun EditProfileScreen(
                             bmi < 30.0 -> theme.t("Fazla Kilolu", "Overweight")
                             else       -> theme.t("Obez", "Obese")
                         }
-                        val bmiColor = when {
-                            bmi < 18.5 -> Color(0xFF64B5F6)
-                            bmi < 25.0 -> Color(0xFF4CAF50)
-                            bmi < 30.0 -> Color(0xFFFFB74D)
-                            else       -> Color(0xFFEF5350)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .profilePremiumSurface(
-                                    theme = theme,
-                                    shape = RoundedCornerShape(12.dp),
-                                    accent = bmiColor,
-                                    elevation = if (theme.isDark) 9.dp else 4.dp
-                                )
-                                .padding(12.dp)
+                        Row(
+                            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+                            verticalAlignment = Alignment.Bottom
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("BMI", color = bmiColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                                Text(
-                                    "%.1f — %s".format(bmi, bmiLabel),
-                                    color = bmiColor, fontSize = 13.sp, fontWeight = FontWeight.Bold
-                                )
-                            }
+                            SinemaBigStat("%.1f".format(bmi), "BMI", Modifier.weight(1f), size = 44, color = accent)
+                            Text(bmiLabel, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 6.dp))
                         }
                     }
 
-                    // Fitness Goal
                     ProfileChoiceSection(
-                        title = theme.t("FİTNESS HEDEFİ", "FITNESS GOAL"),
+                        title = theme.t("Fitness hedefi", "Fitness goal"),
                         options = PROFILE_GOAL_OPTIONS,
                         selected = goal,
-                        accent = accent,
                         theme = theme,
                         labelFor = { theme.profileGoalLabel(it) },
                         onSelect = { goal = if (goal == it) "" else it }
                     )
 
-                    ProfileTextField(
-                        value = goal,
-                        onValue = { goal = it },
-                        label = theme.t("VEYA KENDİN YAZ", "OR WRITE YOUR OWN"),
+                    SinemaGlassField(
+                        value = goal, onValueChange = { goal = it },
+                        label = theme.t("Veya kendin yaz", "Or write your own"),
                         placeholder = theme.t("Hedefinizi yazın...", "Write your goal..."),
-                        icon = Icons.Rounded.Flag,
-                        accent = accent,
-                        theme = theme,
-                        imeAction = ImeAction.Next,
-                        capitalization = KeyboardCapitalization.Sentences
+                        keyboardType = KeyboardType.Text, capitalization = KeyboardCapitalization.Sentences
                     )
 
                     ProfileChoiceSection(
-                        title = theme.t("SPOR DALI", "SPORT"),
+                        title = theme.t("Spor dalı", "Sport"),
                         options = PROFILE_SPORT_OPTIONS,
                         selected = sportBranch,
-                        accent = accent,
                         theme = theme,
                         labelFor = { theme.profileSportLabel(it) },
                         onSelect = { sportBranch = it }
                     )
 
                     ProfileChoiceSection(
-                        title = theme.t("SEVİYE", "LEVEL"),
+                        title = theme.t("Seviye", "Level"),
                         options = PROFILE_EXPERIENCE_OPTIONS,
                         selected = experienceLevel,
-                        accent = accent,
                         theme = theme,
-                        itemHeight = 42.dp,
                         labelFor = { theme.profileExperienceLabel(it) },
                         onSelect = { experienceLevel = it }
                     )
 
                     ProfileChoiceSection(
-                        title = theme.t("HAFTALIK ANTRENMAN", "WEEKLY TRAINING"),
+                        title = theme.t("Haftalık antrenman", "Weekly training"),
                         options = PROFILE_WEEKLY_DAY_OPTIONS,
                         selected = weeklyDays,
-                        accent = accent,
                         theme = theme,
                         labelFor = { theme.t("$it gün", "$it days") },
                         onSelect = { weeklyDays = it }
@@ -601,22 +497,13 @@ fun EditProfileScreen(
             item { Spacer(Modifier.height(32.dp)) }
 
             item {
-                Button(
-                    onClick  = ::saveAndExit,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp),
-                    shape    = RoundedCornerShape(16.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = accent, contentColor = theme.effectiveOnAccentColor),
-                    border   = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = if (theme.isDark) 12.dp else 7.dp,
-                        pressedElevation = 2.dp,
-                        disabledElevation = 0.dp
-                    )
-                ) {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(theme.t("Kaydet", "Save"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                }
+                SinemaGoOrIdle(
+                    label = theme.t("Kaydet", "Save"),
+                    icon = Icons.Rounded.Check,
+                    enabled = !state.isSaving,
+                    onClick = ::saveAndExit,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
             }
 
             item { Spacer(Modifier.height(80.dp)) }
@@ -627,7 +514,7 @@ fun EditProfileScreen(
     if (showAvatarPicker) {
         ModalBottomSheet(
             onDismissRequest = { showAvatarPicker = false },
-            containerColor   = theme.bg1,
+            containerColor   = Sinema.surface(theme),
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
@@ -636,20 +523,13 @@ fun EditProfileScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp, 8.dp, 24.dp, 60.dp)
             ) {
-                Box(
-                    Modifier.width(40.dp).height(4.dp)
-                        .clip(CircleShape).background(theme.text2.copy(0.4f))
-                        .align(Alignment.CenterHorizontally)
-                )
-                Spacer(Modifier.height(20.dp))
-                Text(theme.t("Avatar seç", "Choose avatar"), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(theme.t("Avatar seç", "Choose avatar"), style = Sinema.Title, color = Sinema.text(theme))
                 Spacer(Modifier.height(20.dp))
 
                 AVATAR_CATEGORIES.forEach { category ->
                     Text(
-                        theme.avatarCategoryLabel(category.label),
-                        color = theme.text2, fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+                        theme.avatarCategoryLabel(category.label).sinemaUpper(theme),
+                        color = Sinema.textSecondary(theme), style = Sinema.Label,
                         modifier = Modifier.padding(bottom = 10.dp)
                     )
                     val rows = category.emojis.chunked(6)
@@ -659,25 +539,15 @@ fun EditProfileScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rowEmojis.forEach { emoji ->
-                                val isSelected = emoji == avatar
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .profilePremiumAction(
-                                            theme = theme,
-                                            accent = accent,
-                                            onClick = { avatar = emoji; showAvatarPicker = false },
-                                            shape = RoundedCornerShape(14.dp)
-                                        )
-                                        .background(
-                                            if (isSelected) accent.copy(if (theme.isDark) 0.17f else 0.10f)
-                                            else Color.Transparent
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) { Text(emoji, fontSize = 26.sp) }
+                                SinemaCapsule(
+                                    modifier = Modifier.weight(1f).aspectRatio(1f),
+                                    selected = emoji == avatar,
+                                    onClick = { avatar = emoji; showAvatarPicker = false },
+                                    height = 44.dp, shape = RoundedCornerShape(18.dp), light = !theme.isDark,
+                                    horizontalArrangement = Arrangement.Center,
+                                    contentPadding = PaddingValues(0.dp)
+                                ) { Text(emoji, fontSize = 24.sp) }
                             }
-                            // Fill remaining slots
                             repeat(6 - rowEmojis.size) {
                                 Box(modifier = Modifier.weight(1f).aspectRatio(1f))
                             }
@@ -691,91 +561,37 @@ fun EditProfileScreen(
 }
 
 @Composable
-private fun ProfileTextField(
-    value      : String,
-    onValue    : (String) -> Unit,
-    label      : String,
-    placeholder: String,
-    icon       : ImageVector,
-    accent     : Color,
-    theme      : AppThemeState,
-    imeAction  : ImeAction = ImeAction.Next,
-    maxLines   : Int = 1,
-    capitalization: KeyboardCapitalization = KeyboardCapitalization.Words
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        OutlinedTextField(
-            value = value, onValueChange = onValue,
-            placeholder = { Text(placeholder, color = theme.text2, fontSize = 14.sp) },
-            leadingIcon = { Icon(icon, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = maxLines,
-            keyboardOptions = KeyboardOptions(capitalization = capitalization, imeAction = imeAction),
-            shape = RoundedCornerShape(14.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accent, unfocusedBorderColor = theme.stroke,
-                focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-                cursorColor = accent, focusedTextColor = theme.text0, unfocusedTextColor = theme.text0
-            )
-        )
-    }
-}
-
-@Composable
 private fun ProfileChoiceSection(
     title     : String,
     options   : List<String>,
     selected  : String,
-    accent    : Color,
     theme     : AppThemeState,
-    itemHeight: androidx.compose.ui.unit.Dp = 46.dp,
     labelFor  : (String) -> String = { it },
     onSelect  : (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        options.chunked(2).forEachIndexed { index, row ->
+        Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        options.chunked(2).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 row.forEach { option ->
-                    val isSelected = selected == option
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(itemHeight)
-                            .profilePremiumAction(
-                                theme = theme,
-                                accent = accent,
-                                onClick = { onSelect(option) },
-                                shape = RoundedCornerShape(14.dp)
-                            )
-                            .background(
-                                if (isSelected) accent.copy(if (theme.isDark) 0.16f else 0.09f)
-                                else Color.Transparent
-                            )
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    SinemaCapsule(
+                        modifier = Modifier.weight(1f),
+                        selected = selected == option,
+                        onClick = { onSelect(option) },
+                        height = 46.dp, light = !theme.isDark,
+                        horizontalArrangement = Arrangement.Center,
+                        contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) { fg ->
                         Text(
-                            text = labelFor(option),
-                            color = if (isSelected) accent else theme.text1,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 15.sp
+                            text = labelFor(option), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp
                         )
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-            if (index != options.chunked(2).lastIndex) {
-                Spacer(Modifier.height(2.dp))
             }
         }
     }

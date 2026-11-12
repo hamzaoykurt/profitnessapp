@@ -1,10 +1,6 @@
 package com.cosmibit.profitness.presentation.leaderboard
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,19 +13,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.AppBackButton
-import com.cosmibit.profitness.presentation.components.insetControlSurface
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
+import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 
 @Composable
 fun LeaderboardScreen(
@@ -38,81 +37,71 @@ fun LeaderboardScreen(
     initialTab: LeaderboardTab = LeaderboardTab.Xp
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val state  by viewModel.uiState.collectAsStateWithLifecycle()
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LaunchedEffect(initialTab) { viewModel.selectTab(initialTab) }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        if (theme.isDark) PageAccentBloom()
-
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 60.dp)
+            contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
         ) {
-            // ── Top bar ─────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            theme.t("Sıralama", "Leaderboard"),
-                            color         = theme.text0,
-                            style         = MaterialTheme.typography.headlineSmall,
-                            fontWeight    = FontWeight.SemiBold
-                        )
-                        Text(
-                            theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
-                            color    = theme.text2,
-                            fontSize = 11.sp
-                        )
+                SinemaDetailHeader(
+                    title    = theme.t("Sıralama", "Leaderboard"),
+                    subtitle = theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
+                    onBack   = onBack,
+                    trailing = {
+                        Box(
+                            Modifier
+                                .size(48.dp)
+                                .sinemaCard(theme, CircleShape)
+                                .clickable(role = Role.Button) { viewModel.refresh() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Refresh, theme.t("Yenile", "Refresh"), tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
+                        }
                     }
-                    IconButton(
-                        onClick = { viewModel.refresh() },
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(theme.bg2)
-                    ) {
-                        Icon(
-                            Icons.Rounded.Refresh, null,
-                            tint = theme.text2,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
+                )
             }
 
-            // ── Tab seçici ──────────────────────────────────────────────────
+            // ── Dönem/sekme seçici ──────────────────────────────────────────
             item {
-                TabSwitcher(
+                SinemaSegmentRow(
+                    options  = listOf(LeaderboardTab.Xp, LeaderboardTab.Achievements, LeaderboardTab.Streak),
                     selected = state.selectedTab,
+                    label    = {
+                        when (it) {
+                            LeaderboardTab.Xp -> "XP"
+                            LeaderboardTab.Achievements -> theme.t("Başarım", "Achievement")
+                            LeaderboardTab.Streak -> theme.t("Seri", "Streak")
+                        }
+                    },
                     onSelect = viewModel::selectTab,
-                    accent   = accent,
-                    theme    = theme,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                 )
             }
 
-            // ── Kapsam seçici (Global / Arkadaşlar) ─────────────────────────
+            // ── Kapsam seçici ───────────────────────────────────────────────
             item {
-                ScopeSwitcher(
+                SinemaSegmentRow(
+                    options  = listOf(LeaderboardScope.Global, LeaderboardScope.Friends),
                     selected = state.selectedScope,
+                    label    = {
+                        when (it) {
+                            LeaderboardScope.Global -> "Global"
+                            LeaderboardScope.Friends -> theme.t("Arkadaşlar", "Friends")
+                        }
+                    },
                     onSelect = viewModel::selectScope,
-                    accent   = accent,
-                    theme    = theme,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                    height   = 36.dp
                 )
             }
 
-            // ── Benim pozisyonum özet kartı ─────────────────────────────────
+            // ── Benim pozisyonum ────────────────────────────────────────────
             item {
                 val summary = when (state.selectedScope) {
                     LeaderboardScope.Global -> when (state.selectedTab) {
@@ -130,47 +119,26 @@ fun LeaderboardScreen(
                     tab      = state.selectedTab,
                     scope    = state.selectedScope,
                     summary  = summary,
-                    accent   = accent,
                     theme    = theme,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                 )
             }
 
-            // ── Liste başlığı ───────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 20.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Text(
-                        when (state.selectedScope) {
-                            LeaderboardScope.Global  -> "TOP 100"
-                            LeaderboardScope.Friends -> theme.t("ARKADAŞLAR", "FRIENDS")
-                        },
-                        color         = theme.text0,
-                        fontSize      = 13.sp,
-                        fontWeight    = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        when (state.selectedTab) {
-                            LeaderboardTab.Xp           -> theme.t("XP SIRALAMASI", "XP RANKING")
-                            LeaderboardTab.Achievements -> theme.t("BAŞARIM SIRALAMASI", "ACHIEVEMENT RANKING")
-                            LeaderboardTab.Streak       -> theme.t("SERİ SIRALAMASI", "STREAK RANKING")
-                        },
-                        color         = accent,
-                        fontSize      = 10.sp,
-                        fontWeight    = FontWeight.Black,
-                        letterSpacing = 1.5.sp
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
+                SinemaSectionLabel(
+                    when (state.selectedScope) {
+                        LeaderboardScope.Global  -> "TOP 100"
+                        LeaderboardScope.Friends -> theme.t("Arkadaşlar", "Friends")
+                    },
+                    trailing = when (state.selectedTab) {
+                        LeaderboardTab.Xp           -> theme.t("XP sıralaması", "XP ranking")
+                        LeaderboardTab.Achievements -> theme.t("Başarım sıralaması", "Achievement ranking")
+                        LeaderboardTab.Streak       -> theme.t("Seri sıralaması", "Streak ranking")
+                    }
+                )
             }
 
-            // ── Durumlar: loading / error / liste ───────────────────────────
             if (state.isLoading) {
                 item {
                     Box(
@@ -180,19 +148,21 @@ fun LeaderboardScreen(
                 }
             } else if (state.error != null) {
                 item {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 20.dp)
-                            .performanceElevatedSurface(theme, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .sinemaCard(theme, RoundedCornerShape(24.dp))
                             .padding(20.dp),
-                        contentAlignment = Alignment.Center
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
                             theme.t("Sıralama yüklenemedi", "Could not load leaderboard") + "\n${state.error}",
-                            color      = theme.text2,
-                            fontSize   = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+                        )
+                        SinemaGoButton(
+                            label = theme.t("Tekrar dene", "Try again"), icon = Icons.Rounded.Refresh,
+                            onClick = { viewModel.refresh() }
                         )
                     }
                 }
@@ -223,18 +193,21 @@ fun LeaderboardScreen(
                                         "You do not have friends yet.\nFollow someone to add a friend. Mutual follows count as friends."
                                     )
                                 },
-                                color    = theme.text2,
-                                fontSize = 13.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                color    = Sinema.textSecondary(theme),
+                                fontSize = 14.sp, lineHeight = 20.sp,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
                 } else {
-                    items(items = rows, key = { "${state.selectedScope}_${state.selectedTab}_${it.userId}" }) { row ->
+                    val podium = rows.take(3)
+                    item(key = "podium_${state.selectedScope}_${state.selectedTab}") {
+                        Podium(rows = podium, tab = state.selectedTab, theme = theme, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                    }
+                    items(items = rows.drop(3), key = { "${state.selectedScope}_${state.selectedTab}_${it.userId}" }) { row ->
                         LeaderboardRowItem(
                             row    = row,
                             tab    = state.selectedTab,
-                            accent = accent,
                             theme  = theme,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                         )
@@ -245,138 +218,83 @@ fun LeaderboardScreen(
     }
 }
 
-// ── Tab Switcher ──────────────────────────────────────────────────────────────
+// ── Avatar (halkalı) ─────────────────────────────────────────────────────────
 
 @Composable
-private fun TabSwitcher(
-    selected: LeaderboardTab,
-    onSelect: (LeaderboardTab) -> Unit,
-    accent  : Color,
-    theme   : AppThemeState,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.bg1)
-            .padding(4.dp)
-    ) {
-        TabButton(
-            label    = "XP",
-            icon     = Icons.Rounded.Bolt,
-            isActive = selected == LeaderboardTab.Xp,
-            accent   = accent,
-            theme    = theme,
-            onClick  = { onSelect(LeaderboardTab.Xp) },
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(Modifier.width(4.dp))
-        TabButton(
-            label    = theme.t("Başarım", "Achievement"),
-            icon     = Icons.Rounded.EmojiEvents,
-            isActive = selected == LeaderboardTab.Achievements,
-            accent   = accent,
-            theme    = theme,
-            onClick  = { onSelect(LeaderboardTab.Achievements) },
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(Modifier.width(4.dp))
-        TabButton(
-            label    = "Seri",
-            icon     = Icons.Rounded.LocalFireDepartment,
-            isActive = selected == LeaderboardTab.Streak,
-            accent   = accent,
-            theme    = theme,
-            onClick  = { onSelect(LeaderboardTab.Streak) },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-// ── Scope Switcher (Global / Arkadaşlar) ─────────────────────────────────────
-
-@Composable
-private fun ScopeSwitcher(
-    selected: LeaderboardScope,
-    onSelect: (LeaderboardScope) -> Unit,
-    accent  : Color,
-    theme   : AppThemeState,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg1)
+private fun RingAvatar(row: LeaderboardRow, size: Dp, ring: Color, theme: AppThemeState) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .border(2.dp, ring, CircleShape)
             .padding(3.dp)
+            .clip(CircleShape)
+            .background(Sinema.line(theme)),
+        contentAlignment = Alignment.Center
     ) {
-        TabButton(
-            label    = "Global",
-            icon     = Icons.Rounded.Public,
-            isActive = selected == LeaderboardScope.Global,
-            accent   = accent,
-            theme    = theme,
-            onClick  = { onSelect(LeaderboardScope.Global) },
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(Modifier.width(3.dp))
-        TabButton(
-            label    = theme.t("Arkadaşlar", "Friends"),
-            icon     = Icons.Rounded.People,
-            isActive = selected == LeaderboardScope.Friends,
-            accent   = accent,
-            theme    = theme,
-            onClick  = { onSelect(LeaderboardScope.Friends) },
-            modifier = Modifier.weight(1f)
-        )
+        if (row.avatar.startsWith("http")) {
+            AsyncImage(model = row.avatar, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape))
+        } else {
+            Text(row.avatar, fontSize = (size.value * 0.46f).sp)
+        }
+    }
+}
+
+private fun scoreUnit(tab: LeaderboardTab, theme: AppThemeState): String = when (tab) {
+    LeaderboardTab.Xp           -> "XP"
+    LeaderboardTab.Achievements -> theme.t("başarım", "achievements")
+    LeaderboardTab.Streak       -> theme.t("gün", "days")
+}
+
+// ── Podyum: ilk 3 (2 - 1 - 3 düzeni, 1. vurgu + glow) ────────────────────────
+
+@Composable
+private fun Podium(rows: List<LeaderboardRow>, tab: LeaderboardTab, theme: AppThemeState, modifier: Modifier = Modifier) {
+    val ordered = listOfNotNull(rows.getOrNull(1), rows.getOrNull(0), rows.getOrNull(2))
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        ordered.forEach { row ->
+            PodiumCard(row = row, tab = tab, theme = theme, modifier = Modifier.weight(if (row.position == 1L) 1.15f else 1f))
+        }
     }
 }
 
 @Composable
-private fun TabButton(
-    label   : String,
-    icon    : androidx.compose.ui.graphics.vector.ImageVector,
-    isActive: Boolean,
-    accent  : Color,
-    theme   : AppThemeState,
-    onClick : () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(120),
-        label = "leaderboard_tab_scale"
-    )
-    Row(
+private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppThemeState, modifier: Modifier = Modifier) {
+    val accent = theme.effectiveAccentColor
+    val first = row.position == 1L
+    val shape = RoundedCornerShape(28.dp)
+    val fg = if (first) theme.effectiveOnAccentColor else Sinema.text(theme)
+    val fg2 = if (first) theme.effectiveOnAccentColor.copy(0.75f) else Sinema.textSecondary(theme)
+    Column(
         modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .then(
-                if (isActive) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(10.dp))
-                else Modifier.clip(RoundedCornerShape(10.dp))
-            )
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment     = Alignment.CenterVertically
+            .then(if (first) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
+            .then(if (first) Modifier.clip(shape).background(accent) else Modifier.sinemaCard(theme, shape))
+            .padding(horizontal = 8.dp)
+            .padding(top = if (first) 22.dp else 16.dp, bottom = if (first) 22.dp else 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            icon, null,
-            tint     = if (isActive) accent else theme.text2,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(Modifier.width(6.dp))
+        Text("#${row.position}", color = fg2, style = Sinema.Label)
+        Spacer(Modifier.height(8.dp))
+        RingAvatar(row, if (first) 64.dp else 52.dp, if (first) theme.effectiveOnAccentColor else accent, theme)
+        Spacer(Modifier.height(10.dp))
         Text(
-            label,
-            color      = if (isActive) theme.text0 else theme.text2,
-            fontSize   = 13.sp,
-            fontWeight = FontWeight.Bold
+            row.displayName, color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center
         )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            row.score.toString(), color = fg,
+            style = Sinema.Metric.copy(fontSize = if (first) 32.sp else 26.sp), maxLines = 1
+        )
+        Text(scoreUnit(tab, theme), color = fg2, fontSize = 11.sp, maxLines = 1)
+        if (row.isMe) {
+            Spacer(Modifier.height(6.dp))
+            Text(theme.t("SEN", "YOU"), color = if (first) fg else accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+        }
     }
 }
 
@@ -387,73 +305,39 @@ private fun MyPositionCard(
     tab     : LeaderboardTab,
     scope   : LeaderboardScope,
     summary : MyPositionSummary,
-    accent  : Color,
     theme   : AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val scoreLabel = when (tab) {
-        LeaderboardTab.Xp           -> "XP"
-        LeaderboardTab.Achievements -> theme.t("Başarım", "Achievement")
-        LeaderboardTab.Streak       -> theme.t("Gün", "Days")
-    }
+    val accent = theme.effectiveAccentColor
     val scopeLabel = when (scope) {
         LeaderboardScope.Global  -> theme.t("kullanıcı arasında", "among users")
         LeaderboardScope.Friends -> theme.t("arkadaş arasında", "among friends")
     }
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .performanceSignatureSurface(theme, accent, RoundedCornerShape(22.dp))
-            .padding(16.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(20.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "#${if (summary.position == 0L) "-" else summary.position}",
-                    color      = accent,
-                    fontSize   = 15.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    theme.t("SENİN POZİSYONUN", "YOUR POSITION"),
-                    color         = accent,
-                    fontSize      = 10.sp,
-                    fontWeight    = FontWeight.Black,
-                    letterSpacing = 1.5.sp
-                )
-                Text(
-                    if (summary.totalUsers > 0 && summary.position > 0L)
-                        "${summary.position} / ${summary.totalUsers} $scopeLabel"
-                    else if (scope == LeaderboardScope.Friends)
-                        theme.t("Arkadaş listen boş veya henüz yerleşmedin", "Your friends list is empty or you are not ranked yet")
-                    else theme.t("Henüz sıralama yok", "No ranking yet"),
-                    color    = theme.text2,
-                    fontSize = 12.sp
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    summary.score.toString(),
-                    color      = theme.text0,
-                    fontSize   = 18.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    scoreLabel,
-                    color    = theme.text2,
-                    fontSize = 10.sp
-                )
-            }
+        Row(verticalAlignment = Alignment.Bottom) {
+            SinemaBigStat(
+                value = "#${if (summary.position == 0L) "-" else summary.position}",
+                label = theme.t("Senin pozisyonun", "Your position"),
+                size = 52, color = accent, modifier = Modifier.weight(1f)
+            )
+            SinemaBigStat(
+                value = summary.score.toString(), label = scoreUnit(tab, theme), size = 32
+            )
         }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            if (summary.totalUsers > 0 && summary.position > 0L)
+                "${summary.position} / ${summary.totalUsers} $scopeLabel"
+            else if (scope == LeaderboardScope.Friends)
+                theme.t("Arkadaş listen boş veya henüz yerleşmedin", "Your friends list is empty or you are not ranked yet")
+            else theme.t("Henüz sıralama yok", "No ranking yet"),
+            color = Sinema.textSecondary(theme), fontSize = 13.sp
+        )
     }
 }
 
@@ -463,111 +347,42 @@ private fun MyPositionCard(
 private fun LeaderboardRowItem(
     row     : LeaderboardRow,
     tab     : LeaderboardTab,
-    accent  : Color,
     theme   : AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val medalColor = when (row.position) {
-        1L   -> Color(0xFFFFD700)
-        2L   -> Color(0xFFB0BEC5)
-        3L   -> Color(0xFFCD7F32)
-        else -> theme.text2
-    }
-    val highlight = row.isMe
+    val accent = theme.effectiveAccentColor
+    val me = row.isMe
+    val shape = RoundedCornerShape(24.dp)
+    val fg = if (me) theme.effectiveOnAccentColor else Sinema.text(theme)
+    val fg2 = if (me) theme.effectiveOnAccentColor.copy(0.75f) else Sinema.textSecondary(theme)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (highlight) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
-                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
-            )
+            .then(if (me) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
+            .then(if (me) Modifier.clip(shape).background(accent) else Modifier.sinemaCard(theme, shape))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Pozisyon / madalya
-        Box(
-            modifier = Modifier.width(40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (row.position in 1L..3L) {
-                Icon(
-                    Icons.Rounded.EmojiEvents, null,
-                    tint     = medalColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            } else {
-                Text(
-                    "#${row.position}",
-                    color      = theme.text2,
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-        }
-
-        Spacer(Modifier.width(10.dp))
-
-        // Avatar
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(theme.bg2),
-            contentAlignment = Alignment.Center
-        ) {
-            if (row.avatar.startsWith("http")) {
-                AsyncImage(
-                    model = row.avatar,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                )
-            } else {
-                Text(row.avatar, fontSize = 20.sp)
-            }
-        }
-
+        Text(
+            "#${row.position}", color = fg2, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.width(44.dp), maxLines = 1
+        )
+        RingAvatar(row, 44.dp, if (me) theme.effectiveOnAccentColor else Sinema.line(theme), theme)
         Spacer(Modifier.width(12.dp))
-
-        // İsim + "Sen" etiketi
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    row.displayName,
-                    color      = theme.text0,
-                    fontSize   = 14.sp,
-                    fontWeight = if (highlight) FontWeight.Black else FontWeight.Bold,
-                    maxLines   = 1
+                    row.displayName, color = fg, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
                 )
-                if (highlight) {
-                    Spacer(Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(accent.copy(0.25f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(theme.t("SEN", "YOU"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                    }
+                if (me) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(theme.t("SEN", "YOU"), color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }
             }
-            Text(
-                when (tab) {
-                    LeaderboardTab.Xp           -> "${row.score} XP"
-                    LeaderboardTab.Achievements -> "${row.score} ${theme.t("başarım", "achievements")}"
-                    LeaderboardTab.Streak       -> "${row.score} ${theme.t("gün", "days")}"
-                },
-                color    = theme.text2,
-                fontSize = 11.sp
-            )
+            Text(scoreUnit(tab, theme), color = fg2, fontSize = 12.sp)
         }
-
-        // Skor
-        Text(
-            row.score.toString(),
-            color      = if (highlight) accent else theme.text0,
-            fontSize   = 16.sp,
-            fontWeight = FontWeight.Black
-        )
+        Text(row.score.toString(), color = fg, style = Sinema.Title.copy(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold))
     }
 }
