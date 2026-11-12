@@ -43,8 +43,10 @@ import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
-import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.presentation.components.drawGlowDot
+import com.cosmibit.profitness.presentation.components.drawGlowLine
 import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiAnalysisPrompts
 import com.cosmibit.profitness.data.ai.AiToolType
@@ -194,9 +196,10 @@ fun ExerciseProgressionScreen(
     viewModel         : ExerciseProgressionViewModel = hiltViewModel()
 ) {
     val theme   = LocalAppTheme.current
-    val accent  = MaterialTheme.colorScheme.primary
+    val accent  = theme.effectiveAccentColor
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
     var showPaywall by remember { mutableStateOf(false) }
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LaunchedEffect(Unit) {
         viewModel.load()
@@ -214,38 +217,14 @@ fun ExerciseProgressionScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ── Top Bar ───────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AppBackButton(onClick = onBack, accent = accent, size = 52.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        theme.t("PERFORMANS ÖLÇÜTLERİ", "PERFORMANCE METRICS"),
-                        color = theme.text0,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        theme.t("Ağırlık, süre ve mesafe takibi", "Weight, duration and distance tracking"),
-                        color = theme.text2,
-                        fontSize = 12.sp
-                    )
-                }
-            }
+            SinemaDetailHeader(
+                title    = theme.t("Hareket performansı", "Exercise performance"),
+                subtitle = theme.t("Ağırlık, süre ve mesafe takibi", "Weight, duration and distance tracking"),
+                onBack   = onBack
+            )
 
-            HorizontalDivider(color = theme.stroke.copy(0.72f), thickness = 0.5.dp)
-
-            // ── Content ───────────────────────────────────────────────────────
             when {
                 state.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -253,30 +232,16 @@ fun ExerciseProgressionScreen(
                     }
                 }
                 state.summaries.isEmpty() -> {
-                    Box(Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
-                        EmptyProgressionState(accent = accent, theme = theme)
-                    }
+                    EmptyProgressionState(theme = theme, onBack = onBack)
                 }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 34.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = SinemaNavHeight + 24.dp + navBarBottom),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item(key = "summary_hero") {
-                            ProgressionSummaryHero(
-                                summaries = state.summaries,
-                                accent = accent,
-                                theme = theme
-                            )
-                        }
-                        item(key = "credit_info") {
-                            AiCreditInfoRow(
-                                isFree    = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
-                                credits   = state.aiCredits,
-                                costLabel = theme.t("2 Enerji / egzersiz analizi", "2 Energy / exercise analysis"),
-                                theme     = theme
-                            )
+                            ProgressionSummaryHero(summaries = state.summaries, theme = theme)
                         }
                         items(state.summaries, key = { it.exerciseId }) { summary ->
                             ExerciseProgressionCard(
@@ -284,7 +249,6 @@ fun ExerciseProgressionScreen(
                                 history      = state.historyMap[summary.exerciseId] ?: emptyList(),
                                 aiInsight    = state.aiInsightMap[summary.exerciseId] ?: "",
                                 isAiLoading  = summary.exerciseId in state.aiLoadingSet,
-                                accent       = accent,
                                 theme        = theme,
                                 isFree       = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
                                 aiCredits    = state.aiCredits,
@@ -302,131 +266,64 @@ fun ExerciseProgressionScreen(
 @Composable
 private fun ProgressionSummaryHero(
     summaries: List<ExerciseProgressSummary>,
-    accent: Color,
     theme: AppThemeState
 ) {
     val trackedCount = summaries.size
     val weightCount = summaries.count { it.maxWeight > 0f || it.totalVolume > 0f }
     val timedCount = summaries.count { it.totalDurationSeconds > 0 }
     val distanceCount = summaries.count { it.totalDistanceMeters > 0f }
-    val shape = RoundedCornerShape(26.dp)
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(theme, shape, accent, if (theme.isDark) 22.dp else 10.dp)
-            .padding(18.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(accent.copy(0.16f))
-                        .border(1.dp, accent.copy(0.28f), RoundedCornerShape(15.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.AutoMirrored.Rounded.TrendingUp, null, tint = accent, modifier = Modifier.size(23.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        theme.t("GELİŞİM PANELİ", "PROGRESSION PANEL"),
-                        color = theme.text0,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp
-                    )
-                    Text(
-                        theme.t("Kayıtlı hareket performanslarını karşılaştır", "Compare tracked exercise performance"),
-                        color = theme.text2,
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp
-                    )
-                }
-                Text(
-                    "$trackedCount",
-                    color = accent,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryPill(theme.t("Ağırlık", "Weight"), weightCount.toString(), accent, theme, Modifier.weight(1f))
-                SummaryPill(theme.t("Süre", "Time"), timedCount.toString(), CardGreen, theme, Modifier.weight(1f))
-                SummaryPill(theme.t("Mesafe", "Distance"), distanceCount.toString(), CardCyan, theme, Modifier.weight(1f))
-            }
+        SinemaBigStat(
+            value = "$trackedCount",
+            label = theme.t("Takip edilen hareket", "Tracked exercises"),
+            size = 72,
+            color = theme.effectiveAccentColor
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SinemaBigStat("$weightCount", theme.t("Ağırlık", "Weight"), Modifier.weight(1f), size = 28)
+            SinemaBigStat("$timedCount", theme.t("Süre", "Time"), Modifier.weight(1f), size = 28)
+            SinemaBigStat("$distanceCount", theme.t("Mesafe", "Distance"), Modifier.weight(1f), size = 28)
         }
-    }
-}
-
-@Composable
-private fun SummaryPill(
-    label: String,
-    value: String,
-    color: Color,
-    theme: AppThemeState,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .height(42.dp)
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(14.dp),
-                color,
-                if (theme.isDark) 7.dp else 3.dp
-            )
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Text(value, color = color, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.width(5.dp))
-        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
 @Composable
 private fun EmptyProgressionState(
-    accent: Color,
-    theme: AppThemeState
+    theme: AppThemeState,
+    onBack: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(26.dp), accent)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(accent.copy(0.14f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(30.dp))
+        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.FitnessCenter, null, tint = Sinema.text(theme), modifier = Modifier.size(28.dp))
         }
+        Spacer(Modifier.height(18.dp))
         Text(
             theme.t("Henüz performans kaydı yok", "No performance records yet"),
-            color = theme.text0,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Black,
-            textAlign = TextAlign.Center
+            color = Sinema.text(theme), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
         )
+        Spacer(Modifier.height(8.dp))
         Text(
             theme.t(
-                "Antrenman sırasında ağırlık, süre veya mesafe girerek gelişimini takip et",
-                "Track progress by entering weight, duration or distance during workouts"
+                "Antrenman sırasında ağırlık, süre veya mesafe girerek gelişimini takip et.",
+                "Track progress by entering weight, duration or distance during workouts."
             ),
-            color = theme.text2,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 16.sp
+            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(24.dp))
+        SinemaGoButton(
+            label = theme.t("Profile dön", "Back to profile"), icon = Icons.Rounded.FitnessCenter,
+            onClick = onBack, modifier = Modifier.widthIn(max = 280.dp)
         )
     }
 }
@@ -439,37 +336,25 @@ private fun ExerciseProgressionCard(
     history     : List<SetCompletionEntity>,
     aiInsight   : String,
     isAiLoading : Boolean,
-    accent      : Color,
     theme       : AppThemeState,
     isFree      : Boolean = true,
     aiCredits   : Int = 0,
     onExpand    : () -> Unit,
     onRequestAi : () -> Unit
 ) {
+    val accent = theme.effectiveAccentColor
     var isExpanded by remember { mutableStateOf(false) }
     val chartData  = remember(history) { buildChartData(history) }
     val hasWeight = summary.maxWeight > 0f || summary.totalVolume > 0f
     val hasDuration = summary.totalDurationSeconds > 0
     val hasDistance = summary.totalDistanceMeters > 0f
-    val cardShape = RoundedCornerShape(24.dp)
-    val cardAccent = when {
-        hasWeight -> accent
-        hasDuration -> CardGreen
-        hasDistance -> CardCyan
-        else -> accent
-    }
     val displayName = theme.exerciseDisplayName(summary.name).localizedPrimary(theme)
     val targetName = theme.fitnessTermDisplayName(summary.targetMuscle).localizedPrimary(theme)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(
-                theme = theme,
-                shape = cardShape,
-                accent = cardAccent,
-                elevation = if (isExpanded) 24.dp else 15.dp
-            )
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
     ) {
         // ── Header row ────────────────────────────────────────────────────
         Row(
@@ -479,22 +364,14 @@ private fun ExerciseProgressionCard(
                     isExpanded = !isExpanded
                     if (isExpanded) onExpand()
                 }
-                .padding(14.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Thumbnail
             Box(
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(cardAccent.copy(0.20f), theme.bg2),
-                            start = Offset(0f, 0f),
-                            end = Offset(120f, 120f)
-                        )
-                    )
-                    .border(1.dp, cardAccent.copy(0.28f), RoundedCornerShape(16.dp))
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Sinema.line(theme))
             ) {
                 if (summary.imageUrl.isNotBlank()) {
                     AsyncImage(
@@ -505,43 +382,43 @@ private fun ExerciseProgressionCard(
                     )
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = cardAccent, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(24.dp))
                     }
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     displayName,
-                    color = theme.text0,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
+                    color = Sinema.text(theme),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.sp
+                    lineHeight = 18.sp
                 )
                 Text(
                     targetName,
-                    color = theme.text2,
-                    fontSize = 11.sp,
+                    color = Sinema.textSecondary(theme),
+                    fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (hasWeight) {
-                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg", color = cardAccent)
+                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg")
                     }
                     if (hasDistance) {
-                        StatChip(label = formatDistance(summary.totalDistanceMeters), color = CardCyan)
+                        StatChip(label = formatDistance(summary.totalDistanceMeters))
                     }
                     if (hasDuration) {
-                        StatChip(label = formatDuration(summary.totalDurationSeconds, theme), color = CardGreen)
+                        StatChip(label = formatDuration(summary.totalDurationSeconds, theme))
                     }
                     if (!hasWeight && !hasDistance && !hasDuration) {
-                        StatChip(label = "${summary.sessionCount} ${theme.t("seans", "sessions")}", color = theme.text2)
+                        StatChip(label = "${summary.sessionCount} ${theme.t("seans", "sessions")}")
                     }
                 }
             }
@@ -549,28 +426,24 @@ private fun ExerciseProgressionCard(
             Icon(
                 if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 null,
-                tint = if (isExpanded) cardAccent else theme.text2,
-                modifier = Modifier.size(20.dp)
+                tint = if (isExpanded) accent else Sinema.textSecondary(theme),
+                modifier = Modifier.size(24.dp)
             )
         }
 
-        // ── Expanded: chart + AI ──────────────────────────────────────────
+        // ── Expanded: istatistik + grafik + AI ────────────────────────────
         AnimatedVisibility(
             visible = isExpanded,
             enter   = expandVertically(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)),
             exit    = shrinkVertically()
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 14.dp)) {
-                HorizontalDivider(color = cardAccent.copy(0.22f), thickness = 0.5.dp, modifier = Modifier.padding(bottom = 12.dp))
+            Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                StatsGrid(summary = summary, theme = theme)
+                Spacer(Modifier.height(20.dp))
 
-                // ── İstatistik Izgara ─────────────────────────────────────────
-                StatsGrid(summary = summary, accent = accent, theme = theme)
-                Spacer(Modifier.height(12.dp))
-
-                // ── İlerleme Grafiği ──────────────────────────────────────────
                 if (hasWeight && chartData.size >= 2) {
-                    ProgressionChartSection(chartData = chartData, accent = accent, theme = theme)
-                    Spacer(Modifier.height(12.dp))
+                    ProgressionChartSection(chartData = chartData, theme = theme)
+                    Spacer(Modifier.height(20.dp))
                 } else if (hasWeight && history.isEmpty()) {
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -584,22 +457,19 @@ private fun ExerciseProgressionCard(
                             "Ağırlık grafiği için en az 2 farklı günden veri gerekli",
                             "Weight chart needs data from at least 2 different days"
                         ),
-                        color = theme.text2, fontSize = 11.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        color = Sinema.textSecondary(theme), fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
 
-                // ── Son Seans Set Dökümü ──────────────────────────────────────
                 if (history.isNotEmpty()) {
-                    LastSessionBreakdown(history = history, accent = accent, theme = theme)
-                    Spacer(Modifier.height(12.dp))
+                    LastSessionBreakdown(history = history, theme = theme)
+                    Spacer(Modifier.height(20.dp))
                 }
 
-                // AI Card
                 AiInsightCard(
                     insight     = aiInsight,
                     isLoading   = isAiLoading,
-                    accent      = accent,
                     theme       = theme,
                     isFree      = isFree,
                     credits     = aiCredits,
@@ -610,27 +480,26 @@ private fun ExerciseProgressionCard(
     }
 }
 
-// ── Stats Grid ────────────────────────────────────────────────────────────────
+// ── Stats Grid — dev rakamlar ─────────────────────────────────────────────────
 
 @Composable
 private fun StatsGrid(
     summary : ExerciseProgressSummary,
-    accent  : Color,
     theme   : AppThemeState
 ) {
     val stats = buildList {
-        if (summary.totalVolume > 0f) add(Triple(theme.t("TOPLAM HACİM", "TOTAL VOLUME"), "${"%.0f".format(summary.totalVolume)} kg", accent))
-        if (summary.totalDistanceMeters > 0f) add(Triple(theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), formatDistance(summary.totalDistanceMeters), CardCyan))
-        if (summary.totalDurationSeconds > 0) add(Triple(theme.t("TOPLAM SÜRE", "TOTAL TIME"), formatDuration(summary.totalDurationSeconds, theme), CardGreen))
-        if (summary.totalReps > 0) add(Triple(theme.t("TOPLAM TEKRAR", "TOTAL REPS"), "${summary.totalReps}", theme.text1))
-        if (summary.totalSets > 0) add(Triple(theme.t("KAYIT", "SETS"), "${summary.totalSets}", theme.text1))
-        add(Triple(theme.t("SEANS", "SESSIONS"), "${summary.sessionCount}", theme.text1))
+        if (summary.totalVolume > 0f) add(theme.t("TOPLAM HACİM", "TOTAL VOLUME") to "${"%.0f".format(summary.totalVolume)} kg")
+        if (summary.totalDistanceMeters > 0f) add(theme.t("TOPLAM MESAFE", "TOTAL DISTANCE") to formatDistance(summary.totalDistanceMeters))
+        if (summary.totalDurationSeconds > 0) add(theme.t("TOPLAM SÜRE", "TOTAL TIME") to formatDuration(summary.totalDurationSeconds, theme))
+        if (summary.totalReps > 0) add(theme.t("TOPLAM TEKRAR", "TOTAL REPS") to "${summary.totalReps}")
+        if (summary.totalSets > 0) add(theme.t("KAYIT", "SETS") to "${summary.totalSets}")
+        add(theme.t("SEANS", "SESSIONS") to "${summary.sessionCount}")
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         stats.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { stat ->
-                    StatsTile(stat, Modifier.weight(1f), theme)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { (label, value) ->
+                    SinemaBigStat(value, label, Modifier.weight(1f), size = 30)
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -638,33 +507,9 @@ private fun StatsGrid(
         if (!summary.lastDate.isNullOrBlank()) {
             Text(
                 text = theme.t("Son antrenman", "Last workout") + ": ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
-                color = theme.text2, fontSize = 10.sp,
-                modifier = Modifier.padding(top = 2.dp)
+                color = Sinema.textSecondary(theme), fontSize = 12.sp
             )
         }
-    }
-}
-
-@Composable
-private fun StatsTile(
-    data: Triple<String, String, Color>,
-    modifier: Modifier,
-    theme: AppThemeState
-) {
-    val (label, value, valueColor) = data
-    Column(
-        modifier = modifier
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(10.dp),
-                valueColor,
-                if (theme.isDark) 7.dp else 3.dp
-            )
-            .padding(10.dp)
-    ) {
-        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        Spacer(Modifier.height(4.dp))
-        Text(value, color = valueColor, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -673,10 +518,9 @@ private fun StatsTile(
 @Composable
 private fun LastSessionBreakdown(
     history : List<SetCompletionEntity>,
-    accent  : Color,
     theme   : AppThemeState
 ) {
-    // Son antrenmanın setlerini al
+    val accent = theme.effectiveAccentColor
     val lastDate = history.mapNotNull { it.date }.maxOrNull() ?: return
     val lastSets = history
         .filter { it.date == lastDate }
@@ -695,62 +539,36 @@ private fun LastSessionBreakdown(
         else -> ""
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(12.dp),
-                accent,
-                if (theme.isDark) 8.dp else 4.dp
-            )
-            .padding(12.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (weightCnt > 0) Icons.Rounded.FitnessCenter else Icons.Rounded.Timer,
-                null,
-                tint = accent,
-                modifier = Modifier.size(13.dp)
+            Text(
+                theme.t("SON ANTRENMAN", "LAST WORKOUT"),
+                color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.width(6.dp))
-            Text(theme.t("SON ANTRENMAN", "LAST WORKOUT"), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-            Spacer(Modifier.weight(1f))
             if (sessionSummary.isNotBlank()) {
-                Text(
-                    text = sessionSummary,
-                    color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold
-                )
+                Text(sessionSummary, color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
         Spacer(Modifier.height(8.dp))
 
         lastSets.forEach { set ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(accent.copy(0.18f)),
+                    modifier = Modifier.size(28.dp).clip(CircleShape).background(Sinema.line(theme)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "${set.setIndex + 1}",
-                        color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black
-                    )
+                    Text("${set.setIndex + 1}", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(
                     text = set.weightKg?.let { "${"%.1f".format(it)} kg" }
                         ?: set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it) }
                         ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it, theme) }
                         ?: "-",
-                    color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -761,13 +579,13 @@ private fun LastSessionBreakdown(
                         set.distanceMeters != null -> theme.t("mesafe", "distance")
                         else -> theme.t("taslak", "draft")
                     },
-                    color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium
+                    color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Medium
                 )
                 if (set.weightKg != null && set.repsActual != null) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
                         text = "= ${"%.0f".format(set.weightKg!! * set.repsActual!!)}",
-                        color = accent.copy(0.75f), fontSize = 11.sp, fontWeight = FontWeight.Bold
+                        color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold
                     )
                 }
             }
@@ -794,68 +612,50 @@ private fun buildChartData(history: List<SetCompletionEntity>): List<ProgressPoi
 @Composable
 private fun ProgressionChartSection(
     chartData : List<ProgressPoint>,
-    accent    : Color,
     theme     : AppThemeState
 ) {
+    val accent = theme.effectiveAccentColor
+    val gridColor = Sinema.line(theme)
     val firstKg = chartData.first().maxKg
     val lastKg  = chartData.last().maxKg
     val delta   = lastKg - firstKg
     val isGain  = delta >= 0
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(12.dp),
-                accent,
-                if (theme.isDark) 8.dp else 4.dp
-            )
-            .padding(12.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.AutoMirrored.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(theme.t("İLERLEME", "PROGRESS"), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-            Spacer(Modifier.weight(1f))
-            val chipColor = if (isGain) Color(0xFF22C55E) else Color(0xFFEF4444)
-            val sign      = if (isGain) "+" else ""
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(chipColor.copy(0.15f))
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Text(
+                theme.t("İLERLEME", "PROGRESS"),
+                color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
+            )
+            val sign = if (isGain) "+" else ""
+            SinemaCapsule(height = 30.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
                 Icon(
                     if (isGain) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
-                    null, tint = chipColor, modifier = Modifier.size(11.dp)
+                    null, tint = fg, modifier = Modifier.size(14.dp)
                 )
-                Spacer(Modifier.width(3.dp))
-                Text("$sign${"%.1f".format(delta)} kg", color = chipColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(5.dp))
+                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
         val minKg     = (chartData.minOf { it.maxKg } - 2f).coerceAtLeast(0f)
         val maxKg     = chartData.maxOf { it.maxKg } + 2f
         val range     = (maxKg - minKg).coerceAtLeast(1f)
-        val accentColor = accent
 
         androidx.compose.foundation.Canvas(
-            modifier = Modifier.fillMaxWidth().height(110.dp)
+            modifier = Modifier.fillMaxWidth().height(130.dp)
         ) {
             val w = size.width; val h = size.height
-            val padH = 12.dp.toPx(); val padV = 6.dp.toPx()
+            val padH = 12.dp.toPx(); val padV = 10.dp.toPx()
             val chartW = w - padH * 2f; val chartH = h - padV * 2f
             val n = chartData.lastIndex.coerceAtLeast(1)
             fun xOf(i: Int) = padH + (i.toFloat() / n) * chartW
             fun yOf(kg: Float) = padV + chartH * (1f - (kg - minKg) / range)
-            val grid = accentColor.copy(0.06f)
             repeat(3) { i ->
                 val gy = padV + chartH * (i.toFloat() / 2f)
-                drawLine(grid, Offset(padH, gy), Offset(w - padH, gy), 1f)
+                drawLine(gridColor, Offset(padH, gy), Offset(w - padH, gy), 1f)
             }
             val linePath = Path(); val fillPath = Path()
             chartData.forEachIndexed { i, pt ->
@@ -868,19 +668,17 @@ private fun ProgressionChartSection(
                 }
             }
             fillPath.lineTo(xOf(chartData.lastIndex), h); fillPath.close()
-            drawPath(fillPath, Brush.verticalGradient(listOf(accentColor.copy(0.18f), Color.Transparent), padV, h))
-            drawPath(linePath, accentColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(fillPath, Brush.verticalGradient(listOf(accent.copy(0.16f), Color.Transparent), padV, h))
+            drawGlowLine(linePath, accent, 2.5.dp.toPx())
             listOf(0, chartData.lastIndex).forEach { i ->
-                val x = xOf(i); val y = yOf(chartData[i].maxKg)
-                drawCircle(accentColor.copy(0.25f), 5.dp.toPx(), Offset(x, y))
-                drawCircle(accentColor, 2.5.dp.toPx(), Offset(x, y))
+                drawGlowDot(Offset(xOf(i), yOf(chartData[i].maxKg)), accent, 3.dp.toPx())
             }
         }
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-            Text(chartData.first().date.format(SHORT_DATE_FMT), color = theme.text2, fontSize = 8.sp)
+            Text(chartData.first().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = 11.sp)
             Spacer(Modifier.weight(1f))
-            Text(chartData.last().date.format(SHORT_DATE_FMT), color = theme.text2, fontSize = 8.sp)
+            Text(chartData.last().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = 11.sp)
         }
     }
 }
@@ -891,88 +689,54 @@ private fun ProgressionChartSection(
 private fun AiInsightCard(
     insight   : String,
     isLoading : Boolean,
-    accent    : Color,
     theme     : AppThemeState,
     isFree    : Boolean = true,
     credits   : Int = 0,
     onRefresh : () -> Unit
 ) {
+    val accent = theme.effectiveAccentColor
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(
-                theme,
-                RoundedCornerShape(12.dp),
-                accent,
-                if (theme.isDark) 9.dp else 4.dp
-            )
-            .padding(12.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Sinema.line(theme))
+            .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(accent.copy(0.15f))
-                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(11.dp))
-                Spacer(Modifier.width(3.dp))
-                Text(theme.t("AI KOÇ", "AI COACH"), color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            if (isFree && !isLoading) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(accent.copy(alpha = 0.12f))
-                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
-                    Spacer(Modifier.width(2.dp))
-                    Text(theme.t("2 Enerji", "2 Energy"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(4.dp))
-                    Text(theme.t("$credits kaldı", "$credits left"), color = theme.text2, fontSize = 9.sp)
+            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)
+                if (isFree && !isLoading) {
+                    Text(
+                        theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
+                        color = Sinema.textSecondary(theme), fontSize = 12.sp
+                    )
                 }
-                Spacer(Modifier.width(6.dp))
             }
             if (!isLoading) {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .profilePremiumAction(
-                            theme = theme,
-                            accent = accent,
-                            onClick = onRefresh,
-                            shape = CircleShape,
-                            enabled = !isLoading
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(13.dp))
-                }
+                SinemaCapsuleIconButton(
+                    icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
+                    onClick = onRefresh, selected = true, size = 40.dp
+                )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         when {
             isLoading  -> Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = accent, strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = theme.text2, fontSize = 11.sp)
+                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = 13.sp)
             }
             insight.isBlank() -> Text(
-                theme.t("AI koçtan gelişim analizi al ->", "Get progression analysis from AI coach ->"),
-                color = theme.text2, fontSize = 11.sp, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
-                    .clickable(enabled = !isLoading, onClick = onRefresh).padding(8.dp)
+                theme.t("AI koçtan gelişim analizi al", "Get progression analysis from AI coach"),
+                color = Sinema.textSecondary(theme), fontSize = 13.sp, lineHeight = 18.sp
             )
-            else -> Text(localizedProgressionMessage(insight, theme), color = theme.text1, fontSize = 11.sp, lineHeight = 17.sp)
+            else -> Text(localizedProgressionMessage(insight, theme), color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 19.sp)
         }
     }
 }
@@ -980,16 +744,15 @@ private fun AiInsightCard(
 // ── Stat Chip ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StatChip(label: String, color: Color) {
+private fun StatChip(label: String) {
     val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(theme.bg2)
-            .border(1.dp, theme.stroke, RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Sinema.line(theme))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Sinema.text(theme), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 

@@ -15,7 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -32,7 +33,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.presentation.components.SinemaGlassField
+import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
+import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
@@ -51,62 +56,38 @@ fun PerformanceDetailScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val strings = theme.strings
     val state  by viewModel.uiState.collectAsStateWithLifecycle()
     var showCalculators by remember { mutableStateOf(false) }
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 60.dp)
+            contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
         ) {
-            // ── Top bar ──────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            theme.t("Veri analizi", "Data analysis"),
-                            color         = theme.text0,
-                            fontSize      = 22.sp,
-                            fontWeight    = FontWeight.SemiBold,
-                            letterSpacing = (-0.3).sp
-                        )
-                        Text(theme.t("Trendler, metrikler ve hesaplamalar", "Trends, metrics and calculations"), color = theme.text2, fontSize = 11.sp)
-                    }
-                }
+                SinemaDetailHeader(
+                    title    = theme.t("Veri analizi", "Data analysis"),
+                    subtitle = theme.t("Trendler, metrikler ve hesaplamalar", "Trends, metrics and calculations"),
+                    onBack   = onBack
+                )
             }
 
+            // Tek ana eylem: Hesapla
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CalculatorLauncherButton(
-                        accent = accent,
-                        theme = theme,
-                        onClick = { showCalculators = true }
-                    )
-                }
+                SinemaGoButton(
+                    label = theme.t("Hesapla", "Calculate"),
+                    icon = Icons.Rounded.Calculate,
+                    onClick = { showCalculators = true },
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                )
             }
 
             item {
                 PerformanceRecordsSection(
                     weightKg = state.weightKg,
-                    accent = accent,
                     theme = theme,
-                    topPadding = 14.dp,
                     onNavigateToWeightTracking = onNavigateToWeightTracking,
                     onNavigateToExerciseProgression = onNavigateToExerciseProgression
                 )
@@ -115,52 +96,46 @@ fun PerformanceDetailScreen(
             item {
                 WorkoutBarChart(
                     counts  = state.weeklyWorkoutCounts,
-                    accent  = accent,
                     theme   = theme,
-                    modifier= Modifier.padding(20.dp, 18.dp, 20.dp, 0.dp)
+                    modifier= Modifier.padding(20.dp, 20.dp, 20.dp, 0.dp)
                 )
             }
 
             item {
                 WeeklyActivityDataCard(
-                    accent = accent,
                     theme = theme,
                     strings = strings,
                     weeklyActivity = state.weeklyActivity,
-                    modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 0.dp)
+                    modifier = Modifier.padding(20.dp, 12.dp, 20.dp, 0.dp)
                 )
             }
 
             item {
                 MetricSection(
                     title = theme.t("ANTRENMAN VERİLERİ", "WORKOUT DATA"),
-                    metrics = trainingMetrics(state, accent, theme),
+                    metrics = trainingMetrics(state, theme.effectiveAccentColor, theme),
                     theme = theme,
-                    accent = accent,
-                    topPadding = 28.dp
+                    topPadding = 24.dp
                 )
             }
 
             item {
                 MetricSection(
                     title = theme.t("VÜCUT VERİLERİ", "BODY DATA"),
-                    metrics = bodyMetrics(state, accent, theme),
+                    metrics = bodyMetrics(state, theme.effectiveAccentColor, theme),
                     theme = theme,
-                    accent = accent,
-                    topPadding = 32.dp
+                    topPadding = 12.dp
                 )
             }
 
             item {
                 MetricSection(
                     title = theme.t("SERİ VE SEVİYE", "STREAK & LEVEL"),
-                    metrics = consistencyMetrics(state, accent, theme),
+                    metrics = consistencyMetrics(state, theme.effectiveAccentColor, theme),
                     theme = theme,
-                    accent = accent,
-                    topPadding = 32.dp
+                    topPadding = 12.dp
                 )
             }
-
         }
     }
 
@@ -170,21 +145,21 @@ fun PerformanceDetailScreen(
         ModalBottomSheet(
             onDismissRequest = { showCalculators = false },
             sheetState = sheetState,
-            containerColor = theme.bg1,
-            contentColor = theme.text0,
+            containerColor = Sinema.surface(theme),
+            contentColor = Sinema.text(theme),
             dragHandle = {
                 Box(
                     modifier = Modifier
                         .padding(top = 10.dp, bottom = 6.dp)
                         .size(width = 42.dp, height = 4.dp)
                         .clip(RoundedCornerShape(99.dp))
-                        .background(theme.text2.copy(0.35f))
+                        .background(Sinema.line(theme))
                 )
             }
         ) {
             CalculationsSheet(
                 state = state,
-                accent = accent,
+                accent = theme.effectiveAccentColor,
                 theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,72 +176,35 @@ private fun PerformanceShortcutCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    accent: Color,
     theme: AppThemeState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(20.dp)
-
-    Box(
+    val accent = theme.effectiveAccentColor
+    Column(
         modifier = modifier
-            .height(146.dp)
-            .profilePremiumAction(theme, accent, onClick, shape)
-            .padding(16.dp)
+            .heightIn(min = 156.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(accent.copy(0.13f))
-                        .border(1.dp, accent.copy(0.18f), RoundedCornerShape(13.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
-                }
-                Icon(
-                    Icons.Rounded.ArrowForwardIos,
-                    null,
-                    tint = accent.copy(0.70f),
-                    modifier = Modifier.size(14.dp)
-                )
+                Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
             }
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    title,
-                    color = theme.text0,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 17.sp
-                )
-                Text(
-                    subtitle,
-                    color = theme.text2,
-                    fontSize = 10.sp,
-                    lineHeight = 13.sp
-                )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(99.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(accent, accent.copy(0.16f))
-                            )
-                        )
-                )
-            }
+            Icon(Icons.Rounded.ArrowForwardIos, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(14.dp))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 19.sp)
+            Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
@@ -288,26 +226,6 @@ private val activityFactors = listOf(
     ActivityFactor("Yoğun", 1.725)
 )
 
-@Composable
-private fun CalculatorLauncherButton(
-    accent: Color,
-    theme: AppThemeState,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .widthIn(min = 136.dp)
-            .height(42.dp)
-            .profilePremiumAction(theme, accent, onClick, RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(Icons.Rounded.Calculate, null, tint = accent, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(theme.t("Hesapla", "Calculate"), color = theme.text0, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}
 
 @Composable
 private fun CalculationsSheet(
@@ -320,20 +238,17 @@ private fun CalculationsSheet(
 
     Column(
         modifier = modifier
-            .background(theme.bg1)
             .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, top = 54.dp, end = 20.dp, bottom = 0.dp)
+            .padding(start = 20.dp, top = 40.dp, end = 20.dp, bottom = 24.dp)
     ) {
+        Text(theme.t("Hesaplamalar", "Calculations"), style = Sinema.ScreenTitle, color = Sinema.text(theme))
+        Spacer(Modifier.height(4.dp))
         Text(
-            theme.t("HESAPLAMALAR", "CALCULATIONS"),
-            color = theme.text0,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp
+            theme.t("1RM, BMI, yağ oranı, kalori, nabız, protein ve VO2 max", "1RM, BMI, body fat, calories, heart rate, protein and VO2 max"),
+            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
         )
-        Text(theme.t("1RM, BMI, yağ oranı, kalori, nabız, protein ve VO2 max", "1RM, BMI, body fat, calories, heart rate, protein and VO2 max"), color = theme.text2, fontSize = 11.sp)
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         CalculatorModeGrid(
             selectedMode = selectedMode,
@@ -342,7 +257,7 @@ private fun CalculationsSheet(
             theme = theme
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         when (selectedMode) {
             CalculatorMode.OneRm -> OneRepMaxCalculator(accent = accent, theme = theme)
@@ -353,7 +268,6 @@ private fun CalculationsSheet(
             CalculatorMode.Protein -> ProteinCalculator(state = state, accent = accent, theme = theme)
             CalculatorMode.Vo2Max -> Vo2MaxCalculator(accent = accent, theme = theme)
         }
-
     }
 }
 
@@ -389,6 +303,7 @@ private fun CalculatorModeGrid(
                         modifier = Modifier.weight(1f)
                     )
                 }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -403,26 +318,13 @@ private fun CalculatorModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val modeAccent = calculatorModeColor(mode, accent)
-    Row(
-        modifier = modifier
-            .height(50.dp)
-            .profilePremiumAction(theme, modeAccent, onClick, RoundedCornerShape(16.dp))
-            .background(
-                if (selected) modeAccent.copy(if (theme.isDark) 0.15f else 0.08f)
-                else Color.Transparent
-            )
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(calculatorModeIcon(mode), null, tint = modeAccent, modifier = Modifier.size(18.dp))
-        Text(
-            calculatorModeTitle(mode, theme),
-            color = if (selected) theme.text0 else theme.text1,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
-        )
+    SinemaCapsule(
+        modifier = modifier, selected = selected, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 14.dp)
+    ) { fg ->
+        Icon(calculatorModeIcon(mode), null, tint = fg, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(calculatorModeTitle(mode, theme), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -444,7 +346,7 @@ private fun OneRepMaxCalculator(
         title = theme.t("Tek Tekrar Maksimumu", "One-Rep Max"),
         subtitle = theme.t("Calculator.net 1RM formülleri", "Calculator.net 1RM formulas"),
         icon = Icons.Rounded.FitnessCenter,
-        accent = CardCoral,
+        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -479,7 +381,7 @@ private fun OneRepMaxCalculator(
                 title = theme.t("Tahmini 1RM", "Estimated 1RM"),
                 value = "${formatOneDecimal(oneRm)} kg",
                 subtitle = theme.t("${oneRmFormulaLabel(formula)} formülü", "${oneRmFormulaLabel(formula)} formula"),
-                accent = CardCoral,
+                accent = accent,
                 theme = theme
             )
 
@@ -516,7 +418,7 @@ private fun BmiCalculator(
         title = theme.t("Vücut Kitle İndeksi", "Body Mass Index"),
         subtitle = theme.t("CDC metrik BMI hesabı", "CDC metric BMI calculation"),
         icon = Icons.Rounded.Analytics,
-        accent = CardGreen,
+        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -585,7 +487,7 @@ private fun BodyFatCalculator(
         title = theme.t("Vücut Yağ Oranı", "Body Fat Percentage"),
         subtitle = theme.t("U.S. Navy ve BMI yöntemi", "U.S. Navy and BMI method"),
         icon = Icons.Rounded.Person,
-        accent = CardPurple,
+        accent = accent,
         theme = theme
     ) {
         GenderSelector(
@@ -658,7 +560,7 @@ private fun BodyFatCalculator(
                 title = "U.S. Navy",
                 value = "%${formatOneDecimal(navy)}",
                 subtitle = bodyFatCategory(navy, gender, theme),
-                accent = CardPurple,
+                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
@@ -669,7 +571,7 @@ private fun BodyFatCalculator(
                 title = theme.t("BMI yöntemi", "BMI method"),
                 value = "%${formatOneDecimal(bmiBased)}",
                 subtitle = theme.t("Hızlı tahmin", "Quick estimate"),
-                accent = CardGreen,
+                accent = accent,
                 theme = theme
             )
         }
@@ -704,7 +606,7 @@ private fun BmrCalculator(
         title = theme.t("Kalori İhtiyacı", "Calorie Needs"),
         subtitle = theme.t("Mifflin-St Jeor BMR + aktivite", "Mifflin-St Jeor BMR + activity"),
         icon = Icons.Rounded.LocalFireDepartment,
-        accent = CardCyan,
+        accent = accent,
         theme = theme
     ) {
         GenderSelector(
@@ -757,7 +659,7 @@ private fun BmrCalculator(
                 title = "BMR",
                 value = "${formatWhole(bmr)} kcal",
                 subtitle = theme.t("Dinlenme metabolizması", "Resting metabolism"),
-                accent = CardCyan,
+                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(10.dp))
@@ -794,7 +696,7 @@ private fun HeartRateCalculator(
         title = theme.t("Nabız Bölgeleri", "Heart Rate Zones"),
         subtitle = theme.t("Tanaka max nabız + Karvonen HRR", "Tanaka max heart rate + Karvonen HRR"),
         icon = Icons.Rounded.Favorite,
-        accent = Color(0xFF64D2FF),
+        accent = accent,
         theme = theme
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -821,7 +723,7 @@ private fun HeartRateCalculator(
                 title = theme.t("Tahmini max nabız", "Estimated max heart rate"),
                 value = "${maxHr.roundToInt()} bpm",
                 subtitle = theme.t("208 - 0.7 x yaş", "208 - 0.7 x age"),
-                accent = Color(0xFF64D2FF),
+                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -853,7 +755,7 @@ private fun ProteinCalculator(
         title = theme.t("Protein Hedefi", "Protein Target"),
         subtitle = theme.t("Sporcu g/kg aralıkları", "Athlete g/kg ranges"),
         icon = Icons.Rounded.Restaurant,
-        accent = CardGreen,
+        accent = accent,
         theme = theme
     ) {
         CalculationInput(
@@ -879,7 +781,7 @@ private fun ProteinCalculator(
                 title = theme.t("Günlük protein", "Daily protein"),
                 value = "${formatWhole(range.first)}-${formatWhole(range.second)} g",
                 subtitle = proteinGoalLabel(goal, theme),
-                accent = CardGreen,
+                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -904,7 +806,7 @@ private fun Vo2MaxCalculator(
         title = "VO2 Max",
         subtitle = theme.t("Cooper 12 dakika koşu tahmini", "Cooper 12-minute run estimate"),
         icon = Icons.Rounded.DirectionsRun,
-        accent = CardPurple,
+        accent = accent,
         theme = theme
     ) {
         CalculationInput(
@@ -922,7 +824,7 @@ private fun Vo2MaxCalculator(
                 title = theme.t("Tahmini VO2 max", "Estimated VO2 max"),
                 value = formatOneDecimal(vo2Max),
                 subtitle = theme.t("ml/kg/dk", "ml/kg/min"),
-                accent = CardPurple,
+                accent = accent,
                 theme = theme
             )
             Spacer(Modifier.height(12.dp))
@@ -940,26 +842,12 @@ private fun FormulaSelector(
     accent: Color,
     theme: AppThemeState
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(OneRmFormula.Epley, OneRmFormula.Brzycki, OneRmFormula.Lombardi).forEach { formula ->
-            val selected = selectedFormula == formula
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .profilePremiumAction(theme, accent, { onFormulaSelected(formula) }, RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    oneRmFormulaLabel(formula),
-                    color = if (selected) theme.text0 else theme.text2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
+    SinemaSegmentRow(
+        options = listOf(OneRmFormula.Epley, OneRmFormula.Brzycki, OneRmFormula.Lombardi),
+        selected = selectedFormula,
+        label = { oneRmFormulaLabel(it) },
+        onSelect = onFormulaSelected
+    )
 }
 
 @Composable
@@ -969,21 +857,12 @@ private fun GenderSelector(
     accent: Color,
     theme: AppThemeState
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(CalcGender.Male, CalcGender.Female).forEach { gender ->
-            val selected = selectedGender == gender
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .profilePremiumAction(theme, accent, { onGenderSelected(gender) }, RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(gender.localizedLabel(theme), color = if (selected) theme.text0 else theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
+    SinemaSegmentRow(
+        options = listOf(CalcGender.Male, CalcGender.Female),
+        selected = selectedGender,
+        label = { it.localizedLabel(theme) },
+        onSelect = onGenderSelected
+    )
 }
 
 @Composable
@@ -995,21 +874,12 @@ private fun ActivitySelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         activityFactors.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { activity ->
-                    val selected = selectedActivity == activity
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp)
-                            .profilePremiumAction(theme, accent, { onActivitySelected(activity) }, RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(activity.localizedLabel(theme), color = if (selected) theme.text0 else theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            SinemaSegmentRow(
+                options = row,
+                selected = selectedActivity,
+                label = { it.localizedLabel(theme) },
+                onSelect = onActivitySelected
+            )
         }
     }
 }
@@ -1023,21 +893,11 @@ private fun ProteinGoalSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(ProteinGoal.General, ProteinGoal.MuscleGain, ProteinGoal.FatLoss).forEach { goal ->
-            val selected = selectedGoal == goal
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp)
-                    .profilePremiumAction(theme, accent, { onGoalSelected(goal) }, RoundedCornerShape(12.dp))
-                    .background(if (selected) accent.copy(if (theme.isDark) 0.14f else 0.08f) else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    proteinGoalLabel(goal, theme),
-                    color = if (selected) theme.text0 else theme.text2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            SinemaCapsule(
+                modifier = Modifier.fillMaxWidth(), selected = selectedGoal == goal, onClick = { onGoalSelected(goal) },
+                height = 44.dp, light = !theme.isDark, horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Text(proteinGoalLabel(goal, theme), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }
@@ -1055,26 +915,23 @@ private fun CalculatorPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-            .padding(16.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(20.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
-                Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(0.14f)),
+                Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = accent, modifier = Modifier.size(19.dp))
+                Icon(icon, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(22.dp))
             }
             Column {
-                Text(title, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = theme.text2, fontSize = 10.sp)
+                Text(title, color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         content()
     }
 }
@@ -1088,38 +945,23 @@ private fun CalculationInput(
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Decimal
 ) {
-    val theme = LocalAppTheme.current
     val coroutineScope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    OutlinedTextField(
+    SinemaGlassField(
         value = value,
         onValueChange = onValueChange,
+        label = label,
+        keyboardType = keyboardType,
         modifier = modifier
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusEvent { focusState ->
-                if (focusState.isFocused) {
+                if (focusState.hasFocus) {
                     coroutineScope.launch {
                         delay(250)
                         bringIntoViewRequester.bringIntoView()
                     }
                 }
-            },
-        label = { Text(label) },
-        singleLine = true,
-        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = theme.text0,
-            unfocusedTextColor = theme.text0,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-            unfocusedLabelColor = theme.text2,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = theme.stroke,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = if (theme.isDark) theme.bg1 else Color.White,
-            unfocusedContainerColor = if (theme.isDark) theme.bg1 else Color.White
-        )
+            }
     )
 }
 
@@ -1131,19 +973,14 @@ private fun CalculationResultCard(
     accent: Color,
     theme: AppThemeState
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent, if (theme.isDark) 8.dp else 4.dp)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(title, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        Spacer(Modifier.height(6.dp))
+        Text(value, style = Sinema.Metric.copy(fontSize = 52.sp), color = Sinema.text(theme), maxLines = 1)
+        if (subtitle.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(subtitle, color = theme.effectiveAccentColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
         }
-        Text(value, color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -1156,25 +993,18 @@ private fun CalculationRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 5.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = theme.text2, fontSize = 11.sp)
-        Text(value, color = theme.text0, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Sinema.textSecondary(theme), fontSize = 14.sp)
+        Text(value, color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
 @Composable
 private fun EmptyCalculationHint(message: String) {
     val theme = LocalAppTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(14.dp), elevation = if (theme.isDark) 7.dp else 3.dp)
-            .padding(14.dp)
-    ) {
-        Text(message, color = theme.text2, fontSize = 11.sp)
-    }
+    Text(message, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
 }
 
 private fun calculatorModeTitle(mode: CalculatorMode, theme: AppThemeState): String = when (mode) {
@@ -1197,15 +1027,7 @@ private fun calculatorModeIcon(mode: CalculatorMode): ImageVector = when (mode) 
     CalculatorMode.Vo2Max -> Icons.Rounded.DirectionsRun
 }
 
-private fun calculatorModeColor(mode: CalculatorMode, accent: Color): Color = when (mode) {
-    CalculatorMode.OneRm -> CardCoral
-    CalculatorMode.Bmi -> CardGreen
-    CalculatorMode.BodyFat -> CardPurple
-    CalculatorMode.Bmr -> accent
-    CalculatorMode.HeartRate -> Color(0xFF64D2FF)
-    CalculatorMode.Protein -> CardGreen
-    CalculatorMode.Vo2Max -> CardPurple
-}
+private fun calculatorModeColor(mode: CalculatorMode, accent: Color): Color = accent
 
 private fun CalcGender.localizedLabel(theme: AppThemeState): String =
     if (this == CalcGender.Male) theme.t("Erkek", "Male") else theme.t("Kadın", "Female")
@@ -1409,69 +1231,57 @@ private fun formatWhole(value: Double): String = "%.0f".format(value)
 @Composable
 private fun WorkoutBarChart(
     counts  : List<Int>,
-    accent  : Color,
     theme   : AppThemeState,
     modifier: Modifier = Modifier
 ) {
-    val maxVal   = counts.max().toFloat().coerceAtLeast(1f)
+    val accent   = theme.effectiveAccentColor
+    val maxVal   = (counts.maxOrNull() ?: 0).toFloat().coerceAtLeast(1f)
     val totalSum = counts.sum()
     val avgStr   = if (counts.isNotEmpty()) String.format("%.1f", totalSum.toFloat() / counts.size) else "0"
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(22.dp), accent)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .padding(20.dp)
     ) {
-        Column {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(theme.t("HAFTALIK ANTRENMANLAR", "WEEKLY WORKOUTS"), color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text(theme.t("Son 13 hafta", "Last 13 weeks"), color = theme.text2, fontSize = 10.sp)
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(accent.copy(0.12f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        theme.t("Ort: $avgStr/hf", "Avg: $avgStr/wk"),
-                        color      = accent,
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+        Text(theme.t("HAFTALIK ANTRENMANLAR", "WEEKLY WORKOUTS"), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            SinemaBigStat(
+                value = avgStr,
+                unit = theme.t("/hf", "/wk"),
+                label = theme.t("Son 13 hafta ort.", "13-week avg."),
+                size = 52,
+                color = accent
+            )
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
-            Canvas(modifier = Modifier.fillMaxWidth().height(90.dp)) {
+        if (counts.isNotEmpty()) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(96.dp)) {
                 val barW = size.width / (counts.size * 2 - 1)
                 val maxH = size.height - 8.dp.toPx()
 
                 counts.forEachIndexed { i, v ->
-                    val barH = (v / maxVal) * maxH
+                    val barH = ((v / maxVal) * maxH).coerceAtLeast(4.dp.toPx())
                     val left = i * (barW + barW)
                     val top  = size.height - barH
-                    drawRoundRect(
-                        color        = accent.copy(if (i == counts.lastIndex) 1f else 0.45f),
-                        topLeft      = Offset(left, top),
-                        size         = Size(barW, barH),
-                        cornerRadius = CornerRadius(4.dp.toPx())
-                    )
+                    val isLast = i == counts.lastIndex
+                    val c = accent.copy(if (isLast) 1f else 0.45f)
+                    if (isLast) {
+                        drawRoundRect(accent.copy(0.30f), Offset(left - 3.dp.toPx(), top - 3.dp.toPx()), Size(barW + 6.dp.toPx(), barH + 6.dp.toPx()), CornerRadius(7.dp.toPx()))
+                    }
+                    drawRoundRect(c, Offset(left, top), Size(barW, barH), CornerRadius(4.dp.toPx()))
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(theme.t("13 hf önce", "13 wk ago"), color = theme.text2, fontSize = 9.sp)
-                Text(theme.t("Bu hafta", "This week"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("13 hf önce", "13 wk ago"), color = Sinema.textSecondary(theme), fontSize = 11.sp)
+                Text(theme.t("Bu hafta", "This week"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1492,29 +1302,24 @@ private fun MetricSection(
     title     : String,
     metrics   : List<RealMetric>,
     theme     : AppThemeState,
-    accent    : Color,
     topPadding: Dp
 ) {
     if (metrics.isEmpty()) return
 
-    Column(modifier = Modifier.padding(20.dp, topPadding, 20.dp, 0.dp)) {
-        Text(
-            title,
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp
-        )
-        Spacer(Modifier.height(14.dp))
-        MetricsGrid(metrics = metrics, theme = theme, accent = accent)
+    Column(modifier = Modifier.padding(top = topPadding)) {
+        SinemaSectionLabel(title)
+        Box(Modifier.padding(horizontal = 20.dp)) {
+            MetricsGrid(metrics = metrics, theme = theme)
+        }
     }
 }
 
 @Composable
 private fun MetricsGrid(
     metrics: List<RealMetric>,
-    theme  : AppThemeState,
-    accent : Color
+    theme  : AppThemeState
 ) {
+    val accent = theme.effectiveAccentColor
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         metrics.chunked(2).forEach { row ->
             Row(
@@ -1522,40 +1327,16 @@ private fun MetricsGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 row.forEach { m ->
-                    Box(
+                    Column(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 128.dp)
-                            .profilePremiumSurface(
-                                theme,
-                                RoundedCornerShape(18.dp),
-                                accent,
-                                if (theme.isDark) 11.dp else 6.dp
-                            )
-                            .padding(16.dp)
+                            .heightIn(min = 136.dp)
+                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(34.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(accent.copy(0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(m.icon, null, tint = accent, modifier = Modifier.size(17.dp))
-                            }
-                            Column {
-                                Row(verticalAlignment = Alignment.Bottom) {
-                                    Text(m.value, color = theme.text0, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 24.sp)
-                                    Spacer(Modifier.width(3.dp))
-                                    Text(m.unit, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
-                                }
-                                Text(m.label, color = theme.text2, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                            }
-                        }
+                        Icon(m.icon, null, tint = accent, modifier = Modifier.size(20.dp))
+                        SinemaBigStat(value = m.value, unit = m.unit, label = m.label, size = 34)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -1566,76 +1347,72 @@ private fun MetricsGrid(
 
 @Composable
 private fun WeeklyActivityDataCard(
-    accent         : Color,
     theme          : AppThemeState,
     strings        : AppStrings,
     weeklyActivity : List<Float>,
     modifier       : Modifier = Modifier
 ) {
+    val accent = theme.effectiveAccentColor
     val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(22.dp), accent)
-            .padding(20.dp, 20.dp, 20.dp, 14.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(20.dp)
     ) {
-        Column {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(strings.weeklyActivity, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text(strings.thisWeekSummary, color = theme.text2, fontSize = 10.sp)
-                }
-                Text("7 ${strings.unitDays}", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(strings.weeklyActivity.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                Text(strings.thisWeekSummary, color = Sinema.textSecondary(theme), fontSize = 12.sp)
             }
+        }
 
-            Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(18.dp))
 
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.Bottom
-            ) {
-                strings.dayAbbreviations.forEachIndexed { i, day ->
-                    val level   = weeklyActivity.getOrElse(i) { 0f }.coerceIn(0f, 1f)
-                    val isToday = i == todayIndex
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(7.dp)
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.Bottom
+        ) {
+            strings.dayAbbreviations.forEachIndexed { i, day ->
+                val level   = weeklyActivity.getOrElse(i) { 0f }.coerceIn(0f, 1f)
+                val isToday = i == todayIndex
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier         = Modifier.width(30.dp).height(80.dp),
+                        contentAlignment = Alignment.BottomCenter
                     ) {
                         Box(
-                            modifier         = Modifier
-                                .width(30.dp)
-                                .height(76.dp),
-                            contentAlignment = Alignment.BottomCenter
-                        ) {
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Sinema.line(theme))
+                        )
+                        if (level > 0f) {
                             Box(
                                 Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(9.dp))
-                                    .background(theme.bg3)
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(level.coerceAtLeast(0.15f))
+                                    .then(if (isToday) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, RoundedCornerShape(10.dp)) else Modifier)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isToday) accent else accent.copy(0.5f))
                             )
-                            if (level > 0f) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight(level.coerceAtLeast(0.15f))
-                                        .clip(RoundedCornerShape(9.dp))
-                                        .background(if (isToday) accent else accent.copy(0.42f))
-                                )
-                            }
                         }
-                        Text(
-                            day,
-                            color      = if (isToday) accent else theme.text2,
-                            fontSize   = 9.sp,
-                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                        )
                     }
+                    Text(
+                        day,
+                        color      = if (isToday) accent else Sinema.textSecondary(theme),
+                        fontSize   = 11.sp,
+                        fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Normal
+                    )
                 }
             }
         }
@@ -1645,22 +1422,14 @@ private fun WeeklyActivityDataCard(
 @Composable
 private fun PerformanceRecordsSection(
     weightKg: Double,
-    accent: Color,
     theme: AppThemeState,
-    topPadding: Dp = 32.dp,
     onNavigateToWeightTracking: () -> Unit,
     onNavigateToExerciseProgression: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(20.dp, topPadding, 20.dp, 0.dp)) {
-        Text(
-            theme.t("PERFORMANS KAYITLARI", "PERFORMANCE RECORDS"),
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp
-        )
-        Spacer(Modifier.height(14.dp))
+    Column(modifier = Modifier.padding(top = 12.dp)) {
+        SinemaSectionLabel(theme.t("Performans kayıtları", "Performance records"))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PerformanceShortcutCard(
@@ -1671,7 +1440,6 @@ private fun PerformanceRecordsSection(
                     theme.t("Kilo trendi ve AI analiz", "Weight trend and AI analysis")
                 },
                 icon = Icons.Rounded.ShowChart,
-                accent = CardPurple,
                 theme = theme,
                 onClick = onNavigateToWeightTracking,
                 modifier = Modifier.weight(1f)
@@ -1680,7 +1448,6 @@ private fun PerformanceRecordsSection(
                 title = theme.t("Hareket Performansı", "Exercise Performance"),
                 subtitle = theme.t("Ağırlık, süre, mesafe ve hareket bazlı gelişim", "Weight, duration, distance and movement-based progress"),
                 icon = Icons.Rounded.TrendingUp,
-                accent = CardCyan,
                 theme = theme,
                 onClick = onNavigateToExerciseProgression,
                 modifier = Modifier.weight(1f)
@@ -1696,10 +1463,10 @@ private fun trainingMetrics(state: ProfileState, accent: Color, theme: AppThemeS
 
     return listOf(
         RealMetric(state.totalWorkouts.toString(), theme.t("antrenman", "workouts"), theme.t("TOPLAM ANTRENMAN", "TOTAL WORKOUTS"), Icons.Rounded.FitnessCenter, accent),
-        RealMetric(state.totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.Timer, CardCyan),
-        RealMetric(formatDetailDurationValue(state.totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, CardGreen),
-        RealMetric(formatDetailDistanceValue(state.totalDistanceMeters), formatDetailDistanceUnit(state.totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, Color(0xFF64D2FF)),
-        RealMetric((state.weeklyWorkoutCounts.lastOrNull() ?: 0).toString(), theme.t("ant", "wkts"), theme.t("BU HAFTA", "THIS WEEK"), Icons.Rounded.CalendarMonth, CardPurple),
+        RealMetric(state.totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.Timer, accent),
+        RealMetric(formatDetailDurationValue(state.totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer, accent),
+        RealMetric(formatDetailDistanceValue(state.totalDistanceMeters), formatDetailDistanceUnit(state.totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten, accent),
+        RealMetric((state.weeklyWorkoutCounts.lastOrNull() ?: 0).toString(), theme.t("ant", "wkts"), theme.t("BU HAFTA", "THIS WEEK"), Icons.Rounded.CalendarMonth, accent),
         RealMetric(weeklyAverage, theme.t("ant/hf", "wkts/wk"), theme.t("13 HAFTA ORT.", "13 WEEK AVG."), Icons.Rounded.BarChart, Color(0xFFFFD700))
     )
 }
@@ -1722,26 +1489,26 @@ private fun bodyMetrics(state: ProfileState, accent: Color, theme: AppThemeState
 
     return listOfNotNull(
         state.heightCm.takeIf { it > 0 }?.let {
-            RealMetric(it.toInt().toString(), "cm", theme.t("BOY", "HEIGHT"), Icons.Rounded.Straighten, CardCyan)
+            RealMetric(it.toInt().toString(), "cm", theme.t("BOY", "HEIGHT"), Icons.Rounded.Straighten, accent)
         },
         state.weightKg.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "kg", theme.t("KİLO", "WEIGHT"), Icons.Rounded.ShowChart, CardPurple)
+            RealMetric("%.1f".format(it), "kg", theme.t("KİLO", "WEIGHT"), Icons.Rounded.ShowChart, accent)
         },
         state.bmi.takeIf { it > 0 }?.let {
             RealMetric("%.1f".format(it), "BMI", bmiLabel ?: theme.t("VÜCUT KİTLE İND.", "BODY MASS INDEX"), Icons.Rounded.Analytics, bmiColor)
         },
         state.bodyFatPct.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "%", theme.t("VÜCUT YAĞ ORANI", "BODY FAT"), Icons.Rounded.Person, CardCoral)
+            RealMetric("%.1f".format(it), "%", theme.t("VÜCUT YAĞ ORANI", "BODY FAT"), Icons.Rounded.Person, accent)
         }
     )
 }
 
 private fun consistencyMetrics(state: ProfileState, accent: Color, theme: AppThemeState): List<RealMetric> =
     listOfNotNull(
-        RealMetric(state.currentStreak.toString(), theme.t("gün", "days"), theme.t("AKTİF SERİ", "CURRENT STREAK"), Icons.Rounded.Whatshot, CardCoral),
-        RealMetric(state.longestStreak.toString(), theme.t("gün", "days"), theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents, CardGreen),
+        RealMetric(state.currentStreak.toString(), theme.t("gün", "days"), theme.t("AKTİF SERİ", "CURRENT STREAK"), Icons.Rounded.Whatshot, accent),
+        RealMetric(state.longestStreak.toString(), theme.t("gün", "days"), theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents, accent),
         RealMetric(state.level.toString(), theme.t("seviye", "level"), theme.t("MEVCUT SEVİYE", "CURRENT LEVEL"), Icons.Rounded.Star, Color(0xFFFFD700)),
-        RealMetric(state.xp.toString(), "XP", theme.t("TOPLAM XP", "TOTAL XP"), Icons.Rounded.Bolt, CardPurple),
+        RealMetric(state.xp.toString(), "XP", theme.t("TOPLAM XP", "TOTAL XP"), Icons.Rounded.Bolt, accent),
         state.streakRankPosition.takeIf { it > 0L }?.let {
             RealMetric(it.toString(), theme.t("sıra", "rank"), theme.t("SERİ SIRALAMASI", "STREAK RANKING"), Icons.Rounded.Leaderboard, accent)
         }

@@ -2,10 +2,8 @@
 
 package com.cosmibit.profitness.presentation.weight
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,52 +11,39 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.MonitorWeight
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.ShowChart
-import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.TrendingUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -71,12 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -89,12 +69,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.data.local.entity.WeightLogEntity
-import com.cosmibit.profitness.presentation.components.AppBackButton
-import com.cosmibit.profitness.presentation.components.AiCreditInfoRow
-import com.cosmibit.profitness.presentation.components.PremiumButton
-import com.cosmibit.profitness.presentation.components.PremiumIconButton
-import com.cosmibit.profitness.presentation.components.glassCard
-import com.cosmibit.profitness.presentation.components.premiumSolidSurface
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.presentation.components.SinemaDialog
+import com.cosmibit.profitness.presentation.components.SinemaGlassField
+import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
+import com.cosmibit.profitness.presentation.components.drawGlowDot
+import com.cosmibit.profitness.presentation.components.drawGlowLine
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -108,10 +89,12 @@ fun WeightTrackingScreen(
     viewModel         : WeightTrackingViewModel = hiltViewModel()
 ) {
     val theme             = LocalAppTheme.current
-    val accent            = androidx.compose.material3.MaterialTheme.colorScheme.primary
+    val accent            = theme.effectiveAccentColor
     val state             by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPaywall       by remember { mutableStateOf(false) }
+    val navBarBottom      = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val isFree            = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -131,110 +114,76 @@ fun WeightTrackingScreen(
         )
     }
 
-    Scaffold(
-        containerColor       = Color.Transparent,
-        contentWindowInsets  = WindowInsets(left = 0.dp, top = 0.dp, right = 0.dp, bottom = 0.dp),
-        snackbarHost         = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            PremiumIconButton(
-                icon = Icons.Rounded.Add,
-                contentDescription = theme.t("Ağırlık Ekle", "Add Weight"),
-                onClick = { viewModel.openAddSheet() },
-                shape = RoundedCornerShape(18.dp)
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(theme.bg0)
-                .padding(innerPadding)
-        ) {
-            PageAccentBloom()
-
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color    = accent
-                )
-            } else {
-                LazyColumn(
-                    modifier       = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
-                    item {
-                        WeightHeader(
-                            theme   = theme,
-                            accent  = accent,
-                            onBack  = onBack,
-                            latest  = state.latestWeightKg,
-                            delta   = state.totalDeltaKg,
-                            entries = state.entries.size
-                        )
-                    }
-                    item {
-                        WeeklySummaryRow(summary = state.weeklySummary, accent = accent, theme = theme)
-                    }
-                    if (state.chartPoints.size >= 2) {
-                        item {
-                            WeightLineChart(points = state.chartPoints, accent = accent, theme = theme)
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        if (state.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = accent)
+        } else {
+            LazyColumn(
+                modifier       = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
+            ) {
+                item {
+                    SinemaDetailHeader(
+                        title    = theme.t("Vücut Kilosu", "Body Weight"),
+                        subtitle = null,
+                        onBack   = onBack,
+                        trailing = {
+                            SinemaCapsule(
+                                selected = true, onClick = { viewModel.openAddSheet() }, height = 40.dp,
+                                contentPadding = PaddingValues(horizontal = 16.dp)
+                            ) { fg ->
+                                Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(theme.t("Kilo ekle", "Add weight"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                            }
                         }
-                    }
-                    item {
-                        AiCreditInfoRow(
-                            isFree    = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
-                            credits   = state.aiCredits,
-                            costLabel = theme.t("2 Enerji / AI analiz", "2 Energy / AI analysis"),
-                            theme     = theme,
-                            modifier  = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                        )
-                    }
-                    item {
-                        AiInsightCard(
-                            insight   = state.aiInsight,
-                            isLoading = state.isAiLoading,
-                            accent    = accent,
-                            theme     = theme,
-                            isFree    = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
-                            credits   = state.aiCredits,
-                            onRefresh = { viewModel.generateAiInsight() }
-                        )
-                    }
-                    item {
-                        Row(
-                            modifier          = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Rounded.History, null, tint = accent, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(theme.t("Geçmiş Kayıtlar", "History"), color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                            Spacer(Modifier.weight(1f))
-                            Text(theme.t("${state.entries.size} kayıt", "${state.entries.size} entries"), color = theme.text2, fontSize = 12.sp)
-                        }
-                    }
-                    if (state.entries.isEmpty()) {
-                        item { EmptyWeightState(accent = accent, theme = theme) }
-                    }
-                    items(state.entries, key = { it.id }) { entry ->
-                        WeightEntryRow(
-                            entry    = entry,
-                            accent   = accent,
-                            theme    = theme,
-                            onEdit   = { viewModel.openEditSheet(entry) },
-                            onDelete = { viewModel.deleteEntry(entry) }
-                        )
-                    }
+                    )
+                }
+                item { WeightHero(theme = theme, latest = state.latestWeightKg, delta = state.totalDeltaKg, entries = state.entries.size) }
+                item { WeeklySummaryRow(summary = state.weeklySummary, theme = theme) }
+                if (state.chartPoints.size >= 2) {
+                    item { WeightLineChart(points = state.chartPoints, theme = theme) }
+                }
+                item {
+                    AiInsightCard(
+                        insight   = state.aiInsight,
+                        isLoading = state.isAiLoading,
+                        theme     = theme,
+                        isFree    = isFree,
+                        credits   = state.aiCredits,
+                        onRefresh = { viewModel.generateAiInsight() }
+                    )
+                }
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    SinemaSectionLabel(
+                        theme.t("Geçmiş kayıtlar", "History"),
+                        trailing = theme.t("${state.entries.size} kayıt", "${state.entries.size} entries")
+                    )
+                }
+                if (state.entries.isEmpty()) {
+                    item { EmptyWeightState(theme = theme, onAdd = { viewModel.openAddSheet() }) }
+                }
+                items(state.entries, key = { it.id }) { entry ->
+                    WeightEntryRow(
+                        entry    = entry,
+                        theme    = theme,
+                        onEdit   = { viewModel.openEditSheet(entry) },
+                        onDelete = { viewModel.deleteEntry(entry) }
+                    )
                 }
             }
         }
+
+        SnackbarHost(
+            snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = SinemaNavHeight + 16.dp + navBarBottom)
+        )
     }
 
     if (state.showSheet) {
         AddEditWeightSheet(
             state          = state,
-            accent         = accent,
             theme          = theme,
             onDismiss      = { viewModel.closeSheet() },
             onWeightChange = viewModel::onWeightInputChange,
@@ -245,63 +194,37 @@ fun WeightTrackingScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  HEADER
+//  HERO — dev güncel kilo
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun WeightHeader(
+private fun WeightHero(
     theme  : AppThemeState,
-    accent : Color,
-    onBack : () -> Unit,
     latest : Double?,
     delta  : Double?,
     entries: Int
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp)
-            .padding(top = 16.dp, bottom = 8.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Bottom
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-            Spacer(Modifier.width(14.dp))
-            Text(theme.t("Vücut Kilosu", "Body Weight"), color = theme.text1, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(theme.t("Güncel Kilo", "Current Weight"), color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
-                Spacer(Modifier.height(4.dp))
-                if (latest != null) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("${"%.1f".format(latest)}", color = theme.text1, fontSize = 42.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-                        Spacer(Modifier.width(4.dp))
-                        Text("kg", color = theme.text2, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
-                    }
-                } else {
-                    Text("— kg", color = theme.text2, fontSize = 42.sp, fontWeight = FontWeight.Black)
-                }
-            }
-
-            if (delta != null && entries >= 2) {
-                val isGain     = delta >= 0
-                val chipColor  = if (!isGain) Color(0xFF22C55E) else Color(0xFFEF4444)
-                val sign       = if (isGain) "+" else ""
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(chipColor.copy(0.15f))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown, null, tint = chipColor, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("$sign${"%.1f".format(delta)} kg", color = chipColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
+        SinemaBigStat(
+            value = latest?.let { "%.1f".format(it) } ?: "—",
+            unit  = "kg",
+            label = theme.t("Güncel kilo", "Current weight"),
+            size  = 88,
+            modifier = Modifier.weight(1f)
+        )
+        if (delta != null && entries >= 2) {
+            val isGain = delta >= 0
+            val sign   = if (isGain) "+" else ""
+            SinemaCapsule(
+                height = 36.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 14.dp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) { fg ->
+                Icon(if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown, null, tint = fg, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
     }
@@ -312,73 +235,40 @@ private fun WeightHeader(
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun WeeklySummaryRow(summary: WeeklySummary, accent: Color, theme: AppThemeState) {
+private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
+    val sign = if ((summary.deltaKg ?: 0.0) >= 0) "+" else ""
     Row(
-        modifier              = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(horizontal = 16.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        SummaryCard(
-            modifier = Modifier.weight(1f),
-            label    = theme.t("Bu Hafta Ort.", "This Week Avg."),
-            value    = summary.thisWeekAvg?.let { "${"%.1f".format(it)} kg" } ?: "—",
-            icon     = Icons.Rounded.CalendarToday,
-            accent   = accent,
-            theme    = theme
+        SinemaBigStat(
+            value = summary.thisWeekAvg?.let { "%.1f".format(it) } ?: "—",
+            label = theme.t("Bu hafta", "This week"), size = 26, modifier = Modifier.weight(1f)
         )
-        SummaryCard(
-            modifier = Modifier.weight(1f),
-            label    = theme.t("Geçen Hafta", "Last Week"),
-            value    = summary.lastWeekAvg?.let { "${"%.1f".format(it)} kg" } ?: "—",
-            icon     = Icons.Rounded.DateRange,
-            accent   = accent,
-            theme    = theme
+        SinemaBigStat(
+            value = summary.lastWeekAvg?.let { "%.1f".format(it) } ?: "—",
+            label = theme.t("Geçen hafta", "Last week"), size = 26, modifier = Modifier.weight(1f)
         )
-        val deltaColor = when {
-            summary.deltaKg == null -> theme.text2
-            summary.deltaKg < 0    -> Color(0xFF22C55E)
-            summary.deltaKg > 0    -> Color(0xFFEF4444)
-            else                   -> theme.text2
-        }
-        val sign = if ((summary.deltaKg ?: 0.0) >= 0) "+" else ""
-        SummaryCard(
-            modifier   = Modifier.weight(1f),
-            label      = theme.t("Haftalık Fark", "Weekly Change"),
-            value      = summary.deltaKg?.let { "$sign${"%.1f".format(it)} kg" } ?: "—",
-            valueColor = deltaColor,
-            icon       = Icons.Rounded.SwapVert,
-            accent     = accent,
-            theme      = theme
+        SinemaBigStat(
+            value = summary.deltaKg?.let { "$sign${"%.1f".format(it)}" } ?: "—",
+            label = theme.t("Fark", "Change"), size = 26, modifier = Modifier.weight(1f),
+            color = if (summary.deltaKg != null) theme.effectiveAccentColor else Sinema.text(theme)
         )
     }
 }
 
-@Composable
-private fun SummaryCard(
-    modifier   : Modifier = Modifier,
-    label      : String,
-    value      : String,
-    icon       : ImageVector,
-    accent     : Color,
-    theme      : AppThemeState,
-    valueColor : Color = theme.text1
-) {
-    Column(
-        modifier            = modifier.glassCard(accent, theme).padding(horizontal = 12.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.height(6.dp))
-        Text(value, color = valueColor, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-//  LINE CHART — Canvas composable
+//  LINE CHART — vurgu çizgi + glow
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: AppThemeState) {
+private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
+    val accent = theme.effectiveAccentColor
+    val gridColor = Sinema.line(theme)
     val minKg = (points.minOf { it.weightKg } - 1.0).coerceAtLeast(0.0)
     val maxKg = points.maxOf { it.weightKg } + 1.0
     val range = (maxKg - minKg).coerceAtLeast(0.5)
@@ -387,31 +277,24 @@ private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: App
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .glassCard(accent, theme)
-            .padding(16.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.ShowChart, null, tint = accent, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(theme.t("Son 90 Gün Trendi", "Last 90 Days Trend"), color = theme.text1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            Text(theme.t("${points.size} ölçüm", "${points.size} entries"), color = theme.text2, fontSize = 11.sp)
+            Text(
+                theme.t("Son 90 gün", "Last 90 days").sinemaUpper(theme),
+                color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
+            )
+            Text(theme.t("${points.size} ölçüm", "${points.size} entries"), color = Sinema.textSecondary(theme), fontSize = 12.sp)
         }
 
         Spacer(Modifier.height(12.dp))
 
-        val accentColor = accent
-        val bgLine      = accent.copy(0.06f)
-
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-        ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(170.dp)) {
             val w      = size.width
             val h      = size.height
-            val padH   = 20.dp.toPx()
-            val padV   = 12.dp.toPx()
+            val padH   = 14.dp.toPx()
+            val padV   = 14.dp.toPx()
             val chartW = w - padH * 2f
             val chartH = h - padV * 2f
 
@@ -420,13 +303,11 @@ private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: App
             fun xOf(i: Int): Float = padH + (i.toFloat() / n.toFloat()) * chartW
             fun yOf(kg: Double): Float = padV + chartH * (1f - ((kg - minKg) / range).toFloat())
 
-            // Grid lines
-            repeat(5) { i ->
-                val gy = padV + chartH * (i.toFloat() / 4f)
-                drawLine(color = bgLine, start = Offset(padH, gy), end = Offset(w - padH, gy), strokeWidth = 1f)
+            repeat(3) { i ->
+                val gy = padV + chartH * (i.toFloat() / 2f)
+                drawLine(color = gridColor, start = Offset(padH, gy), end = Offset(w - padH, gy), strokeWidth = 1f)
             }
 
-            // Build paths
             val linePath = Path()
             val fillPath = Path()
             points.forEachIndexed { i, pt ->
@@ -447,39 +328,29 @@ private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: App
             fillPath.lineTo(xOf(points.lastIndex), h)
             fillPath.close()
 
-            // Fill
             drawPath(
                 path  = fillPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(accentColor.copy(0.25f), Color.Transparent),
+                    colors = listOf(accent.copy(0.16f), androidx.compose.ui.graphics.Color.Transparent),
                     startY = padV,
                     endY   = h
                 )
             )
 
-            // Line
-            drawPath(
-                path  = linePath,
-                color = accentColor,
-                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
+            drawGlowLine(linePath, accent, 3.dp.toPx())
 
-            // Key dots: first, last, min, max
             val minIdx = points.indices.minByOrNull { points[it].weightKg } ?: 0
             val maxIdx = points.indices.maxByOrNull { points[it].weightKg } ?: points.lastIndex
             setOf(0, points.lastIndex, minIdx, maxIdx).forEach { i ->
-                val x = xOf(i)
-                val y = yOf(points[i].weightKg)
-                drawCircle(color = accentColor.copy(0.25f), radius = 8.dp.toPx(), center = Offset(x, y))
-                drawCircle(color = accentColor, radius = 4.dp.toPx(), center = Offset(x, y))
+                drawGlowDot(Offset(xOf(i), yOf(points[i].weightKg)), accent, 3.5.dp.toPx())
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-            Text(points.firstOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = theme.text2, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(points.firstOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = 11.sp)
             Spacer(Modifier.weight(1f))
-            Text(points.lastOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = theme.text2, fontSize = 10.sp)
+            Text(points.lastOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = 11.sp)
         }
     }
 }
@@ -489,70 +360,62 @@ private fun WeightLineChart(points: List<WeightPoint>, accent: Color, theme: App
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, theme: AppThemeState, isFree: Boolean = true, credits: Int = 0, onRefresh: () -> Unit) {
+private fun AiInsightCard(
+    insight: String,
+    isLoading: Boolean,
+    theme: AppThemeState,
+    isFree: Boolean,
+    credits: Int,
+    onRefresh: () -> Unit
+) {
+    val accent = theme.effectiveAccentColor
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .glassCard(accent, theme)
-            .padding(16.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(accent.copy(0.15f)).padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            if (isFree && !isLoading) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(accent.copy(alpha = 0.12f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(10.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text(theme.t("2 Enerji", "2 Energy"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(5.dp))
-                    Text(theme.t("$credits kaldı", "$credits left"), color = theme.text2, fontSize = 9.sp)
+            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label)
+                if (isFree && !isLoading) {
+                    Text(
+                        theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
+                        color = Sinema.textSecondary(theme), fontSize = 12.sp
+                    )
                 }
-                Spacer(Modifier.width(8.dp))
             }
             if (!isLoading) {
-                Box(
-                    modifier = Modifier.size(32.dp).clip(CircleShape).background(theme.bg3).clickable(enabled = !isLoading, onClick = onRefresh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Refresh, null, tint = theme.text2, modifier = Modifier.size(15.dp))
-                }
+                SinemaCapsuleIconButton(
+                    icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
+                    onClick = onRefresh, selected = true, size = 40.dp
+                )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         when {
-            isLoading     -> Row(
+            isLoading -> Row(
                 modifier              = Modifier.fillMaxWidth(),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
-                Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = theme.text2, fontSize = 13.sp)
+                Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = Sinema.textSecondary(theme), fontSize = 14.sp)
             }
             insight.isBlank() -> Text(
                 theme.t(
                     "En az 2 ölçüm eklediğinde AI koçun trendi analiz edecek.",
                     "Your AI coach will analyze the trend after you add at least 2 entries."
                 ),
-                color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
             )
-            else              -> Text(insight, color = theme.text2, fontSize = 13.sp, lineHeight = 20.sp)
+            else -> Text(insight, color = Sinema.text(theme), fontSize = 14.sp, lineHeight = 21.sp)
         }
     }
 }
@@ -564,7 +427,6 @@ private fun AiInsightCard(insight: String, isLoading: Boolean, accent: Color, th
 @Composable
 private fun WeightEntryRow(
     entry   : WeightLogEntity,
-    accent  : Color,
     theme   : AppThemeState,
     onEdit  : () -> Unit,
     onDelete: () -> Unit
@@ -579,37 +441,42 @@ private fun WeightEntryRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
-            .premiumSolidSurface(accent, theme, RoundedCornerShape(14.dp), elevation = 6.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .clickable(onClick = onEdit)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(start = 18.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("${"%.1f".format(entry.weightKg)} kg", color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.width(12.dp))
+        Text(
+            "${"%.1f".format(entry.weightKg)}", color = Sinema.text(theme),
+            style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+        )
+        Text(" kg", color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(dateStr, color = theme.text2, fontSize = 11.sp)
-            if (entry.note.isNotBlank()) Text(entry.note, color = theme.text2, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(dateStr, color = Sinema.textSecondary(theme), fontSize = 12.sp)
+            if (entry.note.isNotBlank()) Text(entry.note, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (!entry.synced) {
-            Icon(Icons.Rounded.CloudOff, null, tint = theme.text2.copy(0.5f), modifier = Modifier.size(13.dp))
+            Icon(Icons.Rounded.CloudOff, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
         }
         Box(
-            modifier = Modifier.size(30.dp).clip(CircleShape).clickable { showDelete = true },
+            modifier = Modifier.size(48.dp).clip(CircleShape).clickable { showDelete = true },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.DeleteOutline, null, tint = theme.text2.copy(0.5f), modifier = Modifier.size(16.dp))
+            Icon(Icons.Rounded.DeleteOutline, theme.t("Sil", "Delete"), tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
         }
     }
 
     if (showDelete) {
-        AlertDialog(
-            onDismissRequest = { showDelete = false },
-            containerColor   = theme.bg2,
-            title            = { Text(theme.t("Kaydı sil?", "Delete entry?"), color = theme.text1, fontWeight = FontWeight.Bold) },
-            text             = { Text("${"%.1f".format(entry.weightKg)} kg — $dateStr", color = theme.text2, fontSize = 13.sp) },
-            confirmButton    = { TextButton(onClick = { showDelete = false; onDelete() }) { Text(theme.t("Sil", "Delete"), color = Color(0xFFEF4444), fontWeight = FontWeight.Bold) } },
-            dismissButton    = { TextButton(onClick = { showDelete = false }) { Text(theme.t("İptal", "Cancel"), color = theme.text2) } }
+        SinemaDialog(
+            onDismiss    = { showDelete = false },
+            title        = theme.t("Kaydı sil?", "Delete entry?"),
+            body         = "${"%.1f".format(entry.weightKg)} kg — $dateStr",
+            confirmLabel = theme.t("Sil", "Delete"),
+            confirmIcon  = Icons.Rounded.DeleteOutline,
+            onConfirm    = { showDelete = false; onDelete() },
+            dismissLabel = theme.t("İptal", "Cancel")
         )
     }
 }
@@ -619,20 +486,31 @@ private fun WeightEntryRow(
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun EmptyWeightState(accent: Color, theme: AppThemeState) {
+private fun EmptyWeightState(theme: AppThemeState, onAdd: () -> Unit) {
     Column(
-        modifier            = Modifier.fillMaxWidth().padding(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier            = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("⚖️", fontSize = 48.sp)
-        Text(theme.t("Henüz ölçüm yok", "No entries yet"), color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.MonitorWeight, null, tint = Sinema.text(theme), modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.height(18.dp))
+        Text(
+            theme.t("Henüz ölçüm yok", "No entries yet"), color = Sinema.text(theme),
+            fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
         Text(
             theme.t(
-                "İlk kilonu kaydetmek için + butonuna bas.\nAI koçun trend analizi yapabilsin diye\nen az 2 ölçüme ihtiyaç var.",
-                "Tap + to save your first weight.\nYour AI coach needs at least 2 entries\nto analyze your trend."
+                "İlk kilonu kaydet; AI koçun trendini analiz edebilmesi için en az 2 ölçüm gerekir.",
+                "Save your first weight; your AI coach needs at least 2 entries to analyze your trend."
             ),
-            color = theme.text2, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 20.sp
+            color = Sinema.textSecondary(theme), fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp
+        )
+        Spacer(Modifier.height(24.dp))
+        SinemaGoButton(
+            label = theme.t("İlk kilonu ekle", "Add first weight"), icon = Icons.Rounded.Add,
+            onClick = onAdd, modifier = Modifier.widthIn(max = 280.dp)
         )
     }
 }
@@ -644,7 +522,6 @@ private fun EmptyWeightState(accent: Color, theme: AppThemeState) {
 @Composable
 private fun AddEditWeightSheet(
     state          : WeightTrackingState,
-    accent         : Color,
     theme          : AppThemeState,
     onDismiss      : () -> Unit,
     onWeightChange : (String) -> Unit,
@@ -657,14 +534,14 @@ private fun AddEditWeightSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = sheetState,
-        containerColor   = theme.bg1,
+        containerColor   = Sinema.surface(theme),
         dragHandle       = {
             Box(
                 modifier = Modifier
                     .padding(top = 12.dp, bottom = 4.dp)
                     .size(width = 40.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(theme.stroke)
+                    .background(Sinema.line(theme))
             )
         }
     ) {
@@ -673,60 +550,38 @@ private fun AddEditWeightSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Text(
-                if (state.editingEntry == null) theme.t("Ağırlık Ekle", "Add Weight") else theme.t("Kaydı Düzenle", "Edit Entry"),
-                color = theme.text1, fontSize = 18.sp, fontWeight = FontWeight.Black
+                if (state.editingEntry == null) theme.t("Kilo ekle", "Add weight") else theme.t("Kaydı düzenle", "Edit entry"),
+                color = Sinema.text(theme), style = Sinema.Title
             )
 
-            OutlinedTextField(
+            SinemaGlassField(
                 value         = state.sheetWeightInput,
                 onValueChange = onWeightChange,
-                label         = { Text(theme.t("Ağırlık (kg)", "Weight (kg)"), color = theme.text2) },
-                placeholder   = { Text(theme.t("örn. 75.5", "e.g. 75.5"), color = theme.text2.copy(0.5f)) },
-                trailingIcon  = { Text("kg", color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(14.dp),
-                colors   = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor      = accent,
-                    unfocusedBorderColor    = theme.stroke,
-                    focusedTextColor        = theme.text1,
-                    unfocusedTextColor      = theme.text1,
-                    cursorColor             = accent,
-                    focusedContainerColor   = theme.bg2,
-                    unfocusedContainerColor = theme.bg2
-                )
+                label         = theme.t("Ağırlık (kg)", "Weight (kg)"),
+                placeholder   = theme.t("örn. 75.5", "e.g. 75.5"),
+                suffix        = "kg",
+                keyboardType  = KeyboardType.Decimal,
+                imeAction     = ImeAction.Next
             )
 
-            OutlinedTextField(
+            SinemaGlassField(
                 value         = state.sheetNoteInput,
                 onValueChange = onNoteChange,
-                label         = { Text(theme.t("Not (isteğe bağlı)", "Note (optional)"), color = theme.text2) },
-                placeholder   = { Text(theme.t("sabah, spor sonrası, vb.", "morning, after workout, etc."), color = theme.text2.copy(0.5f)) },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(14.dp),
-                colors   = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor      = accent,
-                    unfocusedBorderColor    = theme.stroke,
-                    focusedTextColor        = theme.text1,
-                    unfocusedTextColor      = theme.text1,
-                    cursorColor             = accent,
-                    focusedContainerColor   = theme.bg2,
-                    unfocusedContainerColor = theme.bg2
-                )
+                label         = theme.t("Not (isteğe bağlı)", "Note (optional)"),
+                placeholder   = theme.t("sabah, spor sonrası, vb.", "morning, after workout, etc."),
+                keyboardType  = KeyboardType.Text,
+                imeAction     = ImeAction.Done,
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
             )
 
-            PremiumButton(
-                text = if (state.editingEntry == null) theme.t("Kaydet", "Save") else theme.t("Güncelle", "Update"),
-                onClick = { focusManager.clearFocus(); onSave() },
-                modifier = Modifier.fillMaxWidth(),
-                isEnabled = !state.isSaving,
-                isLoading = state.isSaving,
-                leadingIcon = Icons.Rounded.CheckCircle
+            SinemaGoButton(
+                label = if (state.editingEntry == null) theme.t("Kaydet", "Save") else theme.t("Güncelle", "Update"),
+                icon = Icons.Rounded.CheckCircle,
+                onClick = { if (!state.isSaving) { focusManager.clearFocus(); onSave() } },
+                dim = state.isSaving
             )
 
             Spacer(Modifier.height(8.dp))

@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,36 +20,22 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.AppBackButton
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.presentation.components.SinemaGlowBar
+import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
 
 // ── Rank tanımları ──────────────────────────────────────────────────────────────
 
 private val RANKS = listOf(
     Triple("Bronze",   0,     Color(0xFFCD7F32)),
     Triple("Silver",   1000,  Color(0xFFB0BEC5)),
-    Triple("Gold",     5000,  Color(0xFFFFD700)),
-    Triple("Platinum", 15000, Color(0xFF00E5FF)),
+    Triple("Gold",     5000,  Color(0xFFF2C23F)),
+    Triple("Platinum", 15000, Color(0xFF3DB5E8)),
     Triple("Diamond",  50000, Color(0xFF64B5F6))
 )
 
-private fun achievementColor(category: String): Pair<Color, Color> = when (category) {
-    "streak"          -> Pair(Color(0xFFF97316), Color(0xFFEF4444))
-    "volume"          -> Pair(Color(0xFF9B59FF), Color(0xFF6C35DE))
-    "xp"              -> Pair(Color(0xFFFFD700), Color(0xFFFF8C00))
-    "milestone"       -> Pair(Color(0xFF00E5D3), Color(0xFF3B82F6))
-    "total_exercises" -> Pair(Color(0xFF06B6D4), Color(0xFF0891B2))
-    "level"           -> Pair(Color(0xFFA855F7), Color(0xFF7C3AED))
-    else              -> Pair(Color(0xFFEC4899), Color(0xFFA855F7))
-}
-
-private val CATEGORY_LABELS = mapOf(
-    "streak"          to "Seri Başarımları",
-    "volume"          to "Antrenman Başarımları",
-    "xp"              to "XP Başarımları",
-    "milestone"       to "Kilometre Taşları",
-    "total_exercises" to "Egzersiz Başarımları",
-    "level"           to "Seviye Başarımları"
-)
+private val CATEGORY_ORDER = listOf("streak", "volume", "xp", "milestone", "total_exercises", "level")
 
 private fun categoryLabel(category: String, theme: AppThemeState): String = when (category) {
     "streak" -> theme.t("Seri Başarımları", "Streak Achievements")
@@ -59,7 +44,7 @@ private fun categoryLabel(category: String, theme: AppThemeState): String = when
     "milestone" -> theme.t("Kilometre Taşları", "Milestones")
     "total_exercises" -> theme.t("Egzersiz Başarımları", "Exercise Achievements")
     "level" -> theme.t("Seviye Başarımları", "Level Achievements")
-    else -> category.uppercase()
+    else -> category
 }
 
 @Composable
@@ -68,124 +53,58 @@ fun AchievementsDetailScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val state  by viewModel.uiState.collectAsStateWithLifecycle()
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     val unlockedCount = state.achievements.count { it.isUnlocked }
     val totalCount    = state.achievements.size
 
     // Kategoriye göre grupla
     val grouped = state.achievements.groupBy { it.category }
-        .toSortedMap(compareBy { CATEGORY_LABELS.keys.toList().indexOf(it).takeIf { i -> i >= 0 } ?: 99 })
+        .toSortedMap(compareBy { CATEGORY_ORDER.indexOf(it).takeIf { i -> i >= 0 } ?: 99 })
 
-    Box(modifier = Modifier.fillMaxSize().background(theme.bg0)) {
-        PageAccentBloom()
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 60.dp)
+            contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
         ) {
-            // ── Top bar ─────────────────────────────────────────────────────
+            item {
+                SinemaDetailHeader(
+                    title    = theme.t("Başarımlar", "Achievements"),
+                    subtitle = theme.t("Tüm başarımlar ve rank yol haritası", "All achievements and rank roadmap"),
+                    onBack   = onBack
+                )
+            }
+
+            // Dev sayaç
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            theme.t("Başarımlar", "Achievements"),
-                            color         = theme.text0,
-                            fontSize      = 22.sp,
-                            fontWeight    = FontWeight.SemiBold,
-                            letterSpacing = (-0.3).sp
-                        )
-                        Text(theme.t("Tüm başarımlar ve rank yol haritası", "All achievements and rank roadmap"), color = theme.text2, fontSize = 11.sp)
-                    }
-                    // Sayaç badge
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(accent.copy(0.12f))
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            "$unlockedCount/$totalCount",
-                            color      = accent,
-                            fontSize   = 12.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
+                    SinemaBigStat(
+                        value = "$unlockedCount",
+                        unit  = "/ $totalCount",
+                        label = theme.t("Açılan başarım", "Unlocked"),
+                        size  = 72,
+                        color = theme.effectiveAccentColor
+                    )
                 }
             }
 
-            // ── Rank Yol Haritası ───────────────────────────────────────────
-            item {
-                RankRoadmapSection(
-                    xp          = state.xp,
-                    currentRank = state.rank,
-                    accent      = accent,
-                    theme       = theme,
-                    modifier    = Modifier.padding(20.dp, 8.dp, 20.dp, 0.dp)
-                )
-            }
+            item { XpProgressCard(state.xp, state.level, state.xpPerLevel, state.rank, theme, Modifier.padding(horizontal = 20.dp)) }
 
-            // ── XP İlerleme Kartı ───────────────────────────────────────────
-            item {
-                XpProgressCard(
-                    xp         = state.xp,
-                    level      = state.level,
-                    xpPerLevel = state.xpPerLevel,
-                    rank       = state.rank,
-                    accent     = accent,
-                    theme      = theme,
-                    modifier   = Modifier.padding(20.dp, 20.dp, 20.dp, 0.dp)
-                )
-            }
+            item { Spacer(Modifier.height(24.dp)) }
+            item { SinemaSectionLabel(theme.t("Rank yol haritası", "Rank roadmap")) }
+            item { RankRoadmapSection(state.xp, state.rank, theme, Modifier.padding(horizontal = 20.dp)) }
 
             // ── Başarım Kategorileri ────────────────────────────────────────
             grouped.forEach { (category, achievements) ->
-                val categoryLabel = categoryLabel(category, theme)
-                val (colorFrom, _) = achievementColor(category)
                 val catUnlocked = achievements.count { it.isUnlocked }
 
                 item(key = "header_$category") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(top = 28.dp, bottom = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(colorFrom)
-                            )
-                            Text(
-                                categoryLabel.uppercase(),
-                                color         = colorFrom,
-                                fontSize      = 11.sp,
-                                fontWeight    = FontWeight.Black,
-                                letterSpacing = 1.5.sp
-                            )
-                        }
-                        Text(
-                            "$catUnlocked/${achievements.size}",
-                            color    = theme.text2,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Spacer(Modifier.height(20.dp))
+                    SinemaSectionLabel(categoryLabel(category, theme), trailing = "$catUnlocked/${achievements.size}")
                 }
 
                 items(
@@ -203,82 +122,54 @@ fun AchievementsDetailScreen(
     }
 }
 
-// ── Rank Yol Haritası Section ────────────────────────────────────────────────
+// ── Rank Yol Haritası ────────────────────────────────────────────────────────
 
 @Composable
 private fun RankRoadmapSection(
     xp         : Int,
     currentRank: String,
-    accent     : Color,
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
-        Text(
-            theme.t("RANK YOL HARİTASI", "RANK ROADMAP"),
-            style         = MaterialTheme.typography.labelSmall,
-            color         = accent,
-            letterSpacing = 2.sp
-        )
-        Spacer(Modifier.height(14.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-                .padding(20.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                RANKS.forEach { (rankName, threshold, color) ->
-                    val isReached = xp >= threshold
-                    val isCurrent = rankName == currentRank
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(if (isReached) color.copy(0.25f) else theme.bg2)
-                                .border(1.5.dp, if (isReached) color else theme.stroke, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                if (isReached) "★" else "○",
-                                color    = if (isReached) color else theme.text2,
-                                fontSize = 16.sp
-                            )
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                rankName.uppercase(),
-                                color      = if (isReached) color else theme.text2,
-                                fontSize   = 13.sp,
-                                fontWeight = if (isCurrent) FontWeight.Black else FontWeight.SemiBold
-                            )
-                            Text(
-                                theme.t("$threshold XP gerekli", "$threshold XP required"),
-                                color    = theme.text2,
-                                fontSize = 10.sp
-                            )
-                        }
-                        if (isCurrent) {
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(color.copy(0.18f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    theme.t("MEVCUT", "CURRENT"),
-                                    color         = color,
-                                    fontSize      = 9.sp,
-                                    fontWeight    = FontWeight.Black,
-                                    letterSpacing = 1.sp
-                                )
-                            }
-                        }
+    Column(
+        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        RANKS.forEach { (rankName, threshold, color) ->
+            val isReached = xp >= threshold
+            val isCurrent = rankName == currentRank
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (isReached) color else Sinema.line(theme)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isReached) Icon(Icons.Rounded.Star, null, tint = Color.Black.copy(0.75f), modifier = Modifier.size(20.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        rankName,
+                        color      = if (isReached) Sinema.text(theme) else Sinema.textSecondary(theme),
+                        fontSize   = 16.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        theme.t("$threshold XP gerekli", "$threshold XP required"),
+                        color    = Sinema.textSecondary(theme),
+                        fontSize = 12.sp
+                    )
+                }
+                if (isCurrent) {
+                    SinemaCapsule(selected = true, height = 28.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+                        Text(
+                            theme.t("MEVCUT", "CURRENT"), color = fg, fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp
+                        )
                     }
                 }
             }
@@ -294,7 +185,6 @@ private fun XpProgressCard(
     level     : Int,
     xpPerLevel: Int,
     rank      : String,
-    accent    : Color,
     theme     : AppThemeState,
     modifier  : Modifier = Modifier
 ) {
@@ -310,71 +200,31 @@ private fun XpProgressCard(
     }
     val rankProgress = if (nextRankXp > 0) (xp.toFloat() / nextRankXp).coerceIn(0f, 1f) else 1f
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-            .padding(20.dp)
+    Column(
+        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Seviye ilerleme
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(theme.t("SEVİYE $level", "LEVEL $level"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                    Text("$xpInLevel / $xpPerLevel XP", color = theme.text1, fontSize = 11.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(theme.bg3)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(progress.coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(accent, accent.copy(0.6f))))
-                    )
-                }
-            }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            SinemaBigStat("$level", theme.t("Seviye", "Level"), Modifier.weight(1f), size = 44)
+            SinemaBigStat("$xp", theme.t("Toplam XP", "Total XP"), Modifier.weight(1.4f), size = 44)
+        }
 
-            HorizontalDivider(color = theme.stroke)
-
-            // Sonraki rank ilerleme
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(theme.t("SONRAKİ RANK", "NEXT RANK"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text("$xp / $nextRankXp XP", color = theme.text1, fontSize = 11.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(theme.bg3)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(rankProgress)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(CardGreen, CardGreen.copy(0.6f))))
-                    )
-                }
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(theme.t("SEVİYE $level", "LEVEL $level").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            Spacer(Modifier.height(10.dp))
+            SinemaGlowBar(progress)
+        }
 
-            // Toplam XP
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(theme.t("TOPLAM XP", "TOTAL XP"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(
-                    "$xp XP",
-                    color      = accent,
-                    fontSize   = 18.sp,
-                    fontWeight = FontWeight.Black
-                )
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(theme.t("SONRAKİ RANK", "NEXT RANK").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            Spacer(Modifier.height(10.dp))
+            SinemaGlowBar(rankProgress)
         }
     }
 }
@@ -387,75 +237,56 @@ private fun AchievementRow(
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    val (colorFrom, _) = achievementColor(achievement.category)
+    val accent = theme.effectiveAccentColor
     val isUnlocked = achievement.isUnlocked
 
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .profilePremiumSurface(
-                theme = theme,
-                shape = RoundedCornerShape(16.dp),
-                accent = if (isUnlocked) colorFrom else null,
-                elevation = if (theme.isDark) 10.dp else 5.dp
-            )
-            .padding(14.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(16.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        Box(
+            Modifier
+                .size(48.dp)
+                .then(if (isUnlocked) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape) else Modifier)
+                .clip(CircleShape)
+                .background(if (isUnlocked) accent else Sinema.line(theme)),
+            contentAlignment = Alignment.Center
         ) {
-            // Icon
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(colorFrom.copy(if (isUnlocked) 0.15f else 0.05f))
-                    .border(1.dp, if (isUnlocked) colorFrom.copy(0.4f) else theme.stroke, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (isUnlocked) achievement.icon else "🔒",
-                    fontSize = 22.sp
-                )
-            }
+            if (isUnlocked) Text(achievement.icon, fontSize = 22.sp)
+            else Icon(Icons.Rounded.Lock, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
+        }
 
-            // Info
-            Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                localizedAchievementText(achievement.name, theme),
+                color      = if (isUnlocked) Sinema.text(theme) else Sinema.textSecondary(theme),
+                fontSize   = 15.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            if (achievement.description.isNotBlank()) {
                 Text(
-                    localizedAchievementText(achievement.name, theme),
-                    color      = if (isUnlocked) theme.text0 else theme.text2,
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    localizedAchievementText(achievement.description, theme),
+                    color    = Sinema.textSecondary(theme),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 2
                 )
-                if (achievement.description.isNotBlank()) {
-                    Text(
-                        localizedAchievementText(achievement.description, theme),
-                        color    = theme.text2,
-                        fontSize = 10.sp,
-                        maxLines = 2
-                    )
-                }
             }
+        }
 
-            // Status
-            if (isUnlocked) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(colorFrom.copy(0.15f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text("✓", color = colorFrom, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                }
-            } else {
-                Text(
-                    "${achievement.threshold}",
-                    color      = theme.text2,
-                    fontSize   = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        if (isUnlocked) {
+            Icon(Icons.Rounded.CheckCircle, theme.t("Açıldı", "Unlocked"), tint = accent, modifier = Modifier.size(24.dp))
+        } else {
+            Text(
+                "${achievement.threshold}",
+                color      = Sinema.textSecondary(theme),
+                fontSize   = 16.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
         }
     }
 }
