@@ -1433,8 +1433,8 @@ private fun ProgramDetailDialog(
     onDismiss: () -> Unit,
     onApply: () -> Unit = onDismiss
 ) {
-    val accent  = MaterialTheme.colorScheme.primary
     val theme   = LocalAppTheme.current
+    val accent  = theme.effectiveAccentColor
     val strings = theme.strings
 
     Dialog(onDismissRequest = { if (!isApplying) onDismiss() }) {
@@ -1444,22 +1444,21 @@ private fun ProgramDetailDialog(
                 .clip(RoundedCornerShape(28.dp))
                 .background(Sinema.page(theme))
         ) {
+            val accentSolid = theme.effectiveAccentColor
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                // Kapak 280dp: vurgu gradyanı + kategori ikonu + başlık
-                Box(
-                    Modifier.fillMaxWidth().height(280.dp).background(
-                        Brush.linearGradient(listOf(accent, androidx.compose.ui.graphics.lerp(accent, Color.Black, 0.40f)))
-                    )
-                ) {
-                    Icon(
-                        program.category.icon, null, tint = Color.White.copy(0.12f),
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 20.dp).size(96.dp)
+                // Kapak 280dp: nötr koyu sahne + kas grubu fotoğrafı + alt karartma + başlık
+                Box(Modifier.fillMaxWidth().height(280.dp).clipToBounds()) {
+                    SinemaScene(Modifier.fillMaxSize())
+                    SceneImage(
+                        url = com.cosmibit.profitness.core.ui.categoryImageUrl(program.muscleLabels.firstOrNull().orEmpty()),
+                        modifier = Modifier.fillMaxSize(),
+                        requestWidthPx = 1080, requestHeightPx = 840
                     )
                     Box(
                         Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(0.15f to Color.Black.copy(0.30f), 0.50f to Color.Black.copy(0.50f), 1f to Color.Black.copy(0.85f))
+                            Brush.verticalGradient(0f to Color.Black.copy(0.45f), 0.40f to Color.Black.copy(0.10f), 1f to Color.Black.copy(0.88f))
                         )
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
@@ -1471,88 +1470,98 @@ private fun ProgramDetailDialog(
                         Text(program.localizedTitle(theme), color = Sinema.White, style = Sinema.Title, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Column(Modifier.padding(24.dp)) {
-                Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp)
+                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 128.dp)) {
+                    Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp)
 
-                Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(20.dp))
 
-                // Stats row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(theme.bg2.copy(0.8f))
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accent)
-                    Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
-                    DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accent)
-                    Box(Modifier.width(1.dp).height(36.dp).background(theme.stroke))
-                    DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).take(3).uppercase(), strings.levelLabel, accent)
-                }
+                    // Stats row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accentSolid)
+                        Box(Modifier.width(1.dp).height(36.dp).background(Sinema.line(theme)))
+                        DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accentSolid)
+                        Box(Modifier.width(1.dp).height(36.dp).background(Sinema.line(theme)))
+                        DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).take(3).uppercase(), strings.levelLabel, accentSolid)
+                    }
 
-                Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(20.dp))
 
-                // Description
-                Text(program.localizedDescription(theme), color = theme.text1, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.Light)
+                    // Description
+                    Text(program.localizedDescription(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 21.sp)
 
-                Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                // Muscle distribution
-                Text(strings.muscleDistLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
-                Spacer(Modifier.height(10.dp))
-                program.muscleLabels.forEachIndexed { i, label ->
-                    Column(Modifier.padding(bottom = 8.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(program.localizedText(label, theme), color = theme.text1, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                            Text(program.musclePct[i], color = Sinema.text(theme), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .clip(CircleShape)
-                                .background(theme.bg3)
-                        ) {
+                    // Muscle distribution
+                    Text(strings.muscleDistLabel.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                    Spacer(Modifier.height(12.dp))
+                    program.muscleLabels.forEachIndexed { i, label ->
+                        Column(Modifier.padding(bottom = 12.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(program.localizedText(label, theme), color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(program.musclePct[i], color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                            Spacer(Modifier.height(6.dp))
                             Box(
                                 Modifier
-                                    .fillMaxWidth(program.muscleFractions[i])
-                                    .fillMaxHeight()
+                                    .fillMaxWidth()
+                                    .height(8.dp)
                                     .clip(CircleShape)
-                                    .background(
-                                        Brush.horizontalGradient(listOf(accent, accent.copy(0.5f)))
-                                    )
-                            )
+                                    .background(Sinema.line(theme))
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(program.muscleFractions[i])
+                                        .fillMaxHeight()
+                                        .sinemaGlow(accentSolid.copy(0.4f), 8.dp, 2.dp, CircleShape)
+                                        .clip(CircleShape)
+                                        .background(accentSolid)
+                                )
+                            }
                         }
                     }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Schedule
+                    Text(strings.scheduleLabel.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text(program.localizedSchedule(theme), color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 22.sp)
+                    }
                 }
+            }
 
-                Spacer(Modifier.height(20.dp))
-
-                // Schedule
-                Text(strings.scheduleLabel, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
-                Spacer(Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .insetControlSurface(accent, theme, RoundedCornerShape(14.dp))
-                        .padding(16.dp)
-                ) {
-                    Text(program.localizedSchedule(theme), color = theme.text1, fontSize = 13.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
-                }
-
-                Spacer(Modifier.height(24.dp))
-
-                PremiumButton(
-                    text = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
-                    onClick = onApply,
-                    modifier = Modifier.fillMaxWidth(),
-                    isEnabled = !isApplying,
-                    isLoading = isApplying
+            // Altta SABİT "Programı uygula": arkası yumuşak geçiş, içerik üstüne biner
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.45f to Sinema.page(theme).copy(0.88f),
+                            1f to Sinema.page(theme).copy(0.98f)
+                        )
+                    )
+                    .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp)
+            ) {
+                SinemaGoButton(
+                    label = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
+                    icon = Icons.Rounded.Check,
+                    onClick = { if (!isApplying) onApply() },
+                    dim = isApplying
                 )
-                }
             }
 
             if (isApplying) {
@@ -1560,7 +1569,7 @@ private fun ProgramDetailDialog(
                     modifier = Modifier
                         .matchParentSize()
                         .clip(RoundedCornerShape(28.dp))
-                        .background(theme.bg0.copy(alpha = 0.58f))
+                        .background(Sinema.page(theme).copy(alpha = 0.70f))
                         .clickable(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
@@ -1670,16 +1679,54 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // AI Koç sahnesi: her zaman koyu (foto/sahne sayfası), cam kapsüller
+    val glassText = Color.White
+    val glassSub = Color.White.copy(0.62f)
+    val accentAi = aiTheme.effectiveAccentColor
+    val inputStyle = androidx.compose.ui.text.TextStyle(
+        color = glassText, fontFamily = AppFontFamily, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp
+    )
+
+    fun toggleSuggestion(label: String) {
+        prompt = if (prompt.contains(label)) {
+            prompt.replace(", $label", "").replace("$label, ", "").replace(label, "").trim()
+        } else {
+            if (prompt.isBlank()) label else prompt.trimEnd().trimEnd(',') + ", " + label
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        SinemaScene(Modifier.fillMaxSize())
+
         // ── Scrollable content ───────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = contentPad + 80.dp + timerExtraPad)
                 .verticalScroll(scrollState)
+                .statusBarsPadding()
+                .padding(top = 14.dp, bottom = contentPad + 150.dp + timerExtraPad)
         ) {
-            DetailHeader(title = "Oracle AI", sub = aiStrings.aiProtocolSub, onBack = onBack)
-            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SinemaCapsuleIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    description = aiTheme.t("Geri", "Back"),
+                    onClick = onBack,
+                    selected = false,
+                    size = 48.dp
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        aiStrings.aiProtocolSub.sinemaUpper(aiTheme),
+                        color = Color.White.copy(0.72f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Text("Oracle AI", color = Color.White, style = Sinema.ScreenTitle, maxLines = 1)
+                }
+            }
+            Spacer(Modifier.height(28.dp))
 
             // Enerji bilgisi
             AiCreditInfoRow(
@@ -1690,31 +1737,28 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     "6 Energy / text · 10 Energy / file"
                 ),
                 theme   = aiTheme,
-                modifier = Modifier.padding(horizontal = 24.dp)
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // Metin giriş kutusu
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .glassCard(MaterialTheme.colorScheme.primary, aiTheme, RoundedCornerShape(24.dp))
-                    .padding(24.dp)
+            // Büyük cam giriş kartı (çizgisiz)
+            SinemaCapsule(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                height = 220.dp,
+                shape = RoundedCornerShape(28.dp),
+                contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Column {
-                    Text(aiTheme.t("TASARIM PARAMETRELERİ", "DESIGN PARAMETERS"), color = aiTheme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Spacer(Modifier.height(16.dp))
-                    val textFieldScroll = rememberScrollState()
+                Column(Modifier.weight(1f)) {
+                    Text(aiTheme.t("TASARIM PARAMETRELERİ", "DESIGN PARAMETERS"), color = glassSub, style = Sinema.Label)
+                    Spacer(Modifier.height(12.dp))
                     BasicTextField(
                         value = prompt,
                         onValueChange = { prompt = it },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = aiTheme.text0, fontWeight = FontWeight.Light),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp, max = 200.dp)
-                            .verticalScroll(textFieldScroll),
+                        textStyle = inputStyle,
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(accentAi),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 130.dp, max = 220.dp).verticalScroll(rememberScrollState()),
                         enabled = !uiState.aiLoading,
                         decorationBox = { inner ->
                             if (prompt.isEmpty()) Text(
@@ -1723,7 +1767,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                                 } else {
                                     aiTheme.t("Antrenman sıklığı, hedefin ve seviyeni belirt...", "Describe your training frequency, goal, and level...")
                                 },
-                                color = aiTheme.text2, fontSize = 15.sp
+                                color = Color.White.copy(0.45f), style = inputStyle
                             )
                             inner()
                         }
@@ -1731,166 +1775,198 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(18.dp))
 
-            // Dosya yükleme butonu + seçilen dosya gösterimi
+            // Hızlı seçim hapları: metne ekleme yapan öneriler
+            val suggestionGroups = listOf(
+                aiTheme.t("SIKLIK", "FREQUENCY") to listOf(
+                    aiTheme.t("Haftada 3 gün", "3 days a week"),
+                    aiTheme.t("Haftada 4 gün", "4 days a week"),
+                    aiTheme.t("Haftada 5 gün", "5 days a week")
+                ),
+                aiTheme.t("HEDEF", "GOAL") to listOf(
+                    aiTheme.t("Kas kazanımı", "Muscle gain"),
+                    aiTheme.t("Yağ yakımı", "Fat loss"),
+                    aiTheme.t("Güç", "Strength")
+                ),
+                aiTheme.t("SEVİYE", "LEVEL") to listOf(
+                    aiTheme.t("Başlangıç", "Beginner"),
+                    aiTheme.t("Orta seviye", "Intermediate"),
+                    aiTheme.t("İleri seviye", "Advanced")
+                )
+            )
+            suggestionGroups.forEach { (groupLabel, options) ->
+                Text(groupLabel, color = glassSub, style = Sinema.Label, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    options.forEach { option ->
+                        SinemaCapsule(
+                            selected = prompt.contains(option),
+                            onClick = { toggleSuggestion(option) },
+                            enabled = !uiState.aiLoading,
+                            height = 40.dp,
+                            contentPadding = PaddingValues(horizontal = 16.dp)
+                        ) { fg ->
+                            Text(option, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Dosya yükleme (cam kapsül) + kaldır
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedButton(
+                SinemaCapsule(
+                    modifier = Modifier.weight(1f),
+                    selected = selectedBase64 != null,
                     onClick = { fileLauncher.launch("*/*") },
                     enabled = !uiState.aiLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.stroke),
-                    modifier = Modifier
-                        .weight(1f)
-                ) {
+                    height = 56.dp,
+                    horizontalArrangement = Arrangement.Center
+                ) { fg ->
                     Icon(
                         imageVector = if (selectedBase64 != null) Icons.Rounded.CheckCircle else Icons.Rounded.UploadFile,
-                        contentDescription = null,
-                        tint = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
-                        modifier = Modifier.size(18.dp)
+                        contentDescription = null, tint = fg, modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (selectedBase64 != null) {
-                            aiTheme.t("Değiştir", "Change")
-                        } else {
-                            aiTheme.t("Görsel / PDF Yükle", "Upload Image / PDF")
-                        },
-                        color = if (selectedBase64 != null) MaterialTheme.colorScheme.primary else aiTheme.text2,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                        maxLines = 2,
-                        textAlign = TextAlign.Center
+                        text = if (selectedBase64 != null) aiTheme.t("Değiştir", "Change")
+                        else aiTheme.t("Görsel / PDF Yükle", "Upload Image / PDF"),
+                        color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1
                     )
                 }
-
                 if (selectedBase64 != null) {
-                    IconButton(
+                    SinemaCapsuleIconButton(
+                        icon = Icons.Rounded.Close,
+                        description = aiTheme.t("Kaldır", "Remove"),
                         onClick = {
                             selectedBase64   = null
                             selectedMimeType = null
                             selectedFileName = null
                             selectedFileError = null
-                        }
-                    ) {
-                        Icon(Icons.Rounded.Close, contentDescription = aiTheme.t("Kaldır", "Remove"), tint = CardCoral)
-                    }
+                        },
+                        selected = false,
+                        size = 48.dp
+                    )
                 }
             }
 
-            // Seçilen dosya adı
             selectedFileName?.let { name ->
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.padding(horizontal = 28.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = aiTheme.text2, modifier = Modifier.size(14.dp))
-                    Text(name, color = aiTheme.text2, fontSize = 12.sp, maxLines = 1)
+                    Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = glassSub, modifier = Modifier.size(14.dp))
+                    Text(name, color = glassSub, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
 
             selectedFileError?.let { message ->
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    message,
-                    color = CardCoral,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 28.dp)
-                )
+                Text(message, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 28.dp))
             }
 
-            // Error banner
+            // Hata: kutusuz, uyarı ikonlu metin
             uiState.aiError?.let { errMsg ->
-                Spacer(Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(CardCoral.copy(alpha = 0.15f))
-                        .padding(16.dp)
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(errMsg, color = CardCoral, fontSize = 13.sp)
+                    Icon(Icons.Rounded.ErrorOutline, null, tint = CardCoral, modifier = Modifier.size(16.dp))
+                    Text(errMsg, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
         }
 
         // ── Fixed bottom button ──────────────────────────────────────────────
-        Box(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .imePadding()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Sinema.page(aiTheme)),
-                        startY = 0f,
-                        endY = 60f
+                        0f to Color.Transparent,
+                        0.35f to Color.Black.copy(0.85f),
+                        1f to Color.Black.copy(0.96f)
                     )
                 )
                 .padding(
-                    start = responsive.horizontalPadding,
-                    end = responsive.horizontalPadding,
-                    bottom = contentPad + timerExtraPad,
-                    top = 16.dp
+                    start = 20.dp, end = 20.dp,
+                    bottom = contentPad + timerExtraPad, top = 28.dp
                 )
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
             if (uiState.userPlan == UserPlan.FREE) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-                            .widthIn(max = (responsive.screenWidth - (responsive.horizontalPadding * 2)).coerceAtLeast(180.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Rounded.Bolt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
-                        Spacer(Modifier.width(3.dp))
+                    SinemaPill {
+                        Icon(Icons.Rounded.Bolt, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            aiTheme.t("6-10 Enerji", "6-10 Energy"),
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f, fill = false)
+                            aiTheme.t("6-10 Enerji · Kalan ${uiState.aiCredits}", "6-10 Energy · ${uiState.aiCredits} left"),
+                            color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(aiTheme.t("Enerji: ${uiState.aiCredits}", "Energy: ${uiState.aiCredits}"), color = aiTheme.text2, fontSize = if (responsive.isLargeFont) 9.sp else 10.sp, maxLines = 1)
                     }
                 }
             }
-            PremiumButton(
-                text = if (selectedBase64 != null) {
-                    aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
-                } else {
-                    aiTheme.t("PROGRAMI ANALİZ ET", "ANALYZE PROGRAM")
-                },
+            SinemaGoOrIdle(
+                label = if (uiState.aiLoading) aiTheme.t("Analiz ediliyor…", "Analyzing…")
+                else if (selectedBase64 != null) aiTheme.t("DOSYADAN PROGRAM OLUŞTUR", "CREATE PROGRAM FROM FILE")
+                else aiTheme.t("PROGRAMI ANALİZ ET", "ANALYZE PROGRAM"),
+                icon = Icons.Rounded.AutoAwesome,
+                enabled = canAnalyze,
+                loading = uiState.aiLoading,
                 onClick = {
                     viewModel.clearAiError()
                     viewModel.createFromAI(prompt, selectedBase64, selectedMimeType)
-                },
-                modifier = Modifier.fillMaxWidth().heightIn(min = if (responsive.isLargeFont) 72.dp else 64.dp),
-                isEnabled = canAnalyze,
-                isLoading = uiState.aiLoading,
-                leadingIcon = Icons.Rounded.AutoAwesome
+                }
             )
-            } // Column
+        }
+    }
+}
+
+/** Aktif: SinemaGoButton (dolu vurgu + glow). Pasif: nötr gri (beyaz %10 zemin, %40 yazı). Yükleniyor: soluk Go. */
+@Composable
+private fun SinemaGoOrIdle(
+    label: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    loading: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (enabled || loading) {
+        SinemaGoButton(label = label, icon = icon, onClick = { if (!loading) onClick() }, modifier = modifier, dim = loading)
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(Color.White.copy(0.10f)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, null, tint = Color.White.copy(0.40f), modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = Color.White.copy(0.40f), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }
@@ -2074,221 +2150,165 @@ private fun EditProgramScreen(
                 viewModel.clearAiEditError()
             }
         }) {
-            val modalShape = RoundedCornerShape(26.dp)
+            val modalShape = RoundedCornerShape(28.dp)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 520.dp)
-                    .clip(modalShape)
-                    .background(editTheme.bg1)
+                    .sinemaCard(editTheme, modalShape)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .performanceSignatureSurface(editTheme, editAccent)
-                        .padding(horizontal = 18.dp, vertical = 18.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .sinemaGlow(editAccent.copy(0.4f), 14.dp, 5.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(editAccent),
+                        contentAlignment = Alignment.Center
                     ) {
+                        Icon(Icons.Rounded.AutoAwesome, null, tint = editOnAccent, modifier = Modifier.size(22.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "AI İLE DÜZENLE",
+                            color = Sinema.textSecondary(editTheme), style = Sinema.Label
+                        )
+                        Text(
+                            "Programı nasıl değiştireyim?",
+                            color = Sinema.text(editTheme),
+                            fontFamily = AppFontFamily,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp
+                        )
+                    }
+                    if (uiState.userPlan == UserPlan.FREE) {
                         Box(
                             modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(editAccent.copy(0.13f)),
-                            contentAlignment = Alignment.Center
+                                .clip(CircleShape)
+                                .background(Sinema.line(editTheme))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Icon(
-                                Icons.Rounded.AutoAwesome,
-                                contentDescription = null,
-                                tint     = editAccent,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "AI İLE DÜZENLE",
-                                color         = editAccent,
-                                fontWeight    = FontWeight.ExtraBold,
-                                fontSize      = 11.sp,
-                                letterSpacing = 1.2.sp
+                                "${uiState.aiCredits} Enerji",
+                                color = Sinema.text(editTheme), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold
                             )
-                            Text(
-                                "Programı nasıl değiştireyim?",
-                                color      = editTheme.text0,
-                                fontWeight = FontWeight.Black,
-                                fontSize   = 19.sp
-                            )
-                        }
-                        if (uiState.userPlan == UserPlan.FREE) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(editAccent.copy(0.10f))
-                                    .border(1.dp, editAccent.copy(0.28f), RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    "${uiState.aiCredits} Enerji",
-                                    color = editAccent,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
                         }
                     }
                 }
 
-                Column(
-                    modifier            = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Sinema.page(editTheme))
+                        .border(1.dp, Sinema.line(editTheme), RoundedCornerShape(20.dp))
+                        .padding(16.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Sinema.page(editTheme))
-                            .border(1.dp, editAccent.copy(0.34f), RoundedCornerShape(14.dp))
-                            .padding(16.dp)
-                    ) {
-                        BasicTextField(
-                            value         = aiPrompt,
-                            onValueChange = { aiPrompt = it },
-                            enabled       = !uiState.aiEditLoading,
-                            textStyle     = MaterialTheme.typography.bodyMedium.copy(
-                                color    = editTheme.text0,
-                                fontSize = 15.sp
-                            ),
-                            modifier      = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 200.dp).verticalScroll(rememberScrollState()),
-                            decorationBox = { inner ->
-                                if (aiPrompt.isEmpty()) {
-                                    Text(
-                                        "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
-                                        color      = editTheme.text2.copy(0.82f),
-                                        fontSize   = 14.sp,
-                                        lineHeight = 21.sp
-                                    )
-                                }
-                                inner()
-                            }
-                        )
-                    }
-
-                    if (uiState.aiEditError != null) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.error.copy(0.10f))
-                                .border(1.dp, MaterialTheme.colorScheme.error.copy(0.22f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Rounded.ErrorOutline,
-                                null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                uiState.aiEditError!!,
-                                color    = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick  = {
-                                showAiEditDialog = false
-                                viewModel.clearAiEditError()
-                            },
-                            enabled  = !uiState.aiEditLoading,
-                            modifier = Modifier.weight(1f).height(52.dp),
-                            shape    = RoundedCornerShape(14.dp),
-                            border   = androidx.compose.foundation.BorderStroke(1.dp, editTheme.stroke),
-                            colors   = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent)
-                        ) {
-                            Text(editTheme.t("İptal", "Cancel"), color = editTheme.text1, fontWeight = FontWeight.Medium)
-                        }
-                        Button(
-                            onClick  = {
-                                val currentDrafts = days.mapIndexed { i, d ->
-                                    ManualDayDraft(
-                                        title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
-                                        isRestDay = d.isRestDay,
-                                        notes     = d.notes,
-                                        selectedExercises = d.exercises.mapIndexed { ei, ex ->
-                                            com.cosmibit.profitness.data.program.ManualExerciseInput(
-                                                exerciseId  = ex.exerciseId,
-                                                sets        = ex.sets,
-                                                reps        = ex.reps,
-                                                restSeconds = ex.restSeconds,
-                                                weightKg    = ex.weightKg,
-                                                orderIndex  = ei,
-                                                targetDurationSeconds = ex.targetDurationSeconds,
-                                                targetDistanceMeters = ex.targetDistanceMeters,
-                                                section = ex.section,
-                                                notes = ex.notes,
-                                                groupId = ex.groupId,
-                                                groupType = ex.groupType,
-                                                groupLabel = ex.groupLabel,
-                                                groupRounds = ex.groupRounds,
-                                                groupRestSeconds = ex.groupRestSeconds
-                                            )
-                                        }
-                                    )
-                                }
-                                viewModel.editWithAI(
-                                    programId       = program.id,
-                                    currentName     = programName,
-                                    currentDays     = currentDrafts,
-                                    userInstruction = aiPrompt
-                                )
-                            },
-                            enabled  = !uiState.aiEditLoading && aiPrompt.isNotBlank(),
-                            modifier = Modifier.weight(1f).height(52.dp),
-                            shape    = RoundedCornerShape(14.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                            colors   = ButtonDefaults.buttonColors(
-                                containerColor = editAccent,
-                                contentColor = editOnAccent,
-                                disabledContainerColor = Color.White.copy(0.10f),
-                                disabledContentColor = Color.White.copy(0.40f)
-                            )
-                        ) {
-                            if (uiState.aiEditLoading) {
-                                CircularProgressIndicator(
-                                    color       = editOnAccent,
-                                    modifier    = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
+                    BasicTextField(
+                        value         = aiPrompt,
+                        onValueChange = { aiPrompt = it },
+                        enabled       = !uiState.aiEditLoading,
+                        textStyle     = MaterialTheme.typography.bodyMedium.copy(
+                            color    = Sinema.text(editTheme),
+                            fontSize = 15.sp
+                        ),
+                        cursorBrush   = androidx.compose.ui.graphics.SolidColor(editAccent),
+                        modifier      = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 200.dp).verticalScroll(rememberScrollState()),
+                        decorationBox = { inner ->
+                            if (aiPrompt.isEmpty()) {
                                 Text(
-                                    if (uiState.userPlan == UserPlan.FREE) {
-                                        editTheme.t("Uygula - $AI_EDIT_ENERGY_COST Enerji", "Apply - $AI_EDIT_ENERGY_COST Energy")
-                                    } else {
-                                        editTheme.t("Uygula", "Apply")
-                                    },
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = if (uiState.userPlan == UserPlan.FREE) 12.sp else 14.sp,
-                                    maxLines = 1
+                                    "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
+                                    color      = Sinema.textSecondary(editTheme),
+                                    fontSize   = 14.sp,
+                                    lineHeight = 21.sp
                                 )
-                                if (uiState.userPlan == UserPlan.FREE) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(Icons.Rounded.Bolt, null, tint = editOnAccent, modifier = Modifier.size(12.dp))
-                                }
                             }
+                            inner()
                         }
+                    )
+                }
+
+                if (uiState.aiEditError != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.ErrorOutline, null, tint = CardCoral, modifier = Modifier.size(16.dp))
+                        Text(uiState.aiEditError!!, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
+                }
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    SinemaCapsule(
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { alpha = if (uiState.aiEditLoading) 0.5f else 1f },
+                        onClick = {
+                            showAiEditDialog = false
+                            viewModel.clearAiEditError()
+                        },
+                        enabled = !uiState.aiEditLoading,
+                        height = 56.dp,
+                        shape = RoundedCornerShape(28.dp),
+                        light = !editTheme.isDark,
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) { fg ->
+                        Text(editTheme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    }
+                    SinemaGoOrIdle(
+                        label = if (uiState.aiEditLoading) editTheme.t("Uygulanıyor…", "Applying…")
+                        else if (uiState.userPlan == UserPlan.FREE) editTheme.t("Uygula · $AI_EDIT_ENERGY_COST Enerji", "Apply · $AI_EDIT_ENERGY_COST Energy")
+                        else editTheme.t("Uygula", "Apply"),
+                        icon = Icons.Rounded.AutoAwesome,
+                        enabled = aiPrompt.isNotBlank() && !uiState.aiEditLoading,
+                        loading = uiState.aiEditLoading,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            val currentDrafts = days.mapIndexed { i, d ->
+                                ManualDayDraft(
+                                    title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                                    isRestDay = d.isRestDay,
+                                    notes     = d.notes,
+                                    selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                                        com.cosmibit.profitness.data.program.ManualExerciseInput(
+                                            exerciseId  = ex.exerciseId,
+                                            sets        = ex.sets,
+                                            reps        = ex.reps,
+                                            restSeconds = ex.restSeconds,
+                                            weightKg    = ex.weightKg,
+                                            orderIndex  = ei,
+                                            targetDurationSeconds = ex.targetDurationSeconds,
+                                            targetDistanceMeters = ex.targetDistanceMeters,
+                                            section = ex.section,
+                                            notes = ex.notes,
+                                            groupId = ex.groupId,
+                                            groupType = ex.groupType,
+                                            groupLabel = ex.groupLabel,
+                                            groupRounds = ex.groupRounds,
+                                            groupRestSeconds = ex.groupRestSeconds
+                                        )
+                                    }
+                                )
+                            }
+                            viewModel.editWithAI(
+                                programId       = program.id,
+                                currentName     = programName,
+                                currentDays     = currentDrafts,
+                                userInstruction = aiPrompt
+                            )
+                        }
+                    )
                 }
             }
         }
