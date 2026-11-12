@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -57,6 +58,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -217,13 +220,30 @@ fun SinemaWorkoutPager(
     val pageCount = if (single) 1 else n + if (allDone) 1 else 0
     val animEnabled = rememberAnimationsEnabled()
 
+    // Yatay pager = gün. Kaydırınca ViewModel güncellenir, dışarıdan gün değişince pager gider.
+    val dayCount = days.size
+    val hState = rememberPagerState(initialPage = selectedDayIdx.coerceIn(0, (dayCount - 1).coerceAtLeast(0))) { dayCount.coerceAtLeast(1) }
+    val selectedNow by rememberUpdatedState(selectedDayIdx)
+    val onSelectNow by rememberUpdatedState(onSelectDay)
+    LaunchedEffect(hState, dayCount) {
+        snapshotFlow { hState.settledPage }.collect { p ->
+            WorkoutDaySync.dayToSelect(p, selectedNow, dayCount)?.let { onSelectNow(it) }
+        }
+    }
+    LaunchedEffect(selectedDayIdx, dayCount) {
+        if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedDayIdx, dayCount)) {
+            hState.animateScrollToPage(selectedDayIdx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+        }
+    }
+    val hScrolling = hState.isScrollInProgress
+
     key(selectedDayIdx) {
         val initial = remember {
             if (single) 0
             else exercises.indexOfFirst { it.id !in completedIds }.takeIf { it >= 0 } ?: if (allDone) n else 0
         }
         val pagerState = rememberPagerState(initialPage = initial) { pageCount }
-        val scrolling = pagerState.isScrollInProgress
+        val scrolling = pagerState.isScrollInProgress || hScrolling
         LaunchedEffect(scrolling) {
             if (!scrolling) delay(200)
             nav.pagerBusy = scrolling
@@ -253,6 +273,13 @@ fun SinemaWorkoutPager(
         var showList by remember { mutableStateOf(false) }
 
         Box(modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(
+                state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
+                key = { it }
+            ) { dayPage ->
+              if (dayPage != selectedDayIdx) {
+                DayPreviewPage(days.getOrNull(dayPage))
+              } else {
             VerticalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -289,10 +316,12 @@ fun SinemaWorkoutPager(
                 }
                 }
             }
+              }
+            }
 
             SinemaTopBar(
                 programTitle = programTitle, exercises = exercises, completedIds = completedIds,
-                days = days, selectedDayIdx = selectedDayIdx, onSelectDay = onSelectDay,
+                days = days, selectedDayIdx = selectedDayIdx, liveDayIdx = hState.currentPage, onSelectDay = onSelectDay,
                 streak = streak, showSegments = !single, dataFor = dataFor,
                 topExtra = topExtra, onOpenList = { showList = true },
                 modifier = Modifier.align(Alignment.TopStart)
@@ -728,6 +757,29 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
 
 // ── Dinlenme / atlanan program / kutlama ─────────────────────────────────────────────────────
 
+/** Yatay kaydırma sırasında yan gün önizlemesi: foto + gün adı + hareket sayısı (oturunca gerçek sayfa gelir). */
+@Composable
+private fun DayPreviewPage(st: WorkoutDayState?) {
+    val theme = LocalAppTheme.current
+    if (st == null || (st.day.isRestDay && st.day.exercises.isEmpty())) { RestPage(isSkipped = false); return }
+    val first = st.day.exercises.firstOrNull()
+    Box(Modifier.fillMaxSize().clipToBounds()) {
+        PhotoLayer(first?.image?.ifBlank { categoryImageUrl(first.category) } ?: categoryImageUrl(""), isSettled = false, animEnabled = false, offset = { 0f })
+        Scrims()
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = SinemaContentBottom + navInset() + 24.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(compactWorkoutTitle(st.day.title, theme), style = Sinema.Display.copy(fontSize = 40.sp), color = Color.White, maxLines = 2)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                theme.t("${st.day.exercises.size} hareket", "${st.day.exercises.size} exercises"),
+                style = Sinema.Body, color = Color.White.copy(0.85f)
+            )
+        }
+    }
+}
+
 @Composable
 private fun RestPage(isSkipped: Boolean) {
     val theme = LocalAppTheme.current
@@ -798,6 +850,7 @@ private fun SinemaTopBar(
     completedIds: Set<String>,
     days: ImmutableList<WorkoutDayState>,
     selectedDayIdx: Int,
+    liveDayIdx: Int,
     onSelectDay: (Int) -> Unit,
     streak: Int,
     showSegments: Boolean,
@@ -838,7 +891,7 @@ private fun SinemaTopBar(
                 modifier = Modifier.weight(1f).then(if (showSegments) Modifier.clickable(role = Role.Button, onClick = onOpenList) else Modifier)
             )
             Spacer(Modifier.width(8.dp))
-            DayPill(days, selectedDayIdx, onSelectDay, theme)
+            DayPill(days, liveDayIdx, onSelectDay, theme)
             Spacer(Modifier.width(8.dp))
             val streakLabel = if (streak > 0) theme.t("$streak günlük serin aktif", "$streak-day streak")
             else theme.t("Serini başlat", "Start your streak")
@@ -872,17 +925,22 @@ private fun DayPill(
     val accent = theme.effectiveAccentColor
     val selectedLabel = days.getOrNull(selectedIdx)?.let { localizedWorkoutDayLabel(it.day.day, theme) } ?: ""
     Box {
-        Row(
-            Modifier
-                .height(32.dp)
-                .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-                .clickable(role = Role.DropdownList) { open = !open }
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(selectedLabel, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        SinemaCapsule(
+            onClick = { open = !open }, height = 32.dp, shape = CircleShape,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+        ) { fg ->
+            Text(selectedLabel, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Spacer(Modifier.width(5.dp))
-            Icon(SinemaIcons.Chevron, null, tint = Color.White, modifier = Modifier.size(14.dp))
+            // gün sayısı kadar ince nokta: kaydırmayla güncellenir
+            if (days.size in 2..8) {
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    days.forEachIndexed { i, _ ->
+                        Box(Modifier.size(if (i == selectedIdx) 5.dp else 3.dp).clip(CircleShape).background(fg.copy(if (i == selectedIdx) 1f else 0.4f)))
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+            }
+            Icon(SinemaIcons.Chevron, null, tint = fg, modifier = Modifier.size(14.dp))
         }
         if (open) {
             val gap = with(LocalDensity.current) { 8.dp.roundToPx() }
