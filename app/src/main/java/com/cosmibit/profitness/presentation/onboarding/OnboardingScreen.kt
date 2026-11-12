@@ -21,7 +21,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.ui.unit.em
+import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.SinemaGlassField
+import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
@@ -40,10 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.AccentColorSwatch
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
-import com.cosmibit.profitness.presentation.components.AppBackButton
-import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.profile.readSafeProfilePhotoBytes
@@ -131,6 +139,7 @@ private fun AppThemeState.experienceLabel(value: String): String = when (value) 
     else -> value
 }
 
+
 @Composable
 fun OnboardingScreen(
     onNavigateToDashboard: () -> Unit,
@@ -148,8 +157,8 @@ fun OnboardingScreen(
     }
 
     val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val responsive = rememberResponsiveLayoutInfo()
+    val motionOn = rememberSinemaMotionOn()
 
     BackHandler(enabled = state.step > 0 && !state.isSaving) {
         viewModel.prevStep()
@@ -158,24 +167,10 @@ fun OnboardingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.bg0)
+            .background(Sinema.page(theme))
     ) {
-        // Dark mode gets a restrained accent wash. Light mode is a clean,
-        // independently designed paper surface rather than a neon inversion.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(320.dp)
-                .background(
-                    Brush.verticalGradient(
-                        if (theme.isDark) {
-                            listOf(accent.copy(alpha = 0.10f), Color.Transparent)
-                        } else {
-                            listOf(theme.bg1, theme.bg0.copy(alpha = 0f))
-                        }
-                    )
-                )
-        )
+        // Sinema: üst 240dp orb (accent wash yok). Orb ve ilerleme sabit, yalnız içerik kayar.
+        OnboardingOrb(theme, Modifier.align(Alignment.TopCenter).fillMaxWidth().height(240.dp))
 
         Column(
             modifier = Modifier
@@ -186,36 +181,68 @@ fun OnboardingScreen(
                 .imePadding()
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
         ) {
-            // Üst ilerleme çubuğu
-            Spacer(Modifier.height(52.dp))
-            OnboardingProgressBar(currentStep = state.step, totalSteps = 7, accent = accent, theme = theme)
-            Spacer(Modifier.height(8.dp))
+            OnboardingProgressBar(
+                currentStep = state.step,
+                totalSteps  = 7,
+                theme       = theme,
+                modifier    = Modifier.statusBarsPadding().padding(top = 14.dp, bottom = 4.dp)
+            )
 
-            // Adım içeriği (animasyonlu)
             AnimatedContent(
                 targetState  = state.step,
                 transitionSpec = {
-                    val forward = targetState > initialState
-                    val enter = slideInHorizontally(
-                        tween(320, easing = FastOutSlowInEasing)
-                    ) { if (forward) it / 2 else -it / 2 } + fadeIn(tween(280))
-                    val exit  = slideOutHorizontally(
-                        tween(280, easing = FastOutSlowInEasing)
-                    ) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(200))
-                    enter togetherWith exit
+                    if (!motionOn) {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(120))
+                    } else {
+                        val forward = targetState > initialState
+                        val enter = slideInHorizontally(
+                            tween(320, easing = FastOutSlowInEasing)
+                        ) { if (forward) it / 2 else -it / 2 } + fadeIn(tween(280))
+                        val exit  = slideOutHorizontally(
+                            tween(280, easing = FastOutSlowInEasing)
+                        ) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(200))
+                        enter togetherWith exit
+                    }
                 },
                 label = "onboarding_step"
             ) { step ->
                 when (step) {
-                    0 -> StepName(state, viewModel, accent, theme)
+                    0 -> StepName(state, viewModel, theme)
                     1 -> StepTheme(current = theme, onThemeChange = onThemeChange, vm = viewModel)
-                    2 -> StepSportExperience(state, viewModel, accent, theme)
-                    3 -> StepGenderBirth(state, viewModel, accent, theme)
-                    4 -> StepBodyMetrics(state, viewModel, accent, theme)
-                    5 -> StepGoal(state, viewModel, accent, theme)
-                    6 -> StepPersonalProgram(state, viewModel, accent, theme)
+                    2 -> StepSportExperience(state, viewModel, theme)
+                    3 -> StepGenderBirth(state, viewModel, theme)
+                    4 -> StepBodyMetrics(state, viewModel, theme)
+                    5 -> StepGoal(state, viewModel, theme)
+                    6 -> StepPersonalProgram(state, viewModel, theme)
                 }
             }
+        }
+    }
+}
+
+// ── Orb (üst sahne) ──────────────────────────────────────────────────────────
+
+/** Koyu tema: SinemaScene. Açık tema: sayfa rengine eriyen iki vurgu halesi (tonlu zemin değil, orb). */
+@Composable
+private fun OnboardingOrb(theme: AppThemeState, modifier: Modifier) {
+    if (theme.isDark) {
+        SinemaScene(modifier)
+    } else {
+        val accent = theme.effectiveAccentColor
+        val page = Sinema.page(theme)
+        Canvas(modifier.clipToBounds()) {
+            fun dp(v: Float) = v.dp.toPx()
+            val c1 = Offset(dp(90f), dp(80f))
+            val c2 = Offset(size.width - dp(60f), dp(170f))
+            drawCircle(
+                Brush.radialGradient(0f to accent.copy(0.34f), 1f to Color.Transparent, center = c1, radius = dp(230f)),
+                radius = dp(230f), center = c1
+            )
+            drawCircle(
+                Brush.radialGradient(0f to accent.copy(0.20f), 1f to Color.Transparent, center = c2, radius = dp(190f)),
+                radius = dp(190f), center = c2
+            )
+            drawRect(Brush.verticalGradient(0.55f to Color.Transparent, 1f to page))
         }
     }
 }
@@ -226,40 +253,80 @@ fun OnboardingScreen(
 private fun OnboardingProgressBar(
     currentStep: Int,
     totalSteps : Int,
-    accent     : Color,
-    theme      : AppThemeState
+    theme      : AppThemeState,
+    modifier   : Modifier = Modifier
 ) {
+    val accent = theme.effectiveAccentColor
     Row(
-        modifier            = Modifier
+        modifier            = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment   = Alignment.CenterVertically
     ) {
-        repeat(totalSteps) { i ->
-            val active   = i == currentStep
-            val finished = i < currentStep
-            val fraction by animateFloatAsState(
-                targetValue    = if (finished) 1f else if (active) 0.5f else 0f,
-                animationSpec  = tween(400),
-                label          = "progress_$i"
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(3.dp)
-                    .clip(CircleShape)
-                    .background(theme.stroke)
-            ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(totalSteps) { i ->
+                val active = i == currentStep
+                val fraction by animateFloatAsState(
+                    targetValue   = if (i <= currentStep) 1f else 0f,
+                    animationSpec = tween(400),
+                    label         = "progress_$i"
+                )
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(fraction)
+                        .weight(1f)
+                        .height(4.dp)
+                        .then(if (active) Modifier.sinemaGlow(accent.copy(0.4f), 8.dp, 0.dp, CircleShape) else Modifier)
                         .clip(CircleShape)
-                        .background(accent)
-                )
+                        .background(Sinema.line(theme))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fraction)
+                            .background(accent)
+                    )
+                }
             }
         }
+        Text(
+            "%02d/%02d".format(currentStep + 1, totalSteps),
+            style = Sinema.Label,
+            color = Sinema.text(theme).copy(0.8f),
+            maxLines = 1
+        )
+    }
+}
+
+// ── Adım iskeleti: kayan içerik + altta sabit gezinme ────────────────────────
+
+@Composable
+private fun StepScaffold(
+    nav: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+        ) {
+            Spacer(Modifier.height(12.dp))
+            content()
+            Spacer(Modifier.height(16.dp))
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp),
+            content = nav
+        )
     }
 }
 
@@ -306,102 +373,96 @@ private fun StepTheme(
         intensity        = intensity,
         customAccentArgb = customAccentArgb
     )
-    val previewAccent   = preview.effectiveAccentColor
-    val previewOnAccent = preview.effectiveOnAccentColor
+    val previewAccent = preview.effectiveAccentColor
+    // Sayfa zemini gerçek temada kalır; Sinema parçaları seçilen vurguyu (önizleme) kullanır.
+    val accentTheme = preview.copy(isDark = current.isDark)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
-    ) {
-        Spacer(Modifier.height(32.dp))
-
-        StepHeader(
-            step     = "2 / 7",
-            title    = current.t("Temanı seç", "Choose your theme"),
-            subtitle = current.t("Uygulamanın sana nasıl görüneceğini ayarla", "Adjust how the app looks for you"),
-            accent   = previewAccent,
-            theme    = preview
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        Text(current.t("GÖRÜNÜM", "APPEARANCE"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(8.dp))
-        ThemeSegmentedSelector(
-            options = listOf(
-                ThemeMode.DARK to current.t("KOYU", "DARK"),
-                ThemeMode.LIGHT to current.t("AÇIK", "LIGHT"),
-                ThemeMode.SYSTEM to current.t("SİSTEM", "SYSTEM")
-            ),
-            selected = themeMode,
-            accent = previewAccent,
-            onAccent = previewOnAccent,
-            theme = preview,
-            onSelect = { themeMode = it }
-        )
-        Spacer(Modifier.height(18.dp))
-
-        ThemePreviewCard(preview)
-        Spacer(Modifier.height(22.dp))
-
-        Text(current.t("VURGU RENGİ", "ACCENT COLOR"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(10.dp))
-        FlowRow(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(10.dp)
-        ) {
-            presetRows.forEach { preset ->
-                AccentColorSwatch(
-                    color      = preset.color,
-                    isSelected = customAccentArgb == null && accent == preset,
-                    onClick    = {
-                        accent = preset
-                        customAccentArgb = null
-                    }
+    CompositionLocalProvider(LocalAppTheme provides accentTheme) {
+        StepScaffold(
+            nav = {
+                StepNavButtons(
+                    onBack    = { vm.prevStep() },
+                    onNext    = {
+                        onThemeChange(preview)
+                        vm.nextStep()
+                    },
+                    nextLabel = current.t("Temayı Uygula", "Apply Theme"),
+                    nextIcon  = Icons.Rounded.Check,
+                    theme     = accentTheme
                 )
             }
-            CustomAccentSwatch(
-                color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
-                isSelected = customAccentArgb != null,
-                onClick    = { showColorPicker = true }
+        ) {
+            StepHeader(
+                step     = "2 / 7",
+                title    = current.t("Temanı seç", "Choose your theme"),
+                subtitle = current.t("Uygulamanın sana nasıl görüneceğini ayarla", "Adjust how the app looks for you"),
+                theme    = accentTheme
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            SectionLabel(current.t("GÖRÜNÜM", "APPEARANCE"), accentTheme)
+            Spacer(Modifier.height(8.dp))
+            SinemaSegmentRow(
+                options  = listOf(ThemeMode.DARK, ThemeMode.LIGHT, ThemeMode.SYSTEM),
+                selected = themeMode,
+                label    = {
+                    when (it) {
+                        ThemeMode.DARK -> current.t("KOYU", "DARK")
+                        ThemeMode.LIGHT -> current.t("AÇIK", "LIGHT")
+                        ThemeMode.SYSTEM -> current.t("SİSTEM", "SYSTEM")
+                    }
+                },
+                onSelect = { themeMode = it }
+            )
+            Spacer(Modifier.height(18.dp))
+
+            ThemePreviewCard(preview)
+            Spacer(Modifier.height(22.dp))
+
+            SectionLabel(current.t("VURGU RENGİ", "ACCENT COLOR"), accentTheme)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement   = Arrangement.spacedBy(12.dp)
+            ) {
+                presetRows.forEach { preset ->
+                    ThemeColorSwatch(
+                        preset     = preset,
+                        isSelected = customAccentArgb == null && accent == preset,
+                        ringColor  = Sinema.text(current),
+                        onClick    = {
+                            accent = preset
+                            customAccentArgb = null
+                        }
+                    )
+                }
+                CustomAccentSwatch(
+                    color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
+                    isSelected = customAccentArgb != null,
+                    onClick    = { showColorPicker = true }
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            SectionLabel(current.t("YOĞUNLUK", "INTENSITY"), accentTheme)
+            Spacer(Modifier.height(8.dp))
+            SinemaSegmentRow(
+                options  = listOf(AccentIntensity.NEON, AccentIntensity.PASTEL, AccentIntensity.VIVID, AccentIntensity.SOFT),
+                selected = intensity,
+                label    = {
+                    when (it) {
+                        AccentIntensity.NEON -> "NEON"
+                        AccentIntensity.PASTEL -> "PASTEL"
+                        AccentIntensity.VIVID -> current.t("CANLI", "VIVID")
+                        AccentIntensity.SOFT -> current.t("SOFT", "SOFT")
+                    }
+                },
+                onSelect = { intensity = it }
             )
         }
-
-        Spacer(Modifier.height(18.dp))
-
-        Text(current.t("YOĞUNLUK", "INTENSITY"), color = current.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(8.dp))
-        ThemeSegmentedSelector(
-            options = listOf(
-                AccentIntensity.NEON to "NEON",
-                AccentIntensity.PASTEL to "PASTEL",
-                AccentIntensity.VIVID to current.t("CANLI", "VIVID"),
-                AccentIntensity.SOFT to current.t("SOFT", "SOFT")
-            ),
-            selected = intensity,
-            accent = previewAccent,
-            onAccent = previewOnAccent,
-            theme = current,
-            onSelect = { intensity = it }
-        )
-
-        Spacer(Modifier.height(28.dp))
-
-        StepNavButtons(
-            onBack    = { vm.prevStep() },
-            onNext    = {
-                onThemeChange(preview)
-                vm.nextStep()
-            },
-            nextLabel = current.t("Temayı Uygula", "Apply Theme"),
-            accent    = previewAccent,
-            theme     = preview
-        )
-
-        Spacer(Modifier.height(48.dp))
     }
 
     if (showColorPicker) {
@@ -423,11 +484,10 @@ private fun StepTheme(
 private fun StepName(
     state    : OnboardingState,
     vm       : OnboardingViewModel,
-    accent   : Color,
     theme    : AppThemeState
 ) {
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
+    val accent = theme.effectiveAccentColor
     val coroutineScope = rememberCoroutineScope()
     val nameBringIntoViewRequester = remember { BringIntoViewRequester() }
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -443,83 +503,83 @@ private fun StepName(
         vm.uploadPhoto(bytes)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.nextStep() },
+                nextLabel = theme.t("Devam Et", "Continue"),
+                nextIcon  = Icons.AutoMirrored.Rounded.ArrowForward,
+                theme     = theme,
+                showBack  = false,
+                error     = state.nameError
+            )
+        }
     ) {
-        Spacer(Modifier.height(32.dp))
-
-        Text(theme.t("Merhaba!", "Hello!"), color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            theme.t("Seni tanıyalım", "Let's get to know you"),
-            color      = theme.text0,
-            fontSize   = 28.sp,
-            fontWeight = FontWeight.Black
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            theme.t("Adını ve avatarını seç", "Choose your name and avatar"),
-            color    = theme.text2,
-            fontSize = 14.sp
+        StepHeader(
+            step     = "1 / 7",
+            eyebrow  = theme.t("Merhaba!", "Hello!"),
+            title    = theme.t("Seni tanıyalım", "Let's get to know you"),
+            subtitle = theme.t("Adını ve avatarını seç", "Choose your name and avatar"),
+            theme    = theme
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // Seçili avatar önizleme
-        Box(
-            modifier         = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(accent.copy(0.15f))
-                .border(2.dp, accent.copy(0.5f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                state.isUploadingAvatar -> {
-                    CircularProgressIndicator(color = accent, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            // Seçili avatar önizleme
+            Box(
+                modifier         = Modifier
+                    .size(100.dp)
+                    .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Sinema.surface(theme))
+                    .border(2.dp, accent, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    state.isUploadingAvatar -> {
+                        CircularProgressIndicator(color = accent, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
+                    }
+                    state.avatar.startsWith("http") -> {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    }
+                    else -> {
+                        Text(state.avatar, fontSize = 44.sp)
+                    }
                 }
-                state.avatar.startsWith("http") -> {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
-                        contentDescription = "Avatar",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape)
-                    )
-                }
-                else -> {
-                    Text(state.avatar, fontSize = 44.sp)
-                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            SinemaCapsule(
+                onClick = { photoPickerLauncher.launch("image/*") },
+                enabled = !state.isUploadingAvatar,
+                height = 44.dp,
+                light = !theme.isDark,
+                contentPadding = PaddingValues(horizontal = 18.dp)
+            ) { fg ->
+                Icon(Icons.Rounded.PhotoCamera, null, tint = fg, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(theme.t("Profil fotoğrafı yükle", "Upload profile photo"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedButton(
-            onClick = { photoPickerLauncher.launch("image/*") },
-            enabled = !state.isUploadingAvatar,
-            shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(0.45f)),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = accent.copy(0.08f)),
-            modifier = Modifier.height(42.dp)
-        ) {
-            Icon(Icons.Rounded.PhotoCamera, null, tint = accent, modifier = Modifier.size(17.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(theme.t("Profil fotoğrafı yükle", "Upload profile photo"), color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-
         state.avatarError?.let {
-            Spacer(Modifier.height(6.dp))
-            Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+            Spacer(Modifier.height(10.dp))
+            OnboardingErrorCapsule(it, theme)
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Avatar grid
+        val avatarShape = RoundedCornerShape(16.dp)
+        val onAccent = theme.effectiveOnAccentColor
         SPORT_AVATAR_ROWS.forEach { row ->
             Row(
                 modifier              = Modifier.fillMaxWidth(),
@@ -531,186 +591,163 @@ private fun StepName(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(0.18f) else theme.bg1)
-                            .border(
-                                width = if (selected) 2.dp else 1.dp,
-                                color = if (selected) accent else theme.stroke,
-                                shape = RoundedCornerShape(12.dp)
+                            .then(
+                                if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, avatarShape).clip(avatarShape).background(accent)
+                                else Modifier.sinemaCard(theme, avatarShape)
                             )
-                            .clickable { vm.setAvatar(emoji) },
+                            .selectable(selected = selected, role = Role.RadioButton, onClick = { vm.setAvatar(emoji) }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(emoji, fontSize = 24.sp)
+                        Text(emoji, fontSize = 24.sp, color = onAccent)
                     }
                 }
             }
             Spacer(Modifier.height(8.dp))
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // İsim alanı
-        Column(
-            modifier = Modifier
+        SinemaGlassField(
+            value         = state.name,
+            onValueChange = { vm.setName(it) },
+            label         = theme.t("ADIN SOYADIN", "FULL NAME"),
+            placeholder   = theme.t("Adını gir", "Enter your name"),
+            keyboardType  = KeyboardType.Text,
+            imeAction     = ImeAction.Done,
+            capitalization = KeyboardCapitalization.Words,
+            modifier      = Modifier
                 .fillMaxWidth()
-                .bringIntoViewRequester(nameBringIntoViewRequester),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(theme.t("ADIN SOYADIN", "FULL NAME"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-            OutlinedTextField(
-                value          = state.name,
-                onValueChange  = { vm.setName(it) },
-                placeholder    = { Text(theme.t("Adını gir", "Enter your name"), color = theme.text2, fontSize = 14.sp) },
-                leadingIcon    = { Icon(Icons.Rounded.Person, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
-                isError        = state.nameError != null,
-                supportingText = state.nameError?.let { { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) } },
-                modifier       = Modifier
-                    .fillMaxWidth()
-                    .onFocusEvent { focusState ->
-                        if (focusState.isFocused) {
-                            coroutineScope.launch {
-                                delay(250)
-                                nameBringIntoViewRequester.bringIntoView()
-                            }
+                .bringIntoViewRequester(nameBringIntoViewRequester)
+                .onFocusEvent { focusState ->
+                    if (focusState.hasFocus) {
+                        coroutineScope.launch {
+                            delay(250)
+                            nameBringIntoViewRequester.bringIntoView()
                         }
-                    },
-                singleLine     = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction      = ImeAction.Done
-                ),
-                shape  = RoundedCornerShape(14.dp),
-                colors = onboardingTextFieldColors(accent, theme)
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        PremiumOnboardingButton(
-            onClick  = { vm.nextStep() },
-            modifier = Modifier.fillMaxWidth().height(54.dp),
-            accent   = accent,
-            theme    = theme
-        ) {
-            Text(theme.t("Devam Et", "Continue"), fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Rounded.ArrowForwardIos, null, modifier = Modifier.size(14.dp))
-        }
-
-        Spacer(Modifier.height(48.dp))
+                    }
+                }
+        )
     }
 }
 
 // ── Adım 3: Spor profili ─────────────────────────────────────────────────────
 
+private fun sportIcon(option: String): ImageVector = when (option) {
+    "Fitness" -> Icons.Rounded.FitnessCenter
+    "Koşu" -> Icons.Rounded.DirectionsRun
+    "Bisiklet" -> Icons.Rounded.DirectionsBike
+    "Yüzme" -> Icons.Rounded.Pool
+    "Futbol" -> Icons.Rounded.SportsSoccer
+    "Basketbol" -> Icons.Rounded.SportsBasketball
+    "Tenis" -> Icons.Rounded.SportsTennis
+    "Boks" -> Icons.Rounded.SportsMma
+    "Yoga" -> Icons.Rounded.SelfImprovement
+    else -> Icons.Rounded.DirectionsWalk
+}
+
+private fun experienceIcon(option: String): ImageVector = when (option) {
+    "Yeni başlıyorum" -> Icons.Rounded.Eco
+    "Başlangıç" -> Icons.Rounded.StarBorder
+    "Orta" -> Icons.Rounded.StarHalf
+    else -> Icons.Rounded.Star
+}
+
+private fun goalIcon(option: String): ImageVector = when (option) {
+    "Kilo vermek" -> Icons.Rounded.TrendingDown
+    "Kas kazanmak" -> Icons.Rounded.FitnessCenter
+    "Formda kalmak" -> Icons.Rounded.Favorite
+    "Yağ yakarken kas yapmak" -> Icons.Rounded.Whatshot
+    "Kondisyon geliştirmek" -> Icons.Rounded.Speed
+    else -> Icons.Rounded.Spa
+}
+
 @Composable
 private fun StepSportExperience(
     state  : OnboardingState,
     vm     : OnboardingViewModel,
-    accent : Color,
     theme  : AppThemeState
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.nextStep() },
+                nextLabel = theme.t("Devam Et", "Continue"),
+                nextIcon  = Icons.AutoMirrored.Rounded.ArrowForward,
+                theme     = theme,
+                canSkip   = true,
+                onSkip    = { vm.nextStep() }
+            )
+        }
     ) {
-        Spacer(Modifier.height(18.dp))
-
         StepHeader(
             step     = "3 / 7",
             title    = theme.t("Spor profilin", "Your sport profile"),
             subtitle = theme.t("Programın spor dalına ve seviyene göre şekillensin", "Shape the plan around your sport and level"),
-            accent   = accent,
             theme    = theme
         )
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(20.dp))
 
-        Text(theme.t("SPOR DALI", "SPORT"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
+        SectionLabel(theme.t("SPOR DALI", "SPORT"), theme)
+        Spacer(Modifier.height(8.dp))
         OnboardingChoiceGrid(
             options = SPORT_BRANCH_OPTIONS,
             selected = state.sportBranch,
-            accent = accent,
             theme = theme,
-            itemHeight = 38.dp,
-            rowSpacing = 7.dp,
-            fontSize = 12.sp,
+            iconFor = ::sportIcon,
             labelFor = { theme.sportBranchLabel(it) },
             onSelect = { vm.setSportBranch(it) }
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
 
-        Text(theme.t("SEVİYE", "LEVEL"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
+        SectionLabel(theme.t("SEVİYE", "LEVEL"), theme)
+        Spacer(Modifier.height(8.dp))
         OnboardingChoiceGrid(
             options = EXPERIENCE_OPTIONS,
             selected = state.experienceLevel,
-            accent = accent,
             theme = theme,
-            itemHeight = 38.dp,
-            rowSpacing = 7.dp,
-            fontSize = 12.sp,
+            iconFor = ::experienceIcon,
             labelFor = { theme.experienceLabel(it) },
             onSelect = { vm.setExperienceLevel(it) }
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
 
-        Text(theme.t("HAFTALIK ANTRENMAN", "WEEKLY TRAINING"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
+        SectionLabel(theme.t("HAFTALIK ANTRENMAN", "WEEKLY TRAINING"), theme)
+        Spacer(Modifier.height(8.dp))
         OnboardingChoiceGrid(
             options = WEEKLY_DAY_OPTIONS,
             selected = state.weeklyDays,
-            accent = accent,
             theme = theme,
+            iconFor = { Icons.Rounded.CalendarMonth },
             labelFor = { theme.t("$it gün", "$it days") },
             onSelect = { vm.setWeeklyDays(it) }
         )
-
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(14.dp))
-
-        StepNavButtons(
-            onBack    = { vm.prevStep() },
-            onNext    = { vm.nextStep() },
-            nextLabel = theme.t("Devam Et", "Continue"),
-            accent    = accent,
-            theme     = theme,
-            canSkip   = true,
-            onSkip    = { vm.nextStep() }
-        )
-
-        Spacer(Modifier.height(18.dp))
     }
 }
 
+/** 2 sütun sinemaCard r24, 88dp; seçili = dolu vurgu + glow. */
 @Composable
 private fun OnboardingChoiceGrid(
     options : List<String>,
     selected: String,
-    accent  : Color,
     theme   : AppThemeState,
-    itemHeight: androidx.compose.ui.unit.Dp = 38.dp,
-    rowSpacing: androidx.compose.ui.unit.Dp = 7.dp,
-    fontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
+    iconFor : (String) -> ImageVector,
     labelFor: (String) -> String = { it },
     onSelect: (String) -> Unit
 ) {
     val responsive = rememberResponsiveLayoutInfo()
+    val accent = theme.effectiveAccentColor
+    val onAccent = theme.effectiveOnAccentColor
+    val shape = RoundedCornerShape(24.dp)
     val renderedOptions = options.map { it to labelFor(it) }
     val useSingleColumn = responsive.isVeryLargeFont ||
         responsive.screenWidth < 350.dp ||
         (responsive.isLargeFont && renderedOptions.any { (_, label) -> label.length > 14 })
     val rows = if (useSingleColumn) renderedOptions.map { listOf(it) } else renderedOptions.chunked(2)
-    val resolvedHeight = when {
-        useSingleColumn -> maxOf(itemHeight, if (responsive.isLargeFont) 58.dp else 50.dp)
-        responsive.isLargeFont -> maxOf(itemHeight, 48.dp)
-        else -> itemHeight
-    }
     rows.forEachIndexed { index, row ->
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -718,44 +755,41 @@ private fun OnboardingChoiceGrid(
         ) {
             row.forEach { (option, label) ->
                 val isSelected = selected == option
-                Box(
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = resolvedHeight)
-                        .shadow(
-                            elevation = if (isSelected) 6.dp else if (theme.isDark) 0.dp else 3.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            clip = false,
-                            ambientColor = if (theme.isDark) Color.Black.copy(0.36f) else Color(0xFF64748B).copy(0.08f),
-                            spotColor = if (isSelected) accent.copy(0.20f) else Color(0xFF64748B).copy(0.08f)
+                        .heightIn(min = 88.dp)
+                        .then(
+                            if (isSelected) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape).clip(shape).background(accent)
+                            else Modifier.sinemaCard(theme, shape)
                         )
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (isSelected) accent.copy(0.18f) else theme.bg1)
-                        .border(
-                            width = if (isSelected) 2.dp else 1.dp,
-                            color = if (isSelected) accent else theme.stroke,
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        .clickable { onSelect(option) },
-                    contentAlignment = Alignment.Center
+                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
+                    Icon(
+                        iconFor(option), null,
+                        tint = if (isSelected) onAccent else Sinema.textSecondary(theme),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = label,
-                        color = if (isSelected) accent else theme.text1,
-                        fontSize = if (responsive.isLargeFont) fontSize * 0.92f else fontSize,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                        lineHeight = if (responsive.isLargeFont) 17.sp else 15.sp,
-                        maxLines = if (useSingleColumn || responsive.isLargeFont) 2 else 1,
+                        color = if (isSelected) onAccent else Sinema.text(theme),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 17.sp,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+                        textAlign = TextAlign.Center
                     )
                 }
             }
             if (row.size == 1 && !useSingleColumn) Spacer(Modifier.weight(1f))
         }
         if (index != rows.lastIndex) {
-            Spacer(Modifier.height(rowSpacing))
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
@@ -766,92 +800,53 @@ private fun OnboardingChoiceGrid(
 private fun StepGenderBirth(
     state  : OnboardingState,
     vm     : OnboardingViewModel,
-    accent : Color,
     theme  : AppThemeState
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.nextStep() },
+                nextLabel = theme.t("Devam Et", "Continue"),
+                nextIcon  = Icons.AutoMirrored.Rounded.ArrowForward,
+                theme     = theme,
+                canSkip   = true,
+                onSkip    = { vm.nextStep() }
+            )
+        }
     ) {
-        Spacer(Modifier.height(32.dp))
-
         StepHeader(
             step    = "4 / 7",
             title   = theme.t("Biraz daha bilgi", "A little more info"),
             subtitle = theme.t("Cinsiyet ve doğum tarihin", "Gender and birth date"),
-            accent  = accent,
             theme   = theme
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(28.dp))
 
         // Cinsiyet
-        Text(theme.t("CİNSİYET", "GENDER"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(theme.bg1)
-                .border(1.dp, theme.stroke, RoundedCornerShape(14.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            GENDER_OPTIONS.forEach { (label, dbValue) ->
-                val selected = state.gender == dbValue
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) accent else Color.Transparent)
-                        .clickable { vm.setGender(dbValue) }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        theme.genderLabel(dbValue, label),
-                        color      = if (selected) theme.effectiveOnAccentColor else theme.text2,
-                        fontSize   = 13.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
+        SectionLabel(theme.t("CİNSİYET", "GENDER"), theme)
+        Spacer(Modifier.height(8.dp))
+        SinemaSegmentRow(
+            options  = GENDER_OPTIONS.map { it.second },
+            selected = state.gender,
+            label    = { dbValue -> theme.genderLabel(dbValue, GENDER_OPTIONS.firstOrNull { it.second == dbValue }?.first ?: dbValue) },
+            onSelect = { vm.setGender(it) },
+            height   = 48.dp
+        )
 
         Spacer(Modifier.height(24.dp))
 
         // Doğum tarihi
-        Text(theme.t("DOĞUM TARİHİ", "BIRTH DATE"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
-        OutlinedTextField(
+        SinemaGlassField(
             value         = state.birthDigits,
             onValueChange = { vm.setBirthDigits(it) },
-            placeholder   = { Text("15/06/1995", color = theme.text2, fontSize = 14.sp) },
-            leadingIcon   = { Icon(Icons.Rounded.CalendarMonth, null, tint = accent, modifier = Modifier.size(20.dp)) },
-            modifier      = Modifier.fillMaxWidth(),
-            singleLine    = true,
-            visualTransformation = DateVisualTransformation,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-            shape  = RoundedCornerShape(14.dp),
-            colors = onboardingTextFieldColors(accent, theme)
+            label         = theme.t("DOĞUM TARİHİ", "BIRTH DATE"),
+            placeholder   = "15/06/1995",
+            keyboardType  = KeyboardType.Number,
+            imeAction     = ImeAction.Done,
+            visualTransformation = DateVisualTransformation
         )
-
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(48.dp))
-
-        StepNavButtons(
-            onBack   = { vm.prevStep() },
-            onNext   = { vm.nextStep() },
-            nextLabel = theme.t("Devam Et", "Continue"),
-            accent   = accent,
-            theme    = theme,
-            canSkip  = true,
-            onSkip   = { vm.nextStep() }
-        )
-
-        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -861,54 +856,61 @@ private fun StepGenderBirth(
 private fun StepBodyMetrics(
     state  : OnboardingState,
     vm     : OnboardingViewModel,
-    accent : Color,
     theme  : AppThemeState
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.nextStep() },
+                nextLabel = theme.t("Devam Et", "Continue"),
+                nextIcon  = Icons.AutoMirrored.Rounded.ArrowForward,
+                theme     = theme,
+                canSkip   = true,
+                onSkip    = { vm.nextStep() }
+            )
+        }
     ) {
-        Spacer(Modifier.height(32.dp))
-
         StepHeader(
             step     = "5 / 7",
             title    = theme.t("Vücut ölçülerin", "Body metrics"),
             subtitle = theme.t("Boy ve kilonu gir", "Enter your height and weight"),
-            accent   = accent,
             theme    = theme
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(theme.t("BOY (cm)", "HEIGHT (cm)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                OutlinedTextField(
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                SinemaBigStat(
+                    value = state.heightText.ifBlank { "–" },
+                    label = theme.t("BOY (cm)", "HEIGHT (cm)"),
+                    size  = 56
+                )
+                Spacer(Modifier.height(12.dp))
+                SinemaGlassField(
                     value         = state.heightText,
                     onValueChange = { vm.setHeight(it) },
-                    placeholder   = { Text("175", color = theme.text2, fontSize = 14.sp) },
-                    leadingIcon   = { Text("📏", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    shape  = RoundedCornerShape(14.dp),
-                    colors = onboardingTextFieldColors(accent, theme)
+                    label         = "",
+                    placeholder   = "175",
+                    keyboardType  = KeyboardType.Number,
+                    imeAction     = ImeAction.Next
                 )
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(theme.t("KİLO (kg)", "WEIGHT (kg)"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                OutlinedTextField(
+            Column(modifier = Modifier.weight(1f)) {
+                SinemaBigStat(
+                    value = state.weightText.ifBlank { "–" },
+                    label = theme.t("KİLO (kg)", "WEIGHT (kg)"),
+                    size  = 56
+                )
+                Spacer(Modifier.height(12.dp))
+                SinemaGlassField(
                     value         = state.weightText,
                     onValueChange = { vm.setWeight(it) },
-                    placeholder   = { Text("75", color = theme.text2, fontSize = 14.sp) },
-                    leadingIcon   = { Text("⚖️", fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp)) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    shape  = RoundedCornerShape(14.dp),
-                    colors = onboardingTextFieldColors(accent, theme)
+                    label         = "",
+                    placeholder   = "75",
+                    keyboardType  = KeyboardType.Number,
+                    imeAction     = ImeAction.Done
                 )
             }
         }
@@ -917,7 +919,7 @@ private fun StepBodyMetrics(
         val h = state.heightText.toDoubleOrNull() ?: 0.0
         val w = state.weightText.toDoubleOrNull() ?: 0.0
         if (h > 0 && w > 0) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
             val bmi      = vm.bmi
             val bodyFat  = vm.bodyFatPct
             val bmiLabel = when {
@@ -926,55 +928,29 @@ private fun StepBodyMetrics(
                 bmi < 30.0 -> theme.t("Fazla Kilolu", "Overweight")
                 else       -> theme.t("Obez", "Obese")
             }
-            val bmiColor = when {
-                bmi < 18.5 -> Color(0xFF64B5F6)
-                bmi < 25.0 -> Color(0xFF4CAF50)
-                bmi < 30.0 -> Color(0xFFFFB74D)
-                else       -> Color(0xFFEF5350)
-            }
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(bmiColor.copy(0.1f))
-                    .border(1.dp, bmiColor.copy(0.3f), RoundedCornerShape(12.dp))
-                    .padding(14.dp)
+                    .sinemaCard(theme, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment      = Alignment.CenterVertically,
-                    horizontalArrangement  = Arrangement.SpaceBetween,
-                    modifier               = Modifier.fillMaxWidth()
-                ) {
-                    Text(theme.t("BMI / VKİ", "BMI"), color = bmiColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("%.1f — %s".format(bmi, bmiLabel), color = bmiColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        if (bodyFat > 0) {
-                            Text(
-                                theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%").format(bodyFat),
-                                color = bmiColor.copy(alpha = 0.82f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                SinemaBigStat(value = "%.1f".format(bmi), label = theme.t("BMI / VKİ", "BMI"), size = 44)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(bmiLabel, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    if (bodyFat > 0) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%").format(bodyFat),
+                            color = Sinema.textSecondary(theme),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
         }
-
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(48.dp))
-
-        StepNavButtons(
-            onBack    = { vm.prevStep() },
-            onNext    = { vm.nextStep() },
-            nextLabel = theme.t("Devam Et", "Continue"),
-            accent    = accent,
-            theme     = theme,
-            canSkip   = true,
-            onSkip    = { vm.nextStep() }
-        )
-
-        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -984,108 +960,52 @@ private fun StepBodyMetrics(
 private fun StepGoal(
     state  : OnboardingState,
     vm     : OnboardingViewModel,
-    accent : Color,
     theme  : AppThemeState
 ) {
-    val responsive = rememberResponsiveLayoutInfo()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.nextStep() },
+                nextLabel = theme.t("Program Önerisine Geç", "Go to Program Suggestion"),
+                nextIcon  = Icons.Rounded.AutoAwesome,
+                theme     = theme,
+                locked    = state.isSaving
+            )
+        }
     ) {
-        Spacer(Modifier.height(32.dp))
-
         StepHeader(
             step     = "6 / 7",
             title    = theme.t("Hedefin ne?", "What's your goal?"),
             subtitle = theme.t("Seni motive edecek hedefi seç", "Choose the goal that motivates you"),
-            accent   = accent,
             theme    = theme
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         OnboardingChoiceGrid(
             options = GOAL_SUGGESTIONS,
             selected = state.fitnessGoal,
-            accent = accent,
             theme = theme,
-            itemHeight = 52.dp,
-            rowSpacing = 10.dp,
-            fontSize = 13.sp,
+            iconFor = ::goalIcon,
             labelFor = { theme.goalLabel(it) },
             onSelect = { suggestion ->
                 vm.setFitnessGoal(if (state.fitnessGoal == suggestion) "" else suggestion)
             }
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // Serbest metin
-        Text(theme.t("VEYA KENDİN YAZ", "OR WRITE YOUR OWN"), color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
-        OutlinedTextField(
+        SinemaGlassField(
             value         = state.fitnessGoal,
             onValueChange = { vm.setFitnessGoal(it) },
-            placeholder   = { Text(theme.t("Hedefinizi yazın…", "Write your goal..."), color = theme.text2, fontSize = 14.sp) },
-            leadingIcon   = { Icon(Icons.Rounded.Flag, null, tint = accent.copy(0.7f), modifier = Modifier.size(20.dp)) },
-            modifier      = Modifier.fillMaxWidth(),
-            singleLine    = true,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction      = ImeAction.Done
-            ),
-            shape  = RoundedCornerShape(14.dp),
-            colors = onboardingTextFieldColors(accent, theme)
+            label         = theme.t("VEYA KENDİN YAZ", "OR WRITE YOUR OWN"),
+            placeholder   = theme.t("Hedefinizi yazın…", "Write your goal..."),
+            keyboardType  = KeyboardType.Text,
+            imeAction     = ImeAction.Done,
+            capitalization = KeyboardCapitalization.Sentences
         )
-
-        Spacer(Modifier.height(32.dp))
-
-        // Program önerisine geç
-        PremiumOnboardingButton(
-            onClick  = { vm.nextStep() },
-            enabled  = !state.isSaving,
-            modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
-            accent   = accent,
-            theme    = theme
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-            } else {
-                Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    theme.t("Program Önerisine Geç", "Go to Program Suggestion"),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 15.sp,
-                    letterSpacing = 0.2.sp,
-                    lineHeight = 18.sp,
-                    maxLines = 2,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Geri
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppBackButton(onClick = { vm.prevStep() }, accent = accent, size = 32.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Geri",
-                color = theme.text2,
-                fontSize = 13.sp,
-                modifier = Modifier.clickable { vm.prevStep() }
-            )
-        }
-
-        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -1095,152 +1015,103 @@ private fun StepGoal(
 private fun StepPersonalProgram(
     state  : OnboardingState,
     vm     : OnboardingViewModel,
-    accent : Color,
     theme  : AppThemeState
 ) {
+    val accent = theme.effectiveAccentColor
     val loading = state.isSaving || state.isGeneratingProgram
     val bmi = vm.bmi
     val bodyFat = vm.bodyFatPct
     val bmiText = if (bmi > 0) "%.1f".format(bmi) else theme.t("Eksik", "Missing")
     val fatText = if (bodyFat > 0) "%.1f%%".format(bodyFat) else theme.t("Eksik", "Missing")
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
+    StepScaffold(
+        nav = {
+            StepNavButtons(
+                onBack    = { vm.prevStep() },
+                onNext    = { vm.saveAndGeneratePersonalProgram() },
+                nextLabel = if (loading) theme.t("Program hazırlanıyor...", "Preparing program...")
+                            else theme.t("Size Özel Program Oluştur", "Create Your Program"),
+                nextIcon  = Icons.Rounded.AutoAwesome,
+                theme     = theme,
+                canSkip   = true,
+                skipLabel = theme.t("Şimdilik Atla", "Skip for now"),
+                onSkip    = { vm.saveAndFinish() },
+                locked    = loading,
+                error     = state.programError
+            )
+        }
     ) {
-        Spacer(Modifier.height(32.dp))
-
         StepHeader(
             step     = "7 / 7",
             title    = theme.t("Programın hazır olsun mu?", "Ready for your program?"),
             subtitle = theme.t("Bilgilerine göre AI ile kişiye özel plan çıkaralım", "Let AI build a personal plan from your info"),
-            accent   = accent,
             theme    = theme
         )
 
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(
-                    elevation = if (theme.isDark) 10.dp else 7.dp,
-                    shape = RoundedCornerShape(20.dp),
-                    ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF64748B).copy(0.10f),
-                    spotColor = if (theme.isDark) accent.copy(0.14f) else Color(0xFF64748B).copy(0.12f)
-                )
-                .clip(RoundedCornerShape(20.dp))
-                .background(theme.bg1)
-                .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(20.dp))
-                .padding(18.dp)
+                .sinemaCard(theme, RoundedCornerShape(28.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(accent.copy(alpha = 0.16f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(22.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(theme.sportBranchLabel(state.sportBranch), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text("${theme.experienceLabel(state.experienceLevel)} • ${theme.t("Haftada ${state.weeklyDays} gün", "${state.weeklyDays} days/week")}", color = theme.text2, fontSize = 13.sp)
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
                 }
-
-                ProfileSummaryRow(theme.t("Hedef", "Goal"), state.fitnessGoal.ifBlank { theme.t("Fit olmak", "Get fit") }, theme)
-                ProfileSummaryRow(theme.t("Boy / Kilo", "Height / Weight"), "${state.heightText.ifBlank { "-" }} cm • ${state.weightText.ifBlank { "-" }} kg", theme)
-                ProfileSummaryRow(theme.t("BMI / VKİ", "BMI"), bmiText, theme)
-                ProfileSummaryRow(theme.t("Yağ oranı", "Body fat"), fatText, theme)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(theme.sportBranchLabel(state.sportBranch), color = Sinema.text(theme), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(
+                        "${theme.experienceLabel(state.experienceLevel)} • ${theme.t("Haftada ${state.weeklyDays} gün", "${state.weeklyDays} days/week")}",
+                        color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                    )
+                }
             }
+
+            ProfileSummaryRow(theme.t("Hedef", "Goal"), state.fitnessGoal.ifBlank { theme.t("Fit olmak", "Get fit") }, theme)
+            ProfileSummaryRow(theme.t("Boy / Kilo", "Height / Weight"), "${state.heightText.ifBlank { "-" }} cm • ${state.weightText.ifBlank { "-" }} kg", theme)
+            ProfileSummaryRow(theme.t("BMI / VKİ", "BMI"), bmiText, theme)
+            ProfileSummaryRow(theme.t("Yağ oranı", "Body fat"), fatText, theme)
         }
-
-        state.programError?.let { error ->
-            Spacer(Modifier.height(14.dp))
-            Text(
-                error,
-                color = Color(0xFFFF6B6B),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(36.dp))
-
-        PremiumOnboardingButton(
-            onClick  = { vm.saveAndGeneratePersonalProgram() },
-            enabled  = !loading,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
-            accent   = accent,
-            theme    = theme
-        ) {
-            if (loading) {
-                CircularProgressIndicator(color = theme.effectiveOnAccentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(theme.t("Program hazırlanıyor...", "Preparing program..."), fontWeight = FontWeight.Black, fontSize = 14.sp)
-            } else {
-                Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(19.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(theme.t("Size Özel Program Oluştur", "Create Your Program"), fontWeight = FontWeight.Black, fontSize = 14.sp)
-            }
-        }
-
-        TextButton(
-            onClick = { vm.saveAndFinish() },
-            enabled = !loading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(theme.t("Şimdilik Atla", "Skip for now"), color = theme.text2, fontWeight = FontWeight.Bold)
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppBackButton(onClick = { vm.prevStep() }, accent = accent, size = 32.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                theme.t("Geri", "Back"),
-                color = theme.text2,
-                fontSize = 13.sp,
-                modifier = Modifier.clickable(enabled = !loading) { vm.prevStep() }
-            )
-        }
-
-        Spacer(Modifier.height(48.dp))
     }
 }
 
 @Composable
 private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState) {
     val useStackedLayout = label == theme.t("Hedef", "Goal") || value.length > 26
+    val labelText: @Composable (Modifier) -> Unit = { m ->
+        Text(
+            label.sinemaUpper(theme),
+            color = Sinema.textSecondary(theme),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.1.em,
+            modifier = m
+        )
+    }
 
     if (useStackedLayout) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                label,
-                color = theme.text2,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp
-            )
+            labelText(Modifier)
             Text(
                 value,
-                color = theme.text0,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Black
+                color = Sinema.text(theme),
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.ExtraBold
             )
         }
     } else {
@@ -1249,19 +1120,12 @@ private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                label,
-                color = theme.text2,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.weight(1f)
-            )
+            labelText(Modifier.weight(1f))
             Text(
                 value,
-                color = theme.text0,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
+                color = Sinema.text(theme),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.End,
                 modifier = Modifier.weight(1f)
             )
@@ -1271,102 +1135,133 @@ private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState
 
 // ── Yardımcı composable'lar ───────────────────────────────────────────────────
 
+/** Adım etiketi 12sp + dev adım rakamı 72sp + başlık 30sp/800 + alt metin 14sp. */
 @Composable
 private fun StepHeader(
     step    : String,
     title   : String,
     subtitle: String,
-    accent  : Color,
-    theme   : AppThemeState
+    theme   : AppThemeState,
+    eyebrow : String? = null
 ) {
-    val responsive = rememberResponsiveLayoutInfo()
-    Text(step, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-    Spacer(Modifier.height(6.dp))
+    val number = step.substringBefore("/").trim().padStart(2, '0')
+    Text((eyebrow ?: step).sinemaUpper(theme), style = Sinema.Label, color = Sinema.text(theme).copy(0.8f), maxLines = 1)
     Text(
-        title,
-        color = theme.text0,
-        fontSize = if (responsive.isLargeFont) 24.sp else 26.sp,
-        fontWeight = FontWeight.Bold,
-        lineHeight = if (responsive.isLargeFont) 29.sp else 31.sp,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis
+        number,
+        style = Sinema.Metric.copy(fontSize = 72.sp),
+        color = Sinema.text(theme),
+        maxLines = 1
     )
     Spacer(Modifier.height(4.dp))
     Text(
+        title,
+        style = Sinema.Title.copy(fontWeight = FontWeight.ExtraBold),
+        color = Sinema.text(theme),
+        maxLines = 3,
+        overflow = TextOverflow.Ellipsis
+    )
+    Spacer(Modifier.height(6.dp))
+    Text(
         subtitle,
-        color = theme.text2,
+        color = Sinema.textSecondary(theme),
         fontSize = 14.sp,
-        lineHeight = 19.sp,
-        maxLines = 2,
+        lineHeight = 20.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 3,
         overflow = TextOverflow.Ellipsis
     )
 }
 
+@Composable
+private fun SectionLabel(text: String, theme: AppThemeState) {
+    Text(text.sinemaUpper(theme), style = Sinema.Label, color = Sinema.textSecondary(theme), maxLines = 1)
+}
+
+/** Ortak hata kapsülü: 16dp uyarı ikonu (yalnız ikon hata rengi) + text0. */
+@Composable
+private fun OnboardingErrorCapsule(text: String, theme: AppThemeState, modifier: Modifier = Modifier) {
+    SinemaCapsule(
+        modifier = modifier.fillMaxWidth(),
+        height = 40.dp,
+        light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+    ) { fg ->
+        Icon(Icons.Rounded.ErrorOutline, null, tint = CriticalRed, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+    }
+}
+
+/**
+ * Altta sabit gezinme: üstte geri (cam daire) + atla (SinemaPill), altında ana eylem SinemaGoButton.
+ * `locked` (kaydediliyor): Go dim + tıklama kilitli, geri/atla kilitli. Hata Go'nun üstünde kapsül.
+ */
 @Composable
 private fun StepNavButtons(
     onBack   : () -> Unit,
     onNext   : () -> Unit,
     nextLabel: String,
-    accent   : Color,
+    nextIcon : ImageVector,
     theme    : AppThemeState,
     canSkip  : Boolean = false,
-    onSkip   : () -> Unit = {}
+    skipLabel: String = theme.t("Atla", "Skip"),
+    onSkip   : () -> Unit = {},
+    showBack : Boolean = true,
+    locked   : Boolean = false,
+    error    : String? = null
 ) {
-    val responsive = rememberResponsiveLayoutInfo()
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PremiumOnboardingButton(
-            onClick  = onNext,
-            modifier = Modifier.fillMaxWidth().heightIn(min = responsive.controlMinHeight),
-            accent   = accent,
-            theme    = theme
-        ) {
-            Text(
-                nextLabel,
-                fontWeight = FontWeight.Black,
-                fontSize = 15.sp,
-                letterSpacing = 0.4.sp,
-                lineHeight = 18.sp,
-                maxLines = 2,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Rounded.ArrowForwardIos, null, modifier = Modifier.size(14.dp))
-        }
-
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AppBackButton(onClick = onBack, accent = accent, size = 32.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    theme.t("Geri", "Back"),
-                    color = theme.text2,
-                    fontSize = 13.sp,
-                    modifier = Modifier.clickable(onClick = onBack)
-                )
-            }
-            if (canSkip) {
-                TextButton(onClick = onSkip) {
-                    Text(theme.t("Atla", "Skip"), color = theme.text2, fontSize = 13.sp)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Rounded.ArrowForwardIos, null, tint = theme.text2, modifier = Modifier.size(13.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (showBack || canSkip) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showBack) {
+                    SinemaCapsule(
+                        modifier = Modifier.width(48.dp).alpha(if (locked) 0.4f else 1f),
+                        onClick = onBack, enabled = !locked, height = 48.dp, shape = CircleShape,
+                        light = !theme.isDark, horizontalArrangement = Arrangement.Center,
+                        contentPadding = PaddingValues(0.dp)
+                    ) { fg ->
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, theme.t("Geri", "Back"), tint = fg, modifier = Modifier.size(20.dp))
+                    }
+                } else {
+                    Spacer(Modifier.width(1.dp))
+                }
+                if (canSkip) {
+                    SinemaCapsule(
+                        modifier = Modifier.alpha(if (locked) 0.4f else 1f),
+                        onClick = onSkip, enabled = !locked, height = 40.dp, shape = CircleShape,
+                        light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) { fg ->
+                        Text(skipLabel, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = fg, modifier = Modifier.size(15.dp))
+                    }
                 }
             }
         }
+        if (error != null) OnboardingErrorCapsule(error, theme)
+        SinemaGoButton(
+            label   = nextLabel,
+            icon    = nextIcon,
+            onClick = { if (!locked) onNext() },
+            dim     = locked
+        )
     }
 }
 
+/** Mini önizleme: gerçek tema renkleriyle sinemaCard r28. */
 @Composable
 private fun ThemePreviewCard(preview: AppThemeState) {
     val accent = preview.effectiveAccentColor
+    val btnShape = RoundedCornerShape(16.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .performanceSignatureSurface(preview, accent, RoundedCornerShape(16.dp))
-            .padding(16.dp),
+            .sinemaCard(preview, RoundedCornerShape(28.dp))
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1379,165 +1274,57 @@ private fun ThemePreviewCard(preview: AppThemeState) {
             Spacer(Modifier.width(8.dp))
             Text(
                 preview.accentDisplayLabel,
-                color         = accent,
+                color         = preview.accentTextColor,
                 fontSize      = 12.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                fontWeight    = FontWeight.ExtraBold,
+                letterSpacing = 0.1.em
             )
         }
-        Text("Profitness", color = preview.text0, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text("Merhaba, Atlet 👋", color = preview.text1, fontSize = 12.sp)
+        Text("Profitness", color = Sinema.text(preview), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Merhaba, Atlet 👋", color = Sinema.textSecondary(preview), fontSize = 13.sp, fontWeight = FontWeight.Medium)
         Box(
             Modifier
                 .padding(top = 4.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, btnShape)
+                .clip(btnShape)
                 .background(accent)
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 9.dp)
         ) {
             Text(
                 "UYGULA",
                 color         = preview.effectiveOnAccentColor,
                 fontSize      = 11.sp,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 2.sp
+                fontWeight    = FontWeight.ExtraBold,
+                letterSpacing = 0.1.em
             )
         }
     }
 }
 
+/** 44dp daire; seçili = 3dp halka + glow. */
 @Composable
 private fun ThemeColorSwatch(
     preset    : AccentPreset,
     isSelected: Boolean,
+    ringColor : Color,
     onClick   : () -> Unit
 ) {
+    val color = preset.color.toSafeAccentColor()
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(44.dp)
+            .then(if (isSelected) Modifier.sinemaGlow(color.copy(0.4f), 14.dp, 4.dp, CircleShape) else Modifier)
             .clip(CircleShape)
-            .background(if (isSelected) preset.color.copy(0.15f) else Color.Transparent)
-            .border(
-                width = if (isSelected) 2.dp else 0.dp,
-                color = if (isSelected) preset.color else Color.Transparent,
-                shape = CircleShape
-            )
-            .clickable(onClick = onClick),
+            .background(color)
+            .then(if (isSelected) Modifier.border(3.dp, ringColor, CircleShape) else Modifier)
+            .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(preset.color),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isSelected) {
-                Icon(Icons.Rounded.Check, null, tint = preset.onColor, modifier = Modifier.size(16.dp))
-            }
+        if (isSelected) {
+            Icon(Icons.Rounded.Check, null, tint = color.readableOnAccentColor(), modifier = Modifier.size(16.dp))
         }
     }
 }
-
-@Composable
-private fun <T> ThemeSegmentedSelector(
-    options : List<Pair<T, String>>,
-    selected: T,
-    accent  : Color,
-    onAccent: Color,
-    theme   : AppThemeState,
-    onSelect: (T) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.bg2)
-            .padding(4.dp)
-    ) {
-        options.forEach { (value, label) ->
-            val isSelected = value == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(9.dp))
-                    .then(if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(9.dp)) else Modifier)
-                    .clickable { onSelect(value) }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    label,
-                    color         = if (isSelected) accent else theme.text1,
-                    fontSize      = 11.sp,
-                    fontWeight    = FontWeight.Black,
-                    letterSpacing = 1.4.sp
-                )
-            }
-        }
-    }
-}
-
-/**
- * Primary onboarding action with a tactile forged face. Elevation collapses
- * under the finger, while light mode uses a conventional slate shadow instead
- * of a neon halo.
- */
-@Composable
-private fun PremiumOnboardingButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    accent: Color,
-    theme: AppThemeState,
-    content: @Composable RowScope.() -> Unit
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.98f else 1f,
-        animationSpec = tween(120),
-        label = "onboarding_cta_scale"
-    )
-    val shape = RoundedCornerShape(16.dp)
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                alpha = if (enabled) 1f else 0.48f
-            }
-            .clip(shape)
-            .background(accent)
-            .clickable(
-                enabled = enabled,
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        CompositionLocalProvider(LocalContentColor provides theme.effectiveOnAccentColor) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                content = content
-            )
-        }
-    }
-}
-
-@Composable
-private fun onboardingTextFieldColors(accent: Color, theme: AppThemeState) =
-    OutlinedTextFieldDefaults.colors(
-        focusedBorderColor    = accent,
-        unfocusedBorderColor  = theme.stroke,
-        focusedContainerColor = theme.bg1,
-        unfocusedContainerColor = theme.bg1,
-        cursorColor           = accent,
-        focusedTextColor      = theme.text0,
-        unfocusedTextColor    = theme.text0
-    )
 
 // DD/MM/YYYY görsel dönüşümü (EditProfileScreen'deki ile aynı)
 private object DateVisualTransformation : VisualTransformation {
