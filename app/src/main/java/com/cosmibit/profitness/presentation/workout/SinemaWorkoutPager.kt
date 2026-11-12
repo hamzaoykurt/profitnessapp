@@ -119,6 +119,7 @@ import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseCompactDisplayName
 import com.cosmibit.profitness.core.theme.raisedButtonSurface
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
+import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.sinemaGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
@@ -534,7 +535,7 @@ private fun SetCapsules(
     onOpenSheet: (Int) -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val h = 40.dp
+    val h = 52.dp
     if (kind == SinemaSetKind.Activity) {
         val spec = remember(exercise.id) { sinemaTrackingSpec(exercise) }
         val dur = data.activityDuration.takeIf { it.isNotBlank() }?.let { theme.t("$it dk", "$it min") } ?: "—"
@@ -607,23 +608,17 @@ private fun CapsuleRow(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val shape = RoundedCornerShape(height / 2)
-    val edge = if (done) accent.copy(0.60f) else Color.White.copy(0.18f)
-    Row(
-        modifier
-            .height(height)
-            .sinemaCapsuleGlass(shape, edge)
-            .clickable(role = Role.Button, onClick = onOpen)
-            .padding(start = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    SinemaCapsule(
+        modifier, selected = done, onClick = onOpen, height = height,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp)
+    ) { fg ->
         Text(
-            label, style = Sinema.Label.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 1,
+            label, style = Sinema.Label.copy(fontWeight = FontWeight.Bold), color = fg, maxLines = 1,
             softWrap = false, modifier = Modifier.widthIn(min = 50.dp)
         )
         Spacer(Modifier.width(10.dp))
         Text(
-            if (extra != null) "$value · $extra" else value, color = Color.White.copy(0.80f), fontSize = 14.sp,
+            if (extra != null) "$value · $extra" else value, color = fg.copy(0.80f), fontSize = 14.sp,
             fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFeatureSettings = "tnum"), modifier = Modifier.weight(1f)
         )
@@ -655,12 +650,12 @@ private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, descripti
                 .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
                 .clip(CircleShape)
                 .then(
-                    if (done) Modifier.background(accent)
+                    if (done) Modifier.background(onAccent)
                     else Modifier.border(2.dp, Color.White.copy(0.50f), CircleShape)
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (done) Icon(SinemaIcons.Check, null, tint = onAccent, modifier = Modifier.size(14.dp))
+            if (done) Icon(SinemaIcons.Check, null, tint = accent, modifier = Modifier.size(14.dp))
         }
     }
 }

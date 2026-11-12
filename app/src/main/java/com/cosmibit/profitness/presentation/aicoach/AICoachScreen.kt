@@ -238,18 +238,16 @@ fun AICoachScreen(
                 if (!imeVisible) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                         quickChips.forEach { chip ->
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .sinemaCapsuleGlass(RoundedCornerShape(18.dp))
-                                    .clickable(enabled = !state.isLoading, role = Role.Button) { inputText = chip },
-                                contentAlignment = Alignment.Center
-                            ) {
+                            SinemaCapsule(
+                                modifier = Modifier.weight(1f),
+                                onClick = { inputText = chip }, enabled = !state.isLoading,
+                                height = 40.dp, shape = RoundedCornerShape(20.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) { fg ->
                                 Text(
-                                    chip.substringBefore(" "), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(horizontal = 6.dp)
+                                    chip.substringBefore(" "), color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -723,13 +721,10 @@ private fun SanctuaryInput(
     val accent = theme.effectiveAccentColor
     val responsive = rememberResponsiveLayoutInfo()
     val sendActive = value.isNotBlank() && !isTyping
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .sinemaCapsuleGlass(RoundedCornerShape(26.dp))
-            .padding(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
+    SinemaCapsule(
+        modifier = Modifier.fillMaxWidth(),
+        height = 52.dp, shape = RoundedCornerShape(26.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp)
     ) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (value.isEmpty()) {

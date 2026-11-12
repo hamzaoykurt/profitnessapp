@@ -66,12 +66,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.composed
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
@@ -103,27 +113,77 @@ fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = thi
 val LocalSinemaHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
- * Kapsül camı (foto üstü set satırı / hap / segment): 000000 %35 + arka plan bulanık 20dp + 1dp FFFFFF %18 kenar
- * (çizimdeki `rgba(0,0,0,.35)` + `backdrop-filter:blur`). `fillAlpha`/`blur` değişebilir (hap 16dp, menü .6).
+ * KALIN BUZLU CAM KAPSÜL (tek yer): arka plan bulanık + düşük tint, üst parlama (sheen) + üstten alta sönen degrade kenar,
+ * alt iç gölge ve dışa düşen yumuşak alt gölge (kabarık görünüm). Dolu/seçili hal: `fill` = vurgu rengi, `glow` = sinemaGlow rengi.
+ * Haze yoksa/API<31 ise bulanıklık yerine biraz daha koyu düz tint. Tint rengi `tint` (açık temada Color.White).
  */
 fun Modifier.sinemaCapsuleGlass(
     shape: Shape,
     edge: Color = Color.White.copy(0.18f),
     fillAlpha: Float = 0.35f,
-    blur: Dp = 20.dp
+    blur: Dp = 20.dp,
+    fill: Color? = null,
+    glow: Color? = null,
+    tint: Color = Color.Black
 ): Modifier = composed {
     val haze = LocalSinemaHaze.current
+    val blurOk = haze != null && Build.VERSION.SDK_INT >= 31
+    val light = tint.luminance() > 0.5f
     Modifier
+        // dışa kabarık: şeklin DIŞINA düşen alt gölge (içine sızmaz)
+        .drawBehind {
+            val path = shapePath(shape, size, layoutDirection, this)
+            clipPath(path, ClipOp.Difference) {
+                drawIntoCanvas { canvas ->
+                    val paint = Paint().asFrameworkPaint().apply {
+                        isAntiAlias = true
+                        this.color = android.graphics.Color.TRANSPARENT
+                        setShadowLayer(9.dp.toPx(), 0f, 4.dp.toPx(), Color.Black.copy(if (light) 0.22f else 0.50f).toArgb())
+                    }
+                    canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint)
+                }
+            }
+        }
+        .then(if (glow != null) Modifier.sinemaGlow(glow, 20.dp, 8.dp, shape) else Modifier)
         .clip(shape)
         .then(
-            if (haze != null) Modifier.hazeEffect(state = haze) {
-                blurRadius = blur
-                backgroundColor = Color.Black
-                tints = listOf(HazeTint(Color.Black.copy(alpha = fillAlpha)))
-                noiseFactor = 0f
-            } else Modifier.background(Color.Black.copy(alpha = fillAlpha))
+            when {
+                fill != null -> Modifier.background(fill)
+                blurOk -> Modifier.hazeEffect(state = haze!!) {
+                    blurRadius = blur
+                    backgroundColor = tint
+                    tints = listOf(HazeTint(tint.copy(alpha = fillAlpha)))
+                    noiseFactor = 0f
+                }
+                else -> Modifier.background(tint.copy(alpha = (fillAlpha + 0.22f).coerceAtMost(0.7f)))
+            }
         )
-        .border(1.dp, edge, shape)
+        .drawBehind {
+            val h = size.height
+            val sheenA = if (fill != null) 0.28f else if (light) 0.55f else 0.16f
+            // üst parlama: üstten ~%55'e sönen beyaz
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(sheenA), 0.55f to Color.Transparent, startY = 0f, endY = h))
+            // alt iç gölge: kalınlık hissi
+            drawRect(Brush.verticalGradient(0.50f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.16f else if (light) 0.07f else 0.22f), startY = 0f, endY = h))
+            // degrade kenar: üstte parlak, altta sönük (çizgi düz değil)
+            val topA = (edge.alpha * 2.2f).coerceAtMost(1f)
+            drawPath(
+                shapePath(shape, size, layoutDirection, this),
+                Brush.verticalGradient(0f to edge.copy(topA), 0.5f to edge.copy(edge.alpha * 0.7f), 1f to edge.copy(edge.alpha * 0.45f), startY = 0f, endY = h),
+                style = Stroke(2.dp.toPx())
+            )
+        }
+}
+
+private fun shapePath(shape: Shape, size: Size, dir: androidx.compose.ui.unit.LayoutDirection, d: androidx.compose.ui.unit.Density): Path {
+    val outline = shape.createOutline(size, dir, d)
+    return Path().apply {
+        when (outline) {
+            is Outline.Rectangle -> addRect(outline.rect)
+            is Outline.Rounded -> addRoundRect(outline.roundRect)
+            is Outline.Generic -> addPath(outline.path)
+        }
+    }
 }
 
 // ── Menü durumu ──────────────────────────────────────────────────────────────
@@ -149,6 +209,9 @@ data class SinemaNavItem(val icon: ImageVector, val label: String)
 
 /** Çizimdeki menü yüksekliği (sistem çubuğu hariç). */
 val SinemaNavHeight = 60.dp
+
+/** Menü camının yukarı doğru yumuşakça söndüğü yükseklik. */
+val NavFadeHeight = 56.dp
 
 /**
  * Çizimdeki alt menü (.nv3): 60dp, 5 eşit sütun, üstte 20dp simge + 3dp + 10sp etiket (hepsinde etiket var, nokta/kutu yok).
@@ -187,32 +250,47 @@ fun SinemaNavBar(
         if (onPhoto) Color.White else Sinema.text(theme), tween(250), label = "nav_active"
     )
 
-    Row(
+    val blurOk = haze != null && Build.VERSION.SDK_INT >= 31
+    val navH = SinemaNavHeight + inset
+    val fade = NavFadeHeight
+    Box(
         modifier
             .fillMaxWidth()
-            .height(SinemaNavHeight + inset)
+            .height(navH)
             .graphicsLayer {
                 translationY = hideProgress * 10.dp.toPx()
                 alpha = 1f - hideProgress
             }
-            .then(
-                if (haze != null) Modifier.hazeEffect(state = haze) {
-                    // menü arkası: içerik bulanık + zemin rengine tonlu (okunmaz leke)
-                    blurRadius = 24.dp
-                    backgroundColor = bg.copy(alpha = 1f)
-                    tints = listOf(HazeTint(bg.copy(alpha = if (onPhoto) 0.62f else 0.85f)))
-                    noiseFactor = 0f
-                } else Modifier
-            )
-            .drawBehind {
-                // içerik menüye yumuşak geçer: üstte 40dp degrade (alttan yukarı koyu/açık geçiş)
-                val endA = if (haze != null) (if (onPhoto) 0.62f else 0.85f) else bg.alpha
-                val fade = (if (haze != null) 40.dp else 18.dp).toPx()
-                drawRect(Brush.verticalGradient(listOf(bg.copy(alpha = 0f), bg.copy(alpha = endA)), startY = -fade, endY = 0f), topLeft = Offset(0f, -fade), size = androidx.compose.ui.geometry.Size(size.width, fade))
-                if (haze == null) drawRect(bg)
-            }
-            .padding(bottom = inset)
     ) {
+        // Gerçek buzlu cam: menüden ~56dp yukarı taşan katman; blur + düşük tint, üstte yumuşak maske ile söner (keskin kenar yok).
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .requiredHeight(navH + fade)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    val f = fade.toPx()
+                    val fr = f / size.height
+                    drawRect(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(0f), fr * 0.30f to Color.Black.copy(0.10f),
+                            fr * 0.62f to Color.Black.copy(0.50f), fr * 0.86f to Color.Black.copy(0.88f), fr to Color.Black, 1f to Color.Black
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
+                .then(
+                    if (blurOk) Modifier.hazeEffect(state = haze!!) {
+                        blurRadius = 32.dp
+                        backgroundColor = bg.copy(alpha = 1f)
+                        tints = listOf(HazeTint(bg.copy(alpha = 0.30f)))
+                        noiseFactor = 0f
+                    } else Modifier.background(bg.copy(alpha = if (onPhoto) 0.62f else 0.72f))
+                )
+        )
+        Row(Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = inset)) {
         items.forEachIndexed { i, item ->
             val selected = i == selectedIndex
             Column(
@@ -238,6 +316,7 @@ fun SinemaNavBar(
                     modifier = Modifier.clearAndSetSemantics { }
                 )
             }
+        }
         }
     }
 }

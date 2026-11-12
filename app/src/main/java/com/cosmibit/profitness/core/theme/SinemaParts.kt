@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -102,7 +103,49 @@ fun SinemaScene(modifier: Modifier = Modifier) {
     }
 }
 
-/** Çizimdeki `.pill`: 32dp cam hap (içerik + isteğe bağlı tıklama). */
+/**
+ * TEK ORTAK KALIN BUZLU CAM KAPSÜL (hap, giriş çubuğu, satır, seçili/dolu hal). Sonraki dilimler bunu kullanır.
+ * - `selected`: dolu vurgu + sinemaGlow (vurgu %40, 0 8dp 20dp); `content` ön plan rengini (onAccent / beyaz) alır.
+ * - `height`: hap 32-36, satır/giriş 52dp. `shape` varsayılan tam yuvarlak.
+ * - `onClick` null ise tıklanmaz (giriş çubuğu içinde kendi alanları var).
+ * - `light`: açık tema cam (beyaz tint + koyu yazı) — foto üstü sayfalar hep koyu, düz açık sayfada true.
+ */
+@Composable
+fun SinemaCapsule(
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
+    height: Dp = 52.dp,
+    shape: Shape = RoundedCornerShape(height / 2),
+    edge: Color = Color.White.copy(0.18f),
+    light: Boolean = false,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    content: @Composable RowScope.(Color) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    val fg = if (selected) theme.effectiveOnAccentColor else if (light) Sinema.text(theme) else Color.White
+    Row(
+        modifier
+            .heightIn(min = height)
+            .sinemaCapsuleGlass(
+                shape, edge = if (light) Color.Black.copy(0.12f) else edge, blur = 20.dp,
+                fill = if (selected) accent else null,
+                glow = if (selected) accent.copy(0.4f) else null,
+                tint = if (light) Color.White else Color.Black,
+                fillAlpha = if (light) 0.55f else 0.35f
+            )
+            .then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick) else Modifier)
+            .padding(contentPadding),
+        verticalAlignment = verticalAlignment,
+        horizontalArrangement = horizontalArrangement
+    ) { content(fg) }
+}
+
+/** `.pill`: 32dp cam hap (içerik + isteğe bağlı tıklama) — SinemaCapsule üzerine. */
 @Composable
 fun SinemaPill(
     modifier: Modifier = Modifier,
@@ -110,15 +153,35 @@ fun SinemaPill(
     description: String? = null,
     content: @Composable RowScope.() -> Unit
 ) {
-    Row(
+    SinemaCapsule(
+        modifier, onClick = onClick, height = 32.dp, shape = CircleShape,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+    ) { content() }
+}
+
+/** Kapsül içi yuvarlak ikon düğme (cam kapsül dili): seçili/dolu = vurgu + glow. */
+@Composable
+fun SinemaCapsuleIconButton(
+    icon: ImageVector,
+    description: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = true,
+    enabled: Boolean = true,
+    size: Dp = 38.dp
+) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    val fg = if (selected) theme.effectiveOnAccentColor else Color.White
+    Box(
         modifier
-            .height(32.dp)
-            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content
-    )
+            .size(size)
+            .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape) else Modifier)
+            .clip(CircleShape)
+            .background(if (selected) accent else Color.White.copy(0.14f))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Icon(icon, description, tint = fg, modifier = Modifier.size(18.dp)) }
 }
 
 /** Düz vurgu dolgulu ana düğme (çizimdeki `.go`): 56dp, r28, üst iç parlama + vurgu %40 gölge. */
@@ -188,17 +251,9 @@ fun SinemaChip(
     shape: Shape = CircleShape,
     content: @Composable RowScope.(Color) -> Unit
 ) {
-    val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    Row(
-        modifier
-            .height(height)
-            .then(if (active) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
-            .sinemaCapsuleGlass(shape, blur = 16.dp)
-            .then(if (active) Modifier.background(accent) else Modifier)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) { content(if (active) theme.effectiveOnAccentColor else Color.White) }
+    SinemaCapsule(
+        modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center, content = content
+    )
 }
