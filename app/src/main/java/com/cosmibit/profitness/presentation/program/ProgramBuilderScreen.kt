@@ -27,6 +27,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import com.cosmibit.profitness.presentation.components.SinemaDialog
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
@@ -1449,8 +1459,9 @@ private fun ProgramDetailDialog(
                 .background(Sinema.page(theme))
         ) {
             val accentSolid = theme.effectiveAccentColor
+            val haze = remember { HazeState() }
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
+                modifier = Modifier.hazeSource(haze).verticalScroll(rememberScrollState())
             ) {
                 // Kapak 280dp: nötr koyu sahne + kas grubu fotoğrafı + alt karartma + başlık
                 Box(Modifier.fillMaxWidth().height(280.dp).clipToBounds()) {
@@ -1547,18 +1558,11 @@ private fun ProgramDetailDialog(
             }
 
             // Altta SABİT "Programı uygula": arkası yumuşak geçiş, içerik üstüne biner
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.45f to Sinema.page(theme).copy(0.88f),
-                            1f to Sinema.page(theme).copy(0.98f)
-                        )
-                    )
-                    .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp)
+            FrostedBottomBar(
+                haze = haze,
+                base = Sinema.page(theme),
+                modifier = Modifier.align(Alignment.BottomCenter),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
             ) {
                 SinemaGoButton(
                     label = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
@@ -1585,7 +1589,7 @@ private fun ProgramDetailDialog(
                         CircularProgressIndicator(color = accent, modifier = Modifier.size(42.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.height(14.dp))
                         Text(
-                            "PROGRAM UYGULANIYOR",
+                            theme.t("PROGRAM UYGULANIYOR", "APPLYING PROGRAM"),
                             color = theme.text0,
                             fontWeight = FontWeight.Black,
                             fontSize = 13.sp,
@@ -1593,7 +1597,7 @@ private fun ProgramDetailDialog(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Tamamlanana kadar bekleyin",
+                            theme.t("Tamamlanana kadar bekleyin", "Please wait until it finishes"),
                             color = theme.text1,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -1602,6 +1606,65 @@ private fun ProgramDetailDialog(
                 }
             }
         }
+    }
+}
+
+/** Öneri hapları: virgülle ayrılmış jetonlarda TAM eşleşme ("Güç" hapı "Güçlü" metnine dokunmaz). */
+internal fun aiSuggestionTokens(prompt: String): List<String> =
+    prompt.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
+internal fun aiSuggestionSelected(prompt: String, label: String): Boolean = label in aiSuggestionTokens(prompt)
+
+internal fun toggleAiSuggestion(prompt: String, label: String): String {
+    val tokens = aiSuggestionTokens(prompt)
+    return if (label in tokens) tokens.filterNot { it == label }.joinToString(", ")
+    else (tokens + label).joinToString(", ")
+}
+
+/**
+ * Gerçek buzlu alt çubuk (SinemaNavBar yöntemi): haze blur + düşük tint, üstte ~56dp yumuşak maske.
+ * API<31 / haze yoksa tint artar ama maske aynı (yumuşak). İçerik `contentPadding` ile yerleşir; maske bölgesi üstte boş durur.
+ */
+@Composable
+private fun FrostedBottomBar(
+    haze: HazeState,
+    base: Color,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val blurOk = android.os.Build.VERSION.SDK_INT >= 31
+    val fade = 56.dp
+    Box(modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    val fr = (fade.toPx() / size.height).coerceIn(0.01f, 1f)
+                    drawRect(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(0f), fr * 0.30f to Color.Black.copy(0.10f),
+                            fr * 0.62f to Color.Black.copy(0.50f), fr * 0.86f to Color.Black.copy(0.88f),
+                            fr to Color.Black, 1f to Color.Black
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
+                .then(
+                    if (blurOk) Modifier.hazeEffect(state = haze) {
+                        blurRadius = 32.dp
+                        backgroundColor = base
+                        tints = listOf(HazeTint(base.copy(alpha = 0.30f)))
+                        noiseFactor = 0f
+                    } else Modifier.background(base.copy(alpha = 0.72f))
+                )
+        )
+        Column(
+            Modifier.fillMaxWidth().padding(top = fade).padding(contentPadding),
+            content = content
+        )
     }
 }
 
@@ -1691,21 +1754,17 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
         color = glassText, fontFamily = AppFontFamily, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp
     )
 
-    fun toggleSuggestion(label: String) {
-        prompt = if (prompt.contains(label)) {
-            prompt.replace(", $label", "").replace("$label, ", "").replace(label, "").trim()
-        } else {
-            if (prompt.isBlank()) label else prompt.trimEnd().trimEnd(',') + ", " + label
-        }
-    }
+    val haze = remember { HazeState() }
+    val promptFocus = remember { FocusRequester() }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        SinemaScene(Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().hazeSource(haze)) { SinemaScene(Modifier.fillMaxSize()) }
 
         // ── Scrollable content ───────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .hazeSource(haze)
                 .verticalScroll(scrollState)
                 .statusBarsPadding()
                 .padding(top = 14.dp, bottom = contentPad + 150.dp + timerExtraPad)
@@ -1727,7 +1786,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         aiStrings.aiProtocolSub.sinemaUpper(aiTheme),
                         color = Color.White.copy(0.72f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
-                    Text("Oracle AI", color = Color.White, style = Sinema.ScreenTitle, maxLines = 1)
+                    Text(aiTheme.t("AI Koç", "AI Coach"), color = Color.White, style = Sinema.ScreenTitle, maxLines = 1)
                 }
             }
             Spacer(Modifier.height(28.dp))
@@ -1749,6 +1808,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             // Büyük cam giriş kartı (çizgisiz)
             SinemaCapsule(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                onClick = { if (!uiState.aiLoading) promptFocus.requestFocus() },
                 height = 220.dp,
                 shape = RoundedCornerShape(28.dp),
                 contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp),
@@ -1762,7 +1822,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         onValueChange = { prompt = it },
                         textStyle = inputStyle,
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(accentAi),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 130.dp, max = 220.dp).verticalScroll(rememberScrollState()),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 130.dp, max = 220.dp).focusRequester(promptFocus).verticalScroll(rememberScrollState()),
                         enabled = !uiState.aiLoading,
                         decorationBox = { inner ->
                             if (prompt.isEmpty()) Text(
@@ -1810,8 +1870,8 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 ) {
                     options.forEach { option ->
                         SinemaCapsule(
-                            selected = prompt.contains(option),
-                            onClick = { toggleSuggestion(option) },
+                            selected = aiSuggestionSelected(prompt, option),
+                            onClick = { prompt = toggleAiSuggestion(prompt, option) },
                             enabled = !uiState.aiLoading,
                             height = 40.dp,
                             contentPadding = PaddingValues(horizontal = 16.dp)
@@ -1898,22 +1958,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
         }
 
         // ── Fixed bottom button ──────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .imePadding()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.35f to Color.Black.copy(0.85f),
-                        1f to Color.Black.copy(0.96f)
-                    )
-                )
-                .padding(
-                    start = 20.dp, end = 20.dp,
-                    bottom = contentPad + timerExtraPad, top = 28.dp
-                )
+        FrostedBottomBar(
+            haze = haze,
+            base = Color.Black,
+            modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = contentPad + timerExtraPad, top = 8.dp)
         ) {
             if (uiState.userPlan == UserPlan.FREE) {
                 Row(
@@ -2179,11 +2228,11 @@ private fun EditProgramScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "AI İLE DÜZENLE",
+                            editTheme.t("AI İLE DÜZENLE", "EDIT WITH AI"),
                             color = Sinema.textSecondary(editTheme), style = Sinema.Label
                         )
                         Text(
-                            "Programı nasıl değiştireyim?",
+                            editTheme.t("Programı nasıl değiştireyim?", "How should I change the program?"),
                             color = Sinema.text(editTheme),
                             fontFamily = AppFontFamily,
                             fontWeight = FontWeight.ExtraBold,
@@ -2198,7 +2247,7 @@ private fun EditProgramScreen(
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                "${uiState.aiCredits} Enerji",
+                                editTheme.t("${uiState.aiCredits} Enerji", "${uiState.aiCredits} Energy"),
                                 color = Sinema.text(editTheme), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold
                             )
                         }
@@ -2226,7 +2275,7 @@ private fun EditProgramScreen(
                         decorationBox = { inner ->
                             if (aiPrompt.isEmpty()) {
                                 Text(
-                                    "Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...",
+                                    editTheme.t("Örn: Bacak günü ekle, karın egzersizlerini çıkar, tekrar sayısını düzenle...", "E.g. Add a leg day, remove ab exercises, adjust rep counts..."),
                                     color      = Sinema.textSecondary(editTheme),
                                     fontSize   = 14.sp,
                                     lineHeight = 21.sp
@@ -2350,6 +2399,7 @@ private fun EditProgramScreen(
                         onAddExercise    = { showPickerForDay = index },
                         onRemoveExercise = { exIdx -> day.exercises.removeAt(exIdx) },
                         onRemoveDay      = { if (days.size > 1) days.removeAt(index) },
+                        canRemove        = days.size > 1,
                         onEditExercise   = { exIdx -> editingExercise = Pair(index, exIdx) }
                     )
                 }
@@ -2546,6 +2596,7 @@ private fun ManualBuilderScreen(
                     onAddExercise    = { showPickerForDay = index },
                     onRemoveExercise = { exIdx -> day.exercises.removeAt(exIdx) },
                     onRemoveDay      = { if (days.size > 1) days.removeAt(index) },
+                    canRemove        = days.size > 1,
                     onEditExercise   = { exIdx -> editingExercise = Pair(index, exIdx) }
                 )
             }
@@ -2613,6 +2664,7 @@ private fun BuilderSceneHeader(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
+    val nameFocus = remember { FocusRequester() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -2654,6 +2706,7 @@ private fun BuilderSceneHeader(
             Spacer(Modifier.height(20.dp))
             SinemaCapsule(
                 modifier = Modifier.fillMaxWidth(),
+                onClick = { nameFocus.requestFocus() },
                 height = 68.dp,
                 shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(horizontal = 20.dp)
@@ -2669,7 +2722,7 @@ private fun BuilderSceneHeader(
                     ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(nameFocus),
                     decorationBox = { inner ->
                         if (name.isEmpty()) {
                             Text(
@@ -2736,6 +2789,7 @@ private fun ManualDayCard(
     onAddExercise   : () -> Unit,
     onRemoveExercise: (Int) -> Unit,
     onRemoveDay     : () -> Unit,
+    canRemove       : Boolean = true,
     onEditExercise  : (Int) -> Unit = {}
 ) {
     val theme  = LocalAppTheme.current
@@ -2745,6 +2799,21 @@ private fun ManualDayCard(
     val textSec = Sinema.textSecondary(theme)
     val line = Sinema.line(theme)
     val rest = day.isRestDay
+    var confirmRemove by remember { mutableStateOf(false) }
+    if (confirmRemove) {
+        SinemaDialog(
+            onDismiss = { confirmRemove = false },
+            title = theme.t("Günü sil?", "Delete day?"),
+            body = theme.t(
+                "\"${day.title.ifBlank { "Gün $dayNumber" }}\" günü ve içindeki ${day.exercises.size} hareket silinecek.",
+                "\"${day.title.ifBlank { "Day $dayNumber" }}\" and its ${day.exercises.size} exercises will be deleted."
+            ),
+            confirmLabel = theme.t("Sil", "Delete"),
+            confirmIcon = Icons.Rounded.Delete,
+            onConfirm = { confirmRemove = false; onRemoveDay() },
+            dismissLabel = theme.t("İptal", "Cancel")
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -2814,14 +2883,18 @@ private fun ManualDayCard(
                 Text(theme.t("Dinlenme", "Rest"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRemoveDay),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Close, theme.t("Günü sil", "Remove day"), tint = textSec, modifier = Modifier.size(18.dp))
+            if (canRemove) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                            if (day.exercises.isEmpty()) onRemoveDay() else confirmRemove = true
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Close, theme.t("Günü sil", "Remove day"), tint = textSec, modifier = Modifier.size(18.dp))
+                }
             }
         }
 
