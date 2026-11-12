@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected as semSelected
 import androidx.compose.ui.unit.em
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
@@ -192,12 +193,13 @@ fun DiscoverScreen(
         }
     }
 
+    val toastTheme = LocalAppTheme.current
     LaunchedEffect(state.shareResult) {
         state.shareResult?.let { result ->
             currentToast = AppToastData(
                 message = when (result) {
-                    is ShareResult.Success -> "Program topluluk akışına eklendi"
-                    is ShareResult.Error   -> "Paylaşım başarısız: ${result.msg}"
+                    is ShareResult.Success -> toastTheme.t("Program topluluk akışına eklendi", "Program added to the community feed")
+                    is ShareResult.Error   -> toastTheme.t("Paylaşım başarısız: ${result.msg}", "Share failed: ${result.msg}")
                 },
                 type = if (result is ShareResult.Success) AppToastType.Success else AppToastType.Error
             )
@@ -208,8 +210,8 @@ fun DiscoverScreen(
         state.applyResult?.let { result ->
             currentToast = AppToastData(
                 message = when (result) {
-                    is ApplyResult.Success -> "Program planına uygulandı"
-                    is ApplyResult.Error   -> "Uygulanamadı: ${result.msg}"
+                    is ApplyResult.Success -> toastTheme.t("Program planına uygulandı", "Program applied to your plan")
+                    is ApplyResult.Error   -> toastTheme.t("Uygulanamadı: ${result.msg}", "Could not apply: ${result.msg}")
                 },
                 type = if (result is ApplyResult.Success) AppToastType.Success else AppToastType.Error
             )
@@ -218,7 +220,13 @@ fun DiscoverScreen(
     }
     LaunchedEffect(state.myActionMsg) {
         state.myActionMsg?.let { msg ->
-            currentToast = AppToastData(message = msg, type = AppToastType.Info)
+            val localized = when {
+                msg == "Paylaşım yayından kaldırıldı" -> toastTheme.t(msg, "Share unpublished")
+                msg.startsWith("Silme başarısız: ") ->
+                    toastTheme.t(msg, "Delete failed: " + msg.removePrefix("Silme başarısız: "))
+                else -> msg
+            }
+            currentToast = AppToastData(message = localized, type = AppToastType.Info)
             viewModel.consumeMyActionMsg()
         }
     }
@@ -230,13 +238,24 @@ fun DiscoverScreen(
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
       CompositionLocalProvider(LocalAppTheme provides darkTheme) {
         selectedProgram?.let { program ->
+            val live = state.items.firstOrNull { it.id == program.id }
+                ?: state.savedItems.firstOrNull { it.id == program.id } ?: program
+            val appliedByHash = live.contentHash != null && live.contentHash in myProgramHashes
+            val appliedLocalId = state.appliedProgramMap[live.id]
+            val appliedFallback = appliedLocalId != null &&
+                appliedLocalId !in state.localDeletingProgramIds && myProgramIds.contains(appliedLocalId)
             SharedProgramDetailScreen(
-                program = program,
+                program = live,
                 bottomPadding = bottomPadding,
+                isApplying = live.id in state.applyingProgramIds,
+                isApplied = live.isAppliedByMe || appliedByHash || appliedFallback,
+                onLike = { viewModel.toggleLike(live.id) },
+                onSave = { viewModel.toggleSave(live.id) },
+                onApply = { viewModel.applyProgram(live.id) },
                 onBack = { selectedProgram = null }
             )
         } ?: Box(Modifier.fillMaxSize()) {
-            val listTop = controlsTop + 44.dp + 12.dp
+            val listTop = controlsTop + 54.dp + 12.dp
             when (selected) {
                 DiscoverTab.Programs -> when (programsSub) {
                     ProgramsSubTab.Community -> SinemaProgramsPager(
@@ -264,9 +283,9 @@ fun DiscoverScreen(
                     }
                 }
                 DiscoverTab.Friends -> Box(Modifier.fillMaxSize()) {
-                    com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp, topPadding = controlsTop + 44.dp + 12.dp)
+                    com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp, topPadding = controlsTop + 54.dp + 12.dp)
                 }
-                DiscoverTab.Challenges -> Box(Modifier.fillMaxSize().padding(top = controlsTop + 44.dp + 12.dp)) {
+                DiscoverTab.Challenges -> Box(Modifier.fillMaxSize().padding(top = controlsTop + 54.dp + 12.dp)) {
                     com.cosmibit.profitness.presentation.challenges.ChallengesTab(bottomPadding = bottomPadding, sort = state.sort, timerExtraPad = 0.dp)
                 }
             }
@@ -735,189 +754,171 @@ private fun SharedProgramCard(
 private fun SharedProgramDetailScreen(
     program: SharedProgram,
     bottomPadding: Dp,
+    isApplying: Boolean,
+    isApplied: Boolean,
+    onLike: () -> Unit,
+    onSave: () -> Unit,
+    onApply: () -> Unit,
     onBack: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
     val detail = remember(program.id, program.programData) { program.toDetailPlan() }
+    val goBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(theme.bg0)
-    ) {
-        if (theme.isDark) PageAccentBloom()
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 12.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = theme.t("Program içeriği", "Program content"),
-                        color = theme.accentTextColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.2.sp
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        text = program.title,
-                        color = theme.text0,
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 2,
-                        lineHeight = 29.sp
-                    )
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 2.dp,
-                    bottom = bottomPadding + 84.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = goBottom + 56.dp + 48.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item { SharedProgramDetailHero(program, onLike, onSave) }
+            if (!program.description.isNullOrBlank()) {
                 item {
-                    SharedProgramDetailHeader(program = program, dayCount = detail.days.size)
-                }
-
-                if (detail.days.isEmpty()) {
-                    item { EmptyProgramDetailCard() }
-                } else {
-                    items(detail.days, key = { it.index }) { day ->
-                        SharedProgramDayCard(day = day)
-                    }
+                    Text(
+                        text = program.description,
+                        color = Color.White.copy(0.78f), fontSize = 14.sp, lineHeight = 20.sp,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
                 }
             }
+            if (detail.days.isEmpty()) {
+                item { EmptyProgramDetailCard() }
+            } else {
+                items(detail.days, key = { it.index }) { day -> SharedProgramDayCard(day = day) }
+            }
         }
-    }
-}
 
-@Composable
-private fun SharedProgramDetailHeader(program: SharedProgram, dayCount: Int) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(22.dp)
+        SinemaCapsuleIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            description = theme.t("Geri", "Back"),
+            onClick = onBack, selected = false, size = 48.dp,
+            modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 12.dp)
+        )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .performanceSignatureSurface(theme, accent, shape)
-            .padding(20.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Sabit UYGULA: arkası yumuşak geçiş
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(accent.copy(0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = accent, modifier = Modifier.size(22.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(program.creatorName, color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    text = buildList {
-                        if (dayCount > 0) add(theme.t("$dayCount gün", "$dayCount days"))
-                        program.daysPerWeek?.let { add(theme.t("$it gün/hafta", "$it days/week")) }
-                        program.durationWeeks?.let { add(theme.t("$it hafta", "$it weeks")) }
-                    }.ifEmpty { listOf(theme.t("Paylaşılan program", "Shared program")) }.joinToString(" · "),
-                    color = theme.text2.copy(0.7f),
-                    fontSize = 12.sp,
-                    maxLines = 1
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(0.85f), 1f to Color.Black)
                 )
-            }
-        }
-
-        if (!program.description.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = program.description,
-                color = theme.text2.copy(0.82f),
-                fontSize = 13.sp,
-                lineHeight = 18.sp
+            )
+            SinemaGoButton(
+                label = when {
+                    isApplied -> theme.t("UYGULANDI", "APPLIED")
+                    isApplying -> theme.t("UYGULANIYOR", "APPLYING")
+                    else -> theme.t("UYGULA", "APPLY")
+                },
+                icon = if (isApplied) SinemaIcons.Check else SinemaIcons.Bolt,
+                onClick = { if (!isApplying && !isApplied) onApply() },
+                dim = isApplying,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 40.dp, bottom = goBottom)
             )
         }
     }
 }
 
 @Composable
-private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
+private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, onSave: () -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(22.dp)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .performanceElevatedSurface(theme, shape)
-            .padding(20.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(0.16f)),
-                contentAlignment = Alignment.Center
-            ) {
+    val accent = theme.effectiveAccentColor
+    Box(Modifier.fillMaxWidth()) {
+        SceneImage(
+            url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
+            modifier = Modifier.matchParentSize(),
+            requestWidthPx = 1080, requestHeightPx = 1080, fallbackGradient = true
+        )
+        Scrims(Modifier.matchParentSize())
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 500.dp).padding(horizontal = 16.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = day.index.toString(),
-                    color = theme.accentTextColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black
+                    program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = accent,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
+                Text(program.creatorName, style = Sinema.Label, color = Color.White.copy(0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = day.title,
-                    color = theme.text0,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 2,
-                    lineHeight = 21.sp
-                )
-                if (!day.isRestDay && day.exercises.isNotEmpty()) {
-                    Spacer(Modifier.height(2.dp))
+            Text(
+                program.title, style = Sinema.Title.copy(fontSize = 32.sp, fontWeight = FontWeight.ExtraBold), color = Color.White,
+                maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp)
+            )
+            program.daysPerWeek?.let { d ->
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+                    Text("$d", style = Sinema.Display.copy(fontSize = 96.sp), color = Color.White, maxLines = 1)
                     Text(
-                        text = theme.t("${day.exercises.size} hareket", "${day.exercises.size} exercises"),
-                        color = theme.text2.copy(0.68f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 22.sp),
+                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 10.dp, bottom = 12.dp)
                     )
                 }
             }
-            if (day.isRestDay) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Schedule, null, tint = theme.text2.copy(0.7f), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(theme.t("Dinlenme", "Rest"), color = theme.text2.copy(0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            val diffLabel = when (program.difficulty) {
+                Difficulty.BEGINNER -> theme.t("Başlangıç", "Beginner")
+                Difficulty.INTERMEDIATE -> theme.t("Orta", "Intermediate")
+                Difficulty.ADVANCED -> theme.t("İleri", "Advanced")
+                null -> null
+            }
+            val weeks = program.durationWeeks?.let { theme.t("$it hafta", "$it weeks") }
+            val meta = listOfNotNull(weeks, diffLabel).joinToString(" · ")
+            if (meta.isNotEmpty()) {
+                Text(meta.sinemaUpper(theme), style = Sinema.Label, color = Color.White.copy(0.78f), modifier = Modifier.padding(top = 4.dp))
+            }
+            Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SinemaCapsule(selected = program.isLikedByMe, onClick = onLike, height = 48.dp) { fg ->
+                    Icon(if (program.isLikedByMe) Icons.Rounded.Favorite else SinemaIcons.Heart, theme.t("Beğen", "Like"), tint = fg, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(countFormat.format(program.likesCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                SinemaCapsule(selected = program.isSavedByMe, onClick = onSave, height = 48.dp) { fg ->
+                    Icon(if (program.isSavedByMe) Icons.Rounded.Bookmark else SinemaIcons.Bookmark, theme.t("Kaydet", "Save"), tint = fg, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(countFormat.format(program.savesCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                SinemaCapsule(height = 48.dp) { fg ->
+                    Icon(SinemaIcons.Download, theme.t("Uygulanma sayısı", "Applied count"), tint = fg, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(countFormat.format(program.downloadsCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
-
-        Spacer(Modifier.height(14.dp))
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(theme.stroke.copy(0.4f))
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
         )
+    }
+}
+
+@Composable
+private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
+    val theme = LocalAppTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = day.index.toString(), style = Sinema.Metric.copy(fontSize = 44.sp),
+                color = Color.White.copy(0.55f), maxLines = 1
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = day.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+                    maxLines = 2, lineHeight = 22.sp
+                )
+                if (day.isRestDay) {
+                    Text(theme.t("DİNLENME", "REST"), style = Sinema.Label, color = Color.White.copy(0.65f), modifier = Modifier.padding(top = 2.dp))
+                } else if (day.exercises.isNotEmpty()) {
+                    Text(
+                        theme.t("${day.exercises.size} hareket", "${day.exercises.size} exercises").sinemaUpper(theme),
+                        style = Sinema.Label, color = Color.White.copy(0.65f), modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
 
         if (day.exercises.isEmpty()) {
             Text(
@@ -926,16 +927,13 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
                 } else {
                     theme.t("Bu gün için hareket bulunamadı.", "No exercises found for this day.")
                 },
-                color = theme.text2.copy(0.75f),
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 14.dp)
+                color = Color.White.copy(0.65f), fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp)
             )
         } else {
-            Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                day.exercises.forEach { exercise ->
-                    SharedProgramExerciseRow(exercise = exercise)
-                }
+            Spacer(Modifier.height(14.dp))
+            day.exercises.forEachIndexed { i, exercise ->
+                if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
+                SharedProgramExerciseRow(exercise = exercise)
             }
         }
     }
@@ -944,55 +942,20 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
 @Composable
 private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(15.dp)
-
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(theme.bg1.copy(if (theme.isDark) 0.52f else 0.78f))
-            .border(1.dp, theme.stroke.copy(0.25f), shape)
-            .padding(horizontal = 13.dp, vertical = 11.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(accent.copy(0.95f))
+        Text(
+            text = theme.exerciseDisplayName(exercise.name), color = Color.White, fontSize = 15.sp,
+            fontWeight = FontWeight.Bold, maxLines = 2, lineHeight = 19.sp, modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
+        val badges = exercise.badges(theme)
+        if (badges.isNotEmpty()) {
             Text(
-                text = theme.exerciseDisplayName(exercise.name),
-                color = theme.text0,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                lineHeight = 18.sp
+                badges.joinToString(" · "), style = Sinema.Label, color = Color.White.copy(0.75f),
+                maxLines = 1, modifier = Modifier.padding(start = 12.dp)
             )
-            val badges = exercise.badges(theme)
-            if (badges.isNotEmpty()) {
-                Spacer(Modifier.height(7.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    badges.forEachIndexed { index, badge ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(7.dp))
-                                .background(accent.copy(if (index == 0) 0.16f else 0.10f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = badge,
-                                color = theme.accentTextColor,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -1000,32 +963,25 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
 @Composable
 private fun EmptyProgramDetailCard() {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(18.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                if (theme.isDark) 10.dp else 6.dp,
-                shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.28f else 0.05f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.32f else 0.07f)
-            )
-            .clip(shape)
-            .background(if (theme.isDark) theme.bg2 else theme.bg1)
-            .padding(20.dp),
+            .padding(horizontal = 16.dp)
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(theme.t("Program içeriği bulunamadı", "Program content not found"), color = theme.text0, fontWeight = FontWeight.Bold)
+        Text(
+            theme.t("Program içeriği bulunamadı", "Program content not found"),
+            color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(6.dp))
         Text(
             text = theme.t(
                 "Bu paylaşımda görüntülenecek gün ve hareket snapshot'ı yok.",
                 "This share does not include a day and exercise snapshot to display."
             ),
-            color = theme.text2.copy(0.72f),
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center
+            color = Color.White.copy(0.65f), fontSize = 13.sp, textAlign = TextAlign.Center
         )
     }
 }
@@ -1599,7 +1555,7 @@ private fun SubListHeader(
         SinemaCapsuleIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             description = theme.t("Akışa dön", "Back to feed"),
-            onClick = onBack, selected = false, size = 44.dp
+            onClick = onBack, selected = false, size = 48.dp
         )
         Spacer(Modifier.width(12.dp))
         Text(
@@ -1744,7 +1700,7 @@ private fun MySharedProgramsList(
                 SinemaCapsuleIconButton(
                     icon = SinemaIcons.Plus,
                     description = theme.t("Program paylaş", "Share program"),
-                    onClick = onStartShare, selected = true, size = 44.dp
+                    onClick = onStartShare, selected = true, size = 48.dp
                 )
             }
         }
@@ -1918,8 +1874,8 @@ private fun DiscoverTopControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BoxWithConstraints(
-            Modifier.weight(1f).height(44.dp)
-                .sinemaCapsuleGlass(RoundedCornerShape(22.dp), blur = 16.dp)
+            Modifier.weight(1f).height(54.dp)
+                .sinemaCapsuleGlass(RoundedCornerShape(27.dp), blur = 16.dp)
                 .padding(3.dp)
         ) {
             val tabW = maxWidth / 3
@@ -1929,7 +1885,7 @@ private fun DiscoverTopControls(
                 if (motion) spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow) else snap(),
                 label = "discover_stone"
             )
-            val stoneShape = RoundedCornerShape(19.dp)
+            val stoneShape = RoundedCornerShape(24.dp)
             Box(
                 Modifier.offset(x = x).width(tabW).fillMaxHeight()
                     .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, stoneShape)
@@ -1943,6 +1899,7 @@ private fun DiscoverTopControls(
                     Box(
                         Modifier.weight(1f).fillMaxHeight()
                             .clip(stoneShape)
+                            .semantics { semSelected = on }
                             .clickable(role = Role.Tab) { onSelect(tab) },
                         contentAlignment = Alignment.Center
                     ) {
@@ -1958,7 +1915,7 @@ private fun DiscoverTopControls(
                 description = theme.t("Kaydedilenler ve paylaşımlarım", "Saved and my shares"),
                 onClick = onOpenMenu,
                 selected = programsSub != ProgramsSubTab.Community,
-                size = 44.dp
+                size = 48.dp
             )
         }
     }
