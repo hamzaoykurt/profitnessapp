@@ -1,8 +1,7 @@
 package com.cosmibit.profitness.presentation.friends
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,15 +17,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.PersonOff
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,16 +31,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,114 +49,125 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
-import com.cosmibit.profitness.core.theme.bg0
-import com.cosmibit.profitness.core.theme.bg1
-import com.cosmibit.profitness.core.theme.bg2
-import com.cosmibit.profitness.core.theme.stroke
-import com.cosmibit.profitness.core.theme.t
-import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text1
-import com.cosmibit.profitness.core.theme.text2
-import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
-import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaChip
+import com.cosmibit.profitness.core.theme.SinemaGoButton
+import com.cosmibit.profitness.core.theme.SinemaScene
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCard
+import com.cosmibit.profitness.core.theme.sinemaGlow
+import com.cosmibit.profitness.core.theme.sinemaUpper
+import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.domain.social.UserSummary
-import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.profile.PublicProfileOverlay
 
+private val xpFormat: java.text.NumberFormat get() = java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr"))
+
 /**
- * Friends tab embedded into DiscoverScreen.
- * - Top: search bar (debounced in ViewModel)
- * - When query empty → "TAKİP EDİLENLER" listesi
- * - When query dolu → arama sonuçları
- * - Her satırda: avatar, display, @username, XP, takip/bırak butonu, tıkla → public profile overlay
+ * Topluluk sekmesi (Keşfet içinde).
+ * - Arka plan: SinemaScene (vurgu orbları); üstte büyük başlık, cam arama kapsülü
+ * - Arama boşken: takip edilenler = yatay büyük avatar kartları; doluyken: sonuç satırları
+ * - Takip yoksa tek eylemli davetkar boş durum (uydurma öneri yok)
+ * `topPadding`: sahne üst çubuğun altına da uzansın diye içerik bu kadar aşağı itilir.
  */
 @Composable
 fun FriendsTab(
     bottomPadding: Dp,
-    timerExtraPad: Dp = 0.dp
+    timerExtraPad: Dp = 0.dp,
+    topPadding: Dp = 0.dp
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val vm: FriendsViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val focus = remember { FocusRequester() }
 
     var openProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
+    val showingSearch = state.query.isNotBlank()
 
     Box(Modifier.fillMaxSize()) {
+        SinemaScene(Modifier.fillMaxSize())
 
-        Column(Modifier.fillMaxSize()) {
-
-            Spacer(Modifier.height(16.dp))
-
-            // ── Search ─────────────────────────────────────────────────
-            SearchBar(
-                value    = state.query,
-                onChange = vm::onQueryChange,
-                accent   = accent
+        Column(Modifier.fillMaxSize().padding(top = topPadding)) {
+            Text(
+                theme.t("Topluluk", "Community"), style = Sinema.ScreenTitle, color = Color.White,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp)
+            )
+            Text(
+                if (state.following.isNotEmpty())
+                    theme.t("${state.following.size} kişiyi takip ediyorsun", "You follow ${state.following.size} people")
+                else theme.t("Kişi bul, takip et, birlikte çalış", "Find people, follow, train together"),
+                color = Color.White.copy(0.70f), fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp, bottom = 14.dp)
             )
 
-            Spacer(Modifier.height(16.dp))
+            SearchCapsule(value = state.query, onChange = vm::onQueryChange, accent = accent, focus = focus)
 
-            // ── List ───────────────────────────────────────────────────
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().weight(1f),
-                contentPadding = PaddingValues(bottom = bottomPadding + timerExtraPad + 24.dp)
-            ) {
-                val showingSearch = state.query.isNotBlank()
+            Spacer(Modifier.height(18.dp))
 
-                item {
-                    Text(
-                        if (showingSearch) theme.t("SONUÇLAR", "RESULTS") else theme.t("TAKİP ETTİKLERİN", "FOLLOWING"),
-                        color = theme.text2,
-                        fontSize = 10.sp,
-                        letterSpacing = 3.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                    )
-                }
-
+            Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (showingSearch) {
-                    if (state.isSearching && state.searchResults.isEmpty()) {
-                        item { LoadingRow() }
-                    } else if (state.searchResults.isEmpty()) {
-                        item {
-                            EmptyBlock(
-                                icon  = Icons.Rounded.Search,
-                                title = theme.t("Kullanıcı bulunamadı", "User not found"),
-                                sub   = theme.t("Farklı bir isim veya @kullanıcıadı dene", "Try another name or @username")
-                            )
-                        }
-                    } else {
-                        items(state.searchResults, key = { "s_" + it.userId }) { user ->
-                            UserRow(
-                                user    = user,
-                                onTap   = { openProfileUserId = user.userId },
-                                onFollow = { vm.toggleFollow(user) }
-                            )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = bottomPadding + timerExtraPad + 24.dp)
+                    ) {
+                        item { SectionLabel(theme.t("SONUÇLAR", "RESULTS")) }
+                        if (state.isSearching && state.searchResults.isEmpty()) {
+                            item { LoadingRow() }
+                        } else if (state.searchResults.isEmpty()) {
+                            item {
+                                Text(
+                                    theme.t("Kullanıcı bulunamadı. Farklı bir isim veya @kullanıcıadı dene.", "User not found. Try another name or @username."),
+                                    color = Color.White.copy(0.70f), fontSize = 14.sp, textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 32.dp)
+                                )
+                            }
+                        } else {
+                            items(state.searchResults, key = { "s_" + it.userId }) { user ->
+                                UserRow(user = user, onTap = { openProfileUserId = user.userId }, onFollow = { vm.toggleFollow(user) })
+                            }
                         }
                     }
-                } else {
-                    // Takip edilenler
-                    if (state.isFollowingLoading && state.following.isEmpty()) {
-                        item { LoadingRow() }
-                    } else if (state.following.isEmpty()) {
-                        item {
-                            EmptyBlock(
-                                icon  = Icons.Rounded.PersonOff,
-                                title = theme.t("Henüz kimseyi takip etmiyorsun", "You are not following anyone yet"),
-                                sub   = theme.t("Yukarıdaki aramadan kullanıcı bul ve takip et", "Find and follow users from the search above")
-                            )
+                } else if (state.isFollowingLoading && state.following.isEmpty()) {
+                    LoadingRow()
+                } else if (state.following.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxSize().padding(horizontal = 32.dp).padding(bottom = bottomPadding + timerExtraPad),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.PersonAdd, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp))
                         }
-                    } else {
-                        items(state.following, key = { "f_" + it.userId }) { user ->
-                            UserRow(
-                                user    = user,
-                                onTap   = { openProfileUserId = user.userId },
-                                onFollow = { vm.toggleFollow(user) }
-                            )
+                        Spacer(Modifier.height(18.dp))
+                        Text(
+                            theme.t("Henüz kimseyi takip etmiyorsun", "You are not following anyone yet"),
+                            color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            theme.t("Takip ettiklerin burada büyük kartlarda görünür.", "People you follow show up here as big cards."),
+                            color = Color.White.copy(0.65f), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        SinemaGoButton(
+                            label = theme.t("KİŞİ ARA", "FIND PEOPLE"), icon = Icons.Rounded.Search,
+                            onClick = { runCatching { focus.requestFocus() } },
+                            modifier = Modifier.widthIn(max = 280.dp)
+                        )
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        SectionLabel(theme.t("TAKİP ETTİKLERİN", "FOLLOWING"))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.padding(bottom = bottomPadding + timerExtraPad + 16.dp)
+                        ) {
+                            items(state.following, key = { "f_" + it.userId }) { user ->
+                                FollowingCard(user = user, onTap = { openProfileUserId = user.userId }, onFollow = { vm.toggleFollow(user) })
+                            }
                         }
                     }
                 }
@@ -168,8 +177,8 @@ fun FriendsTab(
         // Public profile overlay — Dialog-backed fullscreen + glow
         openProfileUserId?.let { uid ->
             PublicProfileOverlay(
-                userId       = uid,
-                onBack       = { openProfileUserId = null },
+                userId        = uid,
+                onBack        = { openProfileUserId = null },
                 timerExtraPad = timerExtraPad
             )
         }
@@ -177,47 +186,112 @@ fun FriendsTab(
 }
 
 @Composable
-private fun SearchBar(
+private fun SectionLabel(text: String) {
+    Text(
+        text, style = Sinema.Label, color = Color.White.copy(0.70f),
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun SearchCapsule(
     value: String,
     onChange: (String) -> Unit,
-    accent: Color
+    accent: Color,
+    focus: FocusRequester
 ) {
     val theme = LocalAppTheme.current
-    val shape = RoundedCornerShape(24.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .sinemaCard(theme, shape)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    SinemaCapsule(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        height = 52.dp, edge = Color.Transparent,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Icon(Icons.Rounded.Search, null, tint = theme.text2, modifier = Modifier.size(18.dp))
+    ) { fg ->
+        Icon(Icons.Rounded.Search, null, tint = fg.copy(0.75f), modifier = Modifier.size(18.dp))
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text(
-                    theme.t("@kullanıcıadı veya isim", "@username or name"),
-                    color = theme.text2.copy(0.65f),
-                    fontSize = 14.sp
-                )
+                Text(theme.t("@kullanıcıadı veya isim", "@username or name"), color = Color.White.copy(0.60f), fontSize = 14.sp)
             }
             BasicTextField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                 cursorBrush = SolidColor(accent),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
             )
         }
         if (value.isNotEmpty()) {
             Icon(
-                Icons.Rounded.Close,
-                null,
-                tint = theme.text2,
-                modifier = Modifier.size(18.dp).clickable { onChange("") }
+                Icons.Rounded.Close, theme.t("Aramayı temizle", "Clear search"),
+                tint = fg.copy(0.75f),
+                modifier = Modifier.size(20.dp).clickable(role = Role.Button) { onChange("") }
             )
+        }
+    }
+}
+
+/** Büyük takip kartı: kapak (avatar) + karartma, glow halkalı avatar, XP büyük rakam. */
+@Composable
+private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> Unit) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    val shape = RoundedCornerShape(28.dp)
+    Box(
+        Modifier.width(184.dp).height(300.dp)
+            .sinemaCard(theme, shape)
+            .clickable(role = Role.Button, onClick = onTap)
+    ) {
+        if (user.avatarUrl != null) {
+            AsyncImage(
+                model = user.avatarUrl, contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.matchParentSize().graphicsLayer { alpha = 0.55f }
+            )
+        }
+        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier.size(92.dp)
+                    .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Sinema.surface(theme))
+                    .border(3.dp, accent, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (user.avatarUrl != null) {
+                    AsyncImage(
+                        model = user.avatarUrl, contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                } else {
+                    Text(user.displayName.take(1).uppercase(), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                user.displayName, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center
+            )
+            Text(
+                listOfNotNull(user.username?.let { "@$it" }, if (user.isMutual) theme.t("ARKADAŞ", "FRIEND") else null).joinToString(" · "),
+                color = Color.White.copy(0.65f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(xpFormat.format(user.totalXp), style = Sinema.Metric.copy(fontSize = 34.sp), color = Color.White, maxLines = 1)
+                Text(
+                    "XP", color = accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(start = 6.dp, bottom = 5.dp)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            FollowButton(isFollowing = user.isFollowing, onClick = onFollow)
         }
     }
 }
@@ -234,7 +308,7 @@ private fun UserRow(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(120),
+        animationSpec = tween(120),
         label = "friend_row_scale"
     )
     val shape = RoundedCornerShape(24.dp)
@@ -243,62 +317,39 @@ private fun UserRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .sinemaCard(theme, shape)
             .clickable(interactionSource = interaction, indication = null) { onTap() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Avatar
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (theme.isDark) theme.bg1 else theme.bg2),
+            modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(0.10f)),
             contentAlignment = Alignment.Center
         ) {
             if (user.avatarUrl != null) {
-                AsyncImage(
-                    model = user.avatarUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
-                )
+                AsyncImage(model = user.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
             } else {
-                Text(
-                    user.displayName.take(1).uppercase(),
-                    color = theme.text1,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(user.displayName.take(1).uppercase(), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         Column(Modifier.weight(1f)) {
-            Text(
-                user.displayName,
-                color = theme.text0,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1
-            )
+            Text(user.displayName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 user.username?.let {
-                    Text("@$it", color = theme.text2, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                    Text("·", color = theme.text2.copy(0.4f), fontSize = 11.sp)
+                    Text("@$it", color = Color.White.copy(0.65f), fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
                 }
-                Text("${user.totalXp} XP", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("${xpFormat.format(user.totalXp)} XP", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 if (user.isMutual) {
-                    Text("·", color = theme.text2.copy(0.4f), fontSize = 11.sp)
+                    Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
                     Text(theme.t("ARKADAŞ", "FRIEND"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
 
-        // Follow / Unfollow button
         FollowButton(isFollowing = user.isFollowing, onClick = onFollow)
     }
 }
@@ -324,27 +375,8 @@ private fun FollowButton(isFollowing: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun LoadingRow() {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = LocalAppTheme.current.effectiveAccentColor
     Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(color = accent, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-    }
-}
-
-@Composable
-private fun EmptyBlock(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    sub: String
-) {
-    val theme = LocalAppTheme.current
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 60.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, null, tint = theme.text2, modifier = Modifier.size(44.dp))
-        Spacer(Modifier.height(14.dp))
-        Text(title, color = theme.text1, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(6.dp))
-        Text(sub, color = theme.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }

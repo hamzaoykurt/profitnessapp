@@ -263,8 +263,8 @@ fun DiscoverScreen(
                         )
                     }
                 }
-                DiscoverTab.Friends -> Box(Modifier.fillMaxSize().padding(top = controlsTop + 44.dp + 12.dp)) {
-                    com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp)
+                DiscoverTab.Friends -> Box(Modifier.fillMaxSize()) {
+                    com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp, topPadding = controlsTop + 44.dp + 12.dp)
                 }
                 DiscoverTab.Challenges -> Box(Modifier.fillMaxSize().padding(top = controlsTop + 44.dp + 12.dp)) {
                     com.cosmibit.profitness.presentation.challenges.ChallengesTab(bottomPadding = bottomPadding, sort = state.sort, timerExtraPad = 0.dp)

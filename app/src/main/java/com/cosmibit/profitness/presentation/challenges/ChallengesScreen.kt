@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -92,6 +93,12 @@ import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
+import com.cosmibit.profitness.core.theme.SinemaCapsule
+import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
+import com.cosmibit.profitness.core.theme.sinemaUpper
+import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.workout.SceneImage
+import androidx.compose.material3.ModalBottomSheet
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
@@ -135,31 +142,48 @@ fun ChallengesTab(
 
         Column(Modifier.fillMaxSize()) {
 
-            // ── Scope switcher ────────────────────────────────────────────
+            // ── Tek satır: Keşfet / Katıldıklarım + filtre ikonu ──────────
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                    .height(44.dp)
-                    .sinemaCapsuleGlass(RoundedCornerShape(22.dp), blur = 16.dp)
-                    .padding(3.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ScopeChip(
-                    label    = theme.t("KEŞFET", "DISCOVER"),
-                    icon     = Icons.Rounded.Public,
-                    isActive = state.scope == ChallengesScope.Browse,
-                    accent   = accent,
-                    onClick  = { vm.selectScope(ChallengesScope.Browse) },
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(3.dp))
-                ScopeChip(
-                    label    = theme.t("KATILDIKLARIM (${state.myList.size})", "JOINED (${state.myList.size})"),
-                    icon     = Icons.Rounded.EmojiEvents,
-                    isActive = state.scope == ChallengesScope.Mine,
-                    accent   = accent,
-                    onClick  = { vm.selectScope(ChallengesScope.Mine) },
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .sinemaCapsuleGlass(RoundedCornerShape(22.dp), blur = 16.dp)
+                        .padding(3.dp)
+                ) {
+                    ScopeChip(
+                        label    = theme.t("KEŞFET", "DISCOVER"),
+                        icon     = Icons.Rounded.Public,
+                        isActive = state.scope == ChallengesScope.Browse,
+                        accent   = accent,
+                        onClick  = { vm.selectScope(ChallengesScope.Browse) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    ScopeChip(
+                        label    = theme.t("KATILDIKLARIM", "JOINED"),
+                        icon     = Icons.Rounded.EmojiEvents,
+                        isActive = state.scope == ChallengesScope.Mine,
+                        accent   = accent,
+                        onClick  = { vm.selectScope(ChallengesScope.Mine) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                ChallengeFilterBar(
+                    scope = state.scope,
+                    kindFilter = kindFilter,
+                    onKindFilter = { kindFilter = it },
+                    sportFilterRaw = sportFilterRaw,
+                    onSportFilter = { sportFilterRaw = it },
+                    targetFilterRaw = targetFilterRaw,
+                    onTargetFilter = { targetFilterRaw = it },
+                    mineStatusFilter = mineStatusFilter,
+                    onMineStatusFilter = { mineStatusFilter = it },
+                    accent = accent
                 )
             }
 
@@ -186,19 +210,6 @@ fun ChallengesTab(
                     onAccept = { challenge -> vm.toggleJoin(challenge) }
                 )
             }
-
-            ChallengeFilterBar(
-                scope = state.scope,
-                kindFilter = kindFilter,
-                onKindFilter = { kindFilter = it },
-                sportFilterRaw = sportFilterRaw,
-                onSportFilter = { sportFilterRaw = it },
-                targetFilterRaw = targetFilterRaw,
-                onTargetFilter = { targetFilterRaw = it },
-                mineStatusFilter = mineStatusFilter,
-                onMineStatusFilter = { mineStatusFilter = it },
-                accent = accent
-            )
 
             // ── Liste ─────────────────────────────────────────────────────
             PullToRefreshBox(
@@ -244,23 +255,32 @@ fun ChallengesTab(
                                     "Bu filtrelere uygun katıldığın challenge yok.",
                                     "No joined challenges match these filters."
                                 ),
+                                actionLabel = theme.t("CHALLENGE OLUŞTUR", "CREATE CHALLENGE"),
+                                onAction = { vm.openCreate() },
                                 theme = theme
                             )
                         } else {
+                            // Katıldığın ve süren challenge varsa üstte büyük öne çıkan kart
+                            val featured = list.firstOrNull {
+                                it.isJoined && !it.isCompleted && statusOf(it.startDateIso, it.endDateIso) == CardStatus.Live
+                            }
+                            val ordered = if (featured != null) listOf(featured) + list.filter { it.id != featured.id } else list
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start  = 16.dp,
                                     end    = 16.dp,
                                     top    = 4.dp,
-                                    bottom = bottomPadding + 80.dp
-                                )
+                                    bottom = bottomPadding + 88.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                items(list, key = { "${state.scope}_${it.id}" }) { c ->
+                                items(ordered, key = { "${state.scope}_${it.id}" }) { c ->
                                     ChallengeCard(
                                         c          = c,
                                         accent     = accent,
                                         inFlight   = state.joinInFlight.contains(c.id),
+                                        featured   = c.id == featured?.id,
                                         onTap      = { vm.openDetail(c.id) },
                                         onToggle   = {
                                             // Private + not joined → detail'e git (password dialog orada)
@@ -269,8 +289,7 @@ fun ChallengesTab(
                                             } else {
                                                 vm.toggleJoin(c)
                                             }
-                                        },
-                                        modifier   = Modifier.padding(vertical = 6.dp)
+                                        }
                                     )
                                 }
                             }
@@ -285,7 +304,7 @@ fun ChallengesTab(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = bottomPadding + 12.dp)
+                .padding(end = 20.dp, bottom = bottomPadding + 16.dp)
                 .size(56.dp)
                 .sinemaGlow(fabAccent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                 .clip(CircleShape)
@@ -671,7 +690,6 @@ private fun ChallengeInviteRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChallengeFilterBar(
     scope: ChallengesScope,
@@ -687,7 +705,6 @@ private fun ChallengeFilterBar(
 ) {
     val theme = LocalAppTheme.current
     var showFilters by remember { mutableStateOf(false) }
-    val hasSecondaryFilter = kindFilter != ChallengeKindFilter.All || sportFilterRaw != null || targetFilterRaw != null
     val activeFilterCount = listOf(
         kindFilter != ChallengeKindFilter.All,
         sportFilterRaw != null,
@@ -695,32 +712,13 @@ private fun ChallengeFilterBar(
         scope == ChallengesScope.Mine && mineStatusFilter != MyChallengeStatusFilter.All
     ).count { it }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 6.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SinemaChip(active = activeFilterCount > 0, onClick = { showFilters = true }, height = 36.dp) { fg ->
-                Icon(Icons.Rounded.Tune, null, tint = fg, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (activeFilterCount > 0) theme.t("Filtreler · $activeFilterCount", "Filters · $activeFilterCount") else theme.t("Filtreler", "Filters"),
-                    color = fg,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (hasSecondaryFilter || mineStatusFilter != MyChallengeStatusFilter.All) {
-                TextButton(onClick = {
-                    onKindFilter(ChallengeKindFilter.All); onSportFilter(null); onTargetFilter(null); onMineStatusFilter(MyChallengeStatusFilter.All)
-                }) { Text(theme.t("Sıfırla", "Reset"), color = theme.text1) }
-            }
-        }
-    }
+    SinemaCapsuleIconButton(
+        icon = Icons.Rounded.Tune,
+        description = if (activeFilterCount > 0) theme.t("Filtreler · $activeFilterCount", "Filters · $activeFilterCount") else theme.t("Filtreler", "Filters"),
+        onClick = { showFilters = true },
+        selected = activeFilterCount > 0,
+        size = 44.dp
+    )
 
     if (showFilters) {
         ChallengeFiltersDialog(
@@ -755,11 +753,15 @@ private fun ChallengeFiltersDialog(
     onDismiss: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp)) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Sinema.surface(theme), contentColor = Color.White) {
+        Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(theme.t("Challenge filtreleri", "Challenge filters"), style = MaterialTheme.typography.headlineSmall, color = theme.text0, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, null, tint = theme.text1) }
+                if (kindFilter != ChallengeKindFilter.All || sportFilterRaw != null || targetFilterRaw != null || mineStatusFilter != MyChallengeStatusFilter.All) {
+                    TextButton(onClick = {
+                        onKindFilter(ChallengeKindFilter.All); onSportFilter(null); onTargetFilter(null); onMineStatusFilter(MyChallengeStatusFilter.All)
+                    }) { Text(theme.t("Sıfırla", "Reset"), color = theme.text1) }
+                }
             }
             Text(theme.t("Tür", "Type"), style = MaterialTheme.typography.labelMedium, color = theme.text1)
             Spacer(Modifier.height(8.dp))
@@ -981,6 +983,26 @@ private fun targetIcon(type: ChallengeTargetType): ImageVector = when (type) {
     ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
 }
 
+private val challengeNumberFormat: java.text.NumberFormat
+    get() = java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr"))
+
+/** Tür -> mevcut kategori foto kaynağı (categoryImageUrl anahtar kelimeleri). */
+private fun challengePhotoCategory(c: ChallengeSummary): String {
+    val sport = c.event?.sportType
+    return when {
+        sport == SportType.Strength -> "Göğüs"
+        sport == SportType.YogaPilates -> "Core"
+        sport != null -> "Kardiyo"
+        c.targetType == ChallengeTargetType.TotalDistanceM ||
+            c.targetType == ChallengeTargetType.TotalDistanceKm ||
+            c.targetType == ChallengeTargetType.TotalDurationMinutes -> "Kardiyo"
+        c.targetType == ChallengeTargetType.TotalWorkouts ||
+            c.targetType == ChallengeTargetType.MovementsCompleted -> "Göğüs"
+        else -> ""
+    }
+}
+
+/** Fotoğraflı poster kart: foto + alt karartma, tek durum etiketi, büyük hedef rakamı, ilerleme, KATIL/KAPALI. */
 @Composable
 private fun ChallengeCard(
     c: ChallengeSummary,
@@ -988,7 +1010,8 @@ private fun ChallengeCard(
     inFlight: Boolean,
     onTap: () -> Unit,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    featured: Boolean = false
 ) {
     val theme = LocalAppTheme.current
     val isPrivate = c.visibility == ChallengeVisibility.Private
@@ -997,9 +1020,8 @@ private fun ChallengeCard(
     val today = java.time.LocalDate.now().toString()
     val daysLeft = daysBetween(today, c.endDateIso) ?: 0L
     val daysUntilStart = daysBetween(today, c.startDateIso) ?: 0L
-    val isEnded = status == CardStatus.Ended && !c.isCompleted
-    val cardAccent = challengeStatusAccent(status, c.isCompleted, accent)
     val isFull = c.maxParticipants?.let { c.participantsCount >= it && !c.isJoined } == true
+    val canAct = !c.isCompleted && status != CardStatus.Ended && !isFull
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -1007,259 +1029,153 @@ private fun ChallengeCard(
         animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
         label = "challenge_card_press"
     )
-
-    val borderColor = when {
-        c.isCompleted -> cardAccent.copy(0.78f)
-        isEnded -> cardAccent.copy(0.45f)
-        c.isJoined    -> accent.copy(0.55f)
-        else -> theme.stroke.copy(0.5f)
-    }
+    val unit = c.targetType.displayUnit(theme)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+            .sinemaCard(theme, RoundedCornerShape(28.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        Row(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
-                // ── Header chips + status ──
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    KindBadge(isEvent = isEvent, accent = accent, theme = theme)
-                    if (c.isInvited && !c.isJoined) {
-                        Spacer(Modifier.width(6.dp))
-                        InviteBadge(accent = accent, theme = theme)
-                    }
-                    if (isEvent && c.event != null) {
-                        Spacer(Modifier.width(6.dp))
-                        EventModeBadge(mode = c.event.mode, theme = theme)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    StatusPill(
-                        status = if (c.isCompleted) CardStatus.Ended else status,
-                        completed = c.isCompleted,
-                        accent = cardAccent,
-                        theme = theme
-                    )
-                }
+        SceneImage(
+            url = categoryImageUrl(challengePhotoCategory(c)),
+            modifier = Modifier.matchParentSize(),
+            requestWidthPx = 960, requestHeightPx = 960, fallbackGradient = true
+        )
+        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = if (featured) 440.dp else 330.dp).padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // ── Üst: TEK durum etiketi + katılımcı ──
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PosterStatusLabel(
+                    text = when {
+                        c.isCompleted -> theme.t("TAMAMLANDI", "COMPLETED")
+                        status == CardStatus.NotStarted -> theme.t("YAKINDA", "SOON")
+                        status == CardStatus.Live -> theme.t("DEVAM EDİYOR", "LIVE")
+                        else -> theme.t("SONA ERDİ", "ENDED")
+                    },
+                    dot = if (c.isCompleted || status == CardStatus.Live) accent else Color.White.copy(0.5f)
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Rounded.People, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}",
+                    color = Color.White.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold
+                )
+            }
 
-                Spacer(Modifier.height(12.dp))
-
-                // ── Title row (lock + title) ──
+            // ── Alt: başlık, büyük hedef, ilerleme, CTA ──
+            Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isPrivate) {
-                        Icon(Icons.Rounded.Lock, null, tint = theme.text2, modifier = Modifier.size(15.dp))
+                        Icon(Icons.Rounded.Lock, null, tint = Color.White.copy(0.8f), modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
                         c.title,
-                        color      = theme.text0,
-                        fontSize   = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines   = 2,
-                        overflow   = TextOverflow.Ellipsis,
-                        lineHeight  = 22.sp
+                        style = Sinema.Title.copy(fontSize = if (featured) 28.sp else 24.sp, fontWeight = FontWeight.ExtraBold),
+                        color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                // ── Hero stat tile ──
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Sinema.line(theme)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            targetIcon(c.targetType),
-                            null,
-                            tint = cardAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            "${c.targetValue}",
-                            color = theme.text0,
-                            fontSize = 40.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1).sp,
-                            lineHeight = 42.sp
-                        )
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            c.targetType.displayUnit(theme),
-                            color = cardAccent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            theme.t("HEDEF", "TARGET"),
-                            color = theme.text2,
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.2.sp
-                        )
-                        Text(
-                            c.targetType.displayLabel(theme),
-                            color = theme.text1,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                // ── Event-spesifik tarih+saat+konum bandı ──
-                if (isEvent && c.event != null) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Sinema.line(theme))
-                            .padding(horizontal = 12.dp, vertical = 9.dp)
-                    ) {
-                        Icon(Icons.Rounded.CalendarMonth, null, tint = cardAccent, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            humanDate(c.event.dateIso) + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: ""),
-                            color = theme.text0,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        if (!c.event.location.isNullOrBlank()) {
-                            Spacer(Modifier.width(10.dp))
-                            Icon(Icons.Rounded.LocationOn, null, tint = theme.text2, modifier = Modifier.size(12.dp))
-                            Spacer(Modifier.width(3.dp))
-                            Text(
-                                c.event.location,
-                                color = theme.text1,
-                                fontSize = 11.sp,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-
-                // ── Description ──
-                if (c.description.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
+                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
                     Text(
-                        c.description,
-                        color     = theme.text1.copy(0.88f),
-                        fontSize  = 13.sp,
-                        maxLines  = 2,
-                        overflow  = TextOverflow.Ellipsis,
-                        lineHeight = 18.sp
+                        challengeNumberFormat.format(c.targetValue),
+                        style = Sinema.Display.copy(fontSize = if (featured) 72.sp else 56.sp),
+                        color = Color.White, maxLines = 1
+                    )
+                    Text(
+                        unit, style = Sinema.Title.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
+                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                     )
                 }
+                val info = when {
+                    isEvent && c.event != null ->
+                        humanDate(c.event.dateIso) + (c.event.timeIso?.let { " · ${it.take(5)}" } ?: "") +
+                            (c.event.location?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+                    c.isCompleted -> theme.t("Tamamlandı", "Completed")
+                    status == CardStatus.NotStarted ->
+                        if (daysUntilStart == 0L) theme.t("Bugün başlıyor", "Starts today")
+                        else theme.t("$daysUntilStart gün sonra", "In $daysUntilStart days")
+                    status == CardStatus.Ended -> theme.t("Sona erdi", "Ended")
+                    daysLeft == 0L -> theme.t("Son gün", "Last day")
+                    else -> theme.t("$daysLeft gün kaldı", "$daysLeft days left")
+                }
+                Text(
+                    "${c.targetType.displayLabel(theme)} · $info".sinemaUpper(theme),
+                    style = Sinema.Label, color = Color.White.copy(0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
 
-                // ── Progress (joined ise) ──
                 if (c.isJoined) {
                     Spacer(Modifier.height(12.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            "${c.myProgress} / ${c.targetValue} ${c.targetType.displayUnit(theme)}",
-                            color    = theme.text1,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            "${challengeNumberFormat.format(c.myProgress)} / ${challengeNumberFormat.format(c.targetValue)} $unit",
+                            color = Color.White.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.weight(1f))
-                        Text(
-                            "%${(c.progressPct * 100).toInt()}",
-                            color = cardAccent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        Text("%${(c.progressPct * 100).toInt()}", color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
                     }
-                    Spacer(Modifier.height(5.dp))
-                    ProgressBar(pct = c.progressPct, accent = cardAccent, theme.stroke)
+                    Spacer(Modifier.height(6.dp))
+                    ProgressBar(pct = c.progressPct, accent = accent, strokeColor = Color.Transparent)
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
 
-                // ── Footer: meta info + CTA ──
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        // 1. satır: katılımcı + countdown
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.People, null, tint = theme.text2, modifier = Modifier.size(12.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}",
-                                color = theme.text1,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            // Countdown / status
-                            val (cdIcon, cdText, cdColor) = when {
-                                c.isCompleted -> Triple(Icons.Rounded.Check, "Tamamlandı", cardAccent)
-                                status == CardStatus.NotStarted ->
-                                    Triple(Icons.Rounded.HourglassBottom,
-                                        if (daysUntilStart == 0L) "Bugün başlıyor"
-                                        else "$daysUntilStart gün sonra", cardAccent)
-                                status == CardStatus.Ended ->
-                                    Triple(Icons.Rounded.Schedule, "Sona erdi", cardAccent)
-                                daysLeft == 0L ->
-                                    Triple(Icons.Rounded.Schedule, "Son gün", Color(0xFFFF8A80))
-                                daysLeft <= 3L ->
-                                    Triple(Icons.Rounded.Schedule, "$daysLeft gün kaldı", Color(0xFFFFB74D))
-                                else ->
-                                    Triple(Icons.Rounded.Schedule, "$daysLeft gün kaldı", theme.text1)
-                            }
-                            Icon(cdIcon, null, tint = cdColor, modifier = Modifier.size(12.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(cdText, color = cdColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                        // 2. satır: tarih aralığı (sadece metric için, event'te zaten üstte tek tarih var)
-                        if (!isEvent) {
-                            Spacer(Modifier.height(3.dp))
-                            Text(
-                                "${humanDate(c.startDateIso)} → ${humanDate(c.endDateIso)}",
-                                color = theme.text2,
-                                fontSize = 10.sp
-                            )
-                        }
+                when {
+                    !canAct -> Row(
+                        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(Color.White.copy(0.14f)),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.Lock, null, tint = Color.White.copy(0.55f), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when {
+                                isFull -> theme.t("DOLU", "FULL")
+                                c.isCompleted -> theme.t("TAMAMLANDI", "COMPLETED")
+                                else -> theme.t("KAPALI", "CLOSED")
+                            },
+                            color = Color.White.copy(0.55f), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
+                        )
                     }
-
-                    // CTA
-                    JoinPill(
-                        isJoined = c.isJoined,
-                        isInvited = c.isInvited,
-                        isFull = isFull,
-                        inFlight = inFlight,
-                        canAct   = !c.isCompleted && status != CardStatus.Ended && !isFull,
-                        accent   = accent,
-                        theme    = theme,
-                        onClick  = onToggle
+                    c.isJoined -> SinemaCapsule(
+                        Modifier.fillMaxWidth(), onClick = onToggle, enabled = !inFlight, height = 56.dp,
+                        horizontalArrangement = Arrangement.Center
+                    ) { fg ->
+                        if (inFlight) {
+                            CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                        } else {
+                            Icon(Icons.Rounded.Check, null, tint = fg, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(theme.t("KATILDIN", "JOINED"), color = fg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
+                    }
+                    else -> SinemaGoButton(
+                        label = if (c.isInvited) theme.t("DAVET", "INVITE") else theme.t("KATIL", "JOIN"),
+                        icon = Icons.Rounded.Bolt,
+                        onClick = { if (!inFlight) onToggle() },
+                        dim = inFlight
                     )
                 }
             }
         }
+    }
+}
+
+/** Posterdeki tek durum etiketi: cam kapsül, nokta + metin. */
+@Composable
+private fun PosterStatusLabel(text: String, dot: Color) {
+    Row(
+        modifier = Modifier.sinemaCapsuleGlass(CircleShape, blur = 16.dp).padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
+        Spacer(Modifier.width(6.dp))
+        Text(text, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1)
     }
 }
 
@@ -1343,20 +1259,20 @@ private fun JoinPill(
 
 @Composable
 private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(Color.White.copy(0.12f))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(pct)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(3.dp))
-                .background(accent)
-        )
+    val shape = RoundedCornerShape(4.dp)
+    val frac = pct.coerceIn(0f, 1f)
+    Box(Modifier.fillMaxWidth().height(8.dp)) {
+        Box(Modifier.matchParentSize().clip(shape).background(Color.White.copy(0.18f)))
+        if (frac > 0f) {
+            Box(
+                Modifier
+                    .fillMaxWidth(frac)
+                    .fillMaxHeight()
+                    .sinemaGlow(accent.copy(0.4f), 10.dp, 3.dp, shape)
+                    .clip(shape)
+                    .background(accent)
+            )
+        }
     }
 }
 
@@ -1441,16 +1357,28 @@ private fun EventModeBadge(
 }
 
 @Composable
-private fun EmptyBlock(text: String, theme: com.cosmibit.profitness.core.theme.AppThemeState) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(40.dp),
-        contentAlignment = Alignment.Center
+private fun EmptyBlock(
+    text: String,
+    theme: com.cosmibit.profitness.core.theme.AppThemeState,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.EmojiEvents, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.height(18.dp))
         Text(
-            text,
-            color = theme.text2,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center
+            text, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+            lineHeight = 24.sp, textAlign = TextAlign.Center
         )
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.height(24.dp))
+            SinemaGoButton(label = actionLabel, icon = Icons.Rounded.Add, onClick = onAction, modifier = Modifier.widthIn(max = 300.dp))
+        }
     }
 }
