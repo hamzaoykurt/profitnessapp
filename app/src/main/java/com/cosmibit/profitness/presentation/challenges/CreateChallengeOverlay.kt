@@ -2,6 +2,18 @@ package com.cosmibit.profitness.presentation.challenges
 
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.sinemaCard
+import com.cosmibit.profitness.core.theme.SinemaCapsule
+import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
+import com.cosmibit.profitness.core.theme.sinemaUpper
+import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
+import com.cosmibit.profitness.presentation.workout.SceneImage
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -91,9 +103,6 @@ import com.cosmibit.profitness.core.theme.bg0
 import com.cosmibit.profitness.core.theme.bg1
 import com.cosmibit.profitness.core.theme.bg2
 import com.cosmibit.profitness.core.theme.stroke
-import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text1
-import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.domain.challenges.ChallengeTargetType
 import com.cosmibit.profitness.domain.challenges.ChallengeVisibility
@@ -250,91 +259,66 @@ fun CreateChallengeOverlay(
             dismissOnClickOutside = false
         )
     ) {
+    CreateSceneBars()
     Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
-        PageAccentBloom()
         Column(
             Modifier
                 .fillMaxSize()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── Top bar (premium) ──
+// ── Sahne: seçilen türün fotoğrafı + karartma + başlık ──
             val isMetric = kind == CreateFormKind.Metric
-            val headerIcon = if (isMetric) Icons.Rounded.EmojiEvents else Icons.Rounded.CalendarMonth
             val headerTitle = if (isMetric) strings.newChallengeTitle else strings.newEventTitle
             val headerSubtitle = if (isMetric)
                 theme.t("Hedefini koy, takip et, başar", "Set a goal, track it, finish strong")
             else
                 theme.t("Etkinlik planla, dostlarını davet et", "Plan an event and invite friends")
+            val sceneCategory = createPhotoCategory(isMetric, metricTargetType, eventMode, eventSportType)
 
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .height(280.dp)
+                    .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                    .background(Color.Black)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Close button
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .sinemaCard(theme, CircleShape)
-                            .clickable(onClick = onDismiss),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Close,
-                            null,
-                            tint = theme.text0,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.width(12.dp))
-
-                    // Icon badge (kind indicator)
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .sinemaCard(theme, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            headerIcon,
-                            null,
-                            tint = accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Column(Modifier.weight(1f)) {
+                SceneImage(
+                    url = categoryImageUrl(sceneCategory),
+                    modifier = Modifier.matchParentSize(),
+                    requestWidthPx = 1080, requestHeightPx = 720, fallbackGradient = true
+                )
+                Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+                Box(
+                    Modifier.fillMaxWidth().height(130.dp).background(
+                        Brush.verticalGradient(0f to Color.Black.copy(0.55f), 1f to Color.Transparent)
+                    )
+                )
+                Column(
+                    Modifier.matchParentSize().statusBarsPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SinemaCapsuleIconButton(
+                        icon = Icons.Rounded.Close, description = theme.t("Kapat", "Close"),
+                        onClick = onDismiss, selected = false, size = 44.dp
+                    )
+                    Column {
                         Text(
                             headerTitle,
-                            color         = theme.text0,
-                            fontSize      = 18.sp,
-                            fontWeight    = FontWeight.Bold,
-                            maxLines      = 1
+                            style = Sinema.ScreenTitle, color = Color.White, maxLines = 2
                         )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            headerSubtitle,
-                            color    = theme.text2,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(headerSubtitle, color = Color.White.copy(0.78f), fontSize = 14.sp, maxLines = 1)
                     }
                 }
             }
 
             // ── Kind segment ──
-            Row(
+Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .sinemaCard(theme, RoundedCornerShape(14.dp))
-                    .padding(4.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 KindChip(
                     label = strings.challengeKindMetric,
@@ -343,7 +327,6 @@ fun CreateChallengeOverlay(
                     onClick = { kind = CreateFormKind.Metric },
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.width(3.dp))
                 KindChip(
                     label = strings.challengeKindEvent,
                     isActive = kind == CreateFormKind.Event,
@@ -446,12 +429,9 @@ fun CreateChallengeOverlay(
 
             // ── Visibility ──
             FieldLabel(strings.challengeVisibility)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .sinemaCard(theme, RoundedCornerShape(14.dp))
-                    .padding(4.dp)
+Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 VisibilityChip(
                     label    = strings.challengeVisPublic,
@@ -461,7 +441,6 @@ fun CreateChallengeOverlay(
                     onClick  = { visibility = ChallengeVisibility.Public },
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.width(3.dp))
                 VisibilityChip(
                     label    = strings.challengeVisPrivate,
                     icon     = Icons.Rounded.Lock,
@@ -496,28 +475,24 @@ fun CreateChallengeOverlay(
             )
 
             // ── Error ──
-            error?.let {
+error?.let {
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Sinema.surface(theme))
-                        .padding(12.dp)
+                        .sinemaCard(theme, RoundedCornerShape(24.dp))
+                        .padding(16.dp)
                 ) {
-                    Text(it, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(it, color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             // ── Submit ──
-            PremiumButton(
-                text = strings.challengeCreateBtn,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                isEnabled = !inFlight,
-                isLoading = inFlight,
-                leadingIcon = Icons.Rounded.Check,
+            SinemaGoOrIdle(
+                label = if (inFlight) theme.t("OLUŞTURULUYOR…", "CREATING…") else strings.challengeCreateBtn.sinemaUpper(theme),
+                icon = Icons.Rounded.Check,
+                enabled = !inFlight,
+                modifier = Modifier.padding(16.dp),
                 onClick = {
                         if (kind == CreateFormKind.Metric) {
                             onSubmit(
@@ -563,11 +538,10 @@ fun CreateChallengeOverlay(
                 }
             )
 
-            // Floating navbar (capsule) için boşluk + system nav bar insets
             Spacer(
                 Modifier
                     .navigationBarsPadding()
-                    .height(120.dp)
+                    .height(40.dp)
             )
         }
     }
@@ -593,7 +567,8 @@ fun CreateChallengeOverlay(
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text(theme.t("İptal", "Cancel")) }
-            }
+            },
+            colors = androidx.compose.material3.DatePickerDefaults.colors(containerColor = Sinema.surface(theme))
         ) {
             DatePicker(state = state)
         }
@@ -610,10 +585,9 @@ fun CreateChallengeOverlay(
             is24Hour = true
         )
         androidx.compose.ui.window.Dialog(onDismissRequest = { showTimePicker = false }) {
-            Column(
+Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Sinema.surface(theme))
+                    .sinemaCard(theme, RoundedCornerShape(28.dp))
                     .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -697,7 +671,7 @@ private fun MetricForm(
     }
     Text(
         theme.t("Bitiş: ${endDate.format(fmt)}", "Ends: ${endDate.format(fmt)}"),
-        color = theme.text2,
+        color = Sinema.textSecondary(theme),
         fontSize = 11.sp,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
     )
@@ -745,14 +719,9 @@ private fun EventForm(
 
     // ── Mode selector ────────────────────────────────────────────────────
     FieldLabel(strings.challengeKindEvent)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Sinema.surface(theme))
-            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
-            .padding(4.dp)
+Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         EventModeChip(
             label = strings.eventModePhysical,
@@ -762,7 +731,6 @@ private fun EventForm(
             onClick = { onMode(EventMode.Physical) },
             modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.width(3.dp))
         EventModeChip(
             label = strings.eventModeOnline,
             icon = Icons.Rounded.Link,
@@ -771,7 +739,6 @@ private fun EventForm(
             onClick = { onMode(EventMode.Online) },
             modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.width(3.dp))
         EventModeChip(
             label = strings.eventModeMovementList,
             icon = Icons.Rounded.PlaylistAddCheck,
@@ -814,7 +781,7 @@ private fun EventForm(
                 trailing = if (timeIso != null) {
                     { Icon(
                         Icons.Rounded.Close, null,
-                        tint = theme.text2,
+                        tint = Sinema.textSecondary(theme),
                         modifier = Modifier.size(14.dp).clickable { onClearTime() }
                     ) }
                 } else null,
@@ -849,7 +816,7 @@ private fun EventForm(
                     "Konumu listeden seç; aynı isimli yerlerde il/ilçe bilgisiyle doğru adayı kaydederiz.",
                     "Pick a location from the list so similarly named places are saved correctly."
                 ),
-                color = LocalAppTheme.current.text2,
+                color = Sinema.textSecondary(LocalAppTheme.current),
                 fontSize = 10.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
@@ -886,18 +853,16 @@ private fun EventForm(
         }
         EventMode.MovementList -> {
             FieldLabel(theme.t("HAREKETLER", "MOVEMENTS") + " (${movements.size})")
-            Column(
+Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Sinema.surface(theme))
-                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .sinemaCard(theme, RoundedCornerShape(24.dp))
             ) {
                 if (movements.isEmpty()) {
                     Text(
                         theme.t("Henüz hareket seçilmedi", "No movements selected yet"),
-                        color = theme.text2,
+                        color = Sinema.textSecondary(theme),
                         fontSize = 12.sp,
                         modifier = Modifier.padding(14.dp)
                     )
@@ -917,14 +882,14 @@ private fun EventForm(
                             Text(
                                 exerciseById[mv.exerciseId]?.let { theme.exerciseDisplayName(it.name, it.nameEn) }
                                     ?: mv.exerciseId.take(8) + "...",
-                                color = theme.text0,
+                                color = Sinema.text(theme),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
                             val suffix = movementSpecLabel(mv, theme)
                             if (suffix.isNotEmpty()) {
-                                Text(suffix, color = theme.text2, fontSize = 11.sp)
+                                Text(suffix, color = Sinema.textSecondary(theme), fontSize = 11.sp)
                             }
                         }
                         if (idx < movements.size - 1) {
@@ -935,36 +900,25 @@ private fun EventForm(
                     }
                 }
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Sinema.line(theme))
-                    .border(1.dp, accent, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onOpenMultiPicker)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (movements.isEmpty()) theme.t("HAREKET SEÇ", "SELECT MOVEMENTS")
-                        else theme.t("HAREKETLERİ DÜZENLE", "EDIT MOVEMENTS"),
-                        color = accent,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp
-                    )
-                }
+SinemaCapsule(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                onClick = onOpenMultiPicker, height = 52.dp, light = !theme.isDark,
+                horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Icon(Icons.Rounded.FitnessCenter, null, tint = fg, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (movements.isEmpty()) theme.t("HAREKET SEÇ", "SELECT MOVEMENTS")
+                    else theme.t("HAREKETLERİ DÜZENLE", "EDIT MOVEMENTS"),
+                    color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
+                )
             }
             Text(
                 theme.t(
                     "Hedef otomatik: ${movements.size} hareket",
                     "Automatic target: ${movements.size} movements"
                 ),
-                color = theme.text2,
+                color = Sinema.textSecondary(theme),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
             )
@@ -983,23 +937,16 @@ private fun LazySportTypeRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        items(SportType.challengeChoices.size) { idx ->
+items(SportType.challengeChoices.size) { idx ->
             val sport = SportType.challengeChoices[idx]
-            val active = sport == selected
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (active) accent else Sinema.surface(theme))
-                    .border(1.dp, if (active) accent else theme.stroke.copy(0.68f), RoundedCornerShape(999.dp))
-                    .clickable { onSelect(sport) }
-                    .padding(horizontal = 14.dp, vertical = 9.dp)
-            ) {
+            SinemaCapsule(
+                selected = sport == selected, onClick = { onSelect(sport) }, height = 40.dp,
+                light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) { fg ->
                 Text(
-                    sport.displayLabel(theme).uppercase(),
-                    color = if (active) theme.effectiveOnAccentColor else theme.text1,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.8.sp
+                    sport.displayLabel(theme).sinemaUpper(theme),
+                    color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1
                 )
             }
         }
@@ -1019,29 +966,30 @@ private fun OptionalMetricTargetSection(
 ) {
     val theme = LocalAppTheme.current
     // Toggle row
-    Row(
+Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Sinema.surface(theme))
-            .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
             .clickable { onEnabled(!enabled) }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(18.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .size(24.dp)
+                .clip(CircleShape)
                 .background(if (enabled) accent else Color.Transparent)
-                .border(1.dp, if (enabled) accent else theme.stroke, RoundedCornerShape(4.dp))
-        )
+                .border(1.5.dp, if (enabled) accent else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 theme.t("MESAFE / SÜRE HEDEFİ", "DISTANCE / DURATION TARGET"),
-                color = theme.text0,
+                color = Sinema.text(theme),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -1051,7 +999,7 @@ private fun OptionalMetricTargetSection(
                     "Katılımcılar hedefi tamamladığında challenge biter",
                     "The challenge ends when participants complete the target"
                 ),
-                color = theme.text2,
+                color = Sinema.textSecondary(theme),
                 fontSize = 10.sp
             )
         }
@@ -1088,40 +1036,41 @@ private fun ParticipantLimitSection(
     accent: Color
 ) {
     val theme = LocalAppTheme.current
-    Column(
+Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(14.dp))
-            .padding(14.dp)
+            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .padding(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable { onEnabled(!enabled) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(18.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .size(24.dp)
+                    .clip(CircleShape)
                     .background(if (enabled) accent else Color.Transparent)
-                    .border(1.dp, if (enabled) accent else theme.stroke, RoundedCornerShape(4.dp)),
+                    .border(1.5.dp, if (enabled) accent else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(13.dp))
+                if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp))
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     theme.t("KİŞİ SAYISINI SINIRLA", "LIMIT PARTICIPANTS"),
-                    color = theme.text0,
+                    color = Sinema.text(theme),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     theme.t("Limit dolunca yeni katılım kapanır", "Joining closes when the limit is reached"),
-                    color = theme.text2,
+                    color = Sinema.textSecondary(theme),
                     fontSize = 12.sp
                 )
             }
@@ -1142,14 +1091,13 @@ private fun ParticipantLimitSection(
 private fun FieldLabel(text: String, padded: Boolean = true) {
     val theme = LocalAppTheme.current
     Text(
-        text,
-        color      = theme.text1,
-        fontSize   = 12.sp,
-        fontWeight = FontWeight.SemiBold,
+        text.sinemaUpper(theme),
+        color = Sinema.textSecondary(theme),
+        style = Sinema.Label,
         modifier = Modifier.padding(
-            start = if (padded) 20.dp else 0.dp,
-            top = 14.dp,
-            bottom = 6.dp
+            start = if (padded) 20.dp else 4.dp,
+            top = 18.dp,
+            bottom = 8.dp
         )
     )
 }
@@ -1211,31 +1159,24 @@ private fun PlaceSearchField(
     }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 58.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Sinema.surface(theme))
-                .border(
-                    1.dp,
-                    if (hasResolvedValue) MaterialTheme.colorScheme.primary.copy(0.70f) else theme.stroke.copy(0.70f),
-                    RoundedCornerShape(14.dp)
-                )
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-        ) {
+SinemaCapsule(
+            modifier = Modifier.fillMaxWidth(),
+            height = 52.dp,
+            light = !theme.isDark,
+            contentPadding = PaddingValues(horizontal = 18.dp)
+        ) { _ ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    textStyle = TextStyle(color = theme.text0, fontSize = 15.sp, lineHeight = 20.sp),
+                    textStyle = TextStyle(color = Sinema.text(theme), fontSize = 15.sp, lineHeight = 20.sp),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
                         if (value.isEmpty()) {
-                            Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
+                            Text(placeholder, color = Sinema.textSecondary(theme).copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
                         }
                         inner()
                     }
@@ -1256,7 +1197,7 @@ private fun PlaceSearchField(
                     else -> Icon(
                         Icons.Rounded.TravelExplore,
                         null,
-                        tint = theme.text2,
+                        tint = Sinema.textSecondary(theme),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1276,19 +1217,17 @@ private fun PlaceSearchField(
                     "Devam etmek için aşağıdaki sonuçlardan bir konum seç.",
                     "Select a location from the results below to continue."
                 ),
-                color = theme.text2,
+                color = Sinema.textSecondary(theme),
                 fontSize = 10.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 5.dp)
             )
         }
 
         if (candidates.isNotEmpty()) {
-            Column(
+Column(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Sinema.surface(theme))
-                    .border(1.dp, theme.stroke.copy(0.68f), RoundedCornerShape(14.dp))
+                    .sinemaCard(theme, RoundedCornerShape(20.dp))
             ) {
                 candidates.forEachIndexed { index, candidate ->
                     val isResolving = resolvingPlaceId == candidate.placeId
@@ -1315,25 +1254,17 @@ private fun PlaceSearchField(
                             .padding(horizontal = 12.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(if (index == 0) 0.22f else 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Rounded.LocationOn,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
+Icon(
+                            Icons.Rounded.LocationOn,
+                            null,
+                            tint = Sinema.textSecondary(theme),
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
                                 candidate.title,
-                                color = theme.text0,
+                                color = Sinema.text(theme),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
@@ -1341,7 +1272,7 @@ private fun PlaceSearchField(
                             if (candidate.subtitle.isNotBlank()) {
                                 Text(
                                     candidate.subtitle,
-                                    color = theme.text2,
+                                    color = Sinema.textSecondary(theme),
                                     fontSize = 10.5.sp,
                                     maxLines = 1
                                 )
@@ -1359,7 +1290,7 @@ private fun PlaceSearchField(
                 }
                 Text(
                     "Powered by Google",
-                    color = theme.text2.copy(0.82f),
+                    color = Sinema.textSecondary(theme).copy(0.82f),
                     fontSize = 9.sp,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 )
@@ -1367,7 +1298,7 @@ private fun PlaceSearchField(
         } else if (message != null) {
             Text(
                 message.orEmpty(),
-                color = theme.text2,
+                color = Sinema.textSecondary(theme),
                 fontSize = 10.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 6.dp)
             )
@@ -1463,6 +1394,51 @@ private suspend fun resolvePlaceCandidate(
     }.getOrNull()
 }
 
+/** Cam giriş (SinemaGlassField ile aynı kapsül dili; etiket FieldLabel'da). */
+@Composable
+private fun GlassInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Default,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    minLines: Int = 1,
+    bold: Boolean = false
+) {
+    val theme = LocalAppTheme.current
+    val multi = minLines > 1
+    SinemaCapsule(
+        modifier.fillMaxWidth(),
+        height = if (multi) 96.dp else 52.dp,
+        shape = RoundedCornerShape(26.dp),
+        light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = if (multi) 14.dp else 0.dp),
+        verticalAlignment = if (multi) Alignment.Top else Alignment.CenterVertically
+    ) { fg ->
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            textStyle = TextStyle(color = fg, fontSize = 16.sp, fontWeight = if (bold) FontWeight.ExtraBold else FontWeight.SemiBold, lineHeight = 22.sp),
+            cursorBrush = SolidColor(theme.effectiveAccentColor),
+            singleLine = !multi,
+            minLines = minLines,
+            keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = keyboardType),
+            visualTransformation = visualTransformation,
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { inner ->
+                Box {
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = fg.copy(0.4f), fontSize = 16.sp, lineHeight = 22.sp, maxLines = 1)
+                    }
+                    inner()
+                }
+            }
+        )
+    }
+}
+
 @Composable
 private fun TextInputBox(
     value: String,
@@ -1473,33 +1449,10 @@ private fun TextInputBox(
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
     minLines: Int = 1
 ) {
-    val theme = LocalAppTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .heightIn(min = if (minLines == 1) 58.dp else 84.dp)
-            .sinemaCard(theme, RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            textStyle = TextStyle(color = theme.text0, fontSize = 15.sp, lineHeight = 20.sp),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            singleLine = minLines == 1,
-            minLines = minLines,
-            keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = keyboardType),
-            visualTransformation = visualTransformation,
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
-                }
-                inner()
-            }
-        )
-    }
+    GlassInput(
+        value, onValueChange, placeholder, Modifier.padding(horizontal = 16.dp),
+        imeAction, keyboardType, visualTransformation, minLines
+    )
 }
 
 /** Inline text input — Row hücrelerinde padding'siz; opsiyonel keyboardType + filter. */
@@ -1510,57 +1463,25 @@ private fun TextInputInline(
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
-    val theme = LocalAppTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .sinemaCard(theme, RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        BasicTextField(
-            value = value,
-            onValueChange = { v ->
-                val filtered = if (keyboardType == KeyboardType.Number)
-                    v.filter { it.isDigit() || it == '.' || it == '-' }.take(12)
-                else v
-                onValueChange(filtered)
-            },
-            textStyle = TextStyle(color = theme.text0, fontSize = 15.sp),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(placeholder, color = theme.text2.copy(0.72f), fontSize = 15.sp)
-                }
-                inner()
-            }
-        )
-    }
+    GlassInput(
+        value = value,
+        onValueChange = { v ->
+            val filtered = if (keyboardType == KeyboardType.Number)
+                v.filter { it.isDigit() || it == '.' || it == '-' }.take(12)
+            else v
+            onValueChange(filtered)
+        },
+        placeholder = placeholder, keyboardType = keyboardType
+    )
 }
 
 @Composable
 private fun NumberInputInline(value: String, onValueChange: (String) -> Unit) {
-    val theme = LocalAppTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .sinemaCard(theme, RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        BasicTextField(
-            value = value,
-            onValueChange = { v -> onValueChange(v.filter { it.isDigit() }.take(6)) },
-            textStyle = TextStyle(color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Black),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+    GlassInput(
+        value = value,
+        onValueChange = { v -> onValueChange(v.filter { it.isDigit() }.take(6)) },
+        placeholder = "0", keyboardType = KeyboardType.Number, bold = true
+    )
 }
 
 @Composable
@@ -1572,24 +1493,11 @@ private fun PickerField(
     trailing: (@Composable () -> Unit)? = null
 ) {
     val theme = LocalAppTheme.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .sinemaCard(theme, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
+    SinemaCapsule(Modifier.fillMaxWidth(), onClick = onClick, height = 52.dp, light = !theme.isDark,
+        contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+        Icon(icon, null, tint = fg.copy(0.7f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(10.dp))
-        Text(
-            text,
-            color = theme.text0,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
+        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
         trailing?.invoke()
     }
 }
@@ -1678,61 +1586,17 @@ private fun TargetTypeOption(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .then(
-                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(14.dp))
-                else Modifier.background(Sinema.surface(theme))
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isActive) accent.copy(0.22f) else Sinema.line(theme)
-                )
-                ,
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                iconForTargetType(type),
-                null,
-                tint = if (isActive) accent else theme.text2,
-                modifier = Modifier.size(16.dp)
-            )
-        }
+    SinemaCapsule(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp), selected = isActive, onClick = onClick,
+        height = 52.dp, light = !theme.isDark
+    ) { fg ->
+        Icon(iconForTargetType(type), null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Text(
-            type.displayLabel(theme),
-            color = if (isActive) theme.text0 else theme.text1,
-            fontSize = 13.5.sp,
-            fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
-            modifier = Modifier.weight(1f)
+            type.displayLabel(theme), color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f), maxLines = 1
         )
-        // Unit pill
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    if (isActive) accent.copy(0.20f) else Sinema.line(theme)
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) {
-            Text(
-                type.displayUnit(theme),
-                color = if (isActive) accent else theme.text2,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp
-            )
-        }
+        Text(type.displayUnit(theme), color = fg.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -1761,24 +1625,11 @@ private fun KindChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
-                else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (isActive) accent else theme.text2,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
-        )
+    SinemaCapsule(
+        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
+    ) { fg ->
+        Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
     }
 }
 
@@ -1792,27 +1643,13 @@ private fun EventModeChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
-                else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 6.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = if (isActive) accent else theme.text2, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(
-            label,
-            color = if (isActive) accent else theme.text2,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.8.sp
-        )
+    SinemaCapsule(
+        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
+    ) { fg ->
+        Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
 }
 
@@ -1826,32 +1663,52 @@ private fun VisibilityChip(
     icon: ImageVector? = null
 ) {
     val theme = LocalAppTheme.current
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isActive) Modifier.sinemaCard(theme, RoundedCornerShape(10.dp))
-                else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    SinemaCapsule(
+        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
+    ) { fg ->
         if (icon != null) {
-            Icon(
-                icon, null,
-                tint = if (isActive) accent else theme.text2,
-                modifier = Modifier.size(14.dp)
-            )
+            Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(
-            label,
-            color = if (isActive) accent else theme.text2,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.2.sp
-        )
+        Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1)
+    }
+}
+
+
+/** Seçilen türe göre sahne fotoğrafı kategorisi (liste/detay ile aynı kategori anahtarları). */
+private fun createPhotoCategory(
+    isMetric: Boolean,
+    metricType: ChallengeTargetType,
+    mode: EventMode,
+    sport: SportType
+): String = when {
+    isMetric -> when (metricType) {
+        ChallengeTargetType.TotalDistanceM,
+        ChallengeTargetType.TotalDistanceKm,
+        ChallengeTargetType.TotalDurationMinutes -> "Kardiyo"
+        ChallengeTargetType.TotalWorkouts,
+        ChallengeTargetType.MovementsCompleted -> "Göğüs"
+        else -> ""
+    }
+    mode == EventMode.MovementList -> "Göğüs"
+    sport == SportType.Strength -> "Göğüs"
+    sport == SportType.YogaPilates -> "Core"
+    else -> "Kardiyo"
+}
+
+@Composable
+private fun CreateSceneBars() {
+    val theme = LocalAppTheme.current
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
+        window.statusBarColor = Color.Transparent.toArgb()
+        window.navigationBarColor = Color.Transparent.toArgb()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, view).run {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = !theme.isDark
+        }
     }
 }
