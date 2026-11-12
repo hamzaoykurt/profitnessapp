@@ -57,7 +57,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
-import com.cosmibit.profitness.presentation.components.CinematicExerciseCard
 import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.PremiumButton

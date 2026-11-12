@@ -9,14 +9,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,26 +44,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -81,11 +68,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -99,30 +84,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.LocalAppTheme
-import com.cosmibit.profitness.core.theme.PageAccentBloom
-import com.cosmibit.profitness.core.theme.accentTextColor
-import com.cosmibit.profitness.core.theme.bg3
 import com.cosmibit.profitness.core.theme.bg1
-import com.cosmibit.profitness.core.theme.bg2
-import com.cosmibit.profitness.core.theme.bg0
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseDisplayName
-import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
-import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.discover.MySharedProgram
 import com.cosmibit.profitness.domain.discover.SharedProgram
-import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.AppToast
 import com.cosmibit.profitness.presentation.components.AppToastData
 import com.cosmibit.profitness.presentation.components.AppToastType
-import com.cosmibit.profitness.presentation.components.insetControlSurface
-import com.cosmibit.profitness.core.theme.performanceElevatedSurface
-import com.cosmibit.profitness.core.theme.performanceSignatureSurface
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.toImmutableSet
@@ -329,424 +302,6 @@ fun DiscoverScreen(
                 showShareSheet = false
             }
         )
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  HEADER + TABS
-// ═══════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun DiscoverHeader(
-    isTrending: Boolean,
-    onToggleSort: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = responsive.horizontalPadding)
-            .padding(top = 8.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text       = theme.t("Keşfet", "Discover"),
-                color      = theme.text0,
-                style = MaterialTheme.typography.headlineLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        // Sort toggle
-        SmallIconChip(
-            icon     = Icons.Rounded.Whatshot,
-            label    = if (isTrending) theme.t("TREND", "TRENDING") else theme.t("YENİ", "NEW"),
-            selected = isTrending,
-            onClick  = onToggleSort
-        )
-    }
-}
-
-@Composable
-private fun SmallIconChip(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(12.dp)
-    Row(
-        modifier = Modifier
-            .heightIn(min = responsive.compactChipMinHeight)
-            .clip(shape)
-            .background(if (selected) accent.copy(0.18f) else theme.bg2)
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = if (selected) accent else theme.text2.copy(0.6f),
-            modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(label, color = if (selected) theme.accentTextColor else theme.text2,
-            fontSize = if (responsive.isLargeFont) 9.sp else 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun DiscoverTabBar(
-    selected: DiscoverTab,
-    onSelect: (DiscoverTab) -> Unit
-) {
-    val accent = MaterialTheme.colorScheme.primary
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = responsive.horizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(if (responsive.isSmallPhone) 8.dp else 10.dp)
-    ) {
-        DiscoverTabPill(
-            label    = theme.t("Programlar", "Programs"),
-            icon     = Icons.Rounded.FitnessCenter,
-            selected = selected == DiscoverTab.Programs,
-            accent   = accent,
-            modifier = Modifier.weight(1f),
-            onClick  = { onSelect(DiscoverTab.Programs) }
-        )
-        DiscoverTabPill(
-            label    = theme.t("Topluluk", "Community"),
-            icon     = Icons.Rounded.Person,
-            selected = selected == DiscoverTab.Friends,
-            accent   = accent,
-            modifier = Modifier.weight(1f),
-            onClick  = { onSelect(DiscoverTab.Friends) }
-        )
-        DiscoverTabPill(
-            label    = theme.t("Challenge", "Challenges"),
-            icon     = Icons.Rounded.EmojiEvents,
-            selected = selected == DiscoverTab.Challenges,
-            accent   = accent,
-            modifier = Modifier.weight(1f),
-            onClick  = { onSelect(DiscoverTab.Challenges) }
-        )
-    }
-}
-
-@Composable
-private fun DiscoverTabPill(
-    label: String, icon: ImageVector, selected: Boolean, accent: Color,
-    modifier: Modifier = Modifier, onClick: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(12.dp)
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = tween(120),
-        label = "discover_tab_scale"
-    )
-    Row(
-        modifier = modifier
-            .heightIn(min = if (responsive.isLargeFont) 48.dp else 44.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationY = if (pressed) 1.5.dp.toPx() else 0f
-            }
-            .clip(shape)
-            .background(if (selected) theme.bg2 else Color.Transparent)
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
-            .padding(vertical = 10.dp, horizontal = if (responsive.isSmallPhone) 5.dp else 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = if (selected) accent else theme.text2.copy(0.55f), modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = label,
-            color = if (selected) theme.text0 else theme.text1,
-            fontSize = if (responsive.isLargeFont) 11.sp else 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.sp,
-            lineHeight = 11.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  PROGRAMS LIST
-// ═══════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun ProgramsList(
-    state           : DiscoverProgramsState,
-    myProgramIds    : ImmutableSet<String>,
-    myProgramHashes : ImmutableSet<String>,
-    bottomPadding   : Dp,
-    onLike          : (String) -> Unit,
-    onSave          : (String) -> Unit,
-    onApply         : (String) -> Unit,
-    onOpenDetails   : (SharedProgram) -> Unit,
-    onLoadMore      : () -> Unit,
-    onRefresh       : () -> Unit
-) {
-    val listState = rememberLazyListState()
-
-    // Infinite scroll — sona 3 item kala yeni sayfa iste
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val total = layoutInfo.totalItemsCount
-            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            total > 0 && lastVisible >= total - 3
-        }
-    }
-    LaunchedEffect(shouldLoadMore, state.canLoadMore) {
-        if (shouldLoadMore && state.canLoadMore && !state.isLoading) onLoadMore()
-    }
-
-    PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        when {
-            state.items.isEmpty() && state.isLoading -> LoadingState()
-            state.items.isEmpty() && state.error != null -> ErrorState(state.error, onRefresh)
-            state.items.isEmpty() -> EmptyFeedState()
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 20.dp, end = 20.dp,
-                        top = 16.dp, bottom = bottomPadding + 80.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(state.items, key = { it.id }) { program ->
-                        // Senior approach: content-addressable. UYGULANDI iff caller has a local
-                        // program with matching content hash. Server flag is canonical; local-hash
-                        // check provides instant feedback (after Room sync) without waiting for
-                        // the next feed pull. Düzenleme yapılırsa hash değişir → çentik düşer.
-                        //
-                        // Geriye dönük güvenlik ağı: hash henüz dolmamış (NULL) eski Room satırları
-                        // için, kullanıcı az önce uygula'ya basmış ve programId hâlâ duruyorsa da
-                        // UYGULANDI kabul et (geçici, ilk sync'te kalkar).
-                        val isAppliedByHash =
-                            program.contentHash != null && program.contentHash in myProgramHashes
-                        val appliedLocalProgramId = state.appliedProgramMap[program.id]
-                        val isAppliedFallback = appliedLocalProgramId != null &&
-                            appliedLocalProgramId !in state.localDeletingProgramIds &&
-                            myProgramIds.contains(appliedLocalProgramId)
-                        val isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback
-                        SharedProgramCard(
-                            program    = program,
-                            isApplying = program.id in state.applyingProgramIds,
-                            isApplied  = isApplied,
-                            onLike     = { onLike(program.id) },
-                            onSave     = { onSave(program.id) },
-                            onApply    = { onApply(program.id) },
-                            onOpenDetails = { onOpenDetails(program) }
-                        )
-                    }
-                    if (state.isLoading && state.items.isNotEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center
-                            ) { CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp) }
-                        }
-                    }
-                }
-            } // else block
-        }
-    }
-}
-
-
-@Composable
-private fun SharedProgramCard(
-    program   : SharedProgram,
-    isApplying: Boolean,
-    isApplied : Boolean,
-    onLike    : () -> Unit,
-    onSave    : () -> Unit,
-    onApply   : () -> Unit,
-    onOpenDetails: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(24.dp)
-    val stackActions = responsive.isSmallPhone || responsive.isLargeFont
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = tween(120),
-        label = "shared_program_card_scale"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 184.dp)
-            .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
-            }
-            .sinemaCard(theme, shape)
-            .clickable(interactionSource = interaction, indication = null) { onOpenDetails() }
-            .padding(20.dp)
-    ) {
-        // Author row
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AvatarBubble(url = program.creatorAvatarUrl, size = 32.dp)
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text       = program.creatorName,
-                    color      = theme.text0,
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines   = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val metaParts = buildList {
-                    program.difficulty?.name?.lowercase()?.let { add(it) }
-                    program.daysPerWeek?.let { add("$it gün/hafta") }
-                    program.durationWeeks?.let { add("$it hafta") }
-                }
-                if (metaParts.isNotEmpty()) {
-                    Text(
-                        text     = metaParts.joinToString(" · "),
-                        color    = theme.text2.copy(0.6f),
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-
-        // Title + description
-        Text(
-            text       = program.title,
-            color      = theme.text0,
-            fontSize   = if (responsive.isLargeFont) 20.sp else 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines   = if (responsive.isLargeFont) 3 else 2,
-            lineHeight = 23.sp,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (!program.description.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text     = program.description,
-                color    = theme.text2.copy(0.75f),
-                fontSize = 13.sp,
-                maxLines = if (responsive.isLargeFont) 4 else 3,
-                lineHeight = 18.sp,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // Tags
-        if (program.tags.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                program.tags.take(4).forEach { tag ->
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Sinema.line(theme))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text("#$tag", color = theme.text1, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // Actions row
-        val applyText = when {
-            isApplied -> theme.t("UYGULANDI", "APPLIED")
-            isApplying -> theme.t("UYGULANIYOR", "APPLYING")
-            else -> theme.t("UYGULA", "APPLY")
-        }
-        val chips: @Composable () -> Unit = {
-            ActionChip(
-                icon = if (program.isLikedByMe) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                count = program.likesCount,
-                active = program.isLikedByMe,
-                activeColor = Color(0xFFEF476F),
-                onClick = onLike
-            )
-            Spacer(Modifier.width(12.dp))
-            ActionChip(
-                icon = if (program.isSavedByMe) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
-                count = program.savesCount,
-                active = program.isSavedByMe,
-                activeColor = accent,
-                onClick = onSave
-            )
-            Spacer(Modifier.width(12.dp))
-            ActionChip(
-                icon = Icons.Rounded.CloudDownload,
-                count = program.downloadsCount,
-                active = false,
-                activeColor = accent,
-                onClick = {}
-            )
-        }
-        if (stackActions) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) { chips() }
-                Spacer(Modifier.height(10.dp))
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                    ApplyButton(
-                        onClick = onApply,
-                        text = applyText,
-                        enabled = !isApplying && !isApplied,
-                        isLoading = isApplying,
-                        applied = isApplied
-                    )
-                }
-            }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                chips()
-                Spacer(Modifier.weight(1f))
-                ApplyButton(
-                    onClick = onApply,
-                    text = applyText,
-                    enabled = !isApplying && !isApplied,
-                    isLoading = isApplying,
-                    applied = isApplied
-                )
-            }
-        }
     }
 }
 
@@ -1094,47 +649,6 @@ private fun trimMetric(value: Float): String =
     String.format(Locale.US, "%.1f", value).removeSuffix(".0")
 
 @Composable
-private fun ActionChip(
-    icon        : ImageVector,
-    count       : Int,
-    active      : Boolean,
-    activeColor : Color,
-    onClick     : () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .graphicsLayer {
-                scaleX = if (pressed) 0.92f else 1f
-                scaleY = if (pressed) 0.92f else 1f
-            }
-            .clip(RoundedCornerShape(999.dp))
-            .background(Sinema.line(theme))
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
-            .padding(horizontal = 10.dp, vertical = if (responsive.isLargeFont) 9.dp else 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (active) activeColor else theme.text2.copy(0.6f),
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = count.toString(),
-            color = if (active) activeColor else theme.text2.copy(0.75f),
-            fontSize = if (responsive.isLargeFont) 11.sp else 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
 private fun ApplyButton(
     onClick: () -> Unit,
     text: String,
@@ -1161,36 +675,6 @@ private fun ApplyButton(
             maxLines = 1,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-private fun AvatarBubble(url: String?, size: Dp) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(theme.bg2),
-        contentAlignment = Alignment.Center
-    ) {
-        if (!url.isNullOrBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(url)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(CircleShape)
-            )
-        } else {
-            Icon(
-                Icons.Rounded.Person, null,
-                tint = theme.text2.copy(0.6f),
-                modifier = Modifier.size(size * 0.6f)
-            )
-        }
     }
 }
 
@@ -1247,173 +731,6 @@ private fun EmptyFeedState() {
     }
 }
 
-
-@Composable
-private fun ChallengesPlaceholder(bottomPadding: Dp) {
-    val theme = LocalAppTheme.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp).padding(bottom = bottomPadding),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(theme.t("Grup Challenge'ları", "Group Challenges"), color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = theme.t(
-                "Arkadaşlarınla ya da toplulukla meydan okumaya katıl, ilerleme takip et, ödül kazan.",
-                "Join challenges with friends or the community, track progress, and earn rewards."
-            ),
-            color = theme.text2.copy(0.7f), fontSize = 14.sp,
-            textAlign = TextAlign.Center, lineHeight = 20.sp
-        )
-        Spacer(Modifier.height(24.dp))
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(0.14f))
-                .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.35f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-        ) {
-            Text(theme.t("ÇOK YAKINDA", "COMING SOON"), color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  SHARE FAB
-// ═══════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun ShareFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val accent = MaterialTheme.colorScheme.primary
-    val theme = LocalAppTheme.current
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.90f else 1f,
-        animationSpec = spring(stiffness = 820f, dampingRatio = 0.72f),
-        label = "share_fab_scale"
-    )
-    val shape = CircleShape
-    Box(
-        modifier = modifier
-            .size(54.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationY = if (pressed) 3.dp.toPx() else 0f
-            }
-            .shadow(
-                if (pressed) 2.dp else 12.dp,
-                shape,
-                ambientColor = accent.copy(0.28f),
-                spotColor = accent.copy(0.40f)
-            )
-            .clip(shape)
-            .background(accent)
-            .clickable(interactionSource = interaction, indication = null) { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Rounded.Share, theme.t("Programı paylaş", "Share program"),
-            tint = theme.effectiveOnAccentColor, modifier = Modifier.size(24.dp))
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  PROGRAMS SUB-TAB: Topluluk vs. Benim paylaşımlarım
-// ═══════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun ProgramsSubTabBar(
-    selected: ProgramsSubTab,
-    savedCount: Int,
-    mineCount: Int,
-    onSelect: (ProgramsSubTab) -> Unit
-) {
-    val theme = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = responsive.horizontalPadding)
-            .padding(top = 12.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        SubTabChip(
-            label = theme.t("TOPLULUK", "COMMUNITY"),
-            selected = selected == ProgramsSubTab.Community,
-            onClick = { onSelect(ProgramsSubTab.Community) },
-            modifier = Modifier.weight(1f)
-        )
-        SubTabChip(
-            label = if (savedCount > 0) {
-                theme.t("KAYDEDİLENLER · $savedCount", "SAVED · $savedCount")
-            } else {
-                theme.t("KAYDEDİLENLER", "SAVED")
-            },
-            selected = selected == ProgramsSubTab.Saved,
-            onClick = { onSelect(ProgramsSubTab.Saved) },
-            modifier = Modifier.weight(1f)
-        )
-        SubTabChip(
-            label = if (mineCount > 0) {
-                theme.t("PAYLAŞIMLARIM · $mineCount", "MY SHARES · $mineCount")
-            } else {
-                theme.t("PAYLAŞIMLARIM", "MY SHARES")
-            },
-            selected = selected == ProgramsSubTab.Mine,
-            onClick = { onSelect(ProgramsSubTab.Mine) },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun SubTabChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val responsive = rememberResponsiveLayoutInfo()
-    val shape = RoundedCornerShape(12.dp)
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Box(
-        modifier = modifier
-            .heightIn(min = if (responsive.isLargeFont) 52.dp else 40.dp)
-            .graphicsLayer {
-                scaleX = if (pressed) 0.98f else 1f
-                scaleY = if (pressed) 0.98f else 1f
-            }
-            .then(
-                if (selected) Modifier.clip(shape).background(theme.bg3)
-                else Modifier.clip(shape).background(theme.bg2)
-            )
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
-            .padding(horizontal = 5.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (selected) theme.accentTextColor else theme.text2,
-            fontSize = if (responsive.isLargeFont) 8.sp else 9.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.sp,
-            lineHeight = 11.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  MY SHARED PROGRAMS LIST — sync + delete yönetimi
-// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  SİNEMA: fotoğraflı liste kartı (Kaydedilenler + Paylaşımlarım ortak)
@@ -1818,17 +1135,6 @@ private fun MySharedCard(
             Spacer(Modifier.width(8.dp))
             Text(theme.t("Yayından kaldır", "Unpublish"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
         }
-    }
-}
-
-@Composable
-private fun StatLabel(icon: ImageVector, text: String) {
-    val theme = LocalAppTheme.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = theme.text2.copy(0.6f), modifier = Modifier.size(13.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(text, color = theme.text2.copy(0.75f),
-            fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

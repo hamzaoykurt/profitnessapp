@@ -11,39 +11,25 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Event
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.HourglassBottom
-import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Send
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Straighten
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,8 +44,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,16 +60,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
-import com.cosmibit.profitness.core.theme.bg0
 import com.cosmibit.profitness.core.theme.bg1
-import com.cosmibit.profitness.core.theme.bg2
-import com.cosmibit.profitness.core.theme.stroke
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
-import com.cosmibit.profitness.core.theme.performanceElevatedSurface
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
@@ -107,9 +87,6 @@ import com.cosmibit.profitness.domain.challenges.EventMode
 import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.social.UserSummary
 import com.cosmibit.profitness.presentation.workout.SportType
-import com.cosmibit.profitness.presentation.components.PremiumIconButton
-import com.cosmibit.profitness.presentation.components.premiumSolidSurface
-import com.cosmibit.profitness.presentation.components.insetControlSurface
 
 /**
  * Challenges tab — DiscoverScreen'e gömülü.
@@ -830,61 +807,6 @@ private fun ChallengeFiltersDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FilterPickerDialog(
-    title: String,
-    options: List<Pair<String?, String>>,
-    selectedRaw: String?,
-    accent: Color,
-    onDismiss: () -> Unit,
-    onSelect: (String?) -> Unit
-) {
-    val theme = LocalAppTheme.current
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 420.dp)
-                .sinemaCard(theme, RoundedCornerShape(28.dp))
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    title,
-                    color = theme.text0,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.4.sp,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    Icons.Rounded.Close,
-                    null,
-                    tint = theme.text2,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clickable(onClick = onDismiss)
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                options.forEach { (raw, label) ->
-                    FilterChip(
-                        label = label,
-                        active = raw == selectedRaw,
-                        accent = accent,
-                        onClick = { onSelect(raw) }
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun FilterChip(
     label: String,
@@ -1005,16 +927,6 @@ private fun daysBetween(fromIso: String, toIso: String): Long? {
     val f = runCatching { java.time.LocalDate.parse(fromIso) }.getOrNull() ?: return null
     val t = runCatching { java.time.LocalDate.parse(toIso) }.getOrNull() ?: return null
     return java.time.temporal.ChronoUnit.DAYS.between(f, t)
-}
-
-private fun targetIcon(type: ChallengeTargetType): ImageVector = when (type) {
-    ChallengeTargetType.TotalWorkouts        -> Icons.Rounded.FitnessCenter
-    ChallengeTargetType.TotalXp              -> Icons.Rounded.Bolt
-    ChallengeTargetType.CurrentStreak        -> Icons.Rounded.LocalFireDepartment
-    ChallengeTargetType.TotalDurationMinutes -> Icons.Rounded.Timer
-    ChallengeTargetType.TotalDistanceM       -> Icons.Rounded.Straighten
-    ChallengeTargetType.TotalDistanceKm      -> Icons.Rounded.Speed
-    ChallengeTargetType.MovementsCompleted   -> Icons.Rounded.PlaylistAddCheck
 }
 
 private val challengeNumberFormat: java.text.NumberFormat
@@ -1213,84 +1125,6 @@ private fun PosterStatusLabel(text: String, dot: Color) {
     }
 }
 
-// ── Status pill (NOT STARTED / LIVE / ENDED / DONE) ─────────────────────────
-@Composable
-private fun StatusPill(
-    status: CardStatus,
-    completed: Boolean,
-    accent: Color,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState
-) {
-    val endedColor = challengeStatusAccent(CardStatus.Ended, false, accent)
-    val (label, fg) = when {
-        completed -> "TAMAM" to accent
-        status == CardStatus.NotStarted -> "YAKINDA" to Color(0xFFFFB74D)
-        status == CardStatus.Live       -> "DEVAM EDİYOR" to accent
-        else                            -> "SONA ERDİ" to endedColor
-    }
-    Row(
-        modifier = Modifier
-            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(fg)
-        )
-        Spacer(Modifier.width(5.dp))
-        Text(
-            label,
-            color = fg,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        )
-    }
-}
-
-// ── Join / Leave CTA pill — gradient + icon ─────────────────────────────────
-@Composable
-private fun JoinPill(
-    isJoined: Boolean,
-    isInvited: Boolean,
-    isFull: Boolean,
-    inFlight: Boolean,
-    canAct: Boolean,
-    accent: Color,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState,
-    onClick: () -> Unit
-) {
-    SinemaChip(
-        active = canAct && !isJoined,
-        onClick = onClick,
-        enabled = !inFlight && canAct,
-        height = 44.dp
-    ) { fg ->
-        if (inFlight) {
-            CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
-        } else {
-            val icon = when {
-                !canAct  -> Icons.Rounded.Lock
-                isJoined -> Icons.Rounded.Check
-                else     -> Icons.Rounded.Bolt
-            }
-            val label = when {
-                isFull    -> theme.t("DOLU", "FULL")
-                !canAct  -> theme.t("KAPALI", "CLOSED")
-                isJoined -> theme.t("KATILDIN", "JOINED")
-                isInvited -> theme.t("DAVET", "INVITE")
-                else     -> theme.t("KATIL", "JOIN")
-            }
-            Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
-        }
-    }
-}
-
 @Composable
 private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
     val shape = RoundedCornerShape(4.dp)
@@ -1307,86 +1141,6 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
                     .background(accent)
             )
         }
-    }
-}
-
-@Composable
-private fun KindBadge(
-    isEvent: Boolean,
-    accent: Color,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState
-) {
-    val (icon, label, tint) = if (isEvent)
-        Triple(Icons.Rounded.Event, theme.t("ETKİNLİK", "EVENT"), accent)
-    else
-        Triple(Icons.Rounded.EmojiEvents, theme.t("METRİK", "METRIC"), theme.text1)
-
-    Row(
-        modifier = Modifier
-            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(10.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(
-            label,
-            color = tint,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        )
-    }
-}
-
-@Composable
-private fun InviteBadge(
-    accent: Color,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState
-) {
-    Row(
-        modifier = Modifier
-            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(12.dp))
-        Spacer(Modifier.width(5.dp))
-        Text(
-            theme.t("DAVET", "INVITE"),
-            color = theme.text0,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        )
-    }
-}
-
-@Composable
-private fun EventModeBadge(
-    mode: EventMode,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState
-) {
-    val (icon, label) = when (mode) {
-        EventMode.Physical     -> Icons.Rounded.LocationOn to theme.t("FİZİKSEL", "PHYSICAL")
-        EventMode.Online       -> Icons.Rounded.Link to "ONLINE"
-        EventMode.MovementList -> Icons.Rounded.PlaylistAddCheck to theme.t("HAREKET", "MOVEMENT")
-    }
-    Row(
-        modifier = Modifier
-            .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = theme.text2, modifier = Modifier.size(10.dp))
-        Spacer(Modifier.width(3.dp))
-        Text(
-            label,
-            color = theme.text2,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
     }
 }
 
