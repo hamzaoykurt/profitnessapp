@@ -25,6 +25,7 @@ import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
@@ -1194,7 +1195,7 @@ private fun DiscoverTopControls(
             val idx = tabs.indexOfFirst { it.first == selected }.coerceAtLeast(0)
             val x by animateDpAsState(
                 tabW * idx,
-                if (motion) spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow) else snap(),
+                if (motion) SinemaMotion.settle() else snap(),
                 label = "discover_stone"
             )
             val stoneShape = RoundedCornerShape(24.dp)
@@ -1207,7 +1208,7 @@ private fun DiscoverTopControls(
             Row(Modifier.fillMaxSize()) {
                 tabs.forEach { (tab, label) ->
                     val on = tab == selected
-                    val fg by animateColorAsState(if (on) onAccent else Color.White.copy(0.78f), tween(180), label = "discover_tab_fg")
+                    val fg by animateColorAsState(if (on) onAccent else Color.White.copy(0.78f), tween(SinemaMotion.Quick), label = "discover_tab_fg")
                     Box(
                         Modifier.weight(1f).fillMaxHeight()
                             .clip(stoneShape)
@@ -1335,7 +1336,7 @@ private fun SinemaProgramsPager(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     repeat(segs) { i ->
-                        val f by animateFloatAsState(if (i <= cur) 1f else 0f, tween(450), label = "dseg")
+                        val f by animateFloatAsState(if (i <= cur) 1f else 0f, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "dseg")
                         Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
                             Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(accent))
                         }
@@ -1363,17 +1364,12 @@ private fun ProgramPage(
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val haze = remember { dev.chrisbanes.haze.HazeState() }
-    val motion = rememberSinemaMotionOn()
-    val kb by rememberInfiniteTransition(label = "dkb").animateFloat(
-        1f, if (isSettled && motion) 1.08f else 1f,
-        infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse), label = "kb"
-    )
     BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().clickable(role = Role.Button, onClick = onOpen)) {
         val compact = maxHeight < 700.dp
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             SceneImage(
                 url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
-                modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = kb; scaleY = kb },
+                modifier = Modifier.fillMaxSize(),
                 requestWidthPx = 1080, requestHeightPx = 1920, fallbackGradient = true
             )
             Scrims()

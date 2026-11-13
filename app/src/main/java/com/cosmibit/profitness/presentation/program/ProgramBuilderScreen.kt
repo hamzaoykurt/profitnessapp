@@ -674,7 +674,7 @@ fun ProgramBuilderScreen(
 
         Crossfade(
             targetState = mode,
-            animationSpec = tween(140, easing = FastOutSlowInEasing),
+            animationSpec = tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard),
             label = "builder_fade"
         ) { m ->
             Box(Modifier.fillMaxSize()) {

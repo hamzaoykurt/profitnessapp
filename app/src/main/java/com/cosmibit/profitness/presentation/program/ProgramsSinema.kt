@@ -75,7 +75,6 @@ import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
-import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
@@ -84,12 +83,6 @@ import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.domain.model.ProgramType
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import com.cosmibit.profitness.presentation.workout.WorkoutDayState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 
@@ -143,10 +136,6 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             ?.firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
     }.ifBlank { categoryImageUrl("") }
     val haze = remember { HazeState() }
-    val motion = rememberSinemaMotionOn()
-    val kb by rememberInfiniteTransition(label = "prog_kb").animateFloat(
-        1f, if (motion) 1.08f else 1f, infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse), label = "kb"
-    )
     Box(Modifier.fillMaxWidth().height(496.dp).clipToBounds()) {
         Box(
             Modifier.fillMaxSize().hazeSource(haze)
@@ -162,7 +151,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
         ) {
             // Foto 640dp yüksekliğinde, üstten hizalı, -110dp kaydırılmış (çizim)
-            Box(Modifier.fillMaxWidth().requiredHeight(640.dp).offset(y = (-110).dp).graphicsLayer { scaleX = kb; scaleY = kb }) {
+            Box(Modifier.fillMaxWidth().requiredHeight(640.dp).offset(y = (-110).dp)) {
                 SceneImage(url = imageUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1080, requestHeightPx = 1600,
                     alignment = Alignment.TopCenter, fallbackGradient = true)
             }

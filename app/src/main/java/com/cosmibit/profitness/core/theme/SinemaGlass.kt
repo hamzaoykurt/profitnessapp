@@ -83,6 +83,8 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
@@ -112,6 +114,13 @@ fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = thi
 
 /** Haze kaynağı: foto sayfa katmanı sağlar; kapsül/hap camı bununla arka planı bulanıklaştırır (yoksa düz yarı saydam dolgu). */
 val LocalSinemaHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/**
+ * Cam blur'ları yarı çözünürlükte hesaplanır (piksel sayısı 1/4): 16-32dp bulanıklıkta fark görünmez, GPU yükü düşer.
+ * Görsel sorun çıkarsa tek satır: HazeInputScale.None.
+ */
+@OptIn(ExperimentalHazeApi::class)
+private val SinemaHazeScale: HazeInputScale = HazeInputScale.Fixed(0.5f)
 
 /**
  * CAM C (tek yer, .ekip/yon-cam-siyah.md "Genel cam tonu" + mockup `.glass`/`.stone`): siyah tint YOK, cam = beyaz ışık.
@@ -161,6 +170,8 @@ fun Modifier.sinemaCapsuleGlass(
         .then(
             if (blurOk) Modifier.hazeEffect(state = haze!!) {
                 blurRadius = blur
+                @OptIn(ExperimentalHazeApi::class)
+                run { inputScale = SinemaHazeScale }
                 backgroundColor = Sinema.Page
                 // dolgu aşağıda çiziliyor; neredeyse saydam tint Haze'in varsayılan koyu tintini devre dışı bırakır
                 tints = listOf(HazeTint(Color.White.copy(alpha = 0.01f)))
@@ -284,13 +295,13 @@ fun SinemaNavBar(
     if (hideProgress >= 1f) return
 
     val bg by animateColorAsState(
-        if (onPhoto) Sinema.scrim(0.55f) else Sinema.page(theme), tween(250), label = "nav_bg"
+        if (onPhoto) Sinema.scrim(0.55f) else Sinema.page(theme), tween(SinemaMotion.Standard), label = "nav_bg"
     )
     val passive by animateColorAsState(
-        if (onPhoto) Color.White.copy(0.7f) else Sinema.textSecondary(theme), tween(250), label = "nav_passive"
+        if (onPhoto) Color.White.copy(0.7f) else Sinema.textSecondary(theme), tween(SinemaMotion.Standard), label = "nav_passive"
     )
     val active by animateColorAsState(
-        if (onPhoto) Color.White else Sinema.text(theme), tween(250), label = "nav_active"
+        if (onPhoto) Color.White else Sinema.text(theme), tween(SinemaMotion.Standard), label = "nav_active"
     )
 
     val blurOk = haze != null && Build.VERSION.SDK_INT >= 31
@@ -327,6 +338,8 @@ fun SinemaNavBar(
                 .then(
                     if (blurOk) Modifier.hazeEffect(state = haze!!) {
                         blurRadius = 32.dp
+                        @OptIn(ExperimentalHazeApi::class)
+                        run { inputScale = SinemaHazeScale }
                         backgroundColor = bg.copy(alpha = 1f)
                         tints = listOf(HazeTint(bg.copy(alpha = 0.30f)))
                         noiseFactor = 0f

@@ -33,7 +33,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
-import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
@@ -186,14 +185,14 @@ fun AICoachScreen(
     ) {
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val hazeState = remember { dev.chrisbanes.haze.HazeState() }
         val chatting = state.messages.size > 1
         val bottomGap = if (imeVisible) 8.dp else bottomPadding   // çizim: msg alt boşluğu = menü 60 + 16
 
-        // Sahne (haze kaynağı): kapsül/haplar bunu bulanıklaştırır
-        Box(Modifier.fillMaxSize().hazeSource(hazeState)) { SinemaScene() }
+        // Sahne düz degrade: bulanıklaştırmak görünür fark yaratmaz, bu yüzden Haze kaynağı YOK
+        // (balon/hap camları aynı dolguyla çizilir; kaydırmada balon başına blur maliyeti kalkar).
+        Box(Modifier.fillMaxSize()) { SinemaScene() }
 
-        CompositionLocalProvider(LocalAppTheme provides theme, LocalSinemaHaze provides hazeState) {
+        CompositionLocalProvider(LocalAppTheme provides theme) {
             // ── Sohbet akışı (konuşma başladıysa) ─────────────────────────────
             if (chatting || state.isLoading) {
                 LazyColumn(
@@ -745,7 +744,7 @@ private fun SanctuaryInput(
         Spacer(Modifier.width(8.dp))
         val src = remember { MutableInteractionSource() }
         val pressed by src.collectIsPressedAsState()
-        val scale by animateFloatAsState(if (pressed && sendActive) 0.92f else 1f, tween(120), label = "oracle_send_scale")
+        val scale by animateFloatAsState(if (pressed && sendActive) 0.92f else 1f, tween(SinemaMotion.Quick), label = "oracle_send_scale")
         Box(
             Modifier
                 .size(38.dp)
@@ -920,10 +919,14 @@ private fun formatSessionDate(millis: Long, theme: AppThemeState): String {
 
 @Composable
 private fun SanctuaryTypingIndicator() {
-    val transition = rememberInfiniteTransition(label = "dots")
-    val dot0 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 0),   RepeatMode.Reverse), label = "d0")
-    val dot1 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 160), RepeatMode.Reverse), label = "d1")
-    val dot2 by transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(500, delayMillis = 320), RepeatMode.Reverse), label = "d2")
+    // Tek sonsuz geçiş (faz 0..1); değer yalnız çizim aşamasında okunur → her karede yeniden kompozisyon yok.
+    // Hareket azaltmada geçiş hiç kurulmaz (noktalar sabit).
+    val motionOn = rememberSinemaMotionOn()
+    val phase = if (motionOn) {
+        rememberInfiniteTransition(label = "dots").animateFloat(
+            0f, 1f, infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart), label = "dots_phase"
+        )
+    } else null
 
     val accent = MaterialTheme.colorScheme.primary
 
@@ -950,19 +953,20 @@ private fun SanctuaryTypingIndicator() {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                listOf(dot0, dot1, dot2).forEach { alpha ->
-                    val dotY by rememberInfiniteTransition(label = "y").animateFloat(
-                        initialValue    = 0f,
-                        targetValue     = -4f,
-                        animationSpec   = infiniteRepeatable(tween(500), RepeatMode.Reverse),
-                        label           = "dot_y"
-                    )
+                val lift = with(LocalDensity.current) { 4.dp.toPx() }
+                repeat(3) { i ->
                     Box(
                         Modifier
-                            .offset(y = (dotY * alpha).dp)
                             .size(7.dp)
+                            .graphicsLayer {
+                                // nokta başı 0.16 faz kayması; üçgen dalga 0..1..0, yumuşatılmış
+                                val t = phase?.value?.let { ((it - i * 0.16f) % 1f + 1f) % 1f }
+                                val wave = if (t == null) 0.6f else (1f - kotlin.math.abs(t * 2f - 1f)).let { w -> w * w * (3f - 2f * w) }
+                                alpha = 0.25f + 0.75f * wave
+                                translationY = if (t == null) 0f else -lift * wave
+                            }
                             .clip(CircleShape)
-                            .background(accent.copy(alpha))
+                            .background(accent)
                     )
                 }
             }

@@ -6,7 +6,6 @@ import com.cosmibit.profitness.core.theme.sinemaGlow
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -79,6 +78,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -120,6 +120,8 @@ import androidx.compose.ui.unit.em
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaMotion
+import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseCompactDisplayName
@@ -181,15 +183,6 @@ internal val SinemaContentBottom = 64.dp
 
 private const val PARALLAX = 0.25f   // foto sayfa hızının %75'iyle kayar (plan 0.5x; aşırı kırpmayı önlemek için)
 
-@Composable
-private fun rememberAnimationsEnabled(): Boolean {
-    val context = LocalContext.current
-    return remember(context) {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
-        }.getOrDefault(true)
-    }
-}
 
 // ── Pager ────────────────────────────────────────────────────────────────────────────────────
 
@@ -224,7 +217,7 @@ fun SinemaWorkoutPager(
     val n = exercises.size
     val single = isRestDay || isSkipped || n == 0
     val pageCount = if (single) 1 else n + if (allDone) 1 else 0
-    val animEnabled = rememberAnimationsEnabled()
+    val animEnabled = rememberSinemaMotionOn()
 
     // Yatay pager = gün. Kaydırınca ViewModel güncellenir, dışarıdan gün değişince pager gider.
     // Pager ve durumu gün değişiminden bağımsız (key DIŞINDA): kaydırmalar boyunca alt ağaç yeniden kurulmaz.
@@ -401,22 +394,15 @@ fun SinemaWorkoutPager(
 
 // ── Sayfa katmanları ─────────────────────────────────────────────────────────────────────────
 
-/** Foto: 1.5 kat yükseklikte, paralaks + Ken Burns (yalnız yerleşik sayfa). */
+/** Foto: 1.5 kat yükseklikte, paralaks. Statik (sürekli zoom yok): sayfa boştayken üstündeki cam blur'ları yeniden hesaplanmaz. */
 @Composable
 private fun PhotoLayer(
     url: String,
-    isSettled: Boolean,
-    animEnabled: Boolean,
+    @Suppress("UNUSED_PARAMETER") isSettled: Boolean,
+    @Suppress("UNUSED_PARAMETER") animEnabled: Boolean,
     offset: () -> Float,
     modifier: Modifier = Modifier
 ) {
-    val kenBurns = if (isSettled && animEnabled) {
-        rememberInfiniteTransition(label = "ken_burns").animateFloat(
-            initialValue = 1f, targetValue = 1.08f,
-            animationSpec = infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse),
-            label = "kb"
-        )
-    } else null
     Box(
         modifier
             .fillMaxSize()
@@ -428,8 +414,6 @@ private fun PhotoLayer(
             }
             .graphicsLayer {
                 translationY = -offset().coerceIn(-1f, 1f) * size.height * (PARALLAX / 1.5f)
-                val s = if (animEnabled) kenBurns?.value ?: 1f else 1f
-                scaleX = s; scaleY = s
             }
     ) {
         SceneImage(
@@ -472,23 +456,25 @@ private fun SweepLayer(trigger: Int, animEnabled: Boolean) {
     LaunchedEffect(trigger) {
         if (trigger > 0 && animEnabled) {
             p.snapTo(0f)
-            p.animateTo(1f, tween(Sinema.SweepMs, easing = LinearEasing))
+            p.animateTo(1f, tween(Sinema.SweepMs, easing = SinemaMotion.EaseStandard))
             p.snapTo(0f)
         }
     }
     Box(
-        Modifier.fillMaxSize().drawBehind {
-            val v = p.value
-            if (v > 0f && v < 1f) {
-                val bw = size.width * 0.55f
-                val x = -bw + (size.width + bw) * v
-                drawRect(
-                    Brush.horizontalGradient(
-                        listOf(Color.Transparent, Color.White.copy(0.16f), Color.Transparent),
-                        startX = x, endX = x + bw
-                    ),
-                    topLeft = Offset(x, 0f), size = Size(bw, size.height)
-                )
+        // Fırça bir kez kurulur (boyut değişene kadar); her karede yalnız yatay ötelenir.
+        Modifier.fillMaxSize().drawWithCache {
+            val bw = size.width * 0.55f
+            val band = Brush.horizontalGradient(
+                listOf(Color.Transparent, Color.White.copy(0.16f), Color.Transparent),
+                startX = 0f, endX = bw
+            )
+            val bandSize = Size(bw, size.height)
+            onDrawBehind {
+                val v = p.value
+                if (v > 0f && v < 1f) {
+                    val x = -bw + (size.width + bw) * v
+                    translate(left = x) { drawRect(band, size = bandSize) }
+                }
             }
         }
     )
@@ -740,7 +726,7 @@ private fun SetRow(
     val done = state == SetRowState.Done
     val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
     val h by androidx.compose.animation.core.animateDpAsState(
-        if (active) 60.dp else 52.dp, if (motion) tween(200, easing = FastOutSlowInEasing) else androidx.compose.animation.core.snap(),
+        if (active) 60.dp else 52.dp, if (motion) tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard) else androidx.compose.animation.core.snap(),
         label = "set_row_h"
     )
     val shape = RoundedCornerShape(h / 2)
@@ -819,7 +805,7 @@ private fun SetCheck(state: SetRowState, accent: Color, onAccent: Color, descrip
     LaunchedEffect(done) {
         if (done && !first && motion) {
             pop.snapTo(0.7f)
-            pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+            pop.animateTo(1f, SinemaMotion.pop())
         }
         first = false
     }
@@ -886,10 +872,11 @@ private fun CapsuleRow(
 private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, description: String, onToggle: () -> Unit, hit: Dp) {
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
+    val motion = rememberSinemaMotionOn()
     LaunchedEffect(done) {
-        if (done && !first) {
+        if (done && !first && motion) {
             pop.snapTo(0.7f)
-            pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+            pop.animateTo(1f, SinemaMotion.pop())
         }
         first = false
     }
@@ -948,7 +935,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        if (pressed) 0.96f else 1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium), label = "start_scale"
+        if (pressed) 0.96f else 1f, SinemaMotion.press(), label = "start_scale"
     )
     val shape = RoundedCornerShape(28.dp)
     // Çizim: düz vurgu dolgusu + üstte inset 1px beyaz %40 + altta `0 8px 20px` vurgu %40 parlaması.
@@ -1020,7 +1007,7 @@ private fun DayPreviewPage(st: WorkoutDayState?, showText: Boolean = true) {
 private fun RestPage(isSkipped: Boolean) {
     val theme = LocalAppTheme.current
     val strings = theme.strings
-    val animEnabled = rememberAnimationsEnabled()
+    val animEnabled = rememberSinemaMotionOn()
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = SinemaContentBottom + navInset() + 24.dp),
@@ -1106,7 +1093,7 @@ private fun SinemaTopBar(
                 exercises.forEach { ex ->
                     val frac = if (ex.id in completedIds) 1f
                     else (dataFor(ex).doneSetIndices.size.toFloat() / ex.sets.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    val f by animateFloatAsState(frac, tween(450), label = "seg")
+                    val f by animateFloatAsState(frac, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "seg")
                     Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
                         Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(accent))
                     }

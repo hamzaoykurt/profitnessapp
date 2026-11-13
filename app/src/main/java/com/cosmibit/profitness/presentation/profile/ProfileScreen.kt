@@ -384,16 +384,6 @@ private fun rankBrush(rank: String): Brush {
     return Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(c, Color.White, 0.18f), androidx.compose.ui.graphics.lerp(c, Color.Black, 0.22f)))
 }
 
-@Composable
-private fun profileMotionOn(): Boolean {
-    val context = LocalContext.current
-    return remember(context) {
-        runCatching {
-            android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
-        }.getOrDefault(true)
-    }
-}
-
 /** Çizimdeki `.chip`: 28dp, r14, 12sp bold, harf aralığı .06em. */
 @Composable
 private fun ProfileChip(
@@ -450,12 +440,6 @@ private fun ProfileHeroBanner(
     val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
     val fill = remember { Animatable(0f) }
     LaunchedEffect(xpProgress) { fill.animateTo(xpProgress.coerceIn(0f, 1f), tween(900, easing = FastOutSlowInEasing)) }
-    val motionOn = profileMotionOn()
-    val kenBurns by rememberInfiniteTransition(label = "profile_kb").animateFloat(
-        initialValue = 1f, targetValue = if (motionOn) 1.08f else 1f,
-        animationSpec = infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse),
-        label = "kb"
-    )
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
@@ -466,7 +450,6 @@ private fun ProfileHeroBanner(
                     url = categoryImageUrl(""),
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         translationY = scrollOffset() * 0.5f
-                        scaleX = kenBurns; scaleY = kenBurns
                     },
                     requestWidthPx = 1080, requestHeightPx = 960,
                     fallbackGradient = true

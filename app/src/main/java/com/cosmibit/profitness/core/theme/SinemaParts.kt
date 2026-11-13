@@ -226,7 +226,7 @@ fun SinemaGoButton(
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        if (pressed) 0.96f else 1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium), label = "go_scale"
+        if (pressed) 0.96f else 1f, SinemaMotion.press(), label = "go_scale"
     )
     val shape = RoundedCornerShape(28.dp)
     Box(
