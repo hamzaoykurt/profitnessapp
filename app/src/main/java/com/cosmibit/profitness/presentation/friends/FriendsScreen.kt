@@ -87,8 +87,7 @@ fun FriendsTab(
     val showingSearch = state.query.isNotBlank()
 
     Box(Modifier.fillMaxSize()) {
-        SinemaScene(Modifier.fillMaxSize())
-
+        // Zemin: DashboardScreen kökündeki tek SinemaBackdrop (ikinci zemin çizilmez)
         Column(Modifier.fillMaxSize().padding(top = topPadding)) {
             Text(
                 theme.t("Topluluk", "Community"), style = Sinema.ScreenTitle, color = Color.White,

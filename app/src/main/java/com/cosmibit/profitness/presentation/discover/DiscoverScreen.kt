@@ -210,7 +210,7 @@ fun DiscoverScreen(
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val controlsTop = statusTop + 20.dp + timerExtraPad
     Box(modifier = Modifier.fillMaxSize()) {
-      SinemaBackdrop(Modifier.fillMaxSize())
+        // Zemin: DashboardScreen kökündeki tek SinemaBackdrop; burada ikinci backdrop çizilmez
         selectedProgram?.let { program ->
             val live = state.items.firstOrNull { it.id == program.id }
                 ?: state.savedItems.firstOrNull { it.id == program.id } ?: program
@@ -322,7 +322,6 @@ private fun SharedProgramDetailScreen(
     val goBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        SinemaBackdrop(Modifier.fillMaxSize())
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = goBottom + 56.dp + 48.dp),

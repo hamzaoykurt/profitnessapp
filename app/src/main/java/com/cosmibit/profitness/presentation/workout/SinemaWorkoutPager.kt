@@ -311,7 +311,7 @@ fun SinemaWorkoutPager(
 
         CompositionLocalProvider(LocalPagerBottomExtra provides bottomExtra) {
         Box(modifier.fillMaxSize()) {
-            SinemaBackdrop(Modifier.fillMaxSize())   // fotosuz sayfalar (dinlenme/boş) bu ortak zemini gösterir; foto sayfalar üstünü örter
+            // Zemin: DashboardScreen kökündeki tek SinemaBackdrop (fotosuz sayfalar onu gösterir)
             HorizontalPager(
                 state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
                 key = { it }

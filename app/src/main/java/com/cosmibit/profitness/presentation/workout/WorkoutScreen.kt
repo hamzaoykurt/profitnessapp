@@ -317,7 +317,7 @@ fun WorkoutScreen(
     val focusExerciseId by viewModel.focusExerciseRequest.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        SinemaBackdrop(Modifier.fillMaxSize())   // yükleniyor / boş program / dinlenme: ortak ışıklı zemin
+        // Zemin: DashboardScreen kökündeki tek SinemaBackdrop (yükleniyor / boş / dinlenme dahil)
 
         // ── İçerik ────────────────────────────────────────────────────────────
         when {

@@ -150,6 +150,15 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
     Box(Modifier.fillMaxWidth().height(496.dp).clipToBounds()) {
         Box(
             Modifier.fillMaxSize().hazeSource(haze)
+                // Foto alt ~%40'ta alfa → 0: kapak ortak SinemaBackdrop'a yumuşakça söner (katı sayfa rengi bandı yok)
+                .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        Brush.verticalGradient(0.58f to Color.Black, 1f to Color.Transparent),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                    )
+                }
                 .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
         ) {
             // Foto 640dp yüksekliğinde, üstten hizalı, -110dp kaydırılmış (çizim)
@@ -162,7 +171,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
                         0f to Color.Black.copy(0.5f), 0.24f to Color.Transparent,
-                        0.42f to Color.Black.copy(0.12f), 0.80f to Color.Black.copy(0.88f), 1f to Sinema.Page
+                        0.42f to Color.Black.copy(0.12f), 0.80f to Color.Black.copy(0.88f), 1f to Color.Black.copy(0.88f)
                     )
                 )
             )
@@ -272,23 +281,8 @@ private fun TodayPanel(info: ProgramTodayInfo) {
 /** Çizim .prs: sayfa renginde, üstü yuvarlak, vurgu gölgesi + hafif hale. Çocuklar 16dp yan boşlukla. */
 @Composable
 fun ProgramsSheet(content: @Composable () -> Unit) {
-    val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(topStart = SheetTopRadius, topEnd = SheetTopRadius)
-    val line = Sinema.line(theme)
-    Column(
-        Modifier.fillMaxWidth()
-            .sinemaGlow(accent.copy(0.40f), 40.dp, (-14).dp, shape)
-            .drawBehind {
-                drawRoundRect(line, topLeft = Offset(0f, -1.dp.toPx()), size = size, cornerRadius = CornerRadius(SheetTopRadius.toPx()))
-            }
-            .clip(shape)
-            .drawBehind {
-                // Yalnız foto kapağın altına binen üst 28dp sayfa renginde; geri kalanı ortak SinemaBackdrop'u gösterir (yerel ışık yok)
-                drawRect(Sinema.Page, size = Size(size.width, SheetTopRadius.toPx()))
-            }
-            .padding(top = 20.dp)
-    ) { content() }
+    // Yüzeysiz: içerik doğrudan ortak SinemaBackdrop üstünde; kapak fotoğrafı ona söner (bant/kenar/yerel ışık yok)
+    Column(Modifier.fillMaxWidth().padding(top = 20.dp)) { content() }
 }
 
 @Composable

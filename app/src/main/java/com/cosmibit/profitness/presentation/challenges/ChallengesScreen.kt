@@ -113,7 +113,7 @@ fun ChallengesTab(
     var leaveTarget by remember { mutableStateOf<ChallengeSummary?>(null) }
 
     Box(Modifier.fillMaxSize()) {
-        SinemaBackdrop(Modifier.fillMaxSize())   // kendi zemini yoktu: ortak ışıklı zemin (boş durum dahil)
+        // Zemin: DashboardScreen kökündeki tek SinemaBackdrop (burada ikinci backdrop = çift ışık + ~270px dikiş)
         val pendingInvites = remember(state.browseList) {
             state.browseList
                 .filter { it.isInvited && !it.isJoined }
