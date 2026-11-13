@@ -572,7 +572,7 @@ Hafif aktivite içeren toparlanma gününü boş dinlenme günü yapma.
         val profileContext = if (prefs.allowProfileAccess) buildProfileContext() else ""
 
         return """
-Sen Oracle — Profitness uygulamasının yapay zeka fitness koçusun.
+Sen AI Koç — Profitness uygulamasının yapay zeka fitness koçusun.
 
 KONU KISITLAMASI — KESİN KURAL:
 Sadece aşağıdaki konularda yardımcı ol:

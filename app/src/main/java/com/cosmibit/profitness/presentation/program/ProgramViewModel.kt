@@ -592,7 +592,7 @@ FORMAT:
                 return@launch
             }
 
-            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: "Oracle Programı"
+            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: "AI Koç Programı"
             val daysArray   = rootObj["days"] as? JsonArray
             if (daysArray == null) {
                 updateState { it.copy(aiLoading = false, aiError = "Program günleri bulunamadı.") }

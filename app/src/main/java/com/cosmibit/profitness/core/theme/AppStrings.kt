@@ -237,7 +237,7 @@ val TurkishStrings = AppStrings(
     recoveryTip3        = "🥗 Protein al",
 
     // AI Coach
-    oracleWelcome       = "Merhaba, ben Oracle. Hedeflerini birlikte netleştirelim.",
+    oracleWelcome       = "Merhaba, ben AI Koç. Hedeflerini birlikte netleştirelim.",
     chipNutrition       = "Beslenme Tavsiyesi",
     chipMotivation      = "Motivasyon",
     chipProgram         = "Program Önerisi",
@@ -381,7 +381,7 @@ val EnglishStrings = AppStrings(
     recoveryTip3        = "🥗 Eat enough protein",
 
     // AI Coach
-    oracleWelcome       = "Hi, I'm Oracle. Let's work out your goals together.",
+    oracleWelcome       = "Hi, I'm AI Coach. Let's work out your goals together.",
     chipNutrition       = "Nutrition Advice",
     chipMotivation      = "Motivation",
     chipProgram         = "Program Suggestion",

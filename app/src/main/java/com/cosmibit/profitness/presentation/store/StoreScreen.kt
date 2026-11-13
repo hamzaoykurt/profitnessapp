@@ -70,8 +70,8 @@ private val ALL_FEATURES = listOf(
     MasterFeature(Icons.Rounded.FitnessCenter,    "Program antrenman takibi",            UserPlan.FREE),
     MasterFeature(Icons.Rounded.BarChart,          "Temel gelişim metrikleri",            UserPlan.FREE),
     MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",            UserPlan.FREE),
-    MasterFeature(Icons.Rounded.ChatBubbleOutline, "Oracle sohbet paketi",                UserPlan.PRO),
-    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli Oracle sohbeti",       UserPlan.PRO),
+    MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Koç sohbet paketi",                UserPlan.PRO),
+    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli AI Koç sohbeti",       UserPlan.PRO),
     MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program üretimi",              UserPlan.PRO),
     MasterFeature(Icons.AutoMirrored.Rounded.TrendingUp, "Antrenman performans analizi",  UserPlan.PRO),
     MasterFeature(Icons.AutoMirrored.Rounded.ShowChart,  "Egzersiz ilerleme grafikleri",  UserPlan.PRO),
@@ -123,8 +123,8 @@ private fun MasterFeature.localizedText(theme: AppThemeState): String = when (te
     "Program antrenman takibi" -> theme.t(text, "Program workout tracking")
     "Temel gelişim metrikleri" -> theme.t(text, "Basic progress metrics")
     "Manuel program oluşturma" -> theme.t(text, "Manual program creation")
-    "Oracle sohbet paketi" -> theme.t(text, "Oracle chat pack")
-    "Yüksek limitli Oracle sohbeti" -> theme.t(text, "High-limit Oracle chat")
+    "AI Koç sohbet paketi" -> theme.t(text, "AI Coach chat pack")
+    "Yüksek limitli AI Koç sohbeti" -> theme.t(text, "High-limit AI Coach chat")
     "AI ile program üretimi" -> theme.t(text, "AI program generation")
     "Antrenman performans analizi" -> theme.t(text, "Workout performance analysis")
     "Egzersiz ilerleme grafikleri" -> theme.t(text, "Exercise progress charts")
@@ -944,7 +944,7 @@ private fun CompactPlanFeature(
 
 private fun planOneLiner(plan: UserPlan, theme: AppThemeState): String = when (plan) {
     UserPlan.FREE -> theme.t("Temel takip; AI hakları dahil değildir.", "Basic tracking; AI allowance is not included.")
-    UserPlan.PRO -> theme.t("AI üretim, analiz ve Oracle akışı açılır.", "Unlock AI creation, analysis, and Oracle flow.")
+    UserPlan.PRO -> theme.t("AI üretim, analiz ve AI Koç akışı açılır.", "Unlock AI creation, analysis, and AI Coach flow.")
     UserPlan.ELITE -> theme.t("Pro'nun üstüne kişisel koç, öncelik ve üst limitler.", "Pro plus personal coaching, priority, and higher limits.")
 }
 
@@ -1135,7 +1135,7 @@ private fun planHighlights(plan: UserPlan, theme: AppThemeState): List<Pair<Imag
         Icons.Rounded.BarChart to theme.t("Temel gelişim ve profil özeti.", "Basic progress and profile summary."),
     )
     UserPlan.PRO -> listOf(
-        Icons.Rounded.ChatBubbleOutline to theme.t("Oracle sohbet paketleri dahil.", "Oracle chat bundles included."),
+        Icons.Rounded.ChatBubbleOutline to theme.t("AI Koç sohbet paketleri dahil.", "AI Coach chat bundles included."),
         Icons.Rounded.AutoAwesome to theme.t("AI program üretimi ve düzenleme.", "AI program generation and editing."),
         Icons.AutoMirrored.Rounded.TrendingUp to theme.t("Antrenman, kilo ve egzersiz AI analizleri.", "Workout, weight, and exercise AI analysis."),
         Icons.AutoMirrored.Rounded.ShowChart to theme.t("Gelişim grafiklerinde Pro içgörüler.", "Pro insights in progression charts."),

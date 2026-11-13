@@ -155,7 +155,7 @@ fun AICoachOnboardingScreen(
 
             // ── Next / Finish button ───────────────────────────────────────────
             SinemaGoButton(
-                label = (if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("Oracle'ı Başlat", "Start Oracle")).sinemaUpper(theme),
+                label = (if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("AI Koç'u Başlat", "Start AI Coach")).sinemaUpper(theme),
                 icon = Icons.Rounded.Check,
                 modifier = Modifier
                     .padding(horizontal = responsive.horizontalPadding)
@@ -191,7 +191,7 @@ private fun LengthStep(
 ) {
     StepScaffold(
         title    = theme.t("YANIT UZUNLUĞU", "RESPONSE LENGTH"),
-        subtitle = theme.t("Oracle sana nasıl cevap versin?", "How should Oracle respond?")
+        subtitle = theme.t("AI Koç sana nasıl cevap versin?", "How should AI Coach respond?")
     ) {
         ResponseLength.entries.forEach { length ->
             CenteredOptionCard(
@@ -217,7 +217,7 @@ private fun StyleStep(
 ) {
     StepScaffold(
         title    = theme.t("KONUŞMA TARZI", "COMMUNICATION STYLE"),
-        subtitle = theme.t("Oracle seninle nasıl konuşsun?", "How should Oracle talk to you?")
+        subtitle = theme.t("AI Koç seninle nasıl konuşsun?", "How should AI Coach talk to you?")
     ) {
         CommunicationStyle.entries.forEach { style ->
             CenteredOptionCard(
@@ -245,13 +245,13 @@ private fun PermissionsStep(
 ) {
     StepScaffold(
         title    = theme.t("GİZLİLİK & İZİNLER", "PRIVACY & PERMISSIONS"),
-        subtitle = theme.t("Oracle verilerin hakkında ne bilsin?", "What should Oracle know about your data?")
+        subtitle = theme.t("AI Koç verilerin hakkında ne bilsin?", "What should AI Coach know about your data?")
     ) {
         PermissionCard(
             title           = theme.t("Profil & Program Erişimi", "Profile & Program Access"),
             description     = theme.t(
-                "Oracle ismini, hedefini ve aktif programını bilerek sana özel tavsiyeler verir.",
-                "Oracle gives personal advice using your name, goal, and active program."
+                "AI Koç ismini, hedefini ve aktif programını bilerek sana özel tavsiyeler verir.",
+                "AI Coach gives personal advice using your name, goal, and active program."
             ),
             checked         = allowProfile,
             recommended     = true,

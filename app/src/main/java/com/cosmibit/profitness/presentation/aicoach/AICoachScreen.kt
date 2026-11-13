@@ -275,7 +275,7 @@ fun AICoachScreen(
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(SinemaIcons.Spark, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
-                    Text("Oracle", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text("AI Koç", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
                 SinemaPill(onClick = { viewModel.openHistory() }) {
@@ -351,8 +351,8 @@ fun AICoachScreen(
                             else -> {
                                 Text(
                                     theme.t(
-                                        "Oracle'ın oluşturduğu program planlarına eklenecek.",
-                                        "The program created by Oracle will be added to your plans."
+                                        "AI Koç'un oluşturduğu program planlarına eklenecek.",
+                                        "The program created by AI Coach will be added to your plans."
                                     ),
                                     color = theme.text2,
                                     fontSize = 13.sp
@@ -367,7 +367,7 @@ fun AICoachScreen(
                     if (state.programStatus !is ProgramStatus.Loading) {
                         TextButton(
                             onClick = {
-                                val name = programNameInput.trim().ifEmpty { theme.t("Oracle Programı", "Oracle Program") }
+                                val name = programNameInput.trim().ifEmpty { theme.t("AI Koç Programı", "AI Coach Program") }
                                 viewModel.applyProgram(pMsg.text, name)
                             }
                         ) {
@@ -518,7 +518,7 @@ private fun ProgramNameField(value: String, onValueChange: (String) -> Unit, the
         value         = value,
         onValueChange = onValueChange,
         label         = { Text(theme.t("Program Adı", "Program Name"), fontSize = 12.sp) },
-        placeholder   = { Text(theme.t("Oracle Programı", "Oracle Program"), fontSize = 12.sp, color = theme.text2.copy(0.5f)) },
+        placeholder   = { Text(theme.t("AI Koç Programı", "AI Coach Program"), fontSize = 12.sp, color = theme.text2.copy(0.5f)) },
         singleLine    = true,
         modifier      = Modifier.fillMaxWidth(),
         colors        = OutlinedTextFieldDefaults.colors(
@@ -603,7 +603,7 @@ private fun SanctuaryMessage(
             Column(horizontalAlignment = Alignment.Start) {
                 // Sender label
                 Text(
-                    "Oracle",
+                    "AI Koç",
                     color         = Color.White.copy(0.7f),
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.ExtraBold,
@@ -727,7 +727,7 @@ private fun SanctuaryInput(
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (value.isEmpty()) {
                 Text(
-                    theme.t("Oracle'a bir şey sor…", "Ask Oracle anything…"),
+                    theme.t("AI Koç'a bir şey sor…", "Ask AI Coach anything…"),
                     color = Color.White.copy(0.6f), fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

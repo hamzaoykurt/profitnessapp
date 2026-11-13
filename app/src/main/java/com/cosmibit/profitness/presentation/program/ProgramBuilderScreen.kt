@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
@@ -920,11 +922,18 @@ private fun ProgramDetailDialog(
     val accent  = theme.effectiveAccentColor
     val strings = theme.strings
 
-    Dialog(onDismissRequest = { if (!isApplying) onDismiss() }) {
+    Dialog(
+        onDismissRequest = { if (!isApplying) onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            dismissOnBackPress = !isApplying,
+            dismissOnClickOutside = false
+        )
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
+                .fillMaxSize()
                 .background(Sinema.page(theme))
         ) {
             val accentSolid = theme.effectiveAccentColor
@@ -932,8 +941,9 @@ private fun ProgramDetailDialog(
             Column(
                 modifier = Modifier.hazeSource(haze).verticalScroll(rememberScrollState())
             ) {
-                // Kapak 280dp: nötr koyu sahne + kas grubu fotoğrafı + alt karartma + başlık
-                Box(Modifier.fillMaxWidth().height(280.dp).clipToBounds()) {
+                // Kapak: ekran yüksekliğinin ~%45'i, durum çubuğunun altına uzanır
+                val coverHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp.coerceAtLeast(300.dp)
+                Box(Modifier.fillMaxWidth().height(coverHeight).clipToBounds()) {
                     SinemaScene(Modifier.fillMaxSize())
                     SceneImage(
                         url = com.cosmibit.profitness.core.ui.categoryImageUrl(program.muscleLabels.firstOrNull().orEmpty()),
@@ -945,16 +955,24 @@ private fun ProgramDetailDialog(
                             Brush.verticalGradient(0f to Color.Black.copy(0.45f), 0.40f to Color.Black.copy(0.10f), 1f to Color.Black.copy(0.88f))
                         )
                     )
+                    SinemaCapsuleIconButton(
+                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                        description = theme.t("Kapat", "Close"),
+                        onClick = { if (!isApplying) onDismiss() },
+                        selected = false,
+                        size = 48.dp,
+                        modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 8.dp)
+                    )
                     Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
                         Text(
                             "${program.category.localizedLabel()} · ${program.localizedLevel(theme)}".sinemaUpper(theme),
-                            color = Sinema.White.copy(0.80f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis
+                            color = Sinema.White.copy(0.80f), style = Sinema.Label, maxLines = 2, overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text(program.localizedTitle(theme), color = Sinema.White, style = Sinema.Title, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(program.localizedTitle(theme), color = Sinema.White, style = Sinema.ScreenTitle, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 128.dp)) {
+                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 128.dp).navigationBarsPadding()) {
                     Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp)
 
                     Spacer(Modifier.height(20.dp))
@@ -965,13 +983,14 @@ private fun ProgramDetailDialog(
                             .fillMaxWidth()
                             .sinemaCard(theme, RoundedCornerShape(24.dp))
                             .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accentSolid)
-                        Box(Modifier.width(1.dp).height(36.dp).background(Sinema.line(theme)))
-                        DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accentSolid)
-                        Box(Modifier.width(1.dp).height(36.dp).background(Sinema.line(theme)))
-                        DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).take(3).uppercase(), strings.levelLabel, accentSolid)
+                        DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accentSolid, Modifier.weight(1f))
+                        Box(Modifier.width(1.dp).height(56.dp).background(Sinema.line(theme)))
+                        DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accentSolid, Modifier.weight(1f))
+                        Box(Modifier.width(1.dp).height(56.dp).background(Sinema.line(theme)))
+                        // Seviye rakam değil kelime: daha küçük stil, tam metin (kesilmez)
+                        DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).uppercase(), strings.levelLabel, accentSolid, Modifier.weight(1f), valueSize = 15.sp)
                     }
 
                     Spacer(Modifier.height(20.dp))
@@ -1033,19 +1052,20 @@ private fun ProgramDetailDialog(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
             ) {
-                SinemaGoButton(
-                    label = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
-                    icon = Icons.Rounded.Check,
-                    onClick = { if (!isApplying) onApply() },
-                    dim = isApplying
-                )
+                Box(Modifier.navigationBarsPadding()) {
+                    SinemaGoButton(
+                        label = if (isApplying) theme.t("Program uygulanıyor…", "Applying program…") else strings.applyProtocol,
+                        icon = Icons.Rounded.Check,
+                        onClick = { if (!isApplying) onApply() },
+                        dim = isApplying
+                    )
+                }
             }
 
             if (isApplying) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .clip(RoundedCornerShape(28.dp))
                         .background(Sinema.page(theme).copy(alpha = 0.70f))
                         .clickable(
                             indication = null,
@@ -1138,13 +1158,18 @@ private fun FrostedBottomBar(
 }
 
 @Composable
-private fun DialogStat(icon: ImageVector, value: String, label: String, accent: Color) {
+private fun DialogStat(
+    icon: ImageVector, value: String, label: String, accent: Color,
+    modifier: Modifier = Modifier, valueSize: androidx.compose.ui.unit.TextUnit = 34.sp
+) {
     val theme = LocalAppTheme.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
+    Column(modifier.padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
         Spacer(Modifier.height(4.dp))
-        Text(value, color = theme.text0, fontWeight = FontWeight.Black, fontSize = 16.sp)
-        Text(label, color = theme.text2, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Box(Modifier.heightIn(min = 40.dp), contentAlignment = Alignment.Center) {
+            Text(value, color = theme.text0, fontWeight = FontWeight.Black, fontSize = valueSize, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
