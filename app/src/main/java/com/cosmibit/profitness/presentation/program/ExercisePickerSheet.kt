@@ -535,7 +535,7 @@ internal fun PickerPrimaryButton(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         if (pressed && enabled) 0.98f else 1f,
-        tween(120),
+        tween(SinemaMotion.Quick),
         label = "picker_cta_scale"
     )
     val shape = RoundedCornerShape(12.dp)

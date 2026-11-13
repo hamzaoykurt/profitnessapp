@@ -204,7 +204,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val motionOn = rememberSinemaMotionOn()
     val timerReserve by animateDpAsState(
         targetValue   = if (timerVisible) FloatingTimerReserve else 0.dp,
-        animationSpec = tween(if (motionOn) 220 else 0, easing = FastOutSlowInEasing),
+        animationSpec = tween(if (motionOn) 220 else 0, easing = SinemaMotion.EaseStandard),
         label         = "dash_timer_reserve"
     )
     val contentPadWithTimer = contentPad + timerReserve
@@ -263,7 +263,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             targetState  = selectedTab,
             transitionSpec = {
                 // Tek seferde geçiş: zemin (SinemaBackdrop) sabit kalır, yalnız içerik kısa çapraz solar; kayma yok.
-                fadeIn(tween(140, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(90, easing = FastOutSlowInEasing))
+                fadeIn(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) togetherWith fadeOut(tween(SinemaMotion.Instant, easing = SinemaMotion.EaseStandard))
             },
             modifier = Modifier
                 .widthIn(max = responsive.contentMaxWidth)
@@ -419,8 +419,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Performance Detail Overlay ────────────────────────────────────
         AnimatedVisibility(
             visible = showPerformanceDetail,
-            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             PerformanceDetailScreen(
@@ -441,8 +441,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Achievements Detail Overlay ─────────────────────────────────
         AnimatedVisibility(
             visible = showAchievementsDetail,
-            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             AchievementsDetailScreen(onBack = { showAchievementsDetail = false })
@@ -451,8 +451,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Leaderboard Overlay ─────────────────────────────────────────
         AnimatedVisibility(
             visible  = showLeaderboard,
-            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             com.cosmibit.profitness.presentation.leaderboard.LeaderboardScreen(
@@ -464,8 +464,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Edit Profile Overlay ──────────────────────────────────────────
         AnimatedVisibility(
             visible = showEditProfile,
-            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter   = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit    = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             EditProfileScreen(onBack = { showEditProfile = false })
@@ -474,8 +474,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Weight Tracking Overlay ───────────────────────────────────────────
         AnimatedVisibility(
             visible  = showWeightTracking,
-            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             WeightTrackingScreen(
@@ -487,8 +487,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Exercise Progression Overlay ─────────────────────────────────────
         AnimatedVisibility(
             visible  = showExerciseProgression,
-            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(200)),
-            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(150)),
+            enter    = slideInHorizontally(overlayEnterSpec) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit     = slideOutHorizontally(overlayExitSpec) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier.zIndex(200f)
         ) {
             ExerciseProgressionScreen(
@@ -500,8 +500,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         // ── Store Overlay ─────────────────────────────────────────────────────
         AnimatedVisibility(
             visible  = showStore,
-            enter    = slideInVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(200)),
-            exit     = slideOutVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) { it } + fadeOut(tween(150)),
+            enter    = slideInVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit     = slideOutVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) { it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(300f)

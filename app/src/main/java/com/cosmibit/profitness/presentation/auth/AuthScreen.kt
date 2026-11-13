@@ -136,11 +136,11 @@ fun AuthScreen(
     AnimatedContent(
         targetState  = state.screen,
         transitionSpec = {
-            val enter = fadeIn(tween(360)) + scaleIn(
-                tween(360), initialScale = 0.96f
+            val enter = fadeIn(tween(SinemaMotion.Emphasis)) + scaleIn(
+                tween(SinemaMotion.Emphasis), initialScale = 0.96f
             )
-            val exit = fadeOut(tween(240)) + scaleOut(
-                tween(240), targetScale = 1.03f
+            val exit = fadeOut(tween(SinemaMotion.Standard)) + scaleOut(
+                tween(SinemaMotion.Standard), targetScale = 1.03f
             )
             enter togetherWith exit
         },
@@ -174,7 +174,7 @@ private fun AuthLoadingSplash() {
     )
     val iconAlpha by animateFloatAsState(
         targetValue   = if (entered) 1f else 0f,
-        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        animationSpec = tween(SinemaMotion.Emphasis, easing = SinemaMotion.EaseStandard),
         label         = "icon_alpha"
     )
 
@@ -686,7 +686,7 @@ private fun AuthScaffold(
     val yAnim     = remember { Animatable(if (motionOn) 28f else 0f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(if (motionOn) 500 else 200, easing = EaseOutCubic))
-        yAnim.animateTo(0f, tween(260, easing = EaseOutCubic))
+        yAnim.animateTo(0f, tween(SinemaMotion.Standard, easing = EaseOutCubic))
     }
 
     // Foto yüksekliği: en az %42; form kısaysa ekranı dolduracak kadar büyür (en çok %62).
@@ -848,7 +848,7 @@ private fun AuthCenteredScaffold(
     val yAnim     = remember { Animatable(if (motionOn) 30f else 0f) }
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, tween(if (motionOn) 500 else 200))
-        yAnim.animateTo(0f, tween(260, easing = EaseOutCubic))
+        yAnim.animateTo(0f, tween(SinemaMotion.Standard, easing = EaseOutCubic))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {

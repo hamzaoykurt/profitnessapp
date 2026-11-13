@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.profile
 
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
@@ -52,7 +53,7 @@ internal fun Modifier.profilePremiumAction(
     val isPressed by interactions.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "profileActionScale"
     )
     val indication = LocalIndication.current

@@ -2,6 +2,8 @@
 
 package com.cosmibit.profitness.presentation.challenges
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.cosmibit.profitness.core.theme.sinemaListEnter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -258,8 +260,9 @@ fun ChallengesTab(
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                items(ordered, key = { "${state.scope}_${it.id}" }) { c ->
+                                itemsIndexed(ordered, key = { _, ch -> "${state.scope}_${ch.id}" }) { i, c ->
                                     ChallengeCard(
+                                        modifier   = Modifier.animateItem().sinemaListEnter(i),
                                         c          = c,
                                         accent     = accent,
                                         inFlight   = state.joinInFlight.contains(c.id),

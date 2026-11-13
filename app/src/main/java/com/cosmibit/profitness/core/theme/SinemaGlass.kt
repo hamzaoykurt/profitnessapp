@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -289,7 +290,7 @@ fun SinemaNavBar(
     val density = LocalDensity.current
     val hideProgress by animateFloatAsState(
         targetValue = if (visible) 0f else 1f,
-        animationSpec = tween(Sinema.NavMs, easing = FastOutSlowInEasing),
+        animationSpec = tween(Sinema.NavMs, easing = SinemaMotion.EaseStandard),
         label = "sinema_nav_hide"
     )
     if (hideProgress >= 1f) return
@@ -347,27 +348,44 @@ fun SinemaNavBar(
                 )
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = inset)) {
+        val navHaptic = LocalHapticFeedback.current
+        val navMotion = rememberSinemaMotionOn()
         items.forEachIndexed { i, item ->
             val selected = i == selectedIndex
+            // Seçilen ikon bir kez hafifçe "oturur" (0.86 → 1, tek küçük taşma); renk kısa solmayla geçer.
+            val pop = remember { Animatable(1f) }
+            var wasSelected by remember { mutableStateOf(selected) }
+            LaunchedEffect(selected) {
+                if (selected && !wasSelected && navMotion) {
+                    pop.snapTo(0.86f)
+                    pop.animateTo(1f, SinemaMotion.pop())
+                }
+                wasSelected = selected
+            }
+            val iconTint by animateColorAsState(if (selected) accent else passive, tween(SinemaMotion.Quick), label = "nav_icon")
+            val labelTint by animateColorAsState(if (selected) active else passive, tween(SinemaMotion.Quick), label = "nav_label")
             Column(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .selectable(selected = selected, indication = null,
                         interactionSource = remember { MutableInteractionSource() },
-                        role = Role.Tab, onClick = { onSelect(i) })
+                        role = Role.Tab, onClick = {
+                            if (!selected) navHaptic.performHapticFeedback(SinemaHaptics.Light)
+                            onSelect(i)
+                        })
                     .padding(top = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
                     item.icon, contentDescription = null,
-                    tint = if (selected) accent else passive,
-                    modifier = Modifier.size(20.dp)
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(
                     item.label, style = Sinema.Nav.copy(fontSize = 10.sp, lineHeight = 12.sp),
-                    color = if (selected) active else passive,
+                    color = labelTint,
                     maxLines = 1, softWrap = false,
                     modifier = Modifier.clearAndSetSemantics { }
                 )

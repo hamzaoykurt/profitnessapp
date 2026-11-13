@@ -192,15 +192,15 @@ fun OnboardingScreen(
                 targetState  = state.step,
                 transitionSpec = {
                     if (!motionOn) {
-                        fadeIn(tween(200)) togetherWith fadeOut(tween(120))
+                        fadeIn(tween(SinemaMotion.Standard)) togetherWith fadeOut(tween(SinemaMotion.Quick))
                     } else {
                         val forward = targetState > initialState
                         val enter = slideInHorizontally(
-                            tween(320, easing = FastOutSlowInEasing)
-                        ) { if (forward) it / 2 else -it / 2 } + fadeIn(tween(280))
+                            tween(SinemaMotion.Emphasis, easing = SinemaMotion.EaseStandard)
+                        ) { if (forward) it / 2 else -it / 2 } + fadeIn(tween(SinemaMotion.Emphasis))
                         val exit  = slideOutHorizontally(
-                            tween(280, easing = FastOutSlowInEasing)
-                        ) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(200))
+                            tween(SinemaMotion.Emphasis, easing = SinemaMotion.EaseStandard)
+                        ) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(SinemaMotion.Standard))
                         enter togetherWith exit
                     }
                 },
@@ -254,7 +254,7 @@ private fun OnboardingProgressBar(
                 val active = i == currentStep
                 val fraction by animateFloatAsState(
                     targetValue   = if (i <= currentStep) 1f else 0f,
-                    animationSpec = tween(400),
+                    animationSpec = tween(SinemaMotion.Emphasis),
                     label         = "progress_$i"
                 )
                 Box(

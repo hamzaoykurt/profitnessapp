@@ -440,7 +440,7 @@ private fun ProfileHeroBanner(
     val xpProgress = if (xpPerLevel > 0) xpInLevel.toFloat() / xpPerLevel else 0f
     val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
     val fill = remember { Animatable(0f) }
-    LaunchedEffect(xpProgress) { fill.animateTo(xpProgress.coerceIn(0f, 1f), tween(900, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(xpProgress) { fill.animateTo(xpProgress.coerceIn(0f, 1f), tween(900, easing = SinemaMotion.EaseStandard)) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──

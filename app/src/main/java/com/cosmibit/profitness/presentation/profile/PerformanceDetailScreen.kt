@@ -321,11 +321,13 @@ private fun PerformanceCover(
                     else -> {
                         SectionLabel(theme.t("Bu hafta", "This week"))
                         Spacer(Modifier.height(10.dp))
-                        Text(
-                            thisWeek.toString(),
-                            style = Sinema.Display.copy(fontSize = 112.sp, lineHeight = 0.9.em, letterSpacing = (-0.04).em),
-                            color = Sinema.White, maxLines = 1
-                        )
+                        com.cosmibit.profitness.core.theme.SinemaCount(thisWeek) { n ->
+                            Text(
+                                n.toString(),
+                                style = Sinema.Display.copy(fontSize = 112.sp, lineHeight = 0.9.em, letterSpacing = (-0.04).em),
+                                color = Sinema.White, maxLines = 1
+                            )
+                        }
                         Spacer(Modifier.height(12.dp))
                         PText(
                             if (english && thisWeek == 1) "workout" else theme.t("antrenman", "workouts"),
@@ -544,7 +546,7 @@ private fun RhythmChart(
     LaunchedEffect(weeks) {
         if (motion) {
             grow.snapTo(0.4f)
-            grow.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+            grow.animateTo(1f, tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard))
         } else grow.snapTo(1f)
     }
     var sel by remember(weeks) { mutableStateOf<Int?>(null) }

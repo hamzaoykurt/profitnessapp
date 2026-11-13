@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.core.theme.sinemaListEnter
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -221,7 +222,8 @@ private fun TodayPanel(info: ProgramTodayInfo) {
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val frac = (info.completed.toFloat() / info.total).coerceIn(0f, 1f)
+            val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill((info.completed.toFloat() / info.total).coerceIn(0f, 1f))
+            val doneCount = com.cosmibit.profitness.core.theme.rememberSinemaCount(info.completed, fromZero = true)
             val ring = theme.accent2Color   // c2 = ölç
             Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
@@ -229,11 +231,12 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                     val d = size.minDimension - sw
                     val tl = Offset(sw / 2, sw / 2)
                     drawArc(Color.White.copy(0.22f), -90f, 360f, false, tl, Size(d, d), style = Stroke(sw))
+                    val frac = fill.value
                     if (frac > 0f) {
                         drawArc(ring, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
                     }
                 }
-                Text("${info.completed}/${info.total}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em)
+                Text("$doneCount/${info.total}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
@@ -560,7 +563,9 @@ fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, on
         modifier = Modifier.fillMaxWidth()
     ) {
         itemsIndexed(programs, key = { _, p -> p.id }) { i, p ->
-            SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) }, showTypeBadge = i == 0)
+            Box(Modifier.animateItem().sinemaListEnter(i)) {
+                SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) }, showTypeBadge = i == 0)
+            }
         }
     }
 }

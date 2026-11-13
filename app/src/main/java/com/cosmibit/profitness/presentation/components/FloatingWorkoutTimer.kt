@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -28,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -93,11 +96,11 @@ fun FloatingWorkoutTimer(
         visible = visible,
         modifier = modifier,
         enter = if (motion) {
-            fadeIn(tween(180)) + slideInVertically(tween(220, easing = FastOutSlowInEasing)) { it / 2 } +
-                scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.92f)
+            fadeIn(tween(SinemaMotion.Standard)) + slideInVertically(tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard)) { it / 2 } +
+                scaleIn(tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard), initialScale = 0.92f)
         } else EnterTransition.None,
         exit = if (motion) {
-            fadeOut(tween(140)) + slideOutVertically(tween(160)) { it / 2 } + scaleOut(tween(160), targetScale = 0.94f)
+            fadeOut(tween(SinemaMotion.Quick)) + slideOutVertically(tween(SinemaMotion.Quick)) { it / 2 } + scaleOut(tween(SinemaMotion.Quick), targetScale = 0.94f)
         } else ExitTransition.None
     ) {
         TimerCapsule(shown, light, onOpen, onTogglePause, onStop)
@@ -130,6 +133,19 @@ private fun TimerCapsule(
         else -> name
     }
     val a11y = theme.t("Kronometre $clock, $label. Antrenmana git", "Timer $clock, $label. Go to workout")
+    // Dinlenmenin son 3 saniyesinde her saniye küçük nabız; bitişte tik bir kez oturur. Hareket azaltmada yok.
+    val motion = rememberSinemaMotionOn()
+    val beat = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(timer.displaySeconds, timer.isDone) {
+        val lastSeconds = timer.isRunning && timer.purpose == TimerPurpose.Rest && timer.displaySeconds in 1..3
+        if (motion && timer.isDone) {
+            beat.snapTo(0.7f)
+            beat.animateTo(1f, SinemaMotion.pop())
+        } else if (motion && lastSeconds) {
+            beat.snapTo(1.08f)
+            beat.animateTo(1f, tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard))
+        }
+    }
 
     SinemaCapsule(
         modifier = Modifier
@@ -142,13 +158,14 @@ private fun TimerCapsule(
         horizontalArrangement = Arrangement.Start
     ) { fg ->
         if (timer.isDone) {
-            Icon(Icons.Rounded.CheckCircle, null, tint = timeColor, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.CheckCircle, null, tint = timeColor, modifier = Modifier.size(18.dp).graphicsLayer { scaleX = beat.value; scaleY = beat.value })
             Spacer(Modifier.width(8.dp))
         }
         Text(
             clock,
             style = Sinema.Label.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.sp),
-            color = timeColor, maxLines = 1
+            color = timeColor, maxLines = 1,
+            modifier = Modifier.graphicsLayer { if (!timer.isDone) { scaleX = beat.value; scaleY = beat.value } }
         )
         Spacer(Modifier.width(10.dp))
         Text(

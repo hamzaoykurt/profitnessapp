@@ -586,8 +586,8 @@ private fun RestTimerChip(
     LaunchedEffect(isRunning) {
         if (isRunning) {
             while (isActive) {
-                pulseScale.animateTo(1.06f, tween(700))
-                pulseScale.animateTo(1f, tween(700))
+                pulseScale.animateTo(1.06f, tween(SinemaMotion.Slow))
+                pulseScale.animateTo(1f, tween(SinemaMotion.Slow))
             }
         } else {
             pulseScale.snapTo(1f)

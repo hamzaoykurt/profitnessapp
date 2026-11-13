@@ -205,10 +205,12 @@ fun AICoachScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(if (chatting) state.messages else emptyList(), key = { it.id }) { msg ->
-                        SanctuaryMessage(
-                            msg            = msg,
-                            onApplyProgram = { programDialogMsg = it; programNameInput = "" }
-                        )
+                        Box(Modifier.animateItem()) {
+                            SanctuaryMessage(
+                                msg            = msg,
+                                onApplyProgram = { programDialogMsg = it; programNameInput = "" }
+                            )
+                        }
                     }
                     if (state.isLoading) {
                         item(key = "typing") { SanctuaryTypingIndicator() }
@@ -473,9 +475,11 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
         )
         if (summary != null && summary.exercises > 0) {
             val frac = (summary.completed.toFloat() / summary.exercises).coerceIn(0f, 1f)
-            val fill by animateFloatAsState(frac, tween(900, easing = FastOutSlowInEasing), label = "oracle_fill")
+            val fill by animateFloatAsState(frac, tween(900, easing = SinemaMotion.EaseStandard), label = "oracle_fill")
             Spacer(Modifier.height(6.dp))
-            Text("${summary.completed}/${summary.exercises}", style = Sinema.Display, color = Color.White, maxLines = 1, softWrap = false)
+            SinemaCount(summary.completed) { n ->
+                Text("$n/${summary.exercises}", style = Sinema.Display, color = Color.White, maxLines = 1, softWrap = false)
+            }
             Spacer(Modifier.height(16.dp))
             Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
                 Box(

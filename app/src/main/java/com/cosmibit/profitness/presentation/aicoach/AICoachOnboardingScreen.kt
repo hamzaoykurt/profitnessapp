@@ -132,8 +132,8 @@ fun AICoachOnboardingScreen(
                 targetState  = step,
                 transitionSpec = {
                     val forward = targetState > initialState
-                    (slideInHorizontally(tween(280)) { if (forward) it else -it } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(250)) { if (forward) -it / 3 else it / 3 } + fadeOut(tween(180)))
+                    (slideInHorizontally(tween(SinemaMotion.Emphasis)) { if (forward) it else -it } + fadeIn(tween(SinemaMotion.Standard))) togetherWith
+                    (slideOutHorizontally(tween(SinemaMotion.Standard)) { if (forward) -it / 3 else it / 3 } + fadeOut(tween(SinemaMotion.Standard)))
                 },
                 label        = "step_anim",
                 modifier     = Modifier

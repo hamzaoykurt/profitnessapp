@@ -277,8 +277,8 @@ fun StoreScreen(
                 targetState = activeTab,
                 transitionSpec = {
                     val dir = if (targetState > initialState) 1 else -1
-                    (slideInHorizontally(tween(260)) { dir * it / 3 } + fadeIn(tween(200))) togetherWith
-                    (slideOutHorizontally(tween(200)) { -dir * it / 4 } + fadeOut(tween(150)))
+                    (slideInHorizontally(tween(SinemaMotion.Standard)) { dir * it / 3 } + fadeIn(tween(SinemaMotion.Standard))) togetherWith
+                    (slideOutHorizontally(tween(SinemaMotion.Standard)) { -dir * it / 4 } + fadeOut(tween(SinemaMotion.Quick)))
                 },
                 modifier = Modifier.fillMaxSize(),
                 label    = "store_tab"
@@ -337,8 +337,8 @@ fun StoreScreen(
         // Toast
         AnimatedVisibility(
             visible  = toastMsg != null,
-            enter    = slideInVertically { -it } + fadeIn(tween(180)),
-            exit     = slideOutVertically { -it } + fadeOut(tween(140)),
+            enter    = slideInVertically { -it } + fadeIn(tween(SinemaMotion.Standard)),
+            exit     = slideOutVertically { -it } + fadeOut(tween(SinemaMotion.Quick)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -1047,7 +1047,7 @@ private fun SimpleEnergyBalanceCard(
     val fillTarget = (state.credits.toFloat() / capacity.toFloat()).coerceIn(0.04f, 1f)
     val fill by animateFloatAsState(
         targetValue = fillTarget,
-        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 900, easing = SinemaMotion.EaseStandard),
         label = "energy_reserve_fill"
     )
     val creditsText = state.credits.toString()

@@ -6,12 +6,8 @@ import com.cosmibit.profitness.core.theme.sinemaGlow
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -124,6 +120,9 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaMotion
+import com.cosmibit.profitness.core.theme.SinemaHaptics
+import com.cosmibit.profitness.core.theme.rememberSinemaCount
+import com.cosmibit.profitness.core.theme.sinemaPressScale
 import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
@@ -243,7 +242,7 @@ fun SinemaWorkoutPager(
     LaunchedEffect(selectedDayIdx, dayCount) {
         pendingDay = WorkoutDaySync.resolvePending(pendingDay, selectedDayIdx)
         if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedDayIdx, dayCount, userDriven, pendingDay)) {
-            hState.animateScrollToPage(selectedDayIdx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+            hState.animateScrollToPage(selectedDayIdx, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard))
         }
     }
     // VM isteği onaylamazsa takılma: bekleme düşer, pager VM'in gününe döner.
@@ -252,7 +251,7 @@ fun SinemaWorkoutPager(
         delay(WorkoutDaySync.PENDING_TIMEOUT_MS)
         pendingDay = null
         if (WorkoutDaySync.shouldScroll(hState.currentPage, selectedNow, dayCount, userDriven)) {
-            hState.animateScrollToPage(selectedNow, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+            hState.animateScrollToPage(selectedNow, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard))
         }
     }
     val hScrolling = hState.isScrollInProgress
@@ -270,7 +269,7 @@ fun SinemaWorkoutPager(
         val id = focusExerciseId ?: return@LaunchedEffect
         val idx = if (single) -1 else exercises.indexOfFirst { it.id == id }
         if (idx >= 0 && idx != pagerState.currentPage) {
-            if (animEnabled) pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+            if (animEnabled) pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard))
             else pagerState.scrollToPage(idx)
         }
         onFocusConsumed()
@@ -298,7 +297,7 @@ fun SinemaWorkoutPager(
             if (page < 0 || page != pagerState.currentPage) return@LaunchedEffect
             delay(600)
             if (pagerState.currentPage == page && !pagerState.isScrollInProgress && page + 1 < pagerState.pageCount) {
-                pagerState.animateScrollToPage(page + 1, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+                pagerState.animateScrollToPage(page + 1, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard))
             }
         }
 
@@ -319,7 +318,7 @@ fun SinemaWorkoutPager(
               LaunchedEffect(active) {
                   when {
                       !active -> reveal.snapTo(0f)
-                      animEnabled -> reveal.animateTo(1f, tween(Sinema.NavMs, easing = FastOutSlowInEasing))
+                      animEnabled -> reveal.animateTo(1f, tween(Sinema.NavMs, easing = SinemaMotion.EaseStandard))
                       else -> reveal.snapTo(1f)
                   }
               }
@@ -333,7 +332,7 @@ fun SinemaWorkoutPager(
                 beyondViewportPageCount = 1,
                 flingBehavior = PagerDefaults.flingBehavior(
                     state = pagerState,
-                    snapAnimationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing)
+                    snapAnimationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard)
                 ),
                 key = { if (single) "single" else exercises.getOrNull(it)?.id ?: "done" }
             ) { page ->
@@ -581,7 +580,7 @@ private fun ExercisePage(
             SetCapsules(exercise, kind, data, isCompleted, compact, accent, onAccent, actions, onOpenSheet)
             Spacer(Modifier.height(10.dp))
             // İlerleme satırı
-            ProgressRow(progress, showChevron = page < pageCount - 1, animEnabled = animEnabled)
+            ProgressRow(progress, showChevron = page < pageCount - 1, animEnabled = animEnabled && isSettled)
             Spacer(Modifier.height(8.dp))
             // BAŞLA
             StartButton(
@@ -810,10 +809,17 @@ private fun SetValueText(v: SetValue, numSize: androidx.compose.ui.unit.TextUnit
 private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone: Color, description: String, onToggle: () -> Unit) {
     val done = state == SetRowState.Done
     val pop = remember { Animatable(1f) }
+    val burst = remember { Animatable(1f) }
+    val burstColor = LocalAppTheme.current.accent3Color
     var first by remember { mutableStateOf(true) }
     val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
     LaunchedEffect(done) {
         if (done && !first && motion) {
+            // mikro-kutlama: diskten dışarı tek halka dalgası (c3) + tik oturması
+            launch {
+                burst.snapTo(0f)
+                burst.animateTo(1f, tween(SinemaMotion.Emphasis, easing = SinemaMotion.EaseEnter))
+            }
             pop.snapTo(0.7f)
             pop.animateTo(1f, SinemaMotion.pop())
         }
@@ -822,6 +828,7 @@ private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone
     Box(
         Modifier
             .size(48.dp)
+            .setBurst(burst, burstColor)
             .semantics { contentDescription = description }
             .clickable(role = Role.Checkbox, onClick = onToggle),
         contentAlignment = Alignment.Center
@@ -845,6 +852,18 @@ private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone
     }
 }
 
+/** Set tamamlama halkası: onay diskinden dışarı açılıp sönen tek çizgi (yalnız çizim; 360 ms). */
+private fun Modifier.setBurst(burst: Animatable<Float, *>, color: Color): Modifier = this.drawBehind {
+    val b = burst.value
+    if (b < 1f) {
+        drawCircle(
+            color = color.copy(alpha = (1f - b) * 0.60f),
+            radius = 14.dp.toPx() + 12.dp.toPx() * b,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx())
+        )
+    }
+}
+
 @Composable
 private fun CapsuleRow(
     label: String,
@@ -860,10 +879,25 @@ private fun CapsuleRow(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(
-        modifier, selected = done, onClick = onOpen, height = height,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp)
-    ) { fg ->
+    val measure = theme.accent2Color   // c2 = ölç: tamamlanan (SetRow ile aynı dil)
+    val fg = Sinema.Text
+    val shape = RoundedCornerShape(height / 2)
+    val src = remember { MutableInteractionSource() }
+    Row(
+        modifier
+            .heightIn(min = height)
+            .sinemaPressScale(src, pressedScale = 0.98f)
+            .sinemaCapsuleGlass(
+                shape,
+                fillTop = if (done) 0.10f else 0.14f,
+                fillBottom = if (done) 0.10f else 0.08f,
+                overlay = if (done) measure.copy(0.18f) else null,
+                edgeColors = if (done) listOf(measure.copy(0.45f)) else null
+            )
+            .clickable(interactionSource = src, indication = androidx.compose.foundation.LocalIndication.current, role = Role.Button, onClick = onOpen)
+            .padding(start = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
             label, style = Sinema.Label.copy(fontWeight = FontWeight.Bold), color = fg, maxLines = 1,
             softWrap = false, modifier = Modifier.widthIn(min = 50.dp)
@@ -874,17 +908,24 @@ private fun CapsuleRow(
             fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFeatureSettings = "tnum"), modifier = Modifier.weight(1f)
         )
-        CheckCircle(done, accent, onAccent, toggleDescription ?: if (done) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"), onToggle, height)
+        CheckCircle(done, Sinema.Ink, measure, toggleDescription ?: if (done) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"), onToggle, height)
     }
 }
 
 @Composable
 private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, description: String, onToggle: () -> Unit, hit: Dp) {
     val pop = remember { Animatable(1f) }
+    val burst = remember { Animatable(1f) }
+    val burstColor = LocalAppTheme.current.accent3Color
     var first by remember { mutableStateOf(true) }
     val motion = rememberSinemaMotionOn()
     LaunchedEffect(done) {
         if (done && !first && motion) {
+            // mikro-kutlama: diskten dışarı tek halka dalgası (c3) + tik oturması
+            launch {
+                burst.snapTo(0f)
+                burst.animateTo(1f, tween(SinemaMotion.Emphasis, easing = SinemaMotion.EaseEnter))
+            }
             pop.snapTo(0.7f)
             pop.animateTo(1f, SinemaMotion.pop())
         }
@@ -893,6 +934,7 @@ private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, descripti
     Box(
         Modifier
             .size(hit)
+            .setBurst(burst, burstColor)
             .semantics { contentDescription = description }
             .clickable(role = Role.Checkbox, onClick = onToggle),
         contentAlignment = Alignment.Center
@@ -916,12 +958,17 @@ private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, descripti
 @Composable
 private fun ProgressRow(progress: Float, showChevron: Boolean, animEnabled: Boolean) {
     val theme = LocalAppTheme.current
-    val pct = (progress * 100).toInt()
-    val bob = if (animEnabled && showChevron) {
-        rememberInfiniteTransition(label = "chev").animateFloat(
-            0f, 3f, infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "chev_y"
-        )
-    } else null
+    val pct = rememberSinemaCount((progress * 100).toInt())
+    // "Aşağı kaydır" ipucu: sayfa yerleşince 3 kez sallanır ve durur (sonsuz döngü yok → boşta çizim yok).
+    val bob = remember { Animatable(0f) }
+    LaunchedEffect(showChevron, animEnabled) {
+        if (showChevron && animEnabled) {
+            repeat(3) {
+                bob.animateTo(3f, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard))
+                bob.animateTo(0f, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard))
+            }
+        } else bob.snapTo(0f)
+    }
     Row(Modifier.fillMaxWidth().height(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             theme.t("%$pct", "$pct%"), color = Color.White.copy(0.75f), fontSize = 11.sp,
@@ -932,7 +979,7 @@ private fun ProgressRow(progress: Float, showChevron: Boolean, animEnabled: Bool
             val d = LocalDensity.current
             Icon(
                 SinemaIcons.Chevron, null, tint = Color.White.copy(0.75f),
-                modifier = Modifier.size(16.dp).graphicsLayer { translationY = with(d) { (bob?.value ?: 0f).dp.toPx() } }
+                modifier = Modifier.size(16.dp).graphicsLayer { translationY = with(d) { bob.value.dp.toPx() } }
             )
         }
     }
@@ -947,6 +994,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
     val scale by animateFloatAsState(
         if (pressed) 0.96f else 1f, SinemaMotion.press(), label = "start_scale"
     )
+    val haptic = LocalHapticFeedback.current
     val shape = RoundedCornerShape(28.dp)
     // Çizim: düz vurgu dolgusu + üstte inset 1px beyaz %40 + altta `0 8px 20px` vurgu %40 parlaması.
     Box(
@@ -965,7 +1013,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
                     cornerRadius = CornerRadius(28.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(line * 1.5f)
                 )
             }
-            .clickable(src, null, role = Role.Button, onClick = onClick),
+            .clickable(src, null, role = Role.Button, onClick = { haptic.performHapticFeedback(SinemaHaptics.Light); onClick() }),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1060,7 +1108,8 @@ private fun CelebrationPage(
         ) {
             Text("%d / %d".format(total, total), style = Sinema.Label, color = Color.White.copy(0.70f))
             Spacer(Modifier.height(6.dp))
-            Text(theme.t("%100", "100%"), style = Sinema.Display, color = Color.White, maxLines = 1)
+            val pct = rememberSinemaCount(if (played) 100 else 0)
+            Text(theme.t("%$pct", "$pct%"), style = Sinema.Display, color = Color.White, maxLines = 1)
             Spacer(Modifier.height(6.dp))
             Text(programTitle, style = Sinema.Title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
@@ -1232,7 +1281,7 @@ private fun ExerciseListSheet(
                         .fillMaxWidth().height(72.dp)
                         .clickable(role = Role.Button) {
                             onDismiss()
-                            scope.launch { pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing)) }
+                            scope.launch { pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard)) }
                         }
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically

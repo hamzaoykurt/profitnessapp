@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -148,10 +150,13 @@ fun SinemaCapsule(
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
+    val src = remember { MutableInteractionSource() }
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier
             .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .heightIn(min = height)
+            .then(if (onClick != null && enabled) Modifier.sinemaPressScale(src) else Modifier)
             .sinemaCapsuleGlass(
                 shape,
                 fill = if (selected) accent else null,
@@ -159,7 +164,17 @@ fun SinemaCapsule(
                 edge = edge
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
-            .then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null) Modifier.clickable(
+                    interactionSource = src, indication = LocalIndication.current,
+                    enabled = enabled, role = Role.Button,
+                    onClick = {
+                        // seçim değişimi (filtre/segment) hafif titreşir; zaten seçili olana dokunmak titreşmez
+                        if (selectable && !selected) haptic.performHapticFeedback(SinemaHaptics.Light)
+                        onClick()
+                    }
+                ) else Modifier
+            )
             .padding(contentPadding),
         verticalAlignment = verticalAlignment,
         horizontalArrangement = horizontalArrangement
@@ -200,16 +215,18 @@ fun SinemaCapsuleIconButton(
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
+    val src = remember { MutableInteractionSource() }
     Box(
         modifier
             .minimumInteractiveComponentSize()
             .size(size)
+            .then(if (enabled) Modifier.sinemaPressScale(src, pressedScale = 0.92f) else Modifier)
             .sinemaCapsuleGlass(
                 CircleShape,
                 fill = if (selected) accent else null,
                 glow = if (selected) accent.copy(0.35f) else null
             )
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+            .clickable(interactionSource = src, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) { Icon(icon, description, tint = fg, modifier = Modifier.size(18.dp)) }
 }
@@ -230,6 +247,7 @@ fun SinemaGoButton(
     val scale by animateFloatAsState(
         if (pressed) 0.96f else 1f, SinemaMotion.press(), label = "go_scale"
     )
+    val haptic = LocalHapticFeedback.current
     val shape = RoundedCornerShape(28.dp)
     Box(
         modifier
@@ -247,7 +265,7 @@ fun SinemaGoButton(
                     cornerRadius = CornerRadius(28.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(line * 1.5f)
                 )
             }
-            .clickable(src, null, role = Role.Button, onClick = onClick),
+            .clickable(src, null, role = Role.Button, onClick = { haptic.performHapticFeedback(SinemaHaptics.Light); onClick() }),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

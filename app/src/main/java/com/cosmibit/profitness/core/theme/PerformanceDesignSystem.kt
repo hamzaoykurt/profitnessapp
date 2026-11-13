@@ -49,8 +49,8 @@ object PerformanceRadius {
 
 object PerformanceMotion {
     val standardEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-    val fast = tween<Float>(120, easing = standardEasing)
-    val standard = tween<Float>(240, easing = standardEasing)
+    val fast = tween<Float>(SinemaMotion.Quick, easing = standardEasing)
+    val standard = tween<Float>(SinemaMotion.Standard, easing = standardEasing)
 }
 
 /** Opaque content surface. Borders are intentionally omitted; hierarchy is tonal. */

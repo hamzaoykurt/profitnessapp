@@ -147,7 +147,7 @@ private fun NewPasswordContent(
     val confirmFocus    = remember { FocusRequester() }
 
     val alphaAnim = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { alphaAnim.animateTo(1f, tween(420)) }
+    LaunchedEffect(Unit) { alphaAnim.animateTo(1f, tween(SinemaMotion.Emphasis)) }
 
     val submit = {
         keyboard?.hide()

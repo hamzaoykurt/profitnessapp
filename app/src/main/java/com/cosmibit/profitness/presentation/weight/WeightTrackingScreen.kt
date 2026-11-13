@@ -2,6 +2,7 @@
 
 package com.cosmibit.profitness.presentation.weight
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -165,13 +166,15 @@ fun WeightTrackingScreen(
                 if (state.entries.isEmpty()) {
                     item { EmptyWeightState(theme = theme, onAdd = { viewModel.openAddSheet() }) }
                 }
-                items(state.entries, key = { it.id }) { entry ->
-                    WeightEntryRow(
-                        entry    = entry,
-                        theme    = theme,
-                        onEdit   = { viewModel.openEditSheet(entry) },
-                        onDelete = { viewModel.deleteEntry(entry) }
-                    )
+                itemsIndexed(state.entries, key = { _, e -> e.id }) { i, entry ->
+                    Box(Modifier.animateItem().sinemaListEnter(i)) {
+                        WeightEntryRow(
+                            entry    = entry,
+                            theme    = theme,
+                            onEdit   = { viewModel.openEditSheet(entry) },
+                            onDelete = { viewModel.deleteEntry(entry) }
+                        )
+                    }
                 }
             }
         }

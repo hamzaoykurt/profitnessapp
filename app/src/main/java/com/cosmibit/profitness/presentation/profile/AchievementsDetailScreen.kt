@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.profile
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -108,14 +109,14 @@ fun AchievementsDetailScreen(
                     SinemaSectionLabel(categoryLabel(category, theme), trailing = "$catUnlocked/${achievements.size}")
                 }
 
-                items(
+                itemsIndexed(
                     items = achievements.sortedByDescending { it.isUnlocked },
-                    key   = { it.key }
-                ) { ach ->
+                    key   = { _, a -> a.key }
+                ) { i, ach ->
                     AchievementRow(
                         achievement = ach,
                         theme       = theme,
-                        modifier    = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                        modifier    = Modifier.animateItem().sinemaListEnter(i).padding(horizontal = 20.dp, vertical = 4.dp)
                     )
                 }
             }

@@ -57,7 +57,7 @@ fun PremiumChip(
     val accent = MaterialTheme.colorScheme.primary
     val bg by animateColorAsState(
         if (selected) accent.copy(0.15f) else theme.bg2,
-        tween(220), label = "premiumChip"
+        tween(SinemaMotion.Standard), label = "premiumChip"
     )
     Row(
         modifier.clip(RoundedCornerShape(14.dp))

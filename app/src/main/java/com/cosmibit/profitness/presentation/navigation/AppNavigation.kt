@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.navigation
 
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.*
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
@@ -25,22 +26,22 @@ private val DURATION = 280
 
 private fun slideEnter() = slideInHorizontally(
     initialOffsetX = { it / 4 },
-    animationSpec  = tween(DURATION, easing = FastOutSlowInEasing)
-) + fadeIn(animationSpec = tween(DURATION, easing = FastOutSlowInEasing))
+    animationSpec  = tween(DURATION, easing = SinemaMotion.EaseStandard)
+) + fadeIn(animationSpec = tween(DURATION, easing = SinemaMotion.EaseStandard))
 
 private fun slideExit() = slideOutHorizontally(
     targetOffsetX = { -it / 6 },
-    animationSpec = tween(DURATION, easing = FastOutSlowInEasing)
-) + fadeOut(animationSpec = tween(DURATION, easing = FastOutSlowInEasing))
+    animationSpec = tween(DURATION, easing = SinemaMotion.EaseStandard)
+) + fadeOut(animationSpec = tween(DURATION, easing = SinemaMotion.EaseStandard))
 
 private fun slidePopEnter() = slideInHorizontally(
     initialOffsetX = { -it / 4 },
-    animationSpec  = tween(DURATION, easing = FastOutSlowInEasing)
+    animationSpec  = tween(DURATION, easing = SinemaMotion.EaseStandard)
 ) + fadeIn(animationSpec = tween(DURATION))
 
 private fun slidePopExit() = slideOutHorizontally(
     targetOffsetX = { it / 4 },
-    animationSpec = tween(DURATION, easing = FastOutSlowInEasing)
+    animationSpec = tween(DURATION, easing = SinemaMotion.EaseStandard)
 ) + fadeOut(animationSpec = tween(DURATION))
 
 @Composable

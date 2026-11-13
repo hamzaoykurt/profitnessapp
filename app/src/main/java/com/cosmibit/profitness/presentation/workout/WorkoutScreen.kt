@@ -352,8 +352,8 @@ fun WorkoutScreen(
         // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
         AnimatedVisibility(
             visible = notifPermissionDenied,
-            enter   = slideInVertically { -it } + fadeIn(tween(280)),
-            exit    = slideOutVertically { -it } + fadeOut(tween(200)),
+            enter   = slideInVertically { -it } + fadeIn(tween(SinemaMotion.Emphasis)),
+            exit    = slideOutVertically { -it } + fadeOut(tween(SinemaMotion.Standard)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             NotificationPermissionBanner(

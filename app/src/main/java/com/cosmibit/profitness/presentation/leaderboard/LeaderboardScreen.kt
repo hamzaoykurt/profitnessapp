@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.leaderboard
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -205,12 +206,12 @@ fun LeaderboardScreen(
                     item(key = "podium_${state.selectedScope}_${state.selectedTab}") {
                         Podium(rows = podium, tab = state.selectedTab, theme = theme, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                     }
-                    items(items = rows.drop(3), key = { "${state.selectedScope}_${state.selectedTab}_${it.userId}" }) { row ->
+                    itemsIndexed(items = rows.drop(3), key = { _, r -> "${state.selectedScope}_${state.selectedTab}_${r.userId}" }) { i, row ->
                         LeaderboardRowItem(
                             row    = row,
                             tab    = state.selectedTab,
                             theme  = theme,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                            modifier = Modifier.animateItem().sinemaListEnter(i).padding(horizontal = 20.dp, vertical = 4.dp)
                         )
                     }
                 }

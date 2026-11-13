@@ -58,7 +58,7 @@ fun PremiumButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val pressProgress by animateFloatAsState(
         targetValue = if (pressed && isEnabled) 1f else 0f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "premiumButtonPress"
     )
     val shape = RoundedCornerShape(12.dp)
@@ -106,7 +106,7 @@ fun GhostButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val pressProgress by animateFloatAsState(
         targetValue = if (pressed && isEnabled) 1f else 0f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "ghostButtonPress"
     )
     val shape = RoundedCornerShape(12.dp)
@@ -171,7 +171,7 @@ fun PremiumIconButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val pressProgress by animateFloatAsState(
         targetValue = if (pressed && isEnabled) 1f else 0f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "premiumIconPress"
     )
 

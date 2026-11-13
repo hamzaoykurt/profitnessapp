@@ -47,7 +47,7 @@ fun AppBackButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "app_back_button_scale"
     )
 

@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.friends
 
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -308,7 +309,7 @@ private fun UserRow(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = tween(120),
+        animationSpec = tween(SinemaMotion.Quick),
         label = "friend_row_scale"
     )
     val shape = RoundedCornerShape(24.dp)

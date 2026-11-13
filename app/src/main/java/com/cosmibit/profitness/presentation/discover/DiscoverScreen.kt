@@ -5,6 +5,8 @@
 
 package com.cosmibit.profitness.presentation.discover
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.cosmibit.profitness.core.theme.sinemaListEnter
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -1053,12 +1055,14 @@ private fun MySharedProgramsList(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(items, key = { it.id }) { item ->
-                        MySharedCard(
-                            item = item,
-                            isDeleting = item.id in deleteInFlight,
-                            onDelete = { onDelete(item.id) }
-                        )
+                    itemsIndexed(items, key = { _, s -> s.id }) { i, item ->
+                        Box(Modifier.animateItem().sinemaListEnter(i)) {
+                            MySharedCard(
+                                item = item,
+                                isDeleting = item.id in deleteInFlight,
+                                onDelete = { onDelete(item.id) }
+                            )
+                        }
                     }
                 }
             }

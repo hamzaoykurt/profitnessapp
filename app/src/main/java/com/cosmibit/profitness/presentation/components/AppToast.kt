@@ -82,11 +82,11 @@ fun AppToast(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessMedium
             )
-        ) + fadeIn(tween(180)),
+        ) + fadeIn(tween(SinemaMotion.Standard)),
         exit = slideOutVertically(
             targetOffsetY = { -it },
-            animationSpec = tween(220)
-        ) + fadeOut(tween(180))
+            animationSpec = tween(SinemaMotion.Standard)
+        ) + fadeOut(tween(SinemaMotion.Standard))
     ) {
         if (toast != null) {
             ToastContent(toast = toast)

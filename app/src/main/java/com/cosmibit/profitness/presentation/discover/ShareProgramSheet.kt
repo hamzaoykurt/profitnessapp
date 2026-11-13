@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -111,7 +112,7 @@ fun ShareProgramSheet(
     val confirmPressed by confirmInteraction.collectIsPressedAsState()
     val confirmScale by animateFloatAsState(
         targetValue = if (confirmPressed) 0.98f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(120),
+        animationSpec = androidx.compose.animation.core.tween(SinemaMotion.Quick),
         label = "share_confirm_scale"
     )
 
