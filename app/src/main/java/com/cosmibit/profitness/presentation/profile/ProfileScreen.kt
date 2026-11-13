@@ -171,6 +171,15 @@ fun ProfileScreen(
                 )
             }
             item {
+                WeeklyActivitySection(
+                    accent           = accent,
+                    theme            = theme,
+                    strings          = strings,
+                    weeklyActivity   = state.weeklyActivity,
+                    weekWorkoutCount = state.weeklyWorkoutCounts.lastOrNull() ?: 0
+                )
+            }
+            item {
                 SettingsSection(
                     theme                = theme,
                     accent               = accent,
@@ -753,34 +762,41 @@ private fun WeeklyActivitySection(
     weekWorkoutCount: Int = 0
 ) {
     val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1   // 0=Pzt … 6=Paz
+    val barShape = RoundedCornerShape(8.dp)
 
-    Column(modifier = Modifier.padding(20.dp, 36.dp, 20.dp, 0.dp)) {
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(
-                strings.weeklyActivity,
-                style         = MaterialTheme.typography.labelSmall,
-                color         = theme.accentTextColor,
-                letterSpacing = 1.2.sp
-            )
-            Text(
-                if (weekWorkoutCount > 0) "${strings.thisWeekSummary} · " + theme.t("$weekWorkoutCount antrenman", "$weekWorkoutCount workouts")
-                else strings.thisWeekSummary,
-                color = theme.text2, fontSize = 10.sp
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Box(
+    SinemaSection(theme = theme, title = theme.t("Bu hafta", "This week")) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(20.dp), accent)
-                .padding(20.dp, 20.dp, 20.dp, 14.dp)
+                .padding(horizontal = 20.dp)
+                .sinemaCard(theme, RoundedCornerShape(24.dp))
+                .padding(20.dp)
         ) {
+            if (weekWorkoutCount > 0) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        weekWorkoutCount.toString(),
+                        color = Sinema.text(theme), style = Sinema.Metric,
+                        maxLines = 1, softWrap = false,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        theme.t("antrenman", "workouts"),
+                        color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                }
+            } else {
+                Text(
+                    theme.t("Bu hafta henüz antrenman yok", "No workouts yet this week"),
+                    color = Sinema.textSecondary(theme), style = Sinema.Body
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -791,40 +807,35 @@ private fun WeeklyActivitySection(
                     val isToday = i == todayIndex
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Box(
-                            modifier         = Modifier
-                                .width(28.dp)
-                                .height(72.dp),
+                            modifier         = Modifier.width(28.dp).height(72.dp),
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             Box(
                                 Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(theme.bg3)
+                                    .fillMaxSize()
+                                    .clip(barShape)
+                                    .background(Sinema.elevated(theme))
                             )
                             if (level > 0f) {
                                 // En az %15 yükseklik göster (çok küçük olmasın)
-                                val displayLevel = level.coerceAtLeast(0.15f)
+                                val fill = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(level.coerceAtLeast(0.15f))
                                 Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight(displayLevel)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            if (isToday) accent else accent.copy(0.4f)
-                                        )
+                                    (if (isToday) fill.sinemaGlow(accent.copy(0.55f), 10.dp, 2.dp, barShape) else fill)
+                                        .clip(barShape)
+                                        .background(if (isToday) accent else accent.copy(0.4f))
                                 )
                             }
                         }
                         Text(
                             day,
-                            color      = if (isToday) theme.accentTextColor else theme.text2,
-                            fontSize   = 9.sp,
-                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                            color      = if (isToday) Sinema.text(theme) else Sinema.textSecondary(theme),
+                            fontSize   = 10.sp,
+                            fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Medium
                         )
                     }
                 }
