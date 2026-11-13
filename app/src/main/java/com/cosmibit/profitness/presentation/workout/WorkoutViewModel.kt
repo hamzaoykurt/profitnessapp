@@ -150,8 +150,18 @@ class WorkoutViewModel @Inject constructor(
     // Yüzen kronometreye dokununca Antrenman sayfası bu hareketin sayfasına kayar (tek seferlik istek).
     private val _focusExerciseRequest = MutableStateFlow<String?>(null)
     val focusExerciseRequest: StateFlow<String?> = _focusExerciseRequest.asStateFlow()
-    fun requestFocusExercise(exerciseId: String) { if (exerciseId.isNotBlank()) _focusExerciseRequest.value = exerciseId }
-    fun consumeFocusExercise() { _focusExerciseRequest.value = null }
+    private var focusRequestJob: Job? = null
+    /** İstek 3 sn içinde tüketilmezse (Workout henüz yüklenmedi) düşer; geç gelen beklenmedik kaymayı önler. */
+    fun requestFocusExercise(exerciseId: String) {
+        if (exerciseId.isBlank()) return
+        _focusExerciseRequest.value = exerciseId
+        focusRequestJob?.cancel()
+        focusRequestJob = viewModelScope.launch {
+            delay(3_000)
+            if (_focusExerciseRequest.value == exerciseId) _focusExerciseRequest.value = null
+        }
+    }
+    fun consumeFocusExercise() { focusRequestJob?.cancel(); _focusExerciseRequest.value = null }
     private val _draftInputs = MutableStateFlow<Map<String, DraftInput>>(emptyMap())
     val draftInputs: StateFlow<Map<String, DraftInput>> = _draftInputs.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır

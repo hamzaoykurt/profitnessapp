@@ -11,6 +11,7 @@ import java.util.Locale
  * 29.0 → "29" · 27.5 (tr) → "27,5" · 27.5 (en) → "27.5" · 27.25 → "27,25".
  */
 fun formatWeightNumber(kg: Float, locale: Locale): String {
+    if (!kg.isFinite()) return "0"   // NaN/Infinity: BigDecimal çöker
     val df = DecimalFormat("0.##", DecimalFormatSymbols.getInstance(locale))
     df.roundingMode = RoundingMode.HALF_UP
     // Float → BigDecimal(toString): 27.3f'nin ikili gösterim hatası yuvarlamayı bozmasın

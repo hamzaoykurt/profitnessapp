@@ -50,6 +50,12 @@ import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.presentation.workout.RestTimerState
 import com.cosmibit.profitness.presentation.workout.TimerPurpose
 
+/**
+ * Yüzen kronometre görünürken alt ekran (overlay) içeriğine eklenecek alt boşluk (nav bar dahil, animasyonlu).
+ * Kural: kronometre yokken 0; sabit alt öğeler kapsülün ÜSTÜNE bu kadar yukarı yerleşir. DashboardScreen sağlar.
+ */
+val LocalFloatingTimerReserve = androidx.compose.runtime.compositionLocalOf { androidx.compose.ui.unit.Dp(0f) }
+
 /** Kronometre saati: 0:05, 3:33, 1:02:09 (saat varsa). Negatif değer 0 sayılır. */
 internal fun formatTimerClock(totalSeconds: Int): String {
     val s = totalSeconds.coerceAtLeast(0)

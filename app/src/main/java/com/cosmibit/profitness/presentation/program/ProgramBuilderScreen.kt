@@ -677,11 +677,8 @@ fun ProgramBuilderScreen(
             animationSpec = tween(140, easing = FastOutSlowInEasing),
             label = "builder_fade"
         ) { m ->
-            Box(
-                Modifier.fillMaxSize().then(
-                    if (m is BuilderMode.Choose) Modifier else Modifier.background(Sinema.page(theme))
-                )
-            ) {
+            Box(Modifier.fillMaxSize()) {
+            if (m !is BuilderMode.Choose) SinemaBackdrop(Modifier.fillMaxSize())   // Manual/Edit: ortak sayfa zemini
             when (m) {
                 is BuilderMode.Choose -> BuilderChooseScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
@@ -2198,12 +2195,7 @@ private fun BuilderSceneHeader(
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val nameFocus = remember { FocusRequester() }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-    ) {
-        SinemaScene(Modifier.matchParentSize())
+    Box(modifier = Modifier.fillMaxWidth()) {   // ışık sayfa zemininden gelir; başlık kendi sahnesini çizmez
         Column(
             modifier = Modifier
                 .fillMaxWidth()

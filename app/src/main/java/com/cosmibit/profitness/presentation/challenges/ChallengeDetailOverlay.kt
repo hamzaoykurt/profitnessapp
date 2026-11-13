@@ -55,6 +55,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -77,6 +79,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.SinemaGoButton
@@ -154,7 +157,8 @@ fun ChallengeDetailOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        Box(Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 170.dp)
@@ -562,8 +566,21 @@ private fun ChallengeHero(
         Modifier
             .fillMaxWidth()
             .height(500.dp)
-            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-            .background(Color.Black)
+            // Foto alt kenarı sayfa zeminine (SinemaBackdrop) söner: son 160dp alfa → 0
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                val fade = 160.dp.toPx().coerceAtMost(size.height)
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to Color.Black, 1f to Color.Transparent,
+                        startY = size.height - fade, endY = size.height
+                    ),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - fade),
+                    size = androidx.compose.ui.geometry.Size(size.width, fade),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                )
+            }
     ) {
         SceneImage(
             url = categoryImageUrl(heroPhotoCategory(c)),
@@ -1296,7 +1313,8 @@ private fun EditMetricChallengeOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        Box(Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
             LazyColumn(
                 modifier = Modifier.fillMaxSize().imePadding(),
                 contentPadding = PaddingValues(bottom = 40.dp)
@@ -1394,7 +1412,8 @@ private fun EditEventChallengeOverlay(
         )
     ) {
         EdgeToEdgeDialogBars()
-        Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        Box(Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
             LazyColumn(
                 modifier = Modifier.fillMaxSize().imePadding(),
                 contentPadding = PaddingValues(bottom = 40.dp)

@@ -65,6 +65,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
 import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 import java.time.LocalDate
@@ -294,7 +295,7 @@ private fun PerformanceCover(
 
         // Sol: dev rakam / boş durum · Sağ: hafta halkası
         Row(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp),
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp + LocalFloatingTimerReserve.current),
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

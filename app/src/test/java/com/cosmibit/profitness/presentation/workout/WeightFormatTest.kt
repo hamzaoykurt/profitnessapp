@@ -28,4 +28,11 @@ class WeightFormatTest {
     fun `non numeric input is returned as is`() {
         assertEquals("abc", formatWeightNumber(" abc ", tr))
     }
+
+    @Test
+    fun `NaN and infinity do not crash`() {
+        assertEquals("0", formatWeightNumber(Float.NaN, tr))
+        assertEquals("0", formatWeightNumber(Float.POSITIVE_INFINITY, tr))
+        assertEquals("0", formatWeightNumber("NaN", tr))
+    }
 }

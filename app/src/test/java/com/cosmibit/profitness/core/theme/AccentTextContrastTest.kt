@@ -13,23 +13,31 @@ class AccentTextContrastTest {
         return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
     }
 
+    private val surfaces = listOf(Sinema.Page, Sinema.Surface, Color(0xFF1C1D22), Sinema.Elevated)
+
     @Test
-    fun darkAccentTextMeets3to1OnPage() {
+    fun darkAccentTextMeets4_5OnPageAndSurfaces() {
+        var min = 99.0
         for (preset in AccentPreset.entries) for (intensity in AccentIntensity.entries) {
             val theme = AppThemeState(isDark = true, accent = preset, intensity = intensity)
-            assertTrue("$preset/$intensity", ratio(theme.accentTextColor, theme.bg0) >= 3.0)
+            for (bg in surfaces) {
+                val r = ratio(theme.accentTextColor, bg)
+                min = minOf(min, r)
+                assertTrue("$preset/$intensity on $bg = $r", r >= 4.5)
+            }
         }
+        println("MIN_ACCENT_TEXT_RATIO=$min")
     }
 
     @Test
     fun customAccentIsDarkenedUntilReadable() {
         val theme = AppThemeState(isDark = true, customAccentArgb = 0xFFFACC15.toInt())
-        assertTrue(ratio(theme.accentTextColor, theme.bg3) >= 4.5)
+        assertTrue(surfaces.all { ratio(theme.accentTextColor, it) >= 4.5 })
     }
 
     @Test
     fun darkThemeKeepsAccent() {
         val theme = AppThemeState(isDark = true)
-        assertTrue(theme.accentTextColor == theme.effectiveAccentColor)
+        assertTrue(ratio(theme.accentTextColor, Sinema.Elevated) >= 4.5)
     }
 }

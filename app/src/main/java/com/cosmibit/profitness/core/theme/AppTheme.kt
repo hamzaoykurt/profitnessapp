@@ -174,7 +174,17 @@ val AppThemeState.effectiveAccentColor: Color get() {
 }
 /** Vurgu rengiyle yazılan etiket/link metni: tek koyu temada vurgu rengi. */
 val AppThemeState.accentTextColor: Color get() =
-    effectiveAccentColor
+    effectiveAccentColor.lightenForTextContrast(Sinema.Elevated)
+
+/** Aydınlatarak [background] üstünde küçük metin kontrastı (>=4.5) sağlar; yalnız metin rengi içindir. */
+fun Color.lightenForTextContrast(background: Color, minRatio: Double = 4.5): Color {
+    var adjusted = copy(alpha = 1f)
+    repeat(30) {
+        if (adjusted.contrastRatio(background) >= minRatio) return adjusted
+        adjusted = adjusted.blendToward(Color.White, 0.05f)
+    }
+    return adjusted
+}
 
 val AppThemeState.effectiveOnAccentColor: Color get() =
     effectiveAccentColor.readableOnAccentColor()

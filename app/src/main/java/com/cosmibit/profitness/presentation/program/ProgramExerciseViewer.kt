@@ -23,7 +23,9 @@ import com.cosmibit.profitness.presentation.workout.Exercise
 import com.cosmibit.profitness.presentation.workout.ExerciseDetailSheet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -55,6 +57,7 @@ class ExerciseCatalog(private val byKey: Map<String, ExerciseEntity>) {
 class ExerciseCatalogViewModel @Inject constructor(exerciseDao: ExerciseDao) : ViewModel() {
     val catalog: StateFlow<ExerciseCatalog> = exerciseDao.observeAll()
         .map { ExerciseCatalog.from(it) }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExerciseCatalog.Empty)
 }
 

@@ -40,6 +40,7 @@ import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.SinemaBigStat
+import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
@@ -507,7 +508,7 @@ fun EditProfileScreen(
                 )
             }
 
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(80.dp + LocalFloatingTimerReserve.current)) }
         }
     }
 

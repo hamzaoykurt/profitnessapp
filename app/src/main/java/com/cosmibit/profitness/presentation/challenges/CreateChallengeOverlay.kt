@@ -3,6 +3,7 @@ package com.cosmibit.profitness.presentation.challenges
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
@@ -241,7 +242,8 @@ fun CreateChallengeOverlay(
         )
     ) {
     CreateSceneBars()
-    Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+    Box(Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
         Column(
             Modifier
                 .fillMaxSize()

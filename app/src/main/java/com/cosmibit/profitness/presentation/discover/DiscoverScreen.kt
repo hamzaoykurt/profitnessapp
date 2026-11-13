@@ -207,12 +207,10 @@ fun DiscoverScreen(
     }
 
     val theme = LocalAppTheme.current
-    val darkTheme = theme   // tek koyu tema (merkezde isDark hep true)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val controlsTop = statusTop + 20.dp + timerExtraPad
     Box(modifier = Modifier.fillMaxSize()) {
       SinemaBackdrop(Modifier.fillMaxSize())
-      CompositionLocalProvider(LocalAppTheme provides darkTheme) {
         selectedProgram?.let { program ->
             val live = state.items.firstOrNull { it.id == program.id }
                 ?: state.savedItems.firstOrNull { it.id == program.id } ?: program
@@ -271,7 +269,6 @@ fun DiscoverScreen(
                 topOffset = controlsTop
             )
         }
-      }
 
         // ── In-app notification toast ──────────────────────────────────────
         AppToast(
@@ -282,15 +279,13 @@ fun DiscoverScreen(
     }
 
     if (showMenu) {
-        CompositionLocalProvider(LocalAppTheme provides darkTheme) {
-            DiscoverMenuSheet(
-                programsSub = programsSub, sort = state.sort,
-                savedCount = state.savedItems.size, mineCount = state.myShared.size,
-                onDismiss = { showMenu = false },
-                onFeed = { sort -> programsSub = ProgramsSubTab.Community; viewModel.changeSort(sort); showMenu = false },
-                onSub = { sub -> programsSub = sub; showMenu = false }
-            )
-        }
+        DiscoverMenuSheet(
+            programsSub = programsSub, sort = state.sort,
+            savedCount = state.savedItems.size, mineCount = state.myShared.size,
+            onDismiss = { showMenu = false },
+            onFeed = { sort -> programsSub = ProgramsSubTab.Community; viewModel.changeSort(sort); showMenu = false },
+            onSub = { sub -> programsSub = sub; showMenu = false }
+        )
     }
 
     if (showShareSheet) {

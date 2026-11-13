@@ -32,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.data.store.BillingProduct
 import com.cosmibit.profitness.data.store.UserPlan
+import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
+import com.cosmibit.profitness.presentation.profile.photoFadeToBackdrop
 import com.cosmibit.profitness.presentation.components.SinemaBigStat
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
 import com.cosmibit.profitness.presentation.components.SinemaGlowBar
@@ -257,6 +259,7 @@ fun StoreScreen(
             .fillMaxSize()
             .background(Sinema.page(theme))
     ) {
+        SinemaBackdrop(Modifier.fillMaxSize())
         Column(modifier = Modifier.fillMaxSize()) {
 
             // Top bar
@@ -567,6 +570,7 @@ private fun StoreTopBar(
             .height(220.dp + topInset)
     ) {
         // Salon fotoğrafı; yüklenmezse SinemaScene
+        Box(Modifier.fillMaxSize().photoFadeToBackdrop(90.dp)) {
         coil.compose.SubcomposeAsyncImage(
             model = com.cosmibit.profitness.core.ui.categoryImageUrl(""),
             contentDescription = null,
@@ -587,6 +591,7 @@ private fun StoreTopBar(
                     )
                 )
         )
+        }
 
         Column(
             modifier = Modifier
@@ -653,7 +658,7 @@ private fun SubscriptionTab(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (state.billingSandboxAvailable) {
@@ -987,7 +992,7 @@ private fun EnergyTab(
 ) {
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
-        contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp),
+        contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {

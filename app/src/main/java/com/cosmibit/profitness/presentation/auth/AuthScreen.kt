@@ -474,7 +474,7 @@ private fun OtpVerifyScreen(
             accent = accent
         )
 
-        AuthFeedback(error = state.error, hint = null, onHintAction = {}, onDarkScene = true)
+        AuthFeedback(error = state.error, hint = null, onHintAction = {})
 
         Spacer(Modifier.height(24.dp))
 
@@ -1091,14 +1091,12 @@ fun AuthLiquidField(
 
 /**
  * Hata = SinemaCapsule içinde 16dp uyarı ikonu (yalnız ikon hata rengi) + metin; kırmızı kutu yok.
- * `onDarkScene`: SinemaScene üstünde (OTP) koyu cam; aksi halde temaya göre.
  */
 @Composable
 internal fun AuthFeedback(
     error       : String?,
     hint        : AuthHint?,
-    onHintAction: (AuthHint) -> Unit,
-    onDarkScene : Boolean = false
+    onHintAction: (AuthHint) -> Unit
 ) {
     val theme = LocalAppTheme.current
     Column {
@@ -1135,7 +1133,7 @@ internal fun AuthFeedback(
                     TextButton(
                         onClick = { onHintAction(it) },
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (onDarkScene) theme.effectiveAccentColor else theme.accentTextColor
+                            contentColor = theme.accentTextColor
                         )
                     ) {
                         Icon(icon, null, modifier = Modifier.size(15.dp))

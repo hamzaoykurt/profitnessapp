@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.presentation.components.FloatingWorkoutTimer
+import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.workout.RestTimerState
 import com.cosmibit.profitness.presentation.workout.WorkoutScreen
@@ -207,6 +208,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         label         = "dash_timer_reserve"
     )
     val contentPadWithTimer = contentPad + timerReserve
+    // Alt ekranlar (overlay) için: kapsül nav bar'ın üstünde durur, bu yüzden nav bar payı da eklenir.
+    val overlayTimerReserve = timerReserve + navBarBottom * (timerReserve / FloatingTimerReserve)
     // Bitti geri bildirimi kısa süre görünür, sonra kronometre kapanır (eski Dynamic Island davranışı).
     LaunchedEffect(restTimer.isDone) {
         if (restTimer.isDone) {
@@ -244,6 +247,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         }
     )
 
+    CompositionLocalProvider(LocalFloatingTimerReserve provides overlayTimerReserve) {
     Box(modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().then(if (useNavRail) Modifier else Modifier.hazeSource(navHaze))) {
         SinemaBackdrop(Modifier.fillMaxSize())   // tek zemin kaynağı: sekmeler bunun üstünde geçer
@@ -379,7 +383,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             timer         = if (imeVisible) RestTimerState() else restTimer,
             light         = false,
             onOpen        = {
-                workoutViewModel.requestFocusExercise(restTimer.exerciseId)
+                workoutViewModel.requestFocusExercise(restTimer.exerciseId)  // VM 3 sn içinde tüketilmezse düşürür
                 showStore = false; showExerciseProgression = false; showWeightTracking = false
                 showEditProfile = false; showLeaderboard = false; showAchievementsDetail = false
                 showPerformanceDetail = false
@@ -504,6 +508,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         ) {
             StoreScreen(onBack = { showStore = false })
         }
+    }
     }
 }
 

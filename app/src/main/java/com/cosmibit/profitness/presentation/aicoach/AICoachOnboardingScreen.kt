@@ -66,7 +66,8 @@ fun AICoachOnboardingScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
 
         Column(
             modifier = Modifier
@@ -91,7 +92,7 @@ fun AICoachOnboardingScreen(
                     )
                 }
                 Text(
-                    "ORACLE",
+                    theme.t("AI KOÇ", "AI COACH"),
                     modifier     = Modifier.align(Alignment.Center),
                     style        = MaterialTheme.typography.labelSmall,
                     color        = theme.accentTextColor,
