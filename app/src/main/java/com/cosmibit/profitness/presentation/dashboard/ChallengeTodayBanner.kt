@@ -55,29 +55,21 @@ fun ChallengeTodayBanner(
     val strings = theme.strings
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(20.dp)
-    val surface = if (theme.isDark) {
-        Brush.verticalGradient(listOf(theme.text0.copy(0.075f), theme.text0.copy(0.025f)))
-    } else {
-        Brush.verticalGradient(listOf(Color.White, theme.text0.copy(0.018f)))
-    }
+    val surface = Brush.verticalGradient(listOf(theme.text0.copy(0.075f), theme.text0.copy(0.025f)))
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .shadow(
-                elevation = if (theme.isDark) 14.dp else 10.dp,
+                elevation = 14.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.34f else 0.10f),
-                spotColor = accent.copy(if (theme.isDark) 0.18f else 0.05f)
+                ambientColor = Color.Black.copy(0.34f),
+                spotColor = accent.copy(0.18f)
             )
             .clip(shape)
             .background(surface)
-            .border(
-                1.dp,
-                if (theme.isDark) accent.copy(0.34f) else theme.stroke.copy(0.78f),
-                shape
-            )
+            .border(1.dp, accent.copy(0.34f), shape)
             .padding(horizontal = 16.dp, vertical = 15.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -123,10 +115,10 @@ private fun EventMiniRow(summary: ChallengeSummary, onClick: () -> Unit) {
                 translationY = if (pressed) 2.dp.toPx() else 0f
             }
             .clip(RoundedCornerShape(12.dp))
-            .background(if (theme.isDark) theme.text0.copy(0.055f) else theme.bg1)
+            .background(theme.text0.copy(0.055f))
             .border(
                 1.dp,
-                if (theme.isDark) theme.text0.copy(0.10f) else theme.stroke.copy(0.62f),
+                theme.text0.copy(0.10f),
                 RoundedCornerShape(12.dp)
             )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)

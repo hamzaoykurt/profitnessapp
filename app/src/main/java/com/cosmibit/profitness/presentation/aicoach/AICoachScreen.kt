@@ -187,14 +187,13 @@ fun AICoachScreen(
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val hazeState = remember { dev.chrisbanes.haze.HazeState() }
-        val darkTheme = remember(theme) { theme.copy(isDark = true) }   // sahne her zaman koyu
         val chatting = state.messages.size > 1
         val bottomGap = if (imeVisible) 8.dp else bottomPadding   // çizim: msg alt boşluğu = menü 60 + 16
 
         // Sahne (haze kaynağı): kapsül/haplar bunu bulanıklaştırır
         Box(Modifier.fillMaxSize().hazeSource(hazeState)) { SinemaScene() }
 
-        CompositionLocalProvider(LocalAppTheme provides darkTheme, LocalSinemaHaze provides hazeState) {
+        CompositionLocalProvider(LocalAppTheme provides theme, LocalSinemaHaze provides hazeState) {
             // ── Sohbet akışı (konuşma başladıysa) ─────────────────────────────
             if (chatting || state.isLoading) {
                 LazyColumn(
@@ -399,13 +398,13 @@ fun AICoachScreen(
                     .padding(horizontal = 16.dp)
                     .padding(top = 90.dp)
                     .shadow(
-                        elevation = if (theme.isDark) 10.dp else 6.dp,
+                        elevation = 10.dp,
                         shape = RoundedCornerShape(12.dp),
-                        ambientColor = if (theme.isDark) Color.Black.copy(0.44f) else Color(0xFF3A2A1A).copy(0.10f),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(if (theme.isDark) 0.16f else 0.08f)
+                        ambientColor = Color.Black.copy(0.44f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(0.16f)
                     )
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (theme.isDark) theme.bg2 else theme.bg1)
+                    .background(theme.bg2)
                     .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(12.dp))
                     .clickable { viewModel.resetProgramStatus() }
                     .padding(16.dp)

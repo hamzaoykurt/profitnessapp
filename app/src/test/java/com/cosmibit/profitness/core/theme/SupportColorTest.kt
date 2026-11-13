@@ -7,15 +7,11 @@ import org.junit.Test
 
 class SupportColorTest {
     @Test
-    fun darkAndLightPickTheirVariant() {
+    fun darkSupportColors() {
         val dark = AppThemeState(isDark = true)
-        val light = AppThemeState(isDark = false)
         assertEquals(Color(0xFF46CC8C), dark.supportSuccess)
-        assertEquals(Color(0xFF167544), light.supportSuccess)
         assertEquals(Color(0xFFF2C23F), dark.supportReward)
-        assertEquals(Color(0xFF7F5B00), light.supportReward)
         assertEquals(0.16f, dark.supportSoftAlpha)
-        assertEquals(0.12f, light.supportSoftAlpha)
     }
 
     @Test

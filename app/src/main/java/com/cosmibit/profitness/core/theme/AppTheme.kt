@@ -9,26 +9,24 @@ import androidx.compose.ui.graphics.toArgb
 enum class AccentPreset(
     val color      : Color,   // dark mode accent (neon)
     val label      : String,
-    val onColor    : Color,
-    val lightColor : Color,   // light mode accent (saturated, readable)
-    val onLightColor: Color   // text on light accent
+    val onColor    : Color
 ) {
-    LIME  (Color(0xFFCBFF4D), "LIME",   Color.Black, Color(0xFF5C8A00), Color.White),
-    PURPLE(Color(0xFFA855F7), "PURPLE", Color.White, Color(0xFF7C3AED), Color.White),
-    CYAN  (Color(0xFF00E5D3), "CYAN",   Color.Black, Color(0xFF0891B2), Color.White),
-    ORANGE(Color(0xFFF36A21), "ORANGE", Color.Black, Color(0xFFE85F1B), Color.White),
-    PINK  (Color(0xFFEC4899), "PINK",   Color.White, Color(0xFFDB2777), Color.White),
-    BLUE  (Color(0xFF3B82F6), "BLUE",   Color.White, Color(0xFF2563EB), Color.White),
-    RED   (Color(0xFFEF4444), "RED",    Color.White, Color(0xFFDC2626), Color.White),
-    YELLOW(Color(0xFFFACC15), "YELLOW", Color.Black, Color(0xFFCA8A04), Color.Black),
-    GREEN (Color(0xFF22C55E), "GREEN",  Color.Black, Color(0xFF16A34A), Color.White),
-    TEAL  (Color(0xFF14B8A6), "TEAL",   Color.Black, Color(0xFF0D9488), Color.White),
-    INDIGO(Color(0xFF6366F1), "INDIGO", Color.White, Color(0xFF4F46E5), Color.White),
-    ROSE  (Color(0xFFFB7185), "ROSE",   Color.Black, Color(0xFFE11D48), Color.White),
-    MINT  (Color(0xFF34D399), "MINT",   Color.Black, Color(0xFF059669), Color.White),
-    SKY   (Color(0xFF38BDF8), "SKY",    Color.Black, Color(0xFF0284C7), Color.White),
-    VIOLET(Color(0xFF8B5CF6), "VIOLET", Color.White, Color(0xFF7C3AED), Color.White),
-    AMBER (Color(0xFFF59E0B), "AMBER",  Color.Black, Color(0xFFD97706), Color.White),
+    LIME  (Color(0xFFCBFF4D), "LIME",   Color.Black),
+    PURPLE(Color(0xFFA855F7), "PURPLE", Color.White),
+    CYAN  (Color(0xFF00E5D3), "CYAN",   Color.Black),
+    ORANGE(Color(0xFFF36A21), "ORANGE", Color.Black),
+    PINK  (Color(0xFFEC4899), "PINK",   Color.White),
+    BLUE  (Color(0xFF3B82F6), "BLUE",   Color.White),
+    RED   (Color(0xFFEF4444), "RED",    Color.White),
+    YELLOW(Color(0xFFFACC15), "YELLOW", Color.Black),
+    GREEN (Color(0xFF22C55E), "GREEN",  Color.Black),
+    TEAL  (Color(0xFF14B8A6), "TEAL",   Color.Black),
+    INDIGO(Color(0xFF6366F1), "INDIGO", Color.White),
+    ROSE  (Color(0xFFFB7185), "ROSE",   Color.Black),
+    MINT  (Color(0xFF34D399), "MINT",   Color.Black),
+    SKY   (Color(0xFF38BDF8), "SKY",    Color.Black),
+    VIOLET(Color(0xFF8B5CF6), "VIOLET", Color.White),
+    AMBER (Color(0xFFF59E0B), "AMBER",  Color.Black),
 }
 
 /** Karanlık tema arka plan tonu. */
@@ -53,41 +51,34 @@ data class AppThemeState(
     val customAccentArgb    : Int?            = null
 )
 
-// Surface helpers — dark forged depth / independently composed porcelain light.
-// Light mode intentionally does not mirror the dark hierarchy: the canvas is
-// mineral grey while content cards rise to white.
+// Surface helpers — dark forged depth.
 //
 // OLED stratejisi: bg0 ve bg1 saf siyah (#000000) — ekran ve kart yüzeyi AMOLED
 // pikselleri gerçekten kapatır. Derinlik, hafif yükseltilmiş bg2/bg3 + parlak
 // stroke ile sağlanır. Bu, "near-black gri" kartların oluşturduğu "kirli"
 // OLED hissini önler.
 val AppThemeState.bg0: Color get() = when {
-    !isDark                               -> Color(0xFFF6F1EA)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF010203)
     else                                  -> Sinema.Page      // #0C0D10
 }
 val AppThemeState.bg1: Color get() = when {
-    !isDark                               -> Color(0xFFFFFDF9)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF050609)
     else                                  -> Sinema.Surface   // #15171C
 }
 val AppThemeState.bg2: Color get() = when {
-    !isDark                               -> Color(0xFFEEE7DD)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF0C0F14)
     else                                  -> Sinema.Elevated  // #1D2027
 }
 val AppThemeState.bg3: Color get() = when {
-    !isDark                               -> Color(0xFFE3DACE)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF151A21)
     else                                  -> Color(0xFF262A32)
 }
 val AppThemeState.stroke: Color get() = when {
-    !isDark                               -> Color(0xFFD9CFC2)
     else                                  -> Color(0xFF26282D)   // beyaz .09 / kart bileşkesi (opak: .copy(alpha) çağrıları için)
 }
-val AppThemeState.text0: Color get() = if (isDark) Sinema.Text else Color(0xFF1F1A16)
-val AppThemeState.text1: Color get() = if (isDark) Sinema.TextSecondary else Color(0xFF5A5047)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFF9A9DA6) else Color(0xFF665B50)
+val AppThemeState.text0: Color get() = Sinema.Text
+val AppThemeState.text1: Color get() = Sinema.TextSecondary
+val AppThemeState.text2: Color get() = Color(0xFF9A9DA6)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {
@@ -101,7 +92,7 @@ private fun Color.toPastel(): Color {
     )
 }
 
-// Effective accent — uses light variant when not in dark mode, pastel uygulanabilir
+// Effective accent — vurgu yoğunluğu stilleri
 private fun Color.toVivid(): Color {
     val boost = 0.18f
     return Color(
@@ -172,7 +163,7 @@ fun Color.darkenForContrast(background: Color, minRatio: Double = 4.5): Color {
 fun Int.toSafeAccentArgb(): Int = Color(this).toSafeAccentColor().toArgb()
 
 val AppThemeState.effectiveAccentColor: Color get() {
-    val base = customAccentArgb?.let { Color(it) } ?: if (isDark) accent.color else accent.lightColor
+    val base = customAccentArgb?.let { Color(it) } ?: accent.color
     val styled = when (intensity) {
         AccentIntensity.NEON   -> base
         AccentIntensity.PASTEL -> base.toPastel()
@@ -181,9 +172,9 @@ val AppThemeState.effectiveAccentColor: Color get() {
     }
     return styled.toSafeAccentColor()
 }
-/** Vurgu rengiyle yazılan etiket/link metni: koyuda aynı, açıkta bg3 üstünde >=4.5:1. */
+/** Vurgu rengiyle yazılan etiket/link metni: tek koyu temada vurgu rengi. */
 val AppThemeState.accentTextColor: Color get() =
-    if (isDark) effectiveAccentColor else effectiveAccentColor.darkenForContrast(bg3)
+    effectiveAccentColor
 
 val AppThemeState.effectiveOnAccentColor: Color get() =
     effectiveAccentColor.readableOnAccentColor()
@@ -232,15 +223,15 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
 
 // ── Destek renkleri: vurgu preset'inden bağımsız 5 sabit anlam rengi ──────────
 /** Başarı / tamamlandı. */
-val AppThemeState.supportSuccess: Color get() = if (isDark) Color(0xFF46CC8C) else Color(0xFF167544)
+val AppThemeState.supportSuccess: Color get() = Color(0xFF46CC8C)
 /** Dinlenme / kardiyo / su. */
-val AppThemeState.supportRest: Color get() = if (isDark) Color(0xFF3DB5E8) else Color(0xFF086596)
+val AppThemeState.supportRest: Color get() = Color(0xFF3DB5E8)
 /** Kuvvet / hacim / kas. */
-val AppThemeState.supportStrength: Color get() = if (isDark) Color(0xFFA48BF7) else Color(0xFF6648CF)
+val AppThemeState.supportStrength: Color get() = Color(0xFFA48BF7)
 /** Ödül: XP / rütbe / seri değeri. */
-val AppThemeState.supportReward: Color get() = if (isDark) Color(0xFFF2C23F) else Color(0xFF7F5B00)
+val AppThemeState.supportReward: Color get() = Color(0xFFF2C23F)
 /** Uyarı / hata / atlandı. */
-val AppThemeState.supportAlert: Color get() = if (isDark) Color(0xFFF4748A) else Color(0xFFB52D49)
+val AppThemeState.supportAlert: Color get() = Color(0xFFF4748A)
 /** Dolgu (çip/satır) için yumuşak ton: koyu α.16, açık α.12. */
-val AppThemeState.supportSoftAlpha: Float get() = if (isDark) 0.16f else 0.12f
+val AppThemeState.supportSoftAlpha: Float get() = 0.16f
 fun AppThemeState.soft(support: Color): Color = support.copy(alpha = supportSoftAlpha)

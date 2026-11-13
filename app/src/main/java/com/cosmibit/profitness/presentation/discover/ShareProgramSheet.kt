@@ -120,7 +120,7 @@ fun ShareProgramSheet(
         sheetState       = sheetState,
         containerColor   = theme.bg1,
         contentColor     = theme.text0,
-        scrimColor       = Color.Black.copy(if (theme.isDark) 0.62f else 0.28f),
+        scrimColor       = Color.Black.copy(0.62f),
         shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         tonalElevation   = 0.dp
     ) {
@@ -279,7 +279,7 @@ fun ShareProgramSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (theme.isDark) theme.bg2 else Color.White)
+                            .background(theme.bg2)
                             .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(14.dp))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),

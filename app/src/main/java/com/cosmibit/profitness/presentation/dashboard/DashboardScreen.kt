@@ -174,12 +174,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     // geri yazabildiği için ikinci kez uygulanır.
     val statusView = androidx.compose.ui.platform.LocalView.current
     val coverTab = true   // tüm sekmeler foto/koyu kapaklı: durum çubuğu ikonları hep açık
-    LaunchedEffect(coverTab, theme.isDark) {
+    LaunchedEffect(coverTab) {
         val window = (statusView.context as? android.app.Activity)?.window ?: return@LaunchedEffect
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, statusView)
-        controller.isAppearanceLightStatusBars = !theme.isDark && !coverTab
+        controller.isAppearanceLightStatusBars = false   // tek koyu tema: durum çubuğu ikonları hep açık
         delay(350)
-        controller.isAppearanceLightStatusBars = !theme.isDark && !coverTab
+        controller.isAppearanceLightStatusBars = false
     }
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
@@ -246,7 +246,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().then(if (useNavRail) Modifier else Modifier.hazeSource(navHaze))) {
-        AppBackground(modifier = Modifier.fillMaxSize())
+        SinemaBackdrop(Modifier.fillMaxSize())   // tek zemin kaynağı: sekmeler bunun üstünde geçer
 
         Box(
             modifier = Modifier
@@ -258,29 +258,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         AnimatedContent(
             targetState  = selectedTab,
             transitionSpec = {
-                val isFirstCompositionForTarget = targetState !in composedTabs
-                if (isFirstCompositionForTarget) {
-                    fadeIn(tween(60)) togetherWith fadeOut(tween(45))
-                } else {
-                    val fromIdx = ALL_TABS.indexOf(initialState)
-                    val toIdx   = ALL_TABS.indexOf(targetState)
-                    // Pure slide+fade — NO scale. Scale forces GPU layer changes every frame
-                    // on the full composable tree which is the #1 cause of jank during transitions.
-                    // Short durations keep the double-render window minimal.
-                    val easeOut    = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-                    val easeIn     = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
-                    val enterSlide = tween<IntOffset>(220, easing = easeOut)
-                    val enterFade  = tween<Float>(180, easing = easeOut)
-                    val exitSlide  = tween<IntOffset>(160, easing = easeIn)
-                    val exitFade   = tween<Float>(120, easing = FastOutSlowInEasing)
-                    if (toIdx > fromIdx) {
-                        (slideInHorizontally(enterSlide) { it / 12 } + fadeIn(enterFade)) togetherWith
-                        (slideOutHorizontally(exitSlide) { -it / 16 } + fadeOut(exitFade))
-                    } else {
-                        (slideInHorizontally(enterSlide) { -it / 12 } + fadeIn(enterFade)) togetherWith
-                        (slideOutHorizontally(exitSlide) { it / 16 } + fadeOut(exitFade))
-                    }
-                }
+                // Tek seferde geçiş: zemin (SinemaBackdrop) sabit kalır, yalnız içerik kısa çapraz solar; kayma yok.
+                fadeIn(tween(140, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(90, easing = FastOutSlowInEasing))
             },
             modifier = Modifier
                 .widthIn(max = responsive.contentMaxWidth)
@@ -396,11 +375,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         }
 
         // ── Yüzen kronometre — her sekmede ve alt ekranda (overlay'lerin de üstünde) ─────
-        val timerOnLightPage = !theme.isDark && (anyOverlay || sinemaNav.lightPage ||
-            selectedTab == DashboardTab.Program || selectedTab == DashboardTab.Profile)
         FloatingWorkoutTimer(
             timer         = if (imeVisible) RestTimerState() else restTimer,
-            light         = timerOnLightPage,
+            light         = false,
             onOpen        = {
                 workoutViewModel.requestFocusExercise(restTimer.exerciseId)
                 showStore = false; showExerciseProgression = false; showWeightTracking = false
@@ -556,15 +533,6 @@ private fun DashboardViewModelWarmup(stage: Int) {
 private val FloatingTimerReserve = 56.dp
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  APP BACKGROUND
-// ═══════════════════════════════════════════════════════════════════════════
-@Composable
-fun AppBackground(modifier: Modifier = Modifier) {
-    // Sinema: düz sayfa rengi (eski çok halelı kahve atmosfer kaldırıldı)
-    Box(modifier.background(Sinema.page(LocalAppTheme.current)))
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 //  APP NAV BAR — floating capsule, icon only, accent fill on selected
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
@@ -596,7 +564,7 @@ private fun AppNavRail(
                 .shadow(
                     elevation = 8.dp,
                     shape = shape,
-                    spotColor = Color.Black.copy(if (theme.isDark) 0.46f else 0.12f),
+                    spotColor = Color.Black.copy(0.46f),
                     ambientColor = Color.Transparent
                 )
                 .clip(shape)

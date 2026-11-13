@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import android.provider.Settings
@@ -309,7 +310,8 @@ fun SinemaWorkoutPager(
         var showList by remember(selectedDayIdx) { mutableStateOf(false) }
 
         CompositionLocalProvider(LocalPagerBottomExtra provides bottomExtra) {
-        Box(modifier.fillMaxSize().background(Sinema.Page)) {
+        Box(modifier.fillMaxSize()) {
+            SinemaBackdrop(Modifier.fillMaxSize())   // fotosuz sayfalar (dinlenme/boş) bu ortak zemini gösterir; foto sayfalar üstünü örter
             HorizontalPager(
                 state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
                 key = { it }
@@ -992,7 +994,7 @@ private fun DayPreviewPage(st: WorkoutDayState?, showText: Boolean = true) {
     val theme = LocalAppTheme.current
     if (st == null || (st.day.isRestDay && st.day.exercises.isEmpty())) {
         if (showText) RestPage(isSkipped = false)
-        else Box(Modifier.fillMaxSize()) { PhotoLayer(categoryImageUrl(""), isSettled = false, animEnabled = false, offset = { 0f }); Scrims() }
+        else Box(Modifier.fillMaxSize())   // dinlenme: foto yok, ortak zemin görünür
         return
     }
     val exs = st.day.exercises
@@ -1020,8 +1022,6 @@ private fun RestPage(isSkipped: Boolean) {
     val strings = theme.strings
     val animEnabled = rememberAnimationsEnabled()
     Box(Modifier.fillMaxSize()) {
-        PhotoLayer(categoryImageUrl(""), isSettled = true, animEnabled = animEnabled, offset = { 0f })
-        Scrims()
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = SinemaContentBottom + navInset() + 24.dp),
             verticalArrangement = Arrangement.Bottom
@@ -1056,11 +1056,6 @@ private fun CelebrationPage(
     Box(Modifier.fillMaxSize()) {
         PhotoLayer(photoUrl, isSettled, animEnabled, offset)
         Scrims()
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Transparent, 1f to accent.copy(0.30f))
-            )
-        )
         SweepLayer(sweepKey, animEnabled)
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = SinemaContentBottom + navInset() + 24.dp),

@@ -435,7 +435,7 @@ internal fun SetRow(
         modifier = Modifier
             .fillMaxWidth()
             .insetTrackSurface(theme, RoundedCornerShape(14.dp), fill = theme.bg0)
-            .then(if (isDone) Modifier.background(theme.supportSuccess.copy(if (theme.isDark) 0.10f else 0.12f)) else Modifier)
+            .then(if (isDone) Modifier.background(theme.supportSuccess.copy(0.10f)) else Modifier)
             .padding(10.dp)
     ) {
         // Üst satır: ağırlık input + set no + program tekrarı + checkbox
@@ -522,7 +522,6 @@ internal fun WeightInputField(
         // Cam giriş (çizgisiz): dev rakam + küçük birim
         SinemaCapsule(
             modifier = Modifier.fillMaxWidth(), height = 60.dp, shape = RoundedCornerShape(20.dp),
-            light = !theme.isDark,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)
         ) { fg ->
             val digitColor = if (isDone) accent else fg
@@ -675,7 +674,7 @@ fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSe
     val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .background(theme.bg0.copy(if (theme.isDark) 0.54f else 0.28f), RoundedCornerShape(12.dp))
+            .background(theme.bg0.copy(0.54f), RoundedCornerShape(12.dp))
             .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -741,4 +740,4 @@ private fun String.toDurationLabel(): String {
     }.trim()
 }
 
-private val AppThemeState.onSupportSuccess: Color get() = if (isDark) Color.Black else Color.White
+private val AppThemeState.onSupportSuccess: Color get() = Color.Black

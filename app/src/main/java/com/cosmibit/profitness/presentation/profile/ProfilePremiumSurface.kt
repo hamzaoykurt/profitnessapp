@@ -14,10 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cosmibit.profitness.core.theme.AppThemeState
 import com.cosmibit.profitness.core.theme.bg1
@@ -36,11 +36,8 @@ import com.cosmibit.profitness.presentation.components.insetControlSurface
 internal fun Modifier.profilePremiumSurface(
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(22.dp),
-    accent: Color? = null,
-    elevation: Dp = if (theme.isDark) 8.dp else 5.dp
-): Modifier {
-    return this.performanceElevatedSurface(theme, shape = shape, elevated = !theme.isDark && elevation > 0.dp)
-}
+    accent: Color? = null
+): Modifier = this.performanceElevatedSurface(theme, shape = shape, elevated = false)
 
 /** A raised solid control that visibly settles into its surface while pressed. */
 internal fun Modifier.profilePremiumAction(
@@ -79,3 +76,20 @@ internal fun Modifier.profilePremiumAction(
             onClick = onClick
         )
 }
+
+/**
+ * Foto kapaklı sayfalar: fotonun alt [fadeDp] kısmı maske ile saydamlaşır, altta sabit SinemaBackdrop ışığı görünür
+ * (.ekip/yon-cam-siyah.md "Foto kapaklı"). Yalnız foto + karartma katmanına uygulanır, yazı/kontroller dışarıda kalır.
+ */
+internal fun Modifier.photoFadeToBackdrop(fadeDp: androidx.compose.ui.unit.Dp = 200.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val fadeStart = ((size.height - fadeDp.toPx()) / size.height).coerceIn(0f, 1f)
+        drawRect(
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to Color.Black, fadeStart to Color.Black, 1f to Color.Transparent
+            ),
+            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+        )
+    }

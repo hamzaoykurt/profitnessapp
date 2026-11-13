@@ -56,7 +56,7 @@ fun PremiumChip(
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
     val bg by animateColorAsState(
-        if (selected) accent.copy(if (theme.isDark) 0.15f else 0.10f) else theme.bg2,
+        if (selected) accent.copy(0.15f) else theme.bg2,
         tween(220), label = "premiumChip"
     )
     Row(

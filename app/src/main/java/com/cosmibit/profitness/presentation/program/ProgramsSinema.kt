@@ -162,24 +162,12 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
                         0f to Color.Black.copy(0.5f), 0.24f to Color.Transparent,
-                        0.42f to Color.Black.copy(0.12f), 0.86f to Color.Black.copy(0.88f), 1f to Color.Black.copy(0.88f)
+                        0.42f to Color.Black.copy(0.12f), 0.80f to Color.Black.copy(0.88f), 1f to Sinema.Page
                     )
                 )
             )
             // çizimdeki foto karanlık (dk filtre); gerçek fotoğraf daha parlak olduğundan genel hafif karartma
             Box(Modifier.fillMaxSize().background(Color.Black.copy(0.22f)))
-            // çizim: radial-gradient(120% 60% at 50% 105%, vurgu %42 → şeffaf %70)
-            Box(
-                Modifier.fillMaxSize().drawBehind {
-                    val w = size.width * 1.2f
-                    val h = size.height * 0.6f
-                    drawOval(
-                        Brush.radialGradient(0f to accent.copy(0.42f), 0.7f to Color.Transparent, 1f to Color.Transparent,
-                            center = Offset(size.width / 2, size.height * 1.05f), radius = w / 2),
-                        topLeft = Offset(size.width / 2 - w / 2, size.height * 1.05f - h), size = Size(w, h * 2)
-                    )
-                }
-            )
         }
         if (active != null) {
             // AKTİF PROGRAM çipi
@@ -295,14 +283,9 @@ fun ProgramsSheet(content: @Composable () -> Unit) {
                 drawRoundRect(line, topLeft = Offset(0f, -1.dp.toPx()), size = size, cornerRadius = CornerRadius(SheetTopRadius.toPx()))
             }
             .clip(shape)
-            .background(Sinema.page(theme))
             .drawBehind {
-                // ::before: 260dp yüksek, yanlara -60dp taşan radyal vurgu %20
-                val w = size.width + 120.dp.toPx()
-                drawOval(
-                    Brush.radialGradient(listOf(accent.copy(0.20f), Color.Transparent), center = Offset(size.width / 2, 90.dp.toPx()), radius = w / 2),
-                    topLeft = Offset(-60.dp.toPx(), -40.dp.toPx()), size = Size(w, 260.dp.toPx())
-                )
+                // Yalnız foto kapağın altına binen üst 28dp sayfa renginde; geri kalanı ortak SinemaBackdrop'u gösterir (yerel ışık yok)
+                drawRect(Sinema.Page, size = Size(size.width, SheetTopRadius.toPx()))
             }
             .padding(top = 20.dp)
     ) { content() }
@@ -321,14 +304,13 @@ private fun Modifier.insetLook(theme: AppThemeState, shape: androidx.compose.ui.
     drawContent()
     // çizim --ins: üstten iç gölge + altta ince beyaz çizgi (Compose'ta inset gölge yok → degrade)
     val h = 9.dp.toPx()
-    drawRect(Brush.verticalGradient(listOf((if (theme.isDark) Color.Black.copy(0.6f) else Color(0xFF0E0F11).copy(0.16f)), Color.Transparent), 0f, h), size = Size(size.width, h))
-    drawRect(Color.White.copy(if (theme.isDark) 0.10f else 0.9f), topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
+    drawRect(Brush.verticalGradient(listOf(Color.Black.copy(0.6f), Color.Transparent), 0f, h), size = Size(size.width, h))
+    drawRect(Color.White.copy(0.10f), topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
 }
 
 @Composable
 private fun raiseBrush(theme: AppThemeState): Brush =
-    if (theme.isDark) Brush.linearGradient(listOf(Color(0xFF26262B), Color(0xFF141416)), Offset(0f, 0f), Offset(120f, 320f))
-    else Brush.linearGradient(listOf(Color.White, Color(0xFFE9EAEE)), Offset(0f, 0f), Offset(120f, 320f))
+    Brush.linearGradient(listOf(Color(0xFF26262B), Color(0xFF141416)), Offset(0f, 0f), Offset(120f, 320f))
 
 /** AI (kabarık vurgu) + Manuel (gömülü) blokları. */
 @Composable
@@ -391,7 +373,7 @@ private fun GlassTag(text: String) {
     ) { Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
 }
 
-private fun cardBorderShadow(theme: AppThemeState) = Color.Black.copy(if (theme.isDark) 0.6f else 0.24f)
+private fun cardBorderShadow(theme: AppThemeState) = Color.Black.copy(0.6f)
 
 /** Kayıtlı program kartı (çizim .sv): 226x288 foto kart, tür + ⋮ menü, ad, çipler, Aktif et. İşlevler: etkinleştir, düzenle, paylaş, sil. */
 @Composable
@@ -418,7 +400,7 @@ fun SavedProgramCard(
     }
     val workoutDays = program.days.count { !it.isRestDay }
     val totalExercises = program.days.sumOf { it.exercises.size }
-    val coral = if (theme.isDark) com.cosmibit.profitness.core.theme.CardCoral else com.cosmibit.profitness.core.theme.CardCoral.copy(alpha = 1f)
+    val coral = com.cosmibit.profitness.core.theme.CardCoral
 
     if (confirmDelete) {
         AlertDialog(

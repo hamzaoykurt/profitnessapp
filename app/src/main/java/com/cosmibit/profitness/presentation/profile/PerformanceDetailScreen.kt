@@ -127,7 +127,7 @@ fun PerformanceDetailScreen(
     val hasWorkouts = state.totalWorkouts > 0
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
-        SinemaScene()
+        SinemaBackdrop()
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
@@ -181,7 +181,7 @@ fun PerformanceDetailScreen(
         ModalBottomSheet(
             onDismissRequest = { showCalculators = false },
             sheetState = sheetState,
-            containerColor = Sinema.surface(theme),
+            containerColor = Sinema.elevated(theme),
             contentColor = Sinema.text(theme),
             dragHandle = {
                 Box(
@@ -252,25 +252,33 @@ private fun PerformanceCover(
         Box(
             Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp).padding(horizontal = 20.dp).height(44.dp)
         ) {
-            SinemaCapsule(
-                Modifier.align(Alignment.CenterStart).size(44.dp),
-                onClick = onBack, height = 44.dp, shape = CircleShape,
-                contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
-            ) { fg ->
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, theme.t("Geri", "Back"), tint = fg, modifier = Modifier.size(20.dp))
+            // Görsel 44dp; dokunma hedefi 48dp (tıklama dış 48dp kutuda)
+            Box(
+                Modifier.align(Alignment.CenterStart).requiredSize(48.dp).clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                SinemaCapsule(
+                    Modifier.size(44.dp), height = 44.dp, shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
+                ) { fg ->
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, theme.t("Geri", "Back"), tint = fg, modifier = Modifier.size(20.dp))
+                }
             }
             PText(
                 theme.t("Veri analizi", "Data analysis"), 16, FontWeight.SemiBold,
                 modifier = Modifier.align(Alignment.Center), maxLines = 1
             )
-            SinemaCapsule(
-                Modifier.align(Alignment.CenterEnd),
-                onClick = onCalculate, height = 44.dp,
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) { fg ->
-                Icon(Icons.Rounded.Calculate, null, tint = fg, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                PText(theme.t("Hesapla", "Calculate"), 14, FontWeight.SemiBold, color = fg, maxLines = 1)
+            Box(
+                Modifier.align(Alignment.CenterEnd).requiredHeight(48.dp).clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onCalculate),
+                contentAlignment = Alignment.Center
+            ) {
+                SinemaCapsule(height = 44.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                    Icon(Icons.Rounded.Calculate, null, tint = fg, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    PText(theme.t("Hesapla", "Calculate"), 14, FontWeight.SemiBold, color = fg, maxLines = 1)
+                }
             }
         }
 
@@ -484,25 +492,38 @@ private fun RhythmSection(
 private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    SinemaCapsule(
-        Modifier.width(168.dp), height = 44.dp, contentPadding = PaddingValues(4.dp)
-    ) {
-        listOf(4, 13).forEach { w ->
-            val sel = w == weeks
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, CircleShape) else Modifier)
-                    .clip(CircleShape)
-                    .background(if (sel) accent else Color.Transparent)
-                    .semantics { this.selected = sel }
-                    .clickable(role = Role.RadioButton) { if (!sel) onWeeks(w) },
-                contentAlignment = Alignment.Center
-            ) {
-                PText(
-                    if (english) "$w wk" else "$w hf", 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (sel) theme.effectiveOnAccentColor else Sinema.White, maxLines = 1
+    // Görsel 168x44 cam; dokunma hedefi her yarı 84x48 (şeffaf katman)
+    Box(Modifier.width(168.dp).requiredHeight(48.dp), contentAlignment = Alignment.Center) {
+        SinemaCapsule(
+            Modifier.fillMaxWidth(), height = 44.dp, contentPadding = PaddingValues(4.dp)
+        ) {
+            listOf(4, 13).forEach { w ->
+                val sel = w == weeks
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, CircleShape) else Modifier)
+                        .clip(CircleShape)
+                        .background(if (sel) accent else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PText(
+                        if (english) "$w wk" else "$w hf", 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (sel) theme.effectiveOnAccentColor else Sinema.White, maxLines = 1
+                    )
+                }
+            }
+        }
+        Row(Modifier.matchParentSize()) {
+            listOf(4, 13).forEach { w ->
+                val sel = w == weeks
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .semantics { this.selected = sel }
+                        .clickable(role = Role.RadioButton) { if (!sel) onWeeks(w) }
                 )
             }
         }
@@ -984,7 +1005,7 @@ private fun CalculatorModeButton(
     modifier: Modifier = Modifier
 ) {
     SinemaCapsule(
-        modifier = modifier, selected = selected, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        modifier = modifier, selected = selected, onClick = onClick, height = 48.dp,
         contentPadding = PaddingValues(horizontal = 14.dp)
     ) { fg ->
         Icon(calculatorModeIcon(mode), null, tint = fg, modifier = Modifier.size(18.dp))
@@ -1527,7 +1548,7 @@ private fun ProteinGoalSelector(
         listOf(ProteinGoal.General, ProteinGoal.MuscleGain, ProteinGoal.FatLoss).forEach { goal ->
             SinemaCapsule(
                 modifier = Modifier.fillMaxWidth(), selected = selectedGoal == goal, onClick = { onGoalSelected(goal) },
-                height = 44.dp, light = !theme.isDark, horizontalArrangement = Arrangement.Center
+                height = 44.dp, horizontalArrangement = Arrangement.Center
             ) { fg ->
                 Text(proteinGoalLabel(goal, theme), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }

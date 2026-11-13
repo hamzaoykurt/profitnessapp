@@ -218,6 +218,7 @@ fun ExerciseProgressionScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         Column(modifier = Modifier.fillMaxSize()) {
             SinemaDetailHeader(
                 title    = theme.t("Hareket performansı", "Exercise performance"),
@@ -628,7 +629,7 @@ private fun ProgressionChartSection(
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
             )
             val sign = if (isGain) "+" else ""
-            SinemaCapsule(height = 30.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+            SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
                 Icon(
                     if (isGain) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
                     null, tint = fg, modifier = Modifier.size(14.dp)

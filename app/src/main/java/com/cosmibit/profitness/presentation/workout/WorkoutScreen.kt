@@ -317,14 +317,13 @@ fun WorkoutScreen(
     val focusExerciseId by viewModel.focusExerciseRequest.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())   // yükleniyor / boş program / dinlenme: ortak ışıklı zemin
 
         // ── İçerik ────────────────────────────────────────────────────────────
         when {
             state.isLoading -> {
-                // Yükleniyor: 000000 sayfa + SceneImage düşüş gradyanı, metin yok.
-                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
-                    SceneImage(url = "", modifier = Modifier.fillMaxSize(), fallbackGradient = true)
-                }
+                // Yükleniyor: yalnız ortak zemin (yukarıdaki SinemaBackdrop), metin yok.
+                Box(Modifier.fillMaxSize())
             }
             state.dayStates.isEmpty() -> {
                 NoProgramView(
@@ -602,13 +601,13 @@ private fun WorkoutContent(
     val isRestHero = currentDay.isRestDay && visibleExercises.isEmpty()
     var detailExercise by remember { mutableStateOf<Exercise?>(null) }
 
-    // Açık temada durum çubuğu ikonları foto sayfaların (koyu karartma) üstünde açık renk olmalı.
+    // Durum çubuğu ikonları foto sayfaların (koyu karartma) üstünde açık renk olmalı.
     val view = androidx.compose.ui.platform.LocalView.current
-    DisposableEffect(theme.isDark) {
+    DisposableEffect(Unit) {
         val window = (view.context as? android.app.Activity)?.window
         val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
         val previous = controller?.isAppearanceLightStatusBars
-        if (controller != null && !theme.isDark) controller.isAppearanceLightStatusBars = false
+        if (controller != null) controller.isAppearanceLightStatusBars = false
         onDispose { if (controller != null && previous != null) controller.isAppearanceLightStatusBars = previous }
     }
 
@@ -884,7 +883,7 @@ fun CircularProgressRing(
         label = "progress"
     )
     // Memoize sweep brush — recreating it on every animation frame (60fps × 1.2s) is expensive
-    val arcColor = if (theme.isDark) resolvedRingColor else resolvedRingColor.darkenForContrast(theme.bg2, 3.0)
+    val arcColor = resolvedRingColor
     val sweepBrush = remember(arcColor) {
         Brush.sweepGradient(listOf(arcColor.copy(0.65f), arcColor))
     }

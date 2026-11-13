@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.em
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.SinemaChip
@@ -206,10 +207,11 @@ fun DiscoverScreen(
     }
 
     val theme = LocalAppTheme.current
-    val darkTheme = remember(theme) { theme.copy(isDark = true) }   // Keşfet her zaman koyu foto sayfaları
+    val darkTheme = theme   // tek koyu tema (merkezde isDark hep true)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val controlsTop = statusTop + 20.dp + timerExtraPad
-    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      SinemaBackdrop(Modifier.fillMaxSize())
       CompositionLocalProvider(LocalAppTheme provides darkTheme) {
         selectedProgram?.let { program ->
             val live = state.items.firstOrNull { it.id == program.id }
@@ -324,7 +326,8 @@ private fun SharedProgramDetailScreen(
     com.cosmibit.profitness.presentation.program.ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
     val goBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)
 
-    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = goBottom + 56.dp + 48.dp),
@@ -446,7 +449,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
         }
         Box(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Sinema.Page)))
         )
     }
 }
@@ -1306,7 +1309,8 @@ private fun SinemaProgramsPager(
             LaunchedEffect(settled, items.size, state.canLoadMore) {
                 if (state.canLoadMore && !state.isLoading && settled >= items.size - 3) onLoadMore()
             }
-            Box(Modifier.fillMaxSize().background(Sinema.Page)) {
+            Box(Modifier.fillMaxSize()) {
+                SinemaBackdrop(Modifier.fillMaxSize())
                 androidx.compose.foundation.pager.VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),

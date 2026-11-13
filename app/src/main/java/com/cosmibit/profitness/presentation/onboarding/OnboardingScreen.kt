@@ -222,29 +222,10 @@ fun OnboardingScreen(
 
 // ── Orb (üst sahne) ──────────────────────────────────────────────────────────
 
-/** Koyu tema: SinemaScene. Açık tema: sayfa rengine eriyen iki vurgu halesi (tonlu zemin değil, orb). */
+/** SinemaScene orb zemini.*/
 @Composable
 private fun OnboardingOrb(theme: AppThemeState, modifier: Modifier) {
-    if (theme.isDark) {
-        SinemaScene(modifier)
-    } else {
-        val accent = theme.effectiveAccentColor
-        val page = Sinema.page(theme)
-        Canvas(modifier.clipToBounds()) {
-            fun dp(v: Float) = v.dp.toPx()
-            val c1 = Offset(dp(90f), dp(80f))
-            val c2 = Offset(size.width - dp(60f), dp(170f))
-            drawCircle(
-                Brush.radialGradient(0f to accent.copy(0.34f), 1f to Color.Transparent, center = c1, radius = dp(230f)),
-                radius = dp(230f), center = c1
-            )
-            drawCircle(
-                Brush.radialGradient(0f to accent.copy(0.20f), 1f to Color.Transparent, center = c2, radius = dp(190f)),
-                radius = dp(190f), center = c2
-            )
-            drawRect(Brush.verticalGradient(0.55f to Color.Transparent, 1f to page))
-        }
-    }
+    SinemaScene(modifier)
 }
 
 // ── İlerleme çubuğu ──────────────────────────────────────────────────────────
@@ -366,7 +347,6 @@ private fun StepTheme(
         )
     }
     val preview = current.copy(
-        isDark          = true,   // tek koyu tema (açık tema kaldırıldı)
         accent           = accent,
         surfaceStyle     = SurfaceStyle.GRAPHITE,
         intensity        = intensity,
@@ -374,7 +354,7 @@ private fun StepTheme(
     )
     val previewAccent = preview.effectiveAccentColor
     // Sayfa zemini gerçek temada kalır; Sinema parçaları seçilen vurguyu (önizleme) kullanır.
-    val accentTheme = preview.copy(isDark = current.isDark)
+    val accentTheme = preview
 
     CompositionLocalProvider(LocalAppTheme provides accentTheme) {
         StepScaffold(
@@ -544,7 +524,6 @@ private fun StepName(
                 onClick = { photoPickerLauncher.launch("image/*") },
                 enabled = !state.isUploadingAvatar,
                 height = 44.dp,
-                light = !theme.isDark,
                 contentPadding = PaddingValues(horizontal = 18.dp)
             ) { fg ->
                 Icon(Icons.Rounded.PhotoCamera, null, tint = fg, modifier = Modifier.size(18.dp))
@@ -1166,7 +1145,6 @@ private fun OnboardingErrorCapsule(text: String, theme: AppThemeState, modifier:
     SinemaCapsule(
         modifier = modifier.fillMaxWidth(),
         height = 40.dp,
-        light = !theme.isDark,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
     ) { fg ->
         Icon(Icons.Rounded.ErrorOutline, null, tint = CriticalRed, modifier = Modifier.size(16.dp))
@@ -1204,7 +1182,7 @@ private fun StepNavButtons(
                     SinemaCapsule(
                         modifier = Modifier.width(48.dp).alpha(if (locked) 0.4f else 1f),
                         onClick = onBack, enabled = !locked, height = 48.dp, shape = CircleShape,
-                        light = !theme.isDark, horizontalArrangement = Arrangement.Center,
+horizontalArrangement = Arrangement.Center,
                         contentPadding = PaddingValues(0.dp)
                     ) { fg ->
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, theme.t("Geri", "Back"), tint = fg, modifier = Modifier.size(20.dp))
@@ -1216,7 +1194,7 @@ private fun StepNavButtons(
                     SinemaCapsule(
                         modifier = Modifier.alpha(if (locked) 0.4f else 1f),
                         onClick = onSkip, enabled = !locked, height = 40.dp, shape = CircleShape,
-                        light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)
+contentPadding = PaddingValues(horizontal = 16.dp)
                     ) { fg ->
                         Text(skipLabel, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(4.dp))

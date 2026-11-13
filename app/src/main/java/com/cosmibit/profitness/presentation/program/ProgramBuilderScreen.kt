@@ -847,7 +847,7 @@ private fun BuilderChooseScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+    Box(Modifier.fillMaxSize()) {
     val activeProgram = userPrograms.firstOrNull { it.isActive }
     androidx.compose.foundation.lazy.LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1848,7 +1848,6 @@ private fun EditProgramScreen(
                         enabled = !uiState.aiEditLoading,
                         height = 56.dp,
                         shape = RoundedCornerShape(28.dp),
-                        light = !editTheme.isDark,
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.Center
                     ) { fg ->
@@ -1975,7 +1974,6 @@ private fun EditProgramScreen(
                     enabled = actionsEnabled,
                     height = 56.dp,
                     shape = RoundedCornerShape(28.dp),
-                    light = !editTheme.isDark,
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.Center
                 ) { fg ->
@@ -2412,7 +2410,6 @@ private fun ManualDayCard(
                 selected = rest,
                 onClick = { day.isRestDay = !day.isRestDay },
                 height = 36.dp,
-                light = !theme.isDark,
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
             ) { fg ->
                 Text(theme.t("Dinlenme", "Rest"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
@@ -2574,7 +2571,6 @@ private fun ManualDayCard(
                     .padding(top = 12.dp),
                 onClick = onAddExercise,
                 height = 48.dp,
-                light = !theme.isDark,
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
                 Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(16.dp))
@@ -2798,7 +2794,6 @@ private fun ExerciseEditDialog(
                     onClick = onDismiss,
                     height = 56.dp,
                     shape = RoundedCornerShape(28.dp),
-                    light = !theme.isDark,
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.Center
                 ) { fg ->

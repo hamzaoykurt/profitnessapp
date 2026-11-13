@@ -44,6 +44,7 @@ fun LeaderboardScreen(
     LaunchedEffect(initialTab) { viewModel.selectTab(initialTab) }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)

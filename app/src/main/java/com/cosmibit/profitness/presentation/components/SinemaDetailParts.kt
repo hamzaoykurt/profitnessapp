@@ -183,7 +183,7 @@ fun SinemaGlassField(
         Text(label.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
         SinemaCapsule(
-            modifier = Modifier.fillMaxWidth(), height = 52.dp, light = !theme.isDark,
+            modifier = Modifier.fillMaxWidth(), height = 52.dp,
             contentPadding = PaddingValues(horizontal = 18.dp)
         ) { fg ->
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -271,7 +271,7 @@ fun <T> SinemaSegmentRow(
         options.forEach { opt ->
             SinemaCapsule(
                 modifier = Modifier.weight(1f), selected = opt == selected, onClick = { onSelect(opt) },
-                height = height, light = !theme.isDark, horizontalArrangement = Arrangement.Center,
+                height = height,horizontalArrangement = Arrangement.Center,
                 contentPadding = PaddingValues(horizontal = 8.dp)
             ) { fg ->
                 Text(label(opt), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)

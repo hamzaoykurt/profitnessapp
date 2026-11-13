@@ -499,7 +499,6 @@ private fun PaymentModeBand(
         modifier = modifier.fillMaxWidth(),
         height = 56.dp,
         shape = RoundedCornerShape(28.dp),
-        light = !theme.isDark,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) { fg ->
         Icon(
@@ -697,7 +696,6 @@ private fun SubscriptionTab(
                 SinemaCapsule(
                     modifier = Modifier.fillMaxWidth(),
                     height = 48.dp,
-                    light = !theme.isDark,
                     onClick = onCancelPlan,
                     horizontalArrangement = Arrangement.Center
                 ) { fg ->
@@ -869,7 +867,6 @@ private fun PlanOfferCard(
             else -> SinemaCapsule(
                 modifier = Modifier.fillMaxWidth().alpha(if (isLoading) 0.5f else 1f),
                 height = 52.dp,
-                light = !theme.isDark,
                 onClick = onPurchase,
                 enabled = !isLoading,
                 horizontalArrangement = Arrangement.Center
@@ -901,7 +898,6 @@ private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
         height = 24.dp,
         shape = CircleShape,
         selected = filled,
-        light = !theme.isDark,
         contentPadding = PaddingValues(horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center
     ) { fg ->
@@ -1191,7 +1187,6 @@ private fun CancelPlanDialog(
             SinemaCapsule(
                 modifier = Modifier.fillMaxWidth(),
                 height = 52.dp,
-                light = !theme.isDark,
                 onClick = onConfirm,
                 horizontalArrangement = Arrangement.Center
             ) { fg ->

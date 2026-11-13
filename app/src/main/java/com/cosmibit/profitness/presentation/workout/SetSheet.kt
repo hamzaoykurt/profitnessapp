@@ -81,7 +81,6 @@ private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 @Composable
 internal fun SinemaGlassSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val theme = LocalAppTheme.current
-    val darkTheme = remember(theme) { theme.copy(isDark = true) }
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -93,7 +92,7 @@ internal fun SinemaGlassSheet(onDismiss: () -> Unit, content: @Composable Column
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
-        CompositionLocalProvider(LocalAppTheme provides darkTheme) {
+        CompositionLocalProvider(LocalAppTheme provides theme) {
             Column(
                 Modifier
                     .fillMaxWidth()

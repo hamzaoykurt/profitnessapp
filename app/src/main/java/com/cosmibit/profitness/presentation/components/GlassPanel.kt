@@ -62,7 +62,7 @@ fun Modifier.premiumSolidSurface(
     accent: Color,
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(20.dp),
-    elevation: Dp = if (theme.isDark) 8.dp else 5.dp
+    elevation: Dp = 8.dp
 ): Modifier = composed {
     this.performanceElevatedSurface(theme, shape = shape, elevated = elevation > 0.dp, accent = accent)
 }
@@ -85,12 +85,12 @@ fun Modifier.floatingGlassSurface(
         .shadow(
             elevation = elevation.coerceAtMost(12.dp),
             shape = shape,
-            spotColor = Color.Black.copy(if (theme.isDark) 0.46f else 0.10f),
+            spotColor = Color.Black.copy(0.46f),
             ambientColor = Color.Transparent
         )
         .clip(shape)
-        .background(if (theme.isDark) Sinema.Surface else Color.White)
-        .border(1.dp, if (theme.isDark) Sinema.Line else Color(0xFF0E0F11).copy(0.10f), shape)
+        .background(Sinema.Surface)
+        .border(1.dp, Sinema.Line, shape)
 }
 
 /** Recessed well for inputs and filters; depth points into the screen. */

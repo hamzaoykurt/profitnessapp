@@ -110,22 +110,18 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
                 translationY = if (pressed) 2.dp.toPx() else 0f
             }
             .shadow(
-                elevation = if (pressed) 2.dp else if (theme.isDark) 10.dp else 7.dp,
+                elevation = if (pressed) 2.dp else 10.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(if (theme.isDark) 0.30f else 0.08f),
-                spotColor = Color.Black.copy(if (theme.isDark) 0.36f else 0.10f)
+                ambientColor = Color.Black.copy(0.30f),
+                spotColor = Color.Black.copy(0.36f)
             )
             .clip(shape)
             .background(
-                if (theme.isDark) {
-                    Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
-                } else {
-                    Brush.verticalGradient(listOf(Color.White, theme.bg2.copy(0.55f)))
-                }
+                Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
             )
             .border(
                 1.dp,
-                if (theme.isDark) theme.text0.copy(0.10f) else theme.stroke.copy(0.75f),
+                theme.text0.copy(0.10f),
                 shape
             )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)

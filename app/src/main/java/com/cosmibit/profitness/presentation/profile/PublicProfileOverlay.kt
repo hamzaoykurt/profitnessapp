@@ -49,7 +49,7 @@ import com.cosmibit.profitness.core.theme.AppLanguage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaCapsule
-import com.cosmibit.profitness.core.theme.SinemaScene
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaUpper
@@ -97,6 +97,7 @@ fun PublicProfileOverlay(
         )
     ) {
         Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
+            SinemaBackdrop()
             when {
                 state.isLoading && state.profile == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -194,21 +195,22 @@ private fun ProfileContent(
         // ── Kapak: foto (yoksa Sinema sahnesi) + alt karartma + ad ─────────
         Box(Modifier.fillMaxWidth().height(400.dp)) {
             if (profile.avatarUrl != null) {
-                AsyncImage(
-                    model = profile.avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
+                    AsyncImage(
+                        model = profile.avatarUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
+                }
             } else {
-                SinemaScene(Modifier.fillMaxSize())
                 Text(
                     profile.displayName.take(1).uppercase(),
                     color = Color.White.copy(0.9f), fontSize = 110.sp, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.align(Alignment.Center).padding(bottom = 60.dp)
                 )
             }
-            Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
             Column(
                 Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 44.dp)
             ) {
@@ -240,8 +242,6 @@ private fun ProfileContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset(y = (-28).dp)
-                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                .background(Sinema.page(theme))
                 .padding(horizontal = 20.dp)
                 .padding(top = 28.dp, bottom = 40.dp + timerExtraPad)
                 .navigationBarsPadding()
@@ -447,7 +447,7 @@ private fun ChallengeActivityCard(
         }
         Spacer(Modifier.width(8.dp))
         SinemaCapsule(
-            selected = status == ProfileChallengeStatus.Active, height = 26.dp, light = !theme.isDark,
+            selected = status == ProfileChallengeStatus.Active, height = 26.dp,
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) { fg -> Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1) }
         if (canOpen) {

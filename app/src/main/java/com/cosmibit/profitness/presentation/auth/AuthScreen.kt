@@ -972,7 +972,6 @@ fun GlassInputField(
         SinemaCapsule(
             modifier = Modifier.fillMaxWidth().then(modifier),
             height = 52.dp,
-            light = !theme.isDark,
             edge = if (isFocused) accent.copy(0.72f) else Color.White.copy(0.18f),
             contentPadding = PaddingValues(start = 16.dp, end = if (isPassword) 6.dp else 16.dp)
         ) { fg ->
@@ -1053,7 +1052,6 @@ fun ObsidianButton(
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
         height = 52.dp,
-        light = !theme.isDark,
         horizontalArrangement = Arrangement.Center
     ) { fg ->
         Text(text, color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
@@ -1115,7 +1113,6 @@ internal fun AuthFeedback(
                     SinemaCapsule(
                         modifier = Modifier.fillMaxWidth(),
                         height = 40.dp,
-                        light = !theme.isDark && !onDarkScene,
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) { fg ->
                         Icon(Icons.Rounded.ErrorOutline, null, tint = CriticalRed, modifier = Modifier.size(16.dp))

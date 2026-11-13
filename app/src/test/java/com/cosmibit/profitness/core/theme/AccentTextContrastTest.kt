@@ -14,16 +14,16 @@ class AccentTextContrastTest {
     }
 
     @Test
-    fun lightAccentTextMeetsAaOnDarkestLightSurface() {
+    fun darkAccentTextMeets3to1OnPage() {
         for (preset in AccentPreset.entries) for (intensity in AccentIntensity.entries) {
-            val theme = AppThemeState(isDark = false, accent = preset, intensity = intensity)
-            assertTrue("$preset/$intensity", ratio(theme.accentTextColor, theme.bg3) >= 4.5)
+            val theme = AppThemeState(isDark = true, accent = preset, intensity = intensity)
+            assertTrue("$preset/$intensity", ratio(theme.accentTextColor, theme.bg0) >= 3.0)
         }
     }
 
     @Test
     fun customAccentIsDarkenedUntilReadable() {
-        val theme = AppThemeState(isDark = false, customAccentArgb = 0xFFFACC15.toInt())
+        val theme = AppThemeState(isDark = true, customAccentArgb = 0xFFFACC15.toInt())
         assertTrue(ratio(theme.accentTextColor, theme.bg3) >= 4.5)
     }
 

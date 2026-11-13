@@ -67,6 +67,7 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
@@ -112,6 +113,7 @@ fun ChallengesTab(
     var leaveTarget by remember { mutableStateOf<ChallengeSummary?>(null) }
 
     Box(Modifier.fillMaxSize()) {
+        SinemaBackdrop(Modifier.fillMaxSize())   // kendi zemini yoktu: ortak ışıklı zemin (boş durum dahil)
         val pendingInvites = remember(state.browseList) {
             state.browseList
                 .filter { it.isInvited && !it.isJoined }
@@ -1156,7 +1158,7 @@ private fun EmptyBlock(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(72.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.EmojiEvents, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))

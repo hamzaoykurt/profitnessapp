@@ -381,7 +381,7 @@ fun ChallengeDetailOverlay(
                     if (c.isJoined) {
                         SinemaCapsule(
                             Modifier.fillMaxWidth(), onClick = action, enabled = !state.inFlight, height = 52.dp,
-                            light = !theme.isDark, horizontalArrangement = Arrangement.Center
+horizontalArrangement = Arrangement.Center
                         ) { fg ->
                             if (state.inFlight) {
                                 CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
@@ -498,7 +498,7 @@ private fun EdgeToEdgeDialogBars() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowCompat.getInsetsController(window, view).run {
             isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = !theme.isDark
+            isAppearanceLightNavigationBars = false
         }
     }
 }
@@ -1124,7 +1124,7 @@ private fun DeleteConfirmDialog(
         Spacer(Modifier.height(24.dp))
         SinemaCapsule(
             Modifier.fillMaxWidth(), onClick = onConfirm, enabled = !inFlight, height = 56.dp,
-            light = !theme.isDark, horizontalArrangement = Arrangement.Center
+horizontalArrangement = Arrangement.Center
         ) { _ ->
             if (inFlight) {
                 CircularProgressIndicator(color = DangerText, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
@@ -1199,7 +1199,7 @@ private fun AddProgressDialog(
             val elapsedMin = (swElapsedMs / 60_000L).coerceAtLeast(0L)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SinemaCapsule(
-                    Modifier.weight(1f), height = 44.dp, light = !theme.isDark,
+                    Modifier.weight(1f), height = 44.dp,
                     horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp),
                     onClick = {
                         if (swRunning) {
@@ -1218,7 +1218,7 @@ private fun AddProgressDialog(
                     )
                 }
                 SinemaCapsule(
-                    Modifier.weight(1f), height = 44.dp, light = !theme.isDark,
+                    Modifier.weight(1f), height = 44.dp,
                     horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp),
                     enabled = !swRunning && swElapsedMs > 0L,
                     onClick = { swAccumMs = 0L; swStartMs = 0L; swTickMs = 0L }
@@ -1230,7 +1230,7 @@ private fun AddProgressDialog(
                     )
                 }
                 SinemaCapsule(
-                    Modifier.weight(1f), height = 44.dp, selected = elapsedMin > 0L, light = !theme.isDark,
+                    Modifier.weight(1f), height = 44.dp, selected = elapsedMin > 0L,
                     horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp),
                     enabled = elapsedMin > 0L,
                     onClick = { text = elapsedMin.toString() }
@@ -1346,7 +1346,7 @@ private fun MetricTargetTypeSection(
             ChallengeTargetType.selectableForMetric.forEach { type ->
                 SinemaCapsule(
                     Modifier.fillMaxWidth(), selected = type == targetType, onClick = { onTargetType(type) },
-                    height = 52.dp, light = !theme.isDark
+                    height = 52.dp
                 ) { fg ->
                     Icon(metricTargetIcon(type), null, tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
@@ -1473,7 +1473,7 @@ private fun TravelModeChip(
 ) {
     val theme = LocalAppTheme.current
     SinemaCapsule(
-        modifier, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        modifier, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
     ) { fg ->
         Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))

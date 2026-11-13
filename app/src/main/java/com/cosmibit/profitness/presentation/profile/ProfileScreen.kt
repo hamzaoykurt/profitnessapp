@@ -117,6 +117,7 @@ fun ProfileScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         val profileListState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(
             state = profileListState,
@@ -450,22 +451,25 @@ private fun ProfileHeroBanner(
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
         Box(Modifier.fillMaxWidth().height(320.dp).clipToBounds()) {
-            SceneImage(
-                url = categoryImageUrl(""),
-                modifier = Modifier.fillMaxSize().graphicsLayer {
-                    translationY = scrollOffset() * 0.5f
-                    scaleX = kenBurns; scaleY = kenBurns
-                },
-                requestWidthPx = 1080, requestHeightPx = 960,
-                fallbackGradient = true
-            )
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(0.50f), 0.40f to Color.Transparent, 1f to Color.Black.copy(0.75f)
+            // Foto + karartma: alt 200dp maske ile sayfa zeminine (SinemaBackdrop) söner
+            Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
+                SceneImage(
+                    url = categoryImageUrl(""),
+                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                        translationY = scrollOffset() * 0.5f
+                        scaleX = kenBurns; scaleY = kenBurns
+                    },
+                    requestWidthPx = 1080, requestHeightPx = 960,
+                    fallbackGradient = true
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            0f to Sinema.scrim(0.50f), 0.40f to Color.Transparent, 1f to Sinema.scrim(0.75f)
+                        )
                     )
                 )
-            )
+            }
 
             // XP satırı (çizim `.xpb`: üstten 206dp)
             Column(
@@ -501,19 +505,11 @@ private fun ProfileHeroBanner(
         }
 
         // ── Sheet (çizim `.sheet`: üstten 300dp, r28, üstte 1dp çizgi) ───────────────
-        val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         val lineColor = Sinema.line(theme)
         Column(
             Modifier
                 .fillMaxWidth()
                 .padding(top = 300.dp)
-                .drawBehind {
-                    drawRoundRect(
-                        lineColor, topLeft = Offset(0f, -1.dp.toPx()), size = size,
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx())
-                    )
-                }
-                .background(page, sheetShape)
         ) {
             // Avatar (96dp, 4dp sayfa renginde halka, vurgu dolgusu) + ad (sol 128dp, üst 14dp)
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(62.dp)) {
@@ -753,7 +749,8 @@ private fun WeeklyActivitySection(
     accent         : Color,
     theme          : AppThemeState,
     strings        : AppStrings,
-    weeklyActivity : List<Float>
+    weeklyActivity : List<Float>,
+    weekWorkoutCount: Int = 0
 ) {
     val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1   // 0=Pzt … 6=Paz
 
@@ -769,7 +766,11 @@ private fun WeeklyActivitySection(
                 color         = theme.accentTextColor,
                 letterSpacing = 1.2.sp
             )
-            Text(strings.thisWeekSummary, color = theme.text2, fontSize = 10.sp)
+            Text(
+                if (weekWorkoutCount > 0) "${strings.thisWeekSummary} · " + theme.t("$weekWorkoutCount antrenman", "$weekWorkoutCount workouts")
+                else strings.thisWeekSummary,
+                color = theme.text2, fontSize = 10.sp
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1014,7 +1015,7 @@ private fun SettingsSection(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
         )
 
-        val coral = if (theme.isDark) CardCoral else CardCoral.darkenForContrast(surface)
+        val coral = CardCoral
         Row(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
@@ -1379,9 +1380,9 @@ private fun NotificationsSettingsSheet(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
             ),
-            border = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
+            border = BorderStroke(1.dp, Color.White.copy(0.28f)),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = if (theme.isDark) 12.dp else 7.dp,
+                defaultElevation = 12.dp,
                 pressedElevation = 2.dp
             )
         ) {
@@ -1498,9 +1499,9 @@ private fun LanguageSettingsSheet(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
             ),
-            border = BorderStroke(1.dp, Color.White.copy(if (theme.isDark) 0.28f else 0.42f)),
+            border = BorderStroke(1.dp, Color.White.copy(0.28f)),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = if (theme.isDark) 12.dp else 7.dp,
+                defaultElevation = 12.dp,
                 pressedElevation = 2.dp
             )
         ) {

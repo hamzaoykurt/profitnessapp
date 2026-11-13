@@ -125,7 +125,7 @@ private fun ToastContent(toast: AppToastData) {
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(18.dp),
-                spotColor = Color.Black.copy(alpha = if (theme.isDark) 0.38f else 0.10f),
+                spotColor = Color.Black.copy(alpha = 0.38f),
                 ambientColor = Color.Transparent
             )
             .clip(RoundedCornerShape(18.dp))

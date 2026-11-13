@@ -883,7 +883,7 @@ Column(
             }
 SinemaCapsule(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                onClick = onOpenMultiPicker, height = 52.dp, light = !theme.isDark,
+                onClick = onOpenMultiPicker, height = 52.dp,
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
                 Icon(Icons.Rounded.FitnessCenter, null, tint = fg, modifier = Modifier.size(16.dp))
@@ -922,7 +922,7 @@ items(SportType.challengeChoices.size) { idx ->
             val sport = SportType.challengeChoices[idx]
             SinemaCapsule(
                 selected = sport == selected, onClick = { onSelect(sport) }, height = 40.dp,
-                light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp),
+contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
                 Text(
@@ -1143,7 +1143,6 @@ private fun PlaceSearchField(
 SinemaCapsule(
             modifier = Modifier.fillMaxWidth(),
             height = 52.dp,
-            light = !theme.isDark,
             contentPadding = PaddingValues(horizontal = 18.dp)
         ) { _ ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1394,7 +1393,6 @@ private fun GlassInput(
         modifier.fillMaxWidth(),
         height = if (multi) 96.dp else 52.dp,
         shape = RoundedCornerShape(26.dp),
-        light = !theme.isDark,
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = if (multi) 14.dp else 0.dp),
         verticalAlignment = if (multi) Alignment.Top else Alignment.CenterVertically
     ) { fg ->
@@ -1474,7 +1472,7 @@ private fun PickerField(
     trailing: (@Composable () -> Unit)? = null
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(Modifier.fillMaxWidth(), onClick = onClick, height = 52.dp, light = !theme.isDark,
+    SinemaCapsule(Modifier.fillMaxWidth(), onClick = onClick, height = 52.dp,
         contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
         Icon(icon, null, tint = fg.copy(0.7f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(10.dp))
@@ -1569,7 +1567,7 @@ private fun TargetTypeOption(
     val theme = LocalAppTheme.current
     SinemaCapsule(
         Modifier.fillMaxWidth().padding(vertical = 4.dp), selected = isActive, onClick = onClick,
-        height = 52.dp, light = !theme.isDark
+        height = 52.dp
     ) { fg ->
         Icon(iconForTargetType(type), null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
@@ -1607,7 +1605,7 @@ private fun KindChip(
 ) {
     val theme = LocalAppTheme.current
     SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        modifier, selected = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
     ) { fg ->
         Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
@@ -1625,7 +1623,7 @@ private fun EventModeChip(
 ) {
     val theme = LocalAppTheme.current
     SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        modifier, selected = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
     ) { fg ->
         Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
@@ -1645,7 +1643,7 @@ private fun VisibilityChip(
 ) {
     val theme = LocalAppTheme.current
     SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp, light = !theme.isDark,
+        modifier, selected = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
     ) { fg ->
         if (icon != null) {
@@ -1689,7 +1687,7 @@ private fun CreateSceneBars() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowCompat.getInsetsController(window, view).run {
             isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = !theme.isDark
+            isAppearanceLightNavigationBars = false
         }
     }
 }

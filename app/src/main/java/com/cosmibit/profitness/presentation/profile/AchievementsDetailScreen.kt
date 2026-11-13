@@ -64,6 +64,7 @@ fun AchievementsDetailScreen(
         .toSortedMap(compareBy { CATEGORY_ORDER.indexOf(it).takeIf { i -> i >= 0 } ?: 99 })
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)

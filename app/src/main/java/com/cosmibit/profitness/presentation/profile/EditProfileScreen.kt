@@ -297,21 +297,22 @@ fun EditProfileScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             // ── Kapak: foto (yoksa Sinema sahnesi) + avatar halkası ─────────
             item {
                 Box(Modifier.fillMaxWidth().height(300.dp)) {
                     if (state.avatar.startsWith("http")) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        SinemaScene(Modifier.fillMaxSize())
+                        Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(state.avatar).crossfade(true).build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
+                        }
                     }
-                    Box(Modifier.fillMaxSize().background(Sinema.BottomScrim))
                     Box(
                         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)
                     ) {
@@ -362,10 +363,10 @@ fun EditProfileScreen(
                     Text(theme.t("Profili düzenle", "Edit profile"), style = Sinema.ScreenTitle, color = Sinema.text(theme))
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SinemaCapsule(onClick = { showAvatarPicker = true }, height = 40.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                        SinemaCapsule(onClick = { showAvatarPicker = true }, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
                             Text(theme.t("Emoji Seç", "Choose Emoji"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
-                        SinemaCapsule(onClick = { photoPickerLauncher.launch("image/*") }, height = 40.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                        SinemaCapsule(onClick = { photoPickerLauncher.launch("image/*") }, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
                             Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -543,7 +544,7 @@ fun EditProfileScreen(
                                     modifier = Modifier.weight(1f).aspectRatio(1f),
                                     selected = emoji == avatar,
                                     onClick = { avatar = emoji; showAvatarPicker = false },
-                                    height = 44.dp, shape = RoundedCornerShape(18.dp), light = !theme.isDark,
+                                    height = 44.dp, shape = RoundedCornerShape(18.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     contentPadding = PaddingValues(0.dp)
                                 ) { Text(emoji, fontSize = 24.sp) }
@@ -581,7 +582,7 @@ private fun ProfileChoiceSection(
                         modifier = Modifier.weight(1f),
                         selected = selected == option,
                         onClick = { onSelect(option) },
-                        height = 46.dp, light = !theme.isDark,
+                        height = 46.dp,
                         horizontalArrangement = Arrangement.Center,
                         contentPadding = PaddingValues(horizontal = 10.dp)
                     ) { fg ->

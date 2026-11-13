@@ -115,6 +115,7 @@ fun WeightTrackingScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaBackdrop()
         if (state.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = accent)
         } else {
@@ -219,7 +220,7 @@ private fun WeightHero(
             val isGain = delta >= 0
             val sign   = if (isGain) "+" else ""
             SinemaCapsule(
-                height = 36.dp, light = !theme.isDark, contentPadding = PaddingValues(horizontal = 14.dp),
+                height = 36.dp, contentPadding = PaddingValues(horizontal = 14.dp),
                 modifier = Modifier.padding(bottom = 6.dp)
             ) { fg ->
                 Icon(if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown, null, tint = fg, modifier = Modifier.size(16.dp))

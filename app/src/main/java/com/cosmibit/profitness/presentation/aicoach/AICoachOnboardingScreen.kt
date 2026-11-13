@@ -53,8 +53,8 @@ fun AICoachOnboardingScreen(
     var allowThirdParty by remember { mutableStateOf(initialPrefs.allowThirdPartyProcessing) }
 
     val navState = LocalSinemaNav.current
-    DisposableEffect(theme.isDark) {
-        navState.lightPage = !theme.isDark
+    DisposableEffect(Unit) {
+        navState.lightPage = false
         onDispose { navState.lightPage = false }
     }
 

@@ -58,7 +58,7 @@ fun Modifier.performanceSurface(
     theme: AppThemeState,
     level: Int = 1,
     shape: Shape = RoundedCornerShape(PerformanceRadius.card),
-    elevated: Boolean = false
+    @Suppress("UNUSED_PARAMETER") elevated: Boolean = false
 ): Modifier {
     val color = when (level.coerceIn(1, 3)) {
         1 -> theme.bg1
@@ -66,19 +66,9 @@ fun Modifier.performanceSurface(
         else -> theme.bg3
     }
     return this
-        .then(
-            if (elevated && !theme.isDark) Modifier.shadow(
-                elevation = 3.dp,
-                shape = shape,
-                ambientColor = WarmShadow.copy(alpha = 0.10f),
-                spotColor = WarmShadow.copy(alpha = 0.10f)
-            ) else Modifier
-        )
         .clip(shape)
         .background(color)
 }
-
-private val WarmShadow = Color(0xFF0E0F11)   // nötr mürekkep (sıcak kahve tonu kaldırıldı)
 
 private val WarmLight = Color(0xFFFFFFFF)
 private typealias Stops = Array<Pair<Float, Color>>
@@ -143,24 +133,16 @@ private fun Modifier.layeredMaterial(
     }
 
 /** Translucent card base so the page atmosphere tints the glass. */
-private fun glassFill(theme: AppThemeState): Color =
-    if (theme.isDark) Sinema.Surface else Color(0xFFF2F3F5)
+private fun glassFill(): Color = Sinema.Surface
 
-private fun cardLight(theme: AppThemeState): Stops =
-    if (theme.isDark) arrayOf(
-        0f to WarmLight.copy(0.08f), 0.45f to WarmLight.copy(0f),
-        0.70f to Color.Black.copy(0f), 1f to Color.Black.copy(0.26f)
-    ) else arrayOf(
-        0f to Color.White.copy(0.90f), 0.12f to Color.White.copy(0f),
-        0.65f to WarmShadow.copy(0f), 1f to WarmShadow.copy(0.04f)
-    )
+private fun cardLight(): Stops = arrayOf(
+    0f to WarmLight.copy(0.08f), 0.45f to WarmLight.copy(0f),
+    0.70f to Color.Black.copy(0f), 1f to Color.Black.copy(0.26f)
+)
 
-private fun cardEdge(theme: AppThemeState, strokeAlpha: Float): Stops =
-    if (theme.isDark) arrayOf(
-        0f to Color.White.copy(0.20f), 0.5f to Color.White.copy(0.10f), 1f to Color.White.copy(0.06f)
-    ) else arrayOf(
-        0f to WarmShadow.copy(0.12f), 0.5f to WarmShadow.copy(0.08f), 1f to WarmShadow.copy(0.06f)
-    )
+private fun cardEdge(): Stops = arrayOf(
+    0f to Color.White.copy(0.20f), 0.5f to Color.White.copy(0.10f), 1f to Color.White.copy(0.06f)
+)
 
 /**
  * Layered opaque card: top-to-bottom tone, 1dp top highlight, 1dp gradient edge, faint accent
@@ -174,20 +156,20 @@ fun Modifier.performanceElevatedSurface(
     glowStrength: Float = 1f
 ): Modifier {
     val acc = if (accent == Color.Unspecified) theme.effectiveAccentColor else accent
-    val shadowColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f)
+    val shadowColor = Color.Black.copy(0.30f)
     return this
         .then(
             if (elevated) Modifier.shadow(
-                if (theme.isDark) 4.dp else 3.dp, shape,
+                4.dp, shape,
                 ambientColor = shadowColor, spotColor = shadowColor
             ) else Modifier
         )
         .layeredMaterial(
             shape = shape,
-            fill = glassFill(theme),
-            light = cardLight(theme),
-            topLine = if (theme.isDark) WarmLight.copy(0.16f) else Color.White.copy(0.90f),
-            edge = cardEdge(theme, 0.40f),
+            fill = glassFill(),
+            light = cardLight(),
+            topLine = WarmLight.copy(0.16f),
+            edge = cardEdge(),
             reflection = acc.copy(0.02f * glowStrength.coerceIn(0f, 1f))
         )
 }
@@ -200,12 +182,10 @@ fun Modifier.performanceControlSurface(
     shape: Shape = RoundedCornerShape(PerformanceRadius.button),
     primary: Boolean = false
 ): Modifier {
-    val dark = theme.isDark
     val shadowDp = if (pressed) 0.dp else if (primary) 5.dp else 2.dp
     val spot = when {
-        primary -> color.copy((if (dark) 0.22f else 0.16f) * color.alpha)
-        dark -> Color.Black.copy(0.30f)
-        else -> WarmShadow.copy(0.10f)
+        primary -> color.copy(0.22f * color.alpha)
+        else -> Color.Black.copy(0.30f)
     }
     val ambient = if (primary) Color.Transparent else spot
     val light: Stops = when {
@@ -215,14 +195,14 @@ fun Modifier.performanceControlSurface(
             1f to Color.Black.copy(0.10f)
         )
         else -> arrayOf(
-            0f to Color.White.copy(if (dark) 0.10f else 0.35f), 0.5f to Color.White.copy(0f),
+            0f to Color.White.copy(0.10f), 0.5f to Color.White.copy(0f),
             1f to Color.White.copy(0f)
         )
     }
     val line = when {
         pressed -> Color.Transparent
-        primary -> Color.White.copy(if (dark) 0.22f else 0.40f)
-        else -> Color.White.copy(if (dark) 0.14f else 0.50f)
+        primary -> Color.White.copy(0.22f)
+        else -> Color.White.copy(0.14f)
     }
     return this
         .then(if (primary && !pressed) Modifier.sinemaGlow(color.copy(0.40f * color.alpha), 18.dp, 8.dp, shape) else Modifier.shadow(shadowDp, shape, ambientColor = ambient, spotColor = spot))
@@ -234,21 +214,18 @@ fun Modifier.performanceInsetSurface(
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(10.dp)
 ): Modifier {
-    val dark = theme.isDark
     return this
         .clip(shape)
         .drawWithCache {
             val h = size.height
             val shade = Brush.verticalGradient(
-                colorStops = if (dark) arrayOf(
+                colorStops = arrayOf(
                     0f to Color.Black.copy(0.28f), 0.35f to Color.Black.copy(0f), 1f to Color.Black.copy(0f)
-                ) else arrayOf(
-                    0f to WarmShadow.copy(0.07f), 0.30f to WarmShadow.copy(0f), 1f to WarmShadow.copy(0f)
                 ),
                 startY = 0f, endY = h
             )
-            val fill = if (dark) Color(0xFF0B0B0D) else Color(0xFFE6E7EB)
-            val bottom = if (dark) WarmLight.copy(0.05f) else Color.White.copy(0.60f)
+            val fill = Color(0xFF0B0B0D)
+            val bottom = WarmLight.copy(0.05f)
             val lineH = 1.dp.toPx()
             onDrawBehind {
                 drawRect(fill)
@@ -269,45 +246,38 @@ fun Modifier.performanceNavSurface(
     accent: Color = Color.Unspecified
 ): Modifier {
     val acc = if (accent == Color.Unspecified) theme.effectiveAccentColor else accent
-    val dark = theme.isDark
     return this
         .clip(shape)
         .drawWithCache {
             val w = size.width
             val h = size.height
             val lineH = 1.dp.toPx()
-            val fill = if (dark) Color(0xFF221D19).copy(alpha = 0.72f) else Color(0xFFFFFDF9).copy(alpha = 0.80f)
+            val fill = Color(0xFF221D19).copy(alpha = 0.72f)
             val light = Brush.verticalGradient(
-                colorStops = if (dark) arrayOf(
+                colorStops = arrayOf(
                     0f to Color.White.copy(0.12f), 0.45f to Color.White.copy(0f),
                     0.7f to Color.Black.copy(0f), 1f to Color.Black.copy(0.22f)
-                ) else arrayOf(
-                    0f to Color.White.copy(0.90f), 0.45f to Color.White.copy(0f),
-                    0.7f to WarmShadow.copy(0f), 1f to WarmShadow.copy(0.10f)
                 ),
                 startY = 0f, endY = h
             )
             val inner = Brush.verticalGradient(
-                listOf(
-                    if (dark) Color.Black.copy(0.25f) else WarmShadow.copy(0.08f),
-                    Color.Transparent
-                ),
+                listOf(Color.Black.copy(0.25f), Color.Transparent),
                 startY = 0f, endY = 6.dp.toPx()
             )
             val topLine = Brush.horizontalGradient(
-                listOf(Color.Transparent, Color.White.copy(if (dark) 0.45f else 0.90f), Color.Transparent),
+                listOf(Color.Transparent, Color.White.copy(0.45f), Color.Transparent),
                 startX = 0f, endX = w
             )
             val rim = Brush.horizontalGradient(
                 listOf(
-                    Color.Transparent, acc.copy(if (dark) 0.22f else 0.18f), Color.Transparent
+                    Color.Transparent, acc.copy(0.22f), Color.Transparent
                 ),
                 startX = w * 0.08f, endX = w * 0.92f
             )
             val edge = Brush.verticalGradient(
-                colorStops = if (dark) arrayOf(
+                colorStops = arrayOf(
                     0f to Color.White.copy(0.28f), 1f to Color.White.copy(0.05f)
-                ) else arrayOf(0f to Color.White.copy(0.90f), 1f to WarmShadow.copy(0.10f)),
+                ),
                 startY = 0f, endY = h
             )
             val outline = shape.createOutline(size, layoutDirection, this)
@@ -329,18 +299,18 @@ fun Modifier.performanceSignatureSurface(
     accent: Color,
     shape: Shape = RoundedCornerShape(PerformanceRadius.major)
 ): Modifier {
-    val shadowColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f)
+    val shadowColor = Color.Black.copy(0.30f)
     return this
         .shadow(
-            if (theme.isDark) 4.dp else 3.dp, shape,
+            4.dp, shape,
             ambientColor = shadowColor, spotColor = shadowColor
         )
         .layeredMaterial(
             shape = shape,
-            fill = if (theme.isDark) theme.bg2 else theme.bg1,
-            light = cardLight(theme),
-            topLine = if (theme.isDark) WarmLight.copy(0.16f) else Color.White.copy(0.90f),
-            edge = cardEdge(theme, 0.40f),
+            fill = theme.bg2,
+            light = cardLight(),
+            topLine = WarmLight.copy(0.16f),
+            edge = cardEdge(),
             reflection = accent.copy(0.02f),
             reflectionScale = 1.4f,
             barAccent = accent
@@ -378,7 +348,7 @@ fun Modifier.raisedButtonSurface(
     lift: Dp = 6.dp
 ): Modifier {
     val c = if (color == Color.Unspecified) theme.effectiveAccentColor else color
-    val spot = c.copy(if (theme.isDark) 0.30f else 0.22f)
+    val spot = c.copy(0.30f)
     val light: Stops = if (pressed) arrayOf(
         0f to Color.Black.copy(0.16f), 0.5f to Color.Black.copy(0f), 1f to Color.White.copy(0.14f)
     ) else arrayOf(
@@ -410,19 +380,16 @@ fun Modifier.insetTrackSurface(
     shape: Shape = CircleShape,
     fill: Color = Color.Unspecified
 ): Modifier {
-    val dark = theme.isDark
-    val base = if (fill == Color.Unspecified) (if (dark) Color(0xFF0B0B0D) else Color(0xFFE6E7EB)) else fill
+    val base = if (fill == Color.Unspecified) Color(0xFF0B0B0D) else fill
     return clip(shape).drawWithCache {
         val h = size.height
         val shade = Brush.verticalGradient(
-            colorStops = if (dark) arrayOf(
+            colorStops = arrayOf(
                 0f to Color.Black.copy(0.28f), 0.35f to Color.Black.copy(0f), 1f to Color.Black.copy(0f)
-            ) else arrayOf(
-                0f to WarmShadow.copy(0.07f), 0.35f to WarmShadow.copy(0f), 1f to WarmShadow.copy(0f)
             ),
             startY = 0f, endY = h
         )
-        val bottom = if (dark) Color.White.copy(0.05f) else Color.White.copy(0.60f)
+        val bottom = Color.White.copy(0.05f)
         val lineH = 1.dp.toPx()
         onDrawBehind {
             drawRect(base)
@@ -444,16 +411,16 @@ fun Modifier.glassCardSurface(
 ): Modifier {
     if (!highlighted) return performanceElevatedSurface(theme, shape, accent = accent)
     val acc = if (accent == Color.Unspecified) theme.effectiveAccentColor else accent
-    val shadowColor = if (theme.isDark) Color.Black.copy(0.30f) else WarmShadow.copy(0.10f)
+    val shadowColor = Color.Black.copy(0.30f)
     return this
-        .shadow(if (theme.isDark) 4.dp else 3.dp, shape, ambientColor = shadowColor, spotColor = shadowColor)
+        .shadow(4.dp, shape, ambientColor = shadowColor, spotColor = shadowColor)
         .layeredMaterial(
             shape = shape,
-            fill = glassFill(theme),
-            light = cardLight(theme),
-            topLine = if (theme.isDark) WarmLight.copy(0.16f) else Color.White.copy(0.90f),
+            fill = glassFill(),
+            light = cardLight(),
+            topLine = WarmLight.copy(0.16f),
             edge = arrayOf(0f to acc.copy(0.40f), 0.5f to acc.copy(0.28f), 1f to acc.copy(0.12f)),
-            reflection = acc.copy(if (theme.isDark) 0.10f else 0.08f)
+            reflection = acc.copy(0.10f)
         )
 }
 
@@ -465,8 +432,8 @@ fun Modifier.insetFrame(
     theme: AppThemeState,
     shape: Shape = RoundedCornerShape(PerformanceRadius.control)
 ): Modifier = clip(shape).drawWithCache {
-    val inner = if (theme.isDark) Color.Black.copy(0.50f) else WarmShadow.copy(0.28f)
-    val rim = if (theme.isDark) Color.White.copy(0.10f) else Color.White.copy(0.70f)
+    val inner = Color.Black.copy(0.50f)
+    val rim = Color.White.copy(0.10f)
     val top = Brush.verticalGradient(
         listOf(inner, inner.copy(alpha = 0f)), startY = 0f, endY = 6.dp.toPx()
     )
@@ -485,14 +452,11 @@ fun Modifier.insetFrame(
  */
 fun heroGradientBrush(
     theme: AppThemeState,
-    lightStart: Float = 0.30f,
-    lightEnd: Float = 0.08f
+    @Suppress("UNUSED_PARAMETER") lightStart: Float = 0.30f,
+    @Suppress("UNUSED_PARAMETER") lightEnd: Float = 0.08f
 ): Brush {
     val acc = theme.effectiveAccentColor
-    return Brush.linearGradient(
-        if (theme.isDark) listOf(acc.copy(0.55f), acc.copy(0.18f), Color.Transparent)
-        else listOf(acc.copy(lightStart), acc.copy(lightEnd), Color.Transparent)
-    )
+    return Brush.linearGradient(listOf(acc.copy(0.55f), acc.copy(0.18f), Color.Transparent))
 }
 
 /** Dev rakam stili (64sp): Sora ExtraBold, tabular rakam, harf aralığı -2%. Renk/boyut çağıranda. */

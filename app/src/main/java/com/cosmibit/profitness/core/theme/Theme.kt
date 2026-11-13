@@ -3,7 +3,6 @@ package com.cosmibit.profitness.core.theme
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -17,9 +16,8 @@ fun ProfitnessTheme(
     themeState: AppThemeState = AppThemeState(),
     content: @Composable () -> Unit
 ) {
-    // Tek koyu tema (açık tema kaldırıldı): çağıran ne verirse versin koyu zorlanır.
-    val themeState = themeState.copy(isDark = true)
-    val colorScheme = if (themeState.isDark) {
+    // Tek koyu tema (açık tema kaldırıldı).
+    val colorScheme = run {
         darkColorScheme(
             primary        = themeState.effectiveAccentColor,
             onPrimary      = themeState.effectiveOnAccentColor,
@@ -40,27 +38,6 @@ fun ProfitnessTheme(
             outline        = themeState.stroke,
             outlineVariant = themeState.stroke.copy(alpha = 0.65f)
         )
-    } else {
-        lightColorScheme(
-            primary        = themeState.effectiveAccentColor,
-            onPrimary      = themeState.effectiveOnAccentColor,
-            primaryContainer = themeState.bg3,
-            onPrimaryContainer = themeState.text0,
-            secondary      = themeState.text1,
-            onSecondary    = themeState.bg2,
-            secondaryContainer = themeState.bg3,
-            onSecondaryContainer = themeState.text0,
-            tertiary       = themeState.effectiveAccentColor,
-            onTertiary     = themeState.effectiveOnAccentColor,
-            background     = themeState.bg0,
-            surface        = themeState.bg1,
-            onBackground   = themeState.text0,
-            onSurface      = themeState.text0,
-            onSurfaceVariant = themeState.text1,
-            surfaceVariant = themeState.bg2,
-            outline        = themeState.stroke,
-            outlineVariant = themeState.stroke.copy(alpha = 0.5f)
-        )
     }
 
     val view = LocalView.current
@@ -69,7 +46,7 @@ fun ProfitnessTheme(
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
             WindowCompat.setDecorFitsSystemWindows(window, false)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !themeState.isDark
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
