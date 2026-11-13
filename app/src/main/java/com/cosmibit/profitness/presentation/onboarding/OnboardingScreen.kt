@@ -346,17 +346,10 @@ private fun StepTheme(
     onThemeChange: (AppThemeState) -> Unit,
     vm           : OnboardingViewModel
 ) {
-    var themeMode     by remember { mutableStateOf(current.themeMode) }
     var accent       by remember { mutableStateOf(current.accent) }
     var intensity    by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
     var showColorPicker by remember { mutableStateOf(false) }
-    val systemIsDark = isSystemInDarkTheme()
-    val previewIsDark = when (themeMode) {
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> systemIsDark
-    }
     val presetRows = remember {
         listOf(
             AccentPreset.LIME,
@@ -373,8 +366,7 @@ private fun StepTheme(
         )
     }
     val preview = current.copy(
-        isDark          = previewIsDark,
-        themeMode       = themeMode,
+        isDark          = true,   // tek koyu tema (açık tema kaldırıldı)
         accent           = accent,
         surfaceStyle     = SurfaceStyle.GRAPHITE,
         intensity        = intensity,
@@ -407,22 +399,6 @@ private fun StepTheme(
             )
 
             Spacer(Modifier.height(24.dp))
-
-            SectionLabel(current.t("GÖRÜNÜM", "APPEARANCE"), accentTheme)
-            Spacer(Modifier.height(8.dp))
-            SinemaSegmentRow(
-                options  = listOf(ThemeMode.DARK, ThemeMode.LIGHT, ThemeMode.SYSTEM),
-                selected = themeMode,
-                label    = {
-                    when (it) {
-                        ThemeMode.DARK -> current.t("KOYU", "DARK")
-                        ThemeMode.LIGHT -> current.t("AÇIK", "LIGHT")
-                        ThemeMode.SYSTEM -> current.t("SİSTEM", "SYSTEM")
-                    }
-                },
-                onSelect = { themeMode = it }
-            )
-            Spacer(Modifier.height(18.dp))
 
             ThemePreviewCard(preview)
             Spacer(Modifier.height(22.dp))

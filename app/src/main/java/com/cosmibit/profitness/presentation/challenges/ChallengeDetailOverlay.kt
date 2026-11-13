@@ -1071,7 +1071,7 @@ private fun OwnerActionMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141416).copy(alpha = 0.94f),
+        containerColor = Sinema.Surface.copy(alpha = 0.94f),
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 12.dp,
         tonalElevation = 0.dp

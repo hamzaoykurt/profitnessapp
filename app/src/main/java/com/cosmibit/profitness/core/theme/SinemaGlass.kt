@@ -93,9 +93,9 @@ import dev.chrisbanes.haze.hazeEffect
  * Cam YALNIZ foto/gradyan üstünde kullanılır.
  */
 fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = this
-    .shadow(16.dp, shape, ambientColor = Color.Black.copy(0.40f), spotColor = Color.Black.copy(0.40f))
+    .shadow(16.dp, shape, ambientColor = Sinema.Page.copy(0.40f), spotColor = Sinema.Page.copy(0.40f))
     .clip(shape)
-    .background(Sinema.Ink.copy(alpha = fillAlpha))
+    .background(Sinema.Surface.copy(alpha = fillAlpha))   // siyah/Ink tint yok (yon-cam-siyah)
     .border(1.dp, Color.White.copy(0.18f), shape)
     .drawWithContent {
         drawContent()
@@ -114,72 +114,109 @@ fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = thi
 val LocalSinemaHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
- * KALIN BUZLU CAM KAPSÜL (tek yer): arka plan bulanık + düşük tint, üst parlama (sheen) + üstten alta sönen degrade kenar,
- * alt iç gölge ve dışa düşen yumuşak alt gölge (kabarık görünüm). Dolu/seçili hal: `fill` = vurgu rengi, `glow` = sinemaGlow rengi.
- * Haze yoksa/API<31 ise bulanıklık yerine biraz daha koyu düz tint. Tint rengi `tint` (açık temada Color.White).
+ * CAM C (tek yer, .ekip/yon-cam-siyah.md "Genel cam tonu" + mockup `.glass`/`.stone`): siyah tint YOK, cam = beyaz ışık.
+ * - Dolgu: beyaz dikey degrade [fillTop → fillBottom] (varsayılan .14 → .08); `overlay` varsa üstüne düz örtü (ör. vurgu %18).
+ * - Kenar 1.5dp: varsayılan 165° beyaz .50/.14 (%38)/.06 (%72)/.22; `edgeColors` verilirse dikey degrade (tek renk = düz).
+ * - İç üst ışık (1dp beyaz .34 + üstten 14dp sönen .22), iç alt gölge (sayfa rengi .22), dış gölge 0 6 14 sayfa .45.
+ * - `fill` (seçili taş `.stone`): düz dolgu + iç ışık .35 + iç alt gölge .18; dış gölge yerine `glow` (ör. vurgu .35).
+ * - Haze kaynağı varsa (foto üstü) + API≥31 arkayı bulanıklaştırır; yoksa aynı dolgu, yalnız blur yok.
+ * Tüm çizim drawWithCache içinde (boyut/şekil değişene kadar Path/Brush önbellekte).
  */
 fun Modifier.sinemaCapsuleGlass(
     shape: Shape,
-    edge: Color = Color.White.copy(0.18f),
-    fillAlpha: Float = 0.35f,
-    blur: Dp = 20.dp,
+    blur: Dp = 24.dp,
     fill: Color? = null,
     glow: Color? = null,
-    tint: Color = Color.Black
+    fillTop: Float = 0.14f,
+    fillBottom: Float = 0.08f,
+    overlay: Color? = null,
+    edgeColors: List<Color>? = null,
+    shadow: Boolean = fill == null,
+    /** Geriye uyum: düz kenar rengi (ör. odakta vurgu). Eski varsayılan beyaz .18 → yeni 165° degrade kenar. */
+    edge: Color? = null,
+    /** Geriye uyum: eski siyah tint alfası; YOK SAYILIR (cam = beyaz ışık). */
+    @Suppress("UNUSED_PARAMETER") fillAlpha: Float? = null
 ): Modifier = composed {
+    val edgeColors = edgeColors ?: edge?.takeIf { it != LegacyGlassEdge }?.let { listOf(it) }
     val haze = LocalSinemaHaze.current
-    val blurOk = haze != null && Build.VERSION.SDK_INT >= 31
-    val light = tint.luminance() > 0.5f
+    val blurOk = fill == null && haze != null && Build.VERSION.SDK_INT >= 31
     Modifier
-        // dışa kabarık: şeklin DIŞINA düşen alt gölge (içine sızmaz)
-        // Path/Paint boyut/şekil değişene kadar önbellekte (her karede ayırma yok).
-        .drawWithCache {
+        // dış gölge: şeklin DIŞINA düşer (içine sızmaz) — sayfa rengi, siyah değil
+        .then(if (shadow) Modifier.drawWithCache {
             val path = shapePath(shape, size, layoutDirection, this)
             val androidPath = path.asAndroidPath()
             val paint = Paint().asFrameworkPaint().apply {
                 isAntiAlias = true
                 this.color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(9.dp.toPx(), 0f, 4.dp.toPx(), Color.Black.copy(if (light) 0.22f else 0.50f).toArgb())
+                setShadowLayer(14.dp.toPx(), 0f, 6.dp.toPx(), Sinema.Page.copy(0.45f).toArgb())
             }
             onDrawBehind {
                 clipPath(path, ClipOp.Difference) {
                     drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(androidPath, paint) }
                 }
             }
-        }
-        .then(if (glow != null) Modifier.sinemaGlow(glow, 20.dp, 8.dp, shape) else Modifier)
+        } else Modifier)
+        .then(if (glow != null) Modifier.sinemaGlow(glow, 18.dp, 6.dp, shape) else Modifier)
         .clip(shape)
         .then(
-            when {
-                fill != null -> Modifier.background(fill)
-                blurOk -> Modifier.hazeEffect(state = haze!!) {
-                    blurRadius = blur
-                    backgroundColor = tint
-                    tints = listOf(HazeTint(tint.copy(alpha = fillAlpha)))
-                    noiseFactor = 0f
-                }
-                else -> Modifier.background(tint.copy(alpha = (fillAlpha + 0.22f).coerceAtMost(0.7f)))
-            }
+            if (blurOk) Modifier.hazeEffect(state = haze!!) {
+                blurRadius = blur
+                backgroundColor = Sinema.Page
+                // dolgu aşağıda çiziliyor; neredeyse saydam tint Haze'in varsayılan koyu tintini devre dışı bırakır
+                tints = listOf(HazeTint(Color.White.copy(alpha = 0.01f)))
+                noiseFactor = 0f
+            } else Modifier
         )
         .drawWithCache {
+            val w = size.width
             val h = size.height
-            val sheenA = if (fill != null) 0.28f else if (light) 0.55f else 0.16f
-            // üst parlama: üstten ~%55'e sönen beyaz
-            val sheen = Brush.verticalGradient(0f to Color.White.copy(sheenA), 0.55f to Color.Transparent, startY = 0f, endY = h)
-            // alt iç gölge: kalınlık hissi
-            val inner = Brush.verticalGradient(0.50f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.16f else if (light) 0.07f else 0.22f), startY = 0f, endY = h)
-            // degrade kenar: üstte parlak, altta sönük (çizgi düz değil)
-            val topA = (edge.alpha * 2.2f).coerceAtMost(1f)
-            val edgePath = shapePath(shape, size, layoutDirection, this)
-            val edgeBrush = Brush.verticalGradient(0f to edge.copy(topA), 0.5f to edge.copy(edge.alpha * 0.7f), 1f to edge.copy(edge.alpha * 0.45f), startY = 0f, endY = h)
-            val stroke = Stroke(2.dp.toPx())
+            val path = shapePath(shape, size, layoutDirection, this)
+            val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
+            val fillBrush: Brush = if (fill != null) androidx.compose.ui.graphics.SolidColor(fill)
+                else Brush.verticalGradient(0f to Color.White.copy(fillTop), 1f to Color.White.copy(fillBottom), startY = 0f, endY = h)
+            val topLineColor = Color.White.copy(if (fill != null) 0.35f else 0.34f)
+            val sheen = if (fill == null) Brush.verticalGradient(
+                0f to Color.White.copy(0.22f), 1f to Color.Transparent, startY = 0f, endY = 14.dp.toPx().coerceAtMost(h)
+            ) else null
+            val innerH = (if (fill != null) 6.dp else 8.dp).toPx().coerceAtMost(h)
+            val inner = Brush.verticalGradient(
+                0f to Color.Transparent, 1f to Sinema.Page.copy(if (fill != null) 0.18f else 0.22f),
+                startY = h - innerH, endY = h
+            )
+            val edgeBrush: Brush? = when {
+                fill != null -> null
+                edgeColors != null && edgeColors.size == 1 -> androidx.compose.ui.graphics.SolidColor(edgeColors[0])
+                edgeColors != null -> Brush.verticalGradient(edgeColors, startY = 0f, endY = h)
+                else -> {
+                    // CSS 165°: yön (sin165, -cos165) ekran koordinatında; çizgi uzunluğu |w·sin|+|h·cos|
+                    val rad = Math.toRadians(165.0)
+                    val dx = kotlin.math.sin(rad).toFloat()
+                    val dy = (-kotlin.math.cos(rad)).toFloat()
+                    val half = (kotlin.math.abs(w * dx) + kotlin.math.abs(h * dy)) / 2f
+                    val c = Offset(w / 2f, h / 2f)
+                    Brush.linearGradient(
+                        0f to Color.White.copy(0.50f), 0.38f to Color.White.copy(0.14f),
+                        0.72f to Color.White.copy(0.06f), 1f to Color.White.copy(0.22f),
+                        start = Offset(c.x - dx * half, c.y - dy * half), end = Offset(c.x + dx * half, c.y + dy * half)
+                    )
+                }
+            }
+            // kenar şeklin içine 1.5dp düşsün: 3dp çizgi, dış yarısı clip ile kesilir
+            val edgeStroke = Stroke(3.dp.toPx())
             onDrawBehind {
-                drawRect(sheen)
-                drawRect(inner)
-                drawPath(edgePath, edgeBrush, style = stroke)
+                drawRect(fillBrush)
+                overlay?.let { drawRect(it) }
+                sheen?.let { drawRect(it) }
+                drawRect(inner, topLeft = Offset(0f, h - innerH), size = Size(w, innerH))
+                // iç üst ışık: şeklin üst kenarını izleyen 1dp hilal
+                clipPath(shifted, ClipOp.Difference) { drawPath(path, topLineColor) }
+                edgeBrush?.let { drawPath(path, it, style = edgeStroke) }
             }
         }
 }
+
+/** Eski kapsül varsayılan kenarı; verilirse yeni degrade kenar kullanılır. */
+private val LegacyGlassEdge = Color.White.copy(0.18f)
 
 private fun shapePath(shape: Shape, size: Size, dir: androidx.compose.ui.unit.LayoutDirection, d: androidx.compose.ui.unit.Density): Path {
     val outline = shape.createOutline(size, dir, d)
@@ -247,7 +284,7 @@ fun SinemaNavBar(
     if (hideProgress >= 1f) return
 
     val bg by animateColorAsState(
-        if (onPhoto) Color.Black.copy(0.55f) else Sinema.page(theme), tween(250), label = "nav_bg"
+        if (onPhoto) Sinema.scrim(0.55f) else Sinema.page(theme), tween(250), label = "nav_bg"
     )
     val passive by animateColorAsState(
         if (onPhoto) Color.White.copy(0.7f) else Sinema.textSecondary(theme), tween(250), label = "nav_passive"

@@ -1080,18 +1080,11 @@ private fun ThemeSettingsSheet(
     strings: AppStrings,
     onApply: (AppThemeState) -> Unit
 ) {
-    var themeMode       by remember { mutableStateOf(current.themeMode) }
     var accent          by remember { mutableStateOf(current.accent) }
     var intensity       by remember { mutableStateOf(current.intensity) }
     var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
     var showColorPicker by remember { mutableStateOf(false) }
     val theme           = LocalAppTheme.current
-    val systemIsDark    = isSystemInDarkTheme()
-    val previewIsDark   = when (themeMode) {
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> systemIsDark
-    }
     val presetRows = remember {
         listOf(
             AccentPreset.LIME,
@@ -1110,8 +1103,7 @@ private fun ThemeSettingsSheet(
 
     // Live preview state — her değişimde anında güncellenir
     val preview = current.copy(
-        isDark          = previewIsDark,
-        themeMode       = themeMode,
+        isDark          = true,   // tek koyu tema (açık tema kaldırıldı)
         accent           = accent,
         surfaceStyle     = SurfaceStyle.GRAPHITE,
         intensity        = intensity,
@@ -1132,20 +1124,6 @@ private fun ThemeSettingsSheet(
             style         = MaterialTheme.typography.titleLarge,
             color         = theme.text0,
             fontWeight    = FontWeight.SemiBold
-        )
-
-        SectionLabel(current.t("Görünüm", "Appearance"), theme)
-        SegmentedSelector(
-            options = listOf(
-                ThemeMode.DARK to current.t("Koyu", "Dark"),
-                ThemeMode.LIGHT to current.t("Açık", "Light"),
-                ThemeMode.SYSTEM to current.t("Sistem", "System")
-            ),
-            selected = themeMode,
-            accent   = previewAccent,
-            onAccent = previewOnAccent,
-            theme    = theme,
-            onSelect = { themeMode = it }
         )
 
         // ── Live Preview Card ─────────────────────────────────────────────────
@@ -1197,8 +1175,7 @@ private fun ThemeSettingsSheet(
             onClick  = {
                 onApply(
                     current.copy(
-                        isDark       = previewIsDark,
-                        themeMode    = themeMode,
+                        isDark       = true,
                         accent       = accent,
                         surfaceStyle = SurfaceStyle.GRAPHITE,
                         intensity    = intensity,

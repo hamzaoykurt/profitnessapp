@@ -1,51 +1,113 @@
 package com.cosmibit.profitness.presentation.profile
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.presentation.components.SinemaBigStat
-import com.cosmibit.profitness.presentation.components.SinemaDetailHeader
+import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
-import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
 import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
+
+// ── Veri analizi: "sezon raporu" (.ekip/yon-veri-analizi.md) ───────────────────
+// Yalnız ProfileState'teki gerçek veri; veri yoksa öğe gizlenir / boş durum.
+
+private val CoverHeight = 400.dp
+private val Dim = Sinema.White.copy(0.72f)
+private val LabelStyle = Sinema.Label.copy(letterSpacing = 0.08.em)
+
+@Composable
+private fun PText(
+    text: String,
+    size: Int,
+    weight: FontWeight,
+    modifier: Modifier = Modifier,
+    color: Color = Sinema.White,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    lineHeight: TextUnit = TextUnit.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
+    textAlign: TextAlign? = null
+) {
+    Text(
+        text, modifier = modifier, color = color, fontSize = size.sp, fontWeight = weight, fontFamily = AppFontFamily,
+        letterSpacing = letterSpacing, lineHeight = lineHeight, maxLines = maxLines, textAlign = textAlign,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text.sinemaUpper(LocalAppTheme.current), modifier = modifier, color = Dim, style = LabelStyle)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,88 +115,62 @@ fun PerformanceDetailScreen(
     onBack   : () -> Unit,
     onNavigateToWeightTracking      : () -> Unit = {},
     onNavigateToExerciseProgression : () -> Unit = {},
+    onStartWorkout                  : () -> Unit = onBack,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val theme  = LocalAppTheme.current
-    val strings = theme.strings
     val state  by viewModel.uiState.collectAsStateWithLifecycle()
+    val english = theme.language == AppLanguage.ENGLISH
     var showCalculators by remember { mutableStateOf(false) }
+    var rangeWeeks by rememberSaveable { mutableStateOf(13) }
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val hasWorkouts = state.totalWorkouts > 0
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
+        SinemaScene()
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
         ) {
             item {
-                SinemaDetailHeader(
-                    title    = theme.t("Veri analizi", "Data analysis"),
-                    subtitle = theme.t("Trendler, metrikler ve hesaplamalar", "Trends, metrics and calculations"),
-                    onBack   = onBack
+                PerformanceCover(
+                    state = state, theme = theme, english = english,
+                    onBack = onBack, onCalculate = { showCalculators = true }, onStartWorkout = onStartWorkout
                 )
             }
 
-            // Tek ana eylem: Hesapla
-            item {
-                SinemaGoButton(
-                    label = theme.t("Hesapla", "Calculate"),
-                    icon = Icons.Rounded.Calculate,
-                    onClick = { showCalculators = true },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-                )
-            }
-
-            item {
-                PerformanceRecordsSection(
-                    weightKg = state.weightKg,
-                    theme = theme,
-                    onNavigateToWeightTracking = onNavigateToWeightTracking,
-                    onNavigateToExerciseProgression = onNavigateToExerciseProgression
-                )
-            }
-
-            item {
-                WorkoutBarChart(
-                    counts  = state.weeklyWorkoutCounts,
-                    theme   = theme,
-                    modifier= Modifier.padding(20.dp, 20.dp, 20.dp, 0.dp)
-                )
-            }
-
-            item {
-                WeeklyActivityDataCard(
-                    theme = theme,
-                    strings = strings,
-                    weeklyActivity = state.weeklyActivity,
-                    modifier = Modifier.padding(20.dp, 12.dp, 20.dp, 0.dp)
-                )
-            }
-
-            item {
-                MetricSection(
-                    title = theme.t("ANTRENMAN VERİLERİ", "WORKOUT DATA"),
-                    metrics = trainingMetrics(state, theme),
-                    theme = theme,
-                    topPadding = 24.dp
-                )
-            }
-
-            item {
-                MetricSection(
-                    title = theme.t("VÜCUT VERİLERİ", "BODY DATA"),
-                    metrics = bodyMetrics(state, theme),
-                    theme = theme,
-                    topPadding = 12.dp
-                )
-            }
-
-            item {
-                MetricSection(
-                    title = theme.t("SERİ VE SEVİYE", "STREAK & LEVEL"),
-                    metrics = consistencyMetrics(state, theme),
-                    theme = theme,
-                    topPadding = 12.dp
-                )
+            if (!state.isLoading) {
+                if (hasWorkouts) {
+                    item {
+                        RhythmSection(
+                            counts = state.weeklyWorkoutCounts, weeks = rangeWeeks, onWeeks = { rangeWeeks = it },
+                            theme = theme, english = english,
+                            modifier = Modifier.padding(horizontal = 20.dp).padding(top = 24.dp)
+                        )
+                    }
+                    item { TotalsSection(state, theme, english, Modifier.padding(horizontal = 20.dp).padding(top = 40.dp)) }
+                } else {
+                    item {
+                        PText(
+                            theme.t("Antrenman kaydettikçe ritmin burada oluşur.", "Your rhythm builds here as you log workouts."),
+                            14, FontWeight.Normal, color = Dim, lineHeight = 20.sp,
+                            modifier = Modifier.padding(horizontal = 20.dp).padding(top = 24.dp)
+                        )
+                    }
+                }
+                item {
+                    ExercisePoster(
+                        theme = theme, onClick = onNavigateToExerciseProgression,
+                        modifier = Modifier.padding(horizontal = 20.dp).padding(top = 40.dp)
+                    )
+                }
+                item {
+                    BodySection(
+                        state = state, theme = theme, english = english, onWeightTracking = onNavigateToWeightTracking,
+                        modifier = Modifier.padding(horizontal = 20.dp).padding(top = 40.dp)
+                    )
+                }
+                item { StreakSection(state, theme, english, Modifier.padding(horizontal = 20.dp).padding(top = 40.dp)) }
             }
         }
     }
@@ -170,41 +206,676 @@ fun PerformanceDetailScreen(
     }
 }
 
+// ── 1. Kapak: foto + dev rakam + hafta halkası ────────────────────────────────
+
 @Composable
-private fun PerformanceShortcutCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
+private fun PerformanceCover(
+    state: ProfileState,
     theme: AppThemeState,
-    onClick: () -> Unit,
+    english: Boolean,
+    onBack: () -> Unit,
+    onCalculate: () -> Unit,
+    onStartWorkout: () -> Unit
+) {
+    val strings = theme.strings
+    val counts = state.weeklyWorkoutCounts
+    val thisWeek = counts.lastOrNull() ?: 0
+    val since = weeksSinceLastWorkout(counts)
+    val todayIdx = LocalDate.now().dayOfWeek.value - 1
+    val loading = state.isLoading
+    val empty = !loading && state.totalWorkouts <= 0
+    val haptic = LocalHapticFeedback.current
+    var ringSel by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(ringSel) { if (ringSel != null) { delay(2000); ringSel = null } }
+
+    Box(Modifier.fillMaxWidth().height(CoverHeight)) {
+        // Foto: alt 200dp zemine söner (maske), üstüne %35 koyu örtü
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current).data(categoryImageUrl("")).crossfade(true).build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(Sinema.Ink.copy(0.35f))
+                    val fadeStart = (200.dp.toPx() / size.height).coerceIn(0f, 1f)
+                    drawRect(
+                        Brush.verticalGradient(0f to Color.Black, fadeStart to Color.Black, 1f to Color.Transparent),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
+        )
+
+        // Üst sıra: geri · başlık · Hesapla
+        Box(
+            Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp).padding(horizontal = 20.dp).height(44.dp)
+        ) {
+            SinemaCapsule(
+                Modifier.align(Alignment.CenterStart).size(44.dp),
+                onClick = onBack, height = 44.dp, shape = CircleShape,
+                contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
+            ) { fg ->
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, theme.t("Geri", "Back"), tint = fg, modifier = Modifier.size(20.dp))
+            }
+            PText(
+                theme.t("Veri analizi", "Data analysis"), 16, FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Center), maxLines = 1
+            )
+            SinemaCapsule(
+                Modifier.align(Alignment.CenterEnd),
+                onClick = onCalculate, height = 44.dp,
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) { fg ->
+                Icon(Icons.Rounded.Calculate, null, tint = fg, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                PText(theme.t("Hesapla", "Calculate"), 14, FontWeight.SemiBold, color = fg, maxLines = 1)
+            }
+        }
+
+        // Halka dokunuşu balonu
+        ringSel?.let { i ->
+            val level = state.weeklyActivity.getOrElse(i) { 0f }
+            val day = java.time.DayOfWeek.of(i + 1).getDisplayName(java.time.format.TextStyle.FULL, uiLocale(english))
+            GlassBubble(
+                "$day · " + if (level > 0f) theme.t("aktif", "active") else theme.t("antrenman yok", "no workout"),
+                Modifier.align(Alignment.TopEnd).padding(top = 196.dp, end = 20.dp)
+            )
+        }
+
+        // Sol: dev rakam / boş durum · Sağ: hafta halkası
+        Row(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                when {
+                    loading -> {
+                        SectionLabel(theme.t("Bu hafta", "This week"))
+                        Spacer(Modifier.height(10.dp))
+                        Box(Modifier.size(width = 112.dp, height = 96.dp).clip(RoundedCornerShape(16.dp)).background(Sinema.White.copy(0.08f)))
+                    }
+                    empty -> {
+                        PText(
+                            theme.t("İlk antrenmanını kaydet", "Log your first workout"), 22, FontWeight.ExtraBold,
+                            lineHeight = 26.sp, letterSpacing = (-0.02).em
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        SinemaCapsule(selected = true, onClick = onStartWorkout, height = 44.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                            PText(theme.t("Antrenmana başla", "Start a workout"), 14, FontWeight.Bold, color = fg, maxLines = 1)
+                        }
+                    }
+                    else -> {
+                        SectionLabel(theme.t("Bu hafta", "This week"))
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            thisWeek.toString(),
+                            style = Sinema.Display.copy(fontSize = 112.sp, lineHeight = 0.9.em, letterSpacing = (-0.04).em),
+                            color = Sinema.White, maxLines = 1
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        PText(
+                            if (english && thisWeek == 1) "workout" else theme.t("antrenman", "workouts"),
+                            16, FontWeight.SemiBold
+                        )
+                        if (thisWeek == 0 && since != null) {
+                            Spacer(Modifier.height(8.dp))
+                            PText(
+                                theme.t("Son antrenman: $since hafta önce", "Last workout: $since weeks ago"),
+                                13, FontWeight.Normal, color = Dim
+                            )
+                        }
+                    }
+                }
+            }
+            WeekRing(
+                levels = state.weeklyActivity,
+                todayIdx = todayIdx,
+                loading = loading,
+                centerLabel = strings.dayAbbreviations.getOrElse(todayIdx) { "" },
+                selected = ringSel,
+                onSelect = { i ->
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    ringSel = if (ringSel == i) null else i
+                },
+                accent = theme.effectiveAccentColor,
+                description = theme.t("Bu haftanın günlük aktivitesi", "This week's daily activity"),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+    }
+}
+
+/** Cam balon (h32): dokunulan kapsül/gün bilgisi. */
+@Composable
+private fun GlassBubble(text: String, modifier: Modifier = Modifier) {
+    SinemaCapsule(modifier, height = 32.dp, shape = CircleShape, contentPadding = PaddingValues(horizontal = 12.dp)) {
+        PText(text, 12, FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+/** Ø132, 7 yay (Pzt…Paz), kalınlık 10, round cap; dolgu = gün tamamlanma oranı, bugün tam vurgu + glow. */
+@Composable
+private fun WeekRing(
+    levels: List<Float>,
+    todayIdx: Int,
+    loading: Boolean,
+    centerLabel: String,
+    selected: Int?,
+    onSelect: (Int) -> Unit,
+    accent: Color,
+    description: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier
+            .size(132.dp)
+            .semantics { contentDescription = description }
+            .pointerInput(Unit) {
+                detectTapGestures { p ->
+                    val c = Offset(size.width / 2f, size.height / 2f)
+                    val dx = p.x - c.x
+                    val dy = p.y - c.y
+                    val dist = sqrt(dx * dx + dy * dy)
+                    if (dist < 36.dp.toPx() || dist > 72.dp.toPx()) return@detectTapGestures
+                    val deg = (Math.toDegrees(atan2(dy, dx).toDouble()) + 90.0 + 360.0) % 360.0
+                    onSelect((deg / (360.0 / 7.0)).toInt().coerceIn(0, 6))
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 10.dp.toPx()
+            val r = 56.dp.toPx()
+            val tl = Offset(size.width / 2f - r, size.height / 2f - r)
+            val step = 360f / 7f
+            val gap = Math.toDegrees(((4.dp.toPx() + stroke) / r).toDouble()).toFloat() // görünür boşluk 4dp
+            for (i in 0 until 7) {
+                val level = if (loading) 0f else levels.getOrElse(i) { 0f }.coerceIn(0f, 1f)
+                val isToday = i == todayIdx
+                val chosen = i == selected
+                val start = -90f + i * step + gap / 2f
+                val sweep = step - gap
+                val arcTl = tl
+                val arcSize = Size(2 * r, 2 * r)
+                val active = level > 0f
+                val full = (isToday && active) || chosen
+                if (full) {
+                    // glow: 0 0 12 vurgu %50
+                    drawArc(accent.copy(0.12f), start, sweep, false, arcTl, arcSize, style = Stroke(stroke + 12.dp.toPx(), cap = StrokeCap.Round))
+                    drawArc(accent.copy(0.22f), start, sweep, false, arcTl, arcSize, style = Stroke(stroke + 6.dp.toPx(), cap = StrokeCap.Round))
+                }
+                val color = when {
+                    full -> accent
+                    active -> accent.copy(ringArcAlpha(level))
+                    isToday && !loading -> Sinema.White.copy(0.40f) // bugün, henüz antrenman yok
+                    else -> Sinema.White.copy(0.14f)
+                }
+                drawArc(color, start, sweep, false, arcTl, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+        }
+        if (centerLabel.isNotEmpty()) PText(centerLabel, 13, FontWeight.Bold, maxLines = 1)
+    }
+}
+
+// ── 2. Ritim: aralık seçici + ortalama + kapsül grafiği ───────────────────────
+
+@Composable
+private fun RhythmSection(
+    counts: List<Int>,
+    weeks: Int,
+    onWeeks: (Int) -> Unit,
+    theme: AppThemeState,
+    english: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val slice = weekSlice(counts, weeks)
+    val avg = weeklyAverage(slice)
+    val best = bestWeek(slice)
+    val heroAvg = averageIsHero(avg, best)
+    val avgText = formatNumber(avg.toDouble(), 1, english)
+    val perWeek = theme.t("/hf", "/wk")
+    val unitWorkouts = theme.t("antrenman", "workouts")
+
+    Column(modifier) {
+        RangeSegment(weeks = weeks, onWeeks = onWeeks, english = english)
+
+        Row(
+            Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column {
+                SectionLabel(if (heroAvg) theme.t("Ortalama", "Average") else theme.t("En iyi hafta", "Best week"))
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        if (heroAvg) avgText else best.toString(),
+                        style = Sinema.Metric.copy(fontSize = 56.sp, lineHeight = 1.0.em, letterSpacing = (-0.03).em),
+                        color = Sinema.White, maxLines = 1
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    PText(if (heroAvg) perWeek else unitWorkouts, 16, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
+                }
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                PText(
+                    if (heroAvg) theme.t("En iyi hafta", "Best week") else theme.t("Ortalama", "Average"),
+                    12, FontWeight.SemiBold, color = Dim
+                )
+                Spacer(Modifier.height(4.dp))
+                PText(if (heroAvg) best.toString() else avgText + perWeek, 20, FontWeight.Bold)
+            }
+        }
+
+        RhythmChart(slice = slice, weeks = weeks, best = best, avg = avg, theme = theme, english = english)
+
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            PText(theme.t("$weeks hf önce", "$weeks wk ago"), 11, FontWeight.Medium, color = Dim)
+            PText(theme.t("Bu hafta", "This week"), 11, FontWeight.Medium, color = Dim)
+        }
+    }
+}
+
+/** `.glass` segment 168×44: "4 hf | 13 hf"; seçili = dolu vurgu (.stone). */
+@Composable
+private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    SinemaCapsule(
+        Modifier.width(168.dp), height = 44.dp, contentPadding = PaddingValues(4.dp)
+    ) {
+        listOf(4, 13).forEach { w ->
+            val sel = w == weeks
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, CircleShape) else Modifier)
+                    .clip(CircleShape)
+                    .background(if (sel) accent else Color.Transparent)
+                    .semantics { this.selected = sel }
+                    .clickable(role = Role.RadioButton) { if (!sel) onWeeks(w) },
+                contentAlignment = Alignment.Center
+            ) {
+                PText(
+                    if (english) "$w wk" else "$w hf", 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (sel) theme.effectiveOnAccentColor else Sinema.White, maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RhythmChart(
+    slice: List<Int>,
+    weeks: Int,
+    best: Int,
+    avg: Float,
+    theme: AppThemeState,
+    english: Boolean
+) {
+    val accent = theme.effectiveAccentColor
+    val motion = rememberSinemaMotionOn()
+    val haptic = LocalHapticFeedback.current
+    val grow = remember { Animatable(1f) }
+    LaunchedEffect(weeks) {
+        if (motion) {
+            grow.snapTo(0.4f)
+            grow.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+        } else grow.snapTo(1f)
+    }
+    var sel by remember(weeks) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(sel) { if (sel != null) { delay(2000); sel = null } }
+    val n = slice.size
+    val chartH = 120.dp
+    val maxBar = 100.dp
+    val avgFrac = if (best > 0) (avg / best).coerceIn(0f, 1f) else 0f
+    val summary = theme.t(
+        "Haftalık antrenmanlar, son $weeks hafta. Ortalama ${formatNumber(avg.toDouble(), 1, english)}, en iyi hafta $best.",
+        "Weekly workouts, last $weeks weeks. Average ${formatNumber(avg.toDouble(), 1, english)}, best week $best."
+    )
+
+    Box(Modifier.fillMaxWidth().height(chartH).semantics { contentDescription = summary }) {
+        Canvas(
+            Modifier.fillMaxSize().pointerInput(n, weeks) {
+                detectTapGestures { p ->
+                    if (n == 0) return@detectTapGestures
+                    val bw = capsuleWidthDp(weeks).dp.toPx()
+                    val pitch = if (n > 1) (size.width - bw) / (n - 1) else 1f
+                    val i = ((p.x - bw / 2f) / pitch).roundToInt().coerceIn(0, n - 1)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    sel = if (sel == i) null else i
+                }
+            }
+        ) {
+            if (n == 0) return@Canvas
+            val bw = capsuleWidthDp(weeks).dp.toPx().coerceAtMost(size.width / n)
+            val pitch = if (n > 1) (size.width - bw) / (n - 1) else 0f
+            val radius = CornerRadius(8.dp.toPx().coerceAtMost(bw / 2f))
+            slice.forEachIndexed { i, c ->
+                val x = i * pitch
+                val isNow = i == n - 1
+                val chosen = i == sel
+                if (c <= 0) {
+                    val d = 6.dp.toPx()
+                    drawCircle(Sinema.White.copy(if (chosen) 0.5f else 0.20f), d / 2f, Offset(x + bw / 2f, size.height - d / 2f))
+                } else {
+                    val h = (capsuleFraction(c, best) * maxBar.toPx() * grow.value).coerceAtLeast(8.dp.toPx())
+                    val full = isNow || chosen
+                    if (full) {
+                        drawRoundRect(accent.copy(0.14f), Offset(x - 6.dp.toPx(), size.height - h - 6.dp.toPx()), Size(bw + 12.dp.toPx(), h + 12.dp.toPx()), CornerRadius(14.dp.toPx()))
+                        drawRoundRect(accent.copy(0.26f), Offset(x - 3.dp.toPx(), size.height - h - 3.dp.toPx()), Size(bw + 6.dp.toPx(), h + 6.dp.toPx()), CornerRadius(11.dp.toPx()))
+                    }
+                    drawRoundRect(if (full) accent else accent.copy(0.55f), Offset(x, size.height - h), Size(bw, h), radius)
+                }
+            }
+            if (best > 0) {
+                val y = size.height - avgFrac * maxBar.toPx()
+                drawLine(
+                    Sinema.White.copy(0.40f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
+                )
+            }
+        }
+        if (best > 0) {
+            PText(
+                theme.t("ort.", "avg."), 11, FontWeight.SemiBold, color = Dim,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = maxBar * avgFrac + 4.dp)
+            )
+        }
+        sel?.let { i ->
+            val c = slice.getOrElse(i) { 0 }
+            val start = weekStart(LocalDate.now(), n - 1 - i)
+            val label = (if (english && c == 1) "1 workout" else "$c " + theme.t("antrenman", "workouts")) +
+                " · " + weekRangeLabel(start, english)
+            val frac = capsuleFraction(c, best)
+            val barTop = chartH - maxBar * frac
+            GlassBubble(
+                label,
+                Modifier.layout { m, cons ->
+                    val pl = m.measure(cons.copy(minWidth = 0, minHeight = 0))
+                    val bw = capsuleWidthDp(weeks).dp.roundToPx()
+                    val pitch = if (n > 1) (cons.maxWidth - bw).toFloat() / (n - 1) else 0f
+                    val cx = (i * pitch + bw / 2f).roundToInt()
+                    val x = (cx - pl.width / 2).coerceIn(0, (cons.maxWidth - pl.width).coerceAtLeast(0))
+                    val y = (barTop - 32.dp - 6.dp).roundToPx()
+                    layout(cons.maxWidth, cons.maxHeight) { pl.place(x, y) }
+                }
+            )
+        }
+    }
+}
+
+/** "3–9 Kas" / "28 Eki–3 Kas". */
+private fun weekRangeLabel(start: LocalDate, english: Boolean): String {
+    val end = start.plusDays(6)
+    val loc = uiLocale(english)
+    val mon = DateTimeFormatter.ofPattern("MMM", loc)
+    return if (start.month == end.month) {
+        "${start.dayOfMonth}–${end.dayOfMonth} ${mon.format(end)}"
+    } else {
+        "${start.dayOfMonth} ${mon.format(start)}–${end.dayOfMonth} ${mon.format(end)}"
+    }
+}
+
+// ── 3. Toplamlar: skor tabelası ───────────────────────────────────────────────
+
+@Composable
+private fun TotalsSection(state: ProfileState, theme: AppThemeState, english: Boolean, modifier: Modifier = Modifier) {
+    val minutes = durationMinutes(state.totalDurationSeconds)
+    val km = state.totalDistanceMeters >= 1000f
+    Column(modifier) {
+        SectionLabel(theme.t("Toplamlar", "Totals"))
+        TotalRow(formatNumber(state.totalWorkouts.toDouble(), 0, english), null, theme.t("Antrenman", "Workouts"), Icons.Rounded.FitnessCenter, hero = true)
+        if (minutes > 0) {
+            TotalRow(formatNumber(minutes.toDouble(), 0, english), theme.t("dk", "min"), theme.t("Süre", "Duration"), Icons.Rounded.Schedule)
+        }
+        if (state.totalDistanceMeters > 0f) {
+            TotalRow(
+                if (km) formatNumber(state.totalDistanceMeters / 1000.0, 1, english) else formatNumber(state.totalDistanceMeters.toDouble(), 0, english),
+                if (km) "km" else "m", theme.t("Mesafe", "Distance"), Icons.Rounded.Straighten
+            )
+        }
+        if (state.totalExercises > 0) {
+            TotalRow(formatNumber(state.totalExercises.toDouble(), 0, english), theme.t("kez", "times"), theme.t("Egzersiz", "Exercises"), Icons.Rounded.Repeat)
+        }
+    }
+}
+
+@Composable
+private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVector, hero: Boolean = false) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .drawBehind {
+                val w = 1.dp.toPx()
+                drawLine(Sinema.White.copy(0.10f), Offset(0f, size.height - w / 2f), Offset(size.width, size.height - w / 2f), w)
+            },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
+            Text(
+                value,
+                style = Sinema.Metric.copy(fontSize = if (hero) 56.sp else 40.sp, lineHeight = 1.0.em, letterSpacing = (-0.03).em),
+                color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+            )
+            if (unit != null) {
+                Spacer(Modifier.width(5.dp))
+                PText(unit, 14, FontWeight.SemiBold, color = Dim, modifier = Modifier.alignByBaseline())
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PText(label, 13, FontWeight.SemiBold, color = Dim, maxLines = 1)
+            Icon(icon, null, tint = Dim, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+// ── 4. Hareket gelişimi posteri ───────────────────────────────────────────────
+
+@Composable
+private fun ExercisePoster(theme: AppThemeState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(24.dp)
+    val title = theme.t("Hareket gelişimi", "Exercise progress")
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(168.dp)
+            .clip(shape)
+            .border(1.dp, Sinema.White.copy(0.09f), shape)
+            .clickable(role = Role.Button, onClickLabel = title, onClick = onClick)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current).data(categoryImageUrl("Bacak")).crossfade(true).build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0f to Color.Transparent, 0.30f to Color.Transparent, 1f to Color.Black.copy(0.70f))
+            )
+        )
+        Column(Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 16.dp).fillMaxWidth(0.68f)) {
+            PText(title, 22, FontWeight.ExtraBold, lineHeight = 24.sp)
+            Spacer(Modifier.height(6.dp))
+            PText(
+                theme.t("Ağırlık, süre, mesafe ve hareket bazlı gelişim", "Weight, duration, distance and movement-based progress"),
+                13, FontWeight.Normal, color = Sinema.White.copy(0.80f), lineHeight = 17.sp
+            )
+        }
+        SinemaCapsule(
+            Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 14.dp).size(44.dp),
+            selected = true, height = 44.dp, shape = CircleShape,
+            contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
+        ) { fg -> Icon(Icons.Rounded.ArrowForward, null, tint = fg, modifier = Modifier.size(20.dp)) }
+    }
+}
+
+// ── 5. Vücut: tek cam blok ────────────────────────────────────────────────────
+
+@Composable
+private fun BodySection(
+    state: ProfileState,
+    theme: AppThemeState,
+    english: Boolean,
+    onWeightTracking: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val accent = theme.effectiveAccentColor
-    Column(
-        modifier = modifier
-            .heightIn(min = 156.dp)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+    val hasWeight = state.weightKg > 0
+    val hasHeight = state.heightCm > 0
+    val hasBmi = state.bmi > 0
+    val hasFat = state.bodyFatPct > 0
+    val none = !hasWeight && !hasHeight && !hasBmi && !hasFat
+    val zoneNames = listOf(
+        theme.t("Zayıf", "Underweight"), theme.t("Normal", "Normal"),
+        theme.t("Fazla kilolu", "Overweight"), theme.t("Obez", "Obese")
+    )
+
+    SinemaCapsule(
+        modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), height = 1.dp,
+        contentPadding = PaddingValues(20.dp), verticalAlignment = Alignment.Top
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+        Column(Modifier.weight(1f)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel(theme.t("Vücut", "Body"))
+                PText(
+                    theme.t("Kilo takibi ›", "Weight tracking ›"), 13, FontWeight.SemiBold, color = accent,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable(role = Role.Button, onClick = onWeightTracking)
+                )
             }
-            Icon(Icons.Rounded.ArrowForwardIos, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(14.dp))
+            if (none) {
+                Spacer(Modifier.height(6.dp))
+                PText(
+                    theme.t("Boy ve kilonu ekle, BMI ve yağ oranı burada görünsün.", "Add your height and weight to see BMI and body fat here."),
+                    14, FontWeight.Normal, color = Dim, lineHeight = 20.sp
+                )
+            } else {
+                if (hasWeight) {
+                    Spacer(Modifier.height(14.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            formatNumber(state.weightKg, 1, english),
+                            style = Sinema.Metric.copy(fontSize = 64.sp, lineHeight = 1.0.em),
+                            color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        PText("kg", 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+                    }
+                }
+                if (hasBmi) {
+                    Spacer(Modifier.height(18.dp))
+                    PText("BMI ${formatNumber(state.bmi, 1, english)} · ${zoneNames[bmiZone(state.bmi)]}", 13, FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    BmiScale(state.bmi, accent)
+                }
+                if (hasHeight || hasFat) {
+                    Spacer(Modifier.height(22.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (hasHeight) BodyStat(theme.t("Boy", "Height"), formatNumber(state.heightCm, 0, english), "cm", Modifier.weight(1f))
+                        if (hasFat) BodyStat(theme.t("Yağ", "Body fat"), "%" + formatNumber(state.bodyFatPct, 1, english), null, Modifier.weight(1f))
+                        if (!(hasHeight && hasFat)) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 19.sp)
-            Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
+    }
+}
+
+@Composable
+private fun BodyStat(label: String, value: String, unit: String?, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        PText(label, 12, FontWeight.SemiBold, color = Dim)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            PText(value, 24, FontWeight.ExtraBold, modifier = Modifier.alignByBaseline())
+            if (unit != null) {
+                Spacer(Modifier.width(3.dp))
+                PText(unit, 13, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+            }
         }
+    }
+}
+
+/** 4 bölgeli BMI hapı (Zayıf/Normal/Fazla kilolu/Obez, 15–35 ölçeği) + işaretçi. Bölgeler beyaz alfa, vurgu yalnız işaretçide. */
+@Composable
+private fun BmiScale(bmi: Double, accent: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.fillMaxWidth().height(16.dp)) {
+        val w = size.width
+        val top = 4.dp.toPx()
+        val h = 8.dp.toPx()
+        val widths = listOf(49f, 91f, 70f, 70f).map { it / 280f * w }
+        val alphas = listOf(0.10f, 0.22f, 0.10f, 0.10f)
+        val clip = Path().apply {
+            addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, top, w, top + h, CornerRadius(h / 2f)))
+        }
+        clipPath(clip) {
+            var x = 0f
+            widths.forEachIndexed { i, zw ->
+                drawRect(Sinema.White.copy(alphas[i]), Offset(x, top), Size(zw, h))
+                if (i > 0) drawLine(Sinema.White.copy(0.30f), Offset(x, top), Offset(x, top + h), 1.dp.toPx())
+                x += zw
+            }
+        }
+        val cx = bmiScaleFraction(bmi) * w
+        drawCircle(accent, 8.dp.toPx(), Offset(cx, top + h / 2f))
+        drawCircle(Sinema.White, 6.dp.toPx(), Offset(cx, top + h / 2f))
+    }
+}
+
+// ── 6. Seri & seviye ──────────────────────────────────────────────────────────
+
+@Composable
+private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Boolean, modifier: Modifier = Modifier) {
+    val accent = theme.effectiveAccentColor
+    Column(modifier) {
+        SectionLabel(theme.t("Aktif seri", "Current streak"))
+        Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
+            Text(
+                state.currentStreak.toString(),
+                style = Sinema.Metric.copy(fontSize = 72.sp, lineHeight = 1.0.em),
+                color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+            )
+            Spacer(Modifier.width(6.dp))
+            PText(theme.t("gün", "days"), 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+        }
+        if (state.longestStreak > 0) {
+            val ratio = streakRatio(state.currentStreak, state.longestStreak)
+            Box(
+                Modifier.padding(top = 14.dp).fillMaxWidth().height(10.dp).clip(CircleShape).background(Sinema.White.copy(0.12f))
+            ) {
+                if (ratio > 0f) Box(Modifier.fillMaxWidth(ratio).fillMaxHeight().clip(CircleShape).background(accent))
+            }
+            PText(
+                theme.t("En uzun ${state.longestStreak} gün", "Longest ${state.longestStreak} days"), 12, FontWeight.Medium,
+                color = Dim, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
+            )
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 26.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StreakStat(state.level.toString(), theme.t("Seviye", "Level"), Modifier.weight(1f))
+            StreakStat(formatNumber(state.xp.toDouble(), 0, english), "XP", Modifier.weight(1f))
+            if (state.streakRankPosition > 0L) {
+                StreakStat("#${state.streakRankPosition}", theme.t("Sıralama", "Rank"), Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StreakStat(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        PText(value, 28, FontWeight.ExtraBold, maxLines = 1)
+        Spacer(Modifier.height(6.dp))
+        PText(label, 12, FontWeight.SemiBold, color = Dim, maxLines = 1)
     }
 }
 
@@ -1175,292 +1846,3 @@ private fun String.toPositiveDoubleOrNull(): Double? =
 private fun formatOneDecimal(value: Double): String = "%.1f".format(value)
 
 private fun formatWhole(value: Double): String = "%.0f".format(value)
-
-// ── Haftalık Antrenman Bar Chart (Gerçek Veri) ────────────────────────────────
-
-@Composable
-private fun WorkoutBarChart(
-    counts  : List<Int>,
-    theme   : AppThemeState,
-    modifier: Modifier = Modifier
-) {
-    val accent   = theme.effectiveAccentColor
-    val maxVal   = (counts.maxOrNull() ?: 0).toFloat().coerceAtLeast(1f)
-    val totalSum = counts.sum()
-    val avgStr   = if (counts.isNotEmpty()) String.format("%.1f", totalSum.toFloat() / counts.size) else "0"
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .padding(20.dp)
-    ) {
-        Text(theme.t("HAFTALIK ANTRENMANLAR", "WEEKLY WORKOUTS"), color = Sinema.textSecondary(theme), style = Sinema.Label)
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            SinemaBigStat(
-                value = avgStr,
-                unit = theme.t("/hf", "/wk"),
-                label = theme.t("Son 13 hafta ort.", "13-week avg."),
-                size = 52,
-                color = accent
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        if (counts.isNotEmpty()) {
-            Canvas(modifier = Modifier.fillMaxWidth().height(96.dp)) {
-                val barW = size.width / (counts.size * 2 - 1)
-                val maxH = size.height - 8.dp.toPx()
-
-                counts.forEachIndexed { i, v ->
-                    val barH = ((v / maxVal) * maxH).coerceAtLeast(4.dp.toPx())
-                    val left = i * (barW + barW)
-                    val top  = size.height - barH
-                    val isLast = i == counts.lastIndex
-                    val c = accent.copy(if (isLast) 1f else 0.45f)
-                    if (isLast) {
-                        drawRoundRect(accent.copy(0.30f), Offset(left - 3.dp.toPx(), top - 3.dp.toPx()), Size(barW + 6.dp.toPx(), barH + 6.dp.toPx()), CornerRadius(7.dp.toPx()))
-                    }
-                    drawRoundRect(c, Offset(left, top), Size(barW, barH), CornerRadius(4.dp.toPx()))
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(theme.t("13 hf önce", "13 wk ago"), color = Sinema.textSecondary(theme), fontSize = 11.sp)
-                Text(theme.t("Bu hafta", "This week"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-// ── Gerçek Metrik Grid ────────────────────────────────────────────────────────
-
-private data class RealMetric(
-    val value : String,
-    val unit  : String,
-    val label : String,
-    val icon  : ImageVector
-)
-
-@Composable
-private fun MetricSection(
-    title     : String,
-    metrics   : List<RealMetric>,
-    theme     : AppThemeState,
-    topPadding: Dp
-) {
-    if (metrics.isEmpty()) return
-
-    Column(modifier = Modifier.padding(top = topPadding)) {
-        SinemaSectionLabel(title)
-        Box(Modifier.padding(horizontal = 20.dp)) {
-            MetricsGrid(metrics = metrics, theme = theme)
-        }
-    }
-}
-
-@Composable
-private fun MetricsGrid(
-    metrics: List<RealMetric>,
-    theme  : AppThemeState
-) {
-    val accent = theme.effectiveAccentColor
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        metrics.chunked(2).forEach { row ->
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                row.forEach { m ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 136.dp)
-                            .sinemaCard(theme, RoundedCornerShape(24.dp))
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Icon(m.icon, null, tint = accent, modifier = Modifier.size(20.dp))
-                        SinemaBigStat(value = m.value, unit = m.unit, label = m.label, size = 34)
-                    }
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeeklyActivityDataCard(
-    theme          : AppThemeState,
-    strings        : AppStrings,
-    weeklyActivity : List<Float>,
-    modifier       : Modifier = Modifier
-) {
-    val accent = theme.effectiveAccentColor
-    val todayIndex = java.time.LocalDate.now().dayOfWeek.value - 1
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .padding(20.dp)
-    ) {
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(strings.weeklyActivity.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-                Text(strings.thisWeekSummary, color = Sinema.textSecondary(theme), fontSize = 12.sp)
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.Bottom
-        ) {
-            strings.dayAbbreviations.forEachIndexed { i, day ->
-                val level   = weeklyActivity.getOrElse(i) { 0f }.coerceIn(0f, 1f)
-                val isToday = i == todayIndex
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier         = Modifier.width(30.dp).height(80.dp),
-                        contentAlignment = Alignment.BottomCenter
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Sinema.line(theme))
-                        )
-                        if (level > 0f) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(level.coerceAtLeast(0.15f))
-                                    .then(if (isToday) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, RoundedCornerShape(10.dp)) else Modifier)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isToday) accent else accent.copy(0.5f))
-                            )
-                        }
-                    }
-                    Text(
-                        day,
-                        color      = if (isToday) accent else Sinema.textSecondary(theme),
-                        fontSize   = 11.sp,
-                        fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PerformanceRecordsSection(
-    weightKg: Double,
-    theme: AppThemeState,
-    onNavigateToWeightTracking: () -> Unit,
-    onNavigateToExerciseProgression: () -> Unit
-) {
-    Column(modifier = Modifier.padding(top = 12.dp)) {
-        SinemaSectionLabel(theme.t("Performans kayıtları", "Performance records"))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            PerformanceShortcutCard(
-                title = theme.t("Vücut Kilosu", "Body Weight"),
-                subtitle = if (weightKg > 0) {
-                    theme.t("${"%.1f".format(weightKg)} kg · Kilo trendi ve AI analiz", "${"%.1f".format(weightKg)} kg · Weight trend and AI analysis")
-                } else {
-                    theme.t("Kilo trendi ve AI analiz", "Weight trend and AI analysis")
-                },
-                icon = Icons.Rounded.ShowChart,
-                theme = theme,
-                onClick = onNavigateToWeightTracking,
-                modifier = Modifier.weight(1f)
-            )
-            PerformanceShortcutCard(
-                title = theme.t("Hareket Performansı", "Exercise Performance"),
-                subtitle = theme.t("Ağırlık, süre, mesafe ve hareket bazlı gelişim", "Weight, duration, distance and movement-based progress"),
-                icon = Icons.Rounded.TrendingUp,
-                theme = theme,
-                onClick = onNavigateToExerciseProgression,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-private fun trainingMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> {
-    val weeklyAverage = if (state.weeklyWorkoutCounts.isNotEmpty())
-        String.format("%.1f", state.weeklyWorkoutCounts.sum().toFloat() / state.weeklyWorkoutCounts.size)
-    else "0"
-
-    return listOf(
-        RealMetric(state.totalWorkouts.toString(), theme.t("antrenman", "workouts"), theme.t("TOPLAM ANTRENMAN", "TOTAL WORKOUTS"), Icons.Rounded.FitnessCenter),
-        RealMetric(state.totalExercises.toString(), theme.t("kez", "times"), theme.t("TOPLAM EGZERSİZ", "TOTAL EXERCISES"), Icons.Rounded.Timer),
-        RealMetric(formatDetailDurationValue(state.totalDurationSeconds), theme.t("dk", "min"), theme.t("TOPLAM SÜRE", "TOTAL DURATION"), Icons.Rounded.Timer),
-        RealMetric(formatDetailDistanceValue(state.totalDistanceMeters), formatDetailDistanceUnit(state.totalDistanceMeters), theme.t("TOPLAM MESAFE", "TOTAL DISTANCE"), Icons.Rounded.Straighten),
-        RealMetric((state.weeklyWorkoutCounts.lastOrNull() ?: 0).toString(), theme.t("ant", "wkts"), theme.t("BU HAFTA", "THIS WEEK"), Icons.Rounded.CalendarMonth),
-        RealMetric(weeklyAverage, theme.t("ant/hf", "wkts/wk"), theme.t("13 HAFTA ORT.", "13 WEEK AVG."), Icons.Rounded.BarChart)
-    )
-}
-
-private fun bodyMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> {
-    val bmiLabel = when {
-        state.bmi <= 0   -> null
-        state.bmi < 18.5 -> theme.t("ZAYIF", "UNDERWEIGHT")
-        state.bmi < 25.0 -> "NORMAL"
-        state.bmi < 30.0 -> theme.t("FAZLA KİLOLU", "OVERWEIGHT")
-        else             -> theme.t("OBEZ", "OBESE")
-    }
-
-    return listOfNotNull(
-        state.heightCm.takeIf { it > 0 }?.let {
-            RealMetric(it.toInt().toString(), "cm", theme.t("BOY", "HEIGHT"), Icons.Rounded.Straighten)
-        },
-        state.weightKg.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "kg", theme.t("KİLO", "WEIGHT"), Icons.Rounded.ShowChart)
-        },
-        state.bmi.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "BMI", bmiLabel ?: theme.t("VÜCUT KİTLE İND.", "BODY MASS INDEX"), Icons.Rounded.Analytics)
-        },
-        state.bodyFatPct.takeIf { it > 0 }?.let {
-            RealMetric("%.1f".format(it), "%", theme.t("VÜCUT YAĞ ORANI", "BODY FAT"), Icons.Rounded.Person)
-        }
-    )
-}
-
-private fun consistencyMetrics(state: ProfileState, theme: AppThemeState): List<RealMetric> =
-    listOfNotNull(
-        RealMetric(state.currentStreak.toString(), theme.t("gün", "days"), theme.t("AKTİF SERİ", "CURRENT STREAK"), Icons.Rounded.Whatshot),
-        RealMetric(state.longestStreak.toString(), theme.t("gün", "days"), theme.t("EN UZUN SERİ", "LONGEST STREAK"), Icons.Rounded.EmojiEvents),
-        RealMetric(state.level.toString(), theme.t("seviye", "level"), theme.t("MEVCUT SEVİYE", "CURRENT LEVEL"), Icons.Rounded.Star),
-        RealMetric(state.xp.toString(), "XP", theme.t("TOPLAM XP", "TOTAL XP"), Icons.Rounded.Bolt),
-        state.streakRankPosition.takeIf { it > 0L }?.let {
-            RealMetric(it.toString(), theme.t("sıra", "rank"), theme.t("SERİ SIRALAMASI", "STREAK RANKING"), Icons.Rounded.Leaderboard)
-        }
-    )
-
-private fun formatDetailDistanceValue(meters: Float): String =
-    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
-
-private fun formatDetailDistanceUnit(meters: Float): String =
-    if (meters >= 1000f) "km" else "m"
-
-private fun formatDetailDurationValue(seconds: Int): String =
-    if (seconds <= 0) "0" else (seconds / 60).coerceAtLeast(1).toString()

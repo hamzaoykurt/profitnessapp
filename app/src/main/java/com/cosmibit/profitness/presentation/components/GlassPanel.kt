@@ -89,8 +89,8 @@ fun Modifier.floatingGlassSurface(
             ambientColor = Color.Transparent
         )
         .clip(shape)
-        .background(if (theme.isDark) Color(0xFF141416) else Color.White)
-        .border(1.dp, if (theme.isDark) Color.White.copy(0.12f) else Color(0xFF0E0F11).copy(0.10f), shape)
+        .background(if (theme.isDark) Sinema.Surface else Color.White)
+        .border(1.dp, if (theme.isDark) Sinema.Line else Color(0xFF0E0F11).copy(0.10f), shape)
 }
 
 /** Recessed well for inputs and filters; depth points into the screen. */

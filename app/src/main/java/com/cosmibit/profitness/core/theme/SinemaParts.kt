@@ -1,17 +1,10 @@
 package com.cosmibit.profitness.core.theme
 
 import android.provider.Settings
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -49,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -73,46 +66,63 @@ fun rememberSinemaMotionOn(): Boolean {
 }
 
 /**
- * Çizimdeki `.scn` (AI Koç sahnesi): nötr koyu zemin, iki küçük canlı vurgu halesi
- * ve altta 380dp karartma (zemin nötr siyah, kahve tonu yok). Her zaman koyu; temadan bağımsız.
+ * SAYFA ZEMİNİ — TEK KAYNAK (.ekip/yon-cam-siyah.md "Sayfa zemini sistemi", seçenek C).
+ * Her sayfada aynı, SABİT (animasyon yok, içerikle kaymaz): zemin #0C0D10;
+ * üst ışık r360 merkez (120,130) vurgu α.30 → %92'de 0; alt ışık r310 merkez (260, alt−220) vurgu α.22 → 0;
+ * alt 380dp: saydam → (alt−84dp) sayfa rengi %45. Ölçüler 360dp genişlik çizimine göre ekran genişliğiyle ölçeklenir.
+ * Tek çizim: 2 radyal + 1 dikey degrade, Brush'lar drawWithCache'te (kare başı ayırma yok).
  */
 @Composable
-fun SinemaScene(modifier: Modifier = Modifier) {
+fun SinemaBackdrop(modifier: Modifier = Modifier) {
     val accent = LocalAppTheme.current.effectiveAccentColor
-    val motion = rememberSinemaMotionOn()
-    val t = rememberInfiniteTransition(label = "scene")
-    val d1 by t.animateFloat(0f, if (motion) 1f else 0f, infiniteRepeatable(tween(12000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "d1")
-    val d2 by t.animateFloat(0f, if (motion) 1f else 0f, infiniteRepeatable(tween(16000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "d2")
-    Canvas(modifier.fillMaxSize()) {
-        // Çizim .scn: vurgunun %10'u ile karışmış siyah zemin + iki büyük yavaş kayan vurgu halesi (.o1 %54, .o2 %28)
-        drawRect(lerp(Color.Black, accent, 0.10f))
-        fun dp(v: Float) = v.dp.toPx()
-        // .o1: 720dp, sol -260 üst -240; translate (-70,30) → (110,-10); transparent @%92
-        val c1 = Offset(dp(100f + (-70f + 180f * d1)), dp(120f + (30f - 40f * d1)))
-        drawCircle(
-            Brush.radialGradient(0f to accent.copy(0.54f), 0.92f to Color.Transparent, 1f to Color.Transparent, center = c1, radius = dp(360f)),
-            radius = dp(360f), center = c1
-        )
-        // .o2: 620dp, sol -40 üst 250; translate (70,0) → (-90,40)
-        val c2 = Offset(dp(270f + (70f - 160f * d2)), dp(560f + 40f * d2))
-        drawCircle(
-            Brush.radialGradient(0f to accent.copy(0.28f), 1f to Color.Transparent, center = c2, radius = dp(310f)),
-            radius = dp(310f), center = c2
-        )
-        val h = dp(380f).coerceAtMost(size.height)
-        drawRect(
-            Brush.verticalGradient(0f to Color.Transparent, 0.78f to Color.Black.copy(0.88f), 1f to Color.Black.copy(0.88f), startY = size.height - h, endY = size.height),
-            topLeft = Offset(0f, size.height - h), size = androidx.compose.ui.geometry.Size(size.width, h)
-        )
-    }
+    Spacer(
+        modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val k = size.width / 360.dp.toPx()          // çizim çerçevesi 360dp → ekran
+                fun d(v: Float) = v.dp.toPx() * k
+                val c1 = Offset(d(120f), d(130f))
+                val r1 = d(360f)
+                val o1 = Brush.radialGradient(
+                    0f to accent.copy(SinemaBackdropTopAlpha), 0.92f to Color.Transparent, 1f to Color.Transparent,
+                    center = c1, radius = r1
+                )
+                val c2 = Offset(d(260f), size.height - d(220f))
+                val r2 = d(310f)
+                val o2 = Brush.radialGradient(
+                    0f to accent.copy(SinemaBackdropBottomAlpha), 1f to Color.Transparent, center = c2, radius = r2
+                )
+                val sh = d(380f).coerceAtMost(size.height)
+                val shTop = size.height - sh
+                val solidFrom = if (sh > 0f) ((sh - d(84f)) / sh).coerceIn(0f, 1f) else 1f
+                val scrim = Brush.verticalGradient(
+                    0f to Color.Transparent, solidFrom to Sinema.scrim(0.45f), 1f to Sinema.scrim(0.45f),
+                    startY = shTop, endY = size.height
+                )
+                onDrawBehind {
+                    drawRect(Sinema.Page)
+                    drawCircle(o2, radius = r2, center = c2)
+                    drawCircle(o1, radius = r1, center = c1)
+                    drawRect(scrim, topLeft = Offset(0f, shTop), size = androidx.compose.ui.geometry.Size(size.width, sh))
+                }
+            }
+    )
 }
 
+/** Seçenek C ışık güçleri (sayfaya göre DEĞİŞMEZ). */
+const val SinemaBackdropTopAlpha = 0.30f
+const val SinemaBackdropBottomAlpha = 0.22f
+
+/** Eski ad: gövdesi artık [SinemaBackdrop] (orb hareketi kalktı). Çağıranlar otomatik yeni zemine geçer. */
+@Composable
+fun SinemaScene(modifier: Modifier = Modifier) = SinemaBackdrop(modifier)
+
 /**
- * TEK ORTAK KALIN BUZLU CAM KAPSÜL (hap, giriş çubuğu, satır, seçili/dolu hal). Sonraki dilimler bunu kullanır.
- * - `selected`: dolu vurgu + sinemaGlow (vurgu %40, 0 8dp 20dp); `content` ön plan rengini (onAccent / beyaz) alır.
+ * TEK ORTAK CAM KAPSÜL (hap, giriş çubuğu, satır, seçili/dolu hal) — cam C (`sinemaCapsuleGlass`).
+ * - `selected`: seçili taş (`.stone`): dolu vurgu + iç ışık + vurgu hale .35; `content` ön plan rengini (onAccent / metin) alır.
  * - `height`: hap 32-36, satır/giriş 52dp. `shape` varsayılan tam yuvarlak.
  * - `onClick` null ise tıklanmaz (giriş çubuğu içinde kendi alanları var).
- * - `light`: açık tema cam (beyaz tint + koyu yazı) — foto üstü sayfalar hep koyu, düz açık sayfada true.
+ * - `light`: geriye uyum için durur, YOK SAYILIR (tek koyu tema).
  * - Tıklanabilirken dokunma hedefi ≥48dp (görsel boyut aynı; minimumInteractiveComponentSize).
  * - `selectable`: seçilebilir kullanım (filtre/segment) — `selected` erişilebilirlik semantiği yayınlanır.
  */
@@ -124,8 +134,9 @@ fun SinemaCapsule(
     enabled: Boolean = true,
     height: Dp = 52.dp,
     shape: Shape = RoundedCornerShape(height / 2),
-    edge: Color = Color.White.copy(0.18f),
-    light: Boolean = false,
+    /** Düz kenar rengi (ör. odakta vurgu); null/beyaz .18 = cam C degrade kenar. */
+    edge: Color? = null,
+    @Suppress("UNUSED_PARAMETER") light: Boolean = false,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
@@ -134,17 +145,16 @@ fun SinemaCapsule(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val fg = if (selected) theme.effectiveOnAccentColor else if (light) Sinema.text(theme) else Color.White
+    val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
     Row(
         modifier
             .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .heightIn(min = height)
             .sinemaCapsuleGlass(
-                shape, edge = if (light) Color.Black.copy(0.12f) else edge, blur = 20.dp,
+                shape,
                 fill = if (selected) accent else null,
-                glow = if (selected) accent.copy(0.4f) else null,
-                tint = if (light) Color.White else Color.Black,
-                fillAlpha = if (light) 0.55f else 0.35f
+                glow = if (selected) accent.copy(0.35f) else null,
+                edge = edge
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick) else Modifier)
@@ -170,10 +180,9 @@ fun SinemaPill(
 }
 
 /**
- * Kapsül içi yuvarlak ikon düğme (cam kapsül dili): seçili/dolu = vurgu + glow.
+ * Kapsül içi yuvarlak ikon düğme (cam C): seçili/dolu = taş (vurgu + hale .35), değilse beyaz ışık camı.
  * `description` zorunlu parametre (varsayılanı yok; geriye uyum için `String?`) — ekran okuyucu etiketi, null verme.
- * Dokunma hedefi ≥48dp, görsel `size` aynı.
- * `light`: düz açık sayfada pasif hal (koyu %6 zemin + koyu ikon); foto üstü sayfalarda false.
+ * Dokunma hedefi ≥48dp, görsel `size` aynı. `light` geriye uyum için durur, yok sayılır (tek koyu tema).
  */
 @Composable
 fun SinemaCapsuleIconButton(
@@ -184,18 +193,20 @@ fun SinemaCapsuleIconButton(
     selected: Boolean = true,
     enabled: Boolean = true,
     size: Dp = 38.dp,
-    light: Boolean = false
+    @Suppress("UNUSED_PARAMETER") light: Boolean = false
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val fg = if (selected) theme.effectiveOnAccentColor else if (light) Sinema.text(theme) else Color.White
+    val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
     Box(
         modifier
             .minimumInteractiveComponentSize()
             .size(size)
-            .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape) else Modifier)
-            .clip(CircleShape)
-            .background(if (selected) accent else if (light) Color.Black.copy(0.06f) else Color.White.copy(0.14f))
+            .sinemaCapsuleGlass(
+                CircleShape,
+                fill = if (selected) accent else null,
+                glow = if (selected) accent.copy(0.35f) else null
+            )
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) { Icon(icon, description, tint = fg, modifier = Modifier.size(18.dp)) }
@@ -248,15 +259,14 @@ fun SinemaGoButton(
     }
 }
 
-/** Nötr Sinema kartı: #141416 (açıkta #F2F3F5) + 1dp çizgi, vurgu tonu yok. */
+/** Nötr Sinema kartı: #15171C (opak) + 1dp beyaz .09 çizgi, vurgu tonu yok. */
 fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(24.dp)): Modifier = this
     .clip(shape)
     .background(Sinema.surface(theme))
     .border(1.dp, Sinema.line(theme), shape)
 
 /**
- * Çizimdeki hap/segment düğmesi: pasif = siyah %35 cam + beyaz %18 kenar,
- * aktif = dolu vurgu + sinemaGlow (vurgu %40, 0 8dp 20dp). `content` aktif/pasif ön plan rengini alır.
+ * Çizimdeki hap/segment düğmesi: pasif = cam C (beyaz ışık), aktif = seçili taş (dolu vurgu + hale .35). `content` aktif/pasif ön plan rengini alır.
  * Dokunma hedefi ≥48dp. `selectable` = filtre/segment kullanımı: `active` erişilebilirlikte "seçili" okunur.
  */
 @Composable

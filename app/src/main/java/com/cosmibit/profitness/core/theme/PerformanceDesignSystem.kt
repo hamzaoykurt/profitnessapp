@@ -144,7 +144,7 @@ private fun Modifier.layeredMaterial(
 
 /** Translucent card base so the page atmosphere tints the glass. */
 private fun glassFill(theme: AppThemeState): Color =
-    if (theme.isDark) Color(0xFF141416) else Color(0xFFF2F3F5)
+    if (theme.isDark) Sinema.Surface else Color(0xFFF2F3F5)
 
 private fun cardLight(theme: AppThemeState): Stops =
     if (theme.isDark) arrayOf(

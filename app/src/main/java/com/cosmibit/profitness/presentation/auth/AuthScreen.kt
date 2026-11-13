@@ -179,7 +179,7 @@ private fun AuthLoadingSplash() {
     )
 
     Box(
-        modifier         = Modifier.fillMaxSize().background(Color.Black),
+        modifier         = Modifier.fillMaxSize().background(Sinema.Page),
         contentAlignment = Alignment.Center
     ) {
         SinemaScene()
@@ -851,7 +851,7 @@ private fun AuthCenteredScaffold(
         yAnim.animateTo(0f, tween(260, easing = EaseOutCubic))
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
         SinemaScene()
         Column(
             modifier = Modifier

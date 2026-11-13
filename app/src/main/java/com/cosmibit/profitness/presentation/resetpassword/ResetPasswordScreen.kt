@@ -64,7 +64,7 @@ fun ResetPasswordScreen(
 private fun ExchangingContent() {
     val theme  = LocalAppTheme.current
     Box(
-        modifier         = Modifier.fillMaxSize().background(Color.Black),
+        modifier         = Modifier.fillMaxSize().background(Sinema.Page),
         contentAlignment = Alignment.Center
     ) {
         SinemaScene()
@@ -83,7 +83,7 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
     val theme  = LocalAppTheme.current
     val responsive = rememberResponsiveLayoutInfo()
     Box(
-        modifier         = Modifier.fillMaxSize().background(Color.Black),
+        modifier         = Modifier.fillMaxSize().background(Sinema.Page),
         contentAlignment = Alignment.Center
     ) {
         SinemaScene()
@@ -163,7 +163,7 @@ private fun NewPasswordContent(
                 .graphicsLayer(alpha = alphaAnim.value)
         ) {
             // Orb başlık (SinemaScene her zaman koyu → beyaz metin)
-            Box(Modifier.fillMaxWidth().height(280.dp).background(Color.Black)) {
+            Box(Modifier.fillMaxWidth().height(280.dp).background(Sinema.Page)) {
                 SinemaScene()
                 Column(
                     Modifier

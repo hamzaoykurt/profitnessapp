@@ -64,30 +64,30 @@ data class AppThemeState(
 val AppThemeState.bg0: Color get() = when {
     !isDark                               -> Color(0xFFF6F1EA)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF010203)
-    else                                  -> Color(0xFF0F0D0C)
+    else                                  -> Sinema.Page      // #0C0D10
 }
 val AppThemeState.bg1: Color get() = when {
     !isDark                               -> Color(0xFFFFFDF9)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF050609)
-    else                                  -> Color(0xFF161311)
+    else                                  -> Sinema.Surface   // #15171C
 }
 val AppThemeState.bg2: Color get() = when {
     !isDark                               -> Color(0xFFEEE7DD)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF0C0F14)
-    else                                  -> Color(0xFF1D1916)
+    else                                  -> Sinema.Elevated  // #1D2027
 }
 val AppThemeState.bg3: Color get() = when {
     !isDark                               -> Color(0xFFE3DACE)
     surfaceStyle == SurfaceStyle.OLED     -> Color(0xFF151A21)
-    else                                  -> Color(0xFF26211D)
+    else                                  -> Color(0xFF262A32)
 }
 val AppThemeState.stroke: Color get() = when {
     !isDark                               -> Color(0xFFD9CFC2)
-    else                                  -> Color(0xFF3A332D)
+    else                                  -> Color(0xFF26282D)   // beyaz .09 / kart bileşkesi (opak: .copy(alpha) çağrıları için)
 }
-val AppThemeState.text0: Color get() = if (isDark) Color(0xFFF8F4EE) else Color(0xFF1F1A16)
-val AppThemeState.text1: Color get() = if (isDark) Color(0xFFC4BBB1) else Color(0xFF5A5047)
-val AppThemeState.text2: Color get() = if (isDark) Color(0xFFA9A095) else Color(0xFF665B50)
+val AppThemeState.text0: Color get() = if (isDark) Sinema.Text else Color(0xFF1F1A16)
+val AppThemeState.text1: Color get() = if (isDark) Sinema.TextSecondary else Color(0xFF5A5047)
+val AppThemeState.text2: Color get() = if (isDark) Color(0xFF9A9DA6) else Color(0xFF665B50)
 
 /** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
 private fun Color.toPastel(): Color {

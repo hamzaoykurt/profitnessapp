@@ -209,7 +209,7 @@ fun DiscoverScreen(
     val darkTheme = remember(theme) { theme.copy(isDark = true) }   // Keşfet her zaman koyu foto sayfaları
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val controlsTop = statusTop + 20.dp + timerExtraPad
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
       CompositionLocalProvider(LocalAppTheme provides darkTheme) {
         selectedProgram?.let { program ->
             val live = state.items.firstOrNull { it.id == program.id }
@@ -324,7 +324,7 @@ private fun SharedProgramDetailScreen(
     com.cosmibit.profitness.presentation.program.ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
     val goBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = goBottom + 56.dp + 48.dp),
@@ -1306,7 +1306,7 @@ private fun SinemaProgramsPager(
             LaunchedEffect(settled, items.size, state.canLoadMore) {
                 if (state.canLoadMore && !state.isLoading && settled >= items.size - 3) onLoadMore()
             }
-            Box(Modifier.fillMaxSize().background(Color.Black)) {
+            Box(Modifier.fillMaxSize().background(Sinema.Page)) {
                 androidx.compose.foundation.pager.VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),

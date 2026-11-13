@@ -17,6 +17,8 @@ fun ProfitnessTheme(
     themeState: AppThemeState = AppThemeState(),
     content: @Composable () -> Unit
 ) {
+    // Tek koyu tema (açık tema kaldırıldı): çağıran ne verirse versin koyu zorlanır.
+    val themeState = themeState.copy(isDark = true)
     val colorScheme = if (themeState.isDark) {
         darkColorScheme(
             primary        = themeState.effectiveAccentColor,

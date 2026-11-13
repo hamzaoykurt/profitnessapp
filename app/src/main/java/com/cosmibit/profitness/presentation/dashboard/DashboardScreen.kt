@@ -449,6 +449,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 },
                 onNavigateToExerciseProgression = {
                     showExerciseProgression = true
+                },
+                onStartWorkout = {
+                    showPerformanceDetail = false
+                    selectedTabRoute = DashboardTab.Workout.route
                 }
             )
         }

@@ -8,27 +8,40 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /**
- * SİNEMA ortak tokenları (.ekip/plan-sinema.md §0). Fotoğraf sayfaları temadan bağımsız koyudur;
- * düz zemin sayfaları temaya göre 000000/FFFFFF. Bileşene hex gömülmez, buradan okunur.
+ * SİNEMA ortak tokenları (.ekip/yon-cam-siyah.md "Tek koyu tema"). TEK KOYU TEMA: saf siyah/beyaz yok,
+ * karartma/gölge siyah değil sayfa rengi (+alfa). Bileşene hex gömülmez, buradan okunur.
+ * `t` parametreleri geriye uyum için durur; değer temaya bakmaz.
  */
 object Sinema {
-    val Ink = Color(0xFF0E0F11)          // cam tint tabanı
+    /** Yalnız vurgu üstü yazı rengi (cam tinti DEĞİL). */
+    val Ink = Color(0xFF0E0F11)
     val White = Color.White
 
-    // ── Temaya göre düz zemin sayfaları ────────────────────────────────────
-    fun page(t: AppThemeState) = if (t.isDark) Color(0xFF000000) else Color(0xFFFFFFFF)
-    fun surface(t: AppThemeState) = if (t.isDark) Color(0xFF141416) else Color(0xFFF2F3F5)
-    fun text(t: AppThemeState) = if (t.isDark) Color(0xFFFFFFFF) else Color(0xFF0E0F11)
-    fun textSecondary(t: AppThemeState) = if (t.isDark) Color(0xFFA1A1AA) else Color(0xFF5C5F66)
-    fun line(t: AppThemeState) = if (t.isDark) Color.White.copy(0.12f) else Color(0xFF0E0F11).copy(0.10f)
+    // ── Tek koyu tema değerleri ────────────────────────────────────────────
+    val Page = Color(0xFF0C0D10)
+    val Surface = Color(0xFF15171C)
+    val Elevated = Color(0xFF1D2027)
+    val Text = Color(0xFFF4F5F7)
+    val TextSecondary = Color(0xFFA6A9B2)
+    val Line = Color.White.copy(0.09f)
+
+    fun page(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Page
+    fun surface(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Surface
+    fun elevated(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Elevated
+    fun text(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Text
+    fun textSecondary(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = TextSecondary
+    fun line(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Line
+
+    /** Karartma rengi: sayfa rengi + alfa (siyah değil). */
+    fun scrim(alpha: Float) = Page.copy(alpha = alpha)
 
     // ── Fotoğraf üstü karartma (alfalar kontrast hesabının dayanağı) ───────
-    /** ALT: 0→%30H: 0 · %48H: .72 · %100H: .90 */
+    /** ALT: 0→%30H: 0 · %48H: .72 · %100H: .90 (sayfa rengi) */
     val BottomScrim: Brush get() = Brush.verticalGradient(
         0f to Color.Transparent,
         0.30f to Color.Transparent,
-        0.48f to Color.Black.copy(0.72f),
-        1f to Color.Black.copy(0.90f)
+        0.48f to Page.copy(0.72f),
+        1f to Page.copy(0.90f)
     )
     const val TopScrimStrongAlpha = 0.70f
     const val TopScrimMidAlpha = 0.60f

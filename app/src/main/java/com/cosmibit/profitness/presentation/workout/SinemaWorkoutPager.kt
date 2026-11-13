@@ -309,7 +309,7 @@ fun SinemaWorkoutPager(
         var showList by remember(selectedDayIdx) { mutableStateOf(false) }
 
         CompositionLocalProvider(LocalPagerBottomExtra provides bottomExtra) {
-        Box(modifier.fillMaxSize().background(Color.Black)) {
+        Box(modifier.fillMaxSize().background(Sinema.Page)) {
             HorizontalPager(
                 state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
                 key = { it }
@@ -439,17 +439,20 @@ private fun PhotoLayer(
     }
 }
 
-/** Üst + alt karartma (çizim: `.tg` 140dp .55→0, `.bgd` 470dp 0→.88 @%78). */
+/**
+ * Üst + alt karartma (çizim: `.tg` 140dp .55→0, `.bgd` 470dp 0→[bottomAlpha] @[solidAt]). Renk sayfa rengi (siyah değil).
+ * Egzersiz sayfası set satırları için .65 kullanır (yon-cam-siyah "Set satırları": karartma FOTODA, camda değil).
+ */
 @Composable
-internal fun Scrims(modifier: Modifier = Modifier) {
+internal fun Scrims(modifier: Modifier = Modifier, bottomAlpha: Float = 0.88f, solidAt: Float = 0.78f) {
     Box(
         modifier.fillMaxSize().drawWithCache {
             val h = size.height
             val topH = 140.dp.toPx().coerceAtMost(h)
             val botH = 470.dp.toPx().coerceAtMost(h)
-            val top = Brush.verticalGradient(listOf(Color.Black.copy(0.55f), Color.Transparent), startY = 0f, endY = topH)
+            val top = Brush.verticalGradient(listOf(Sinema.scrim(0.55f), Color.Transparent), startY = 0f, endY = topH)
             val bottom = Brush.verticalGradient(
-                0f to Color.Transparent, 0.78f to Color.Black.copy(0.88f), 1f to Color.Black.copy(0.88f),
+                0f to Color.Transparent, solidAt to Sinema.scrim(bottomAlpha), 1f to Sinema.scrim(bottomAlpha),
                 startY = h - botH, endY = h
             )
             onDrawBehind {
@@ -535,7 +538,7 @@ private fun ExercisePage(
         val haze = remember { HazeState() }
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             PhotoLayer(photo, isSettled, animEnabled, offset)
-            Scrims()
+            Scrims(bottomAlpha = 0.65f, solidAt = 0.45f)
             SweepLayer(sweepKey, animEnabled)
         }
 
@@ -653,45 +656,193 @@ private fun SetCapsules(
     }
     val sets = exercise.sets.coerceAtLeast(1)
     val twoCols = sets >= 5
+    val locale = if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+        else java.util.Locale.forLanguageTag("tr-TR")
     val defaultWeightKg = when {
         exercise.weightKg > 0f -> exercise.weightKg
         exercise.category.equals("Bodyweight", ignoreCase = true) && data.profileWeightKg > 0f -> data.profileWeightKg
         else -> 0f
     }
+    // Aktif satır: hareket bitmediyse ilk tamamlanmamış set (tek satır).
+    val activeIdx = if (isCompleted) -1 else (0 until sets).firstOrNull { it !in data.doneSetIndices } ?: -1
     @Composable
-    fun capsule(i: Int, modifier: Modifier) {
+    fun row(i: Int, modifier: Modifier) {
         val done = i in data.doneSetIndices
-        val label = theme.t("Set ${i + 1}", "Set ${i + 1}").sinemaUpper(theme)
-        val value: String
-        var extra: String? = null
+        val primary: SetValue
+        var secondary: SetValue? = null
         if (kind == SinemaSetKind.Timed) {
             val secs = data.setDurations[i] ?: exercise.targetDurationSeconds?.toString() ?: exercise.reps.toDurationSetSecondsLabel()
-            value = theme.t("${secs.ifBlank { "0" }} sn", "${secs.ifBlank { "0" }} sec")
+            primary = SetValue(secs.ifBlank { "0" }, theme.t("sn", "sec"))
         } else {
-            // Çizimde "10 tekrar"; ağırlık gerçek veri olduğu için girilmişse/varsa yanına eklenir.
+            // kg birincil (başlıkta "3 × 12" zaten yazıyor; değişen bilgi yük). Ağırlık yoksa tekrar birincil olur.
             val w = data.setWeights[i]?.takeIf { it.isNotBlank() }
-            val weight = if (w != null) "$w kg" else if (defaultWeightKg > 0f) "${"%.0f".format(defaultWeightKg)} kg" else null
-            val reps = theme.t("${exercise.reps} tekrar", "${exercise.reps} reps")
-            if (twoCols) value = weight ?: reps else { value = reps; extra = weight }
+            val weight = when {
+                w != null -> SetValue(formatWeightNumber(w, locale), "kg")
+                defaultWeightKg > 0f -> SetValue(formatWeightNumber(defaultWeightKg, locale), "kg")
+                else -> null
+            }
+            val reps = SetValue(exercise.reps.ifBlank { "—" }, theme.t("tekrar", "reps"))
+            if (weight == null) primary = reps
+            else if (twoCols) primary = weight
+            else { primary = weight; secondary = reps }
         }
-        CapsuleRow(
-            label = label, value = value,
-            extra = extra,
-            done = done, height = h, accent = accent, onAccent = onAccent,
+        SetRow(
+            index = i, primary = primary, secondary = secondary,
+            state = when { done -> SetRowState.Done; i == activeIdx -> SetRowState.Active; else -> SetRowState.Pending },
+            accent = accent, onAccent = onAccent,
             toggleDescription = if (done) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
             onToggle = { actions.onToggleSet(exercise, i) }, onOpen = { onOpenSheet(i) }, modifier = modifier
         )
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (!twoCols) {
-            repeat(sets) { i -> capsule(i, Modifier.fillMaxWidth()) }
+            repeat(sets) { i -> row(i, Modifier.fillMaxWidth()) }
         } else {
-            (0 until sets).chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { i -> capsule(i, Modifier.weight(1f)) }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
+            (0 until sets).chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    pair.forEach { i -> row(i, Modifier.weight(1f)) }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+/** Set satırı değeri: büyük rakam + küçük birim ("29" + "kg"). */
+@Immutable
+internal data class SetValue(val number: String, val unit: String)
+
+internal enum class SetRowState { Pending, Active, Done }
+
+/**
+ * Set satırı (yon-cam-siyah "Set satırları" + mockup sol varyant): `[sıra diski 28] 12 [kg 92] [tekrar 1fr] [onay 30]`.
+ * Bekleyen h52 cam .10→.06 · Aktif h60 cam .14 + vurgu kenar .75→.25 + vurgu hale .22, rakam 24sp ·
+ * Tamamlanan h52 cam .10 + vurgu %18 örtü + vurgu kenar .45, dolu vurgu onay. Satır içi yazı #F4F5F7 (alfa ile soldurma yok).
+ * Satıra dokunmak set sheet'ini açar; onay dairesi (48dp hedef) seti işaretler.
+ */
+@Composable
+private fun SetRow(
+    index: Int,
+    primary: SetValue,
+    secondary: SetValue?,
+    state: SetRowState,
+    accent: Color,
+    onAccent: Color,
+    toggleDescription: String,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalAppTheme.current
+    val active = state == SetRowState.Active
+    val done = state == SetRowState.Done
+    val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
+    val h by androidx.compose.animation.core.animateDpAsState(
+        if (active) 60.dp else 52.dp, if (motion) tween(200, easing = FastOutSlowInEasing) else androidx.compose.animation.core.snap(),
+        label = "set_row_h"
+    )
+    val shape = RoundedCornerShape(h / 2)
+    val onAcc = if (onAccent == Color.Black) Sinema.Ink else onAccent
+    val numSize = if (active) 24.sp else 20.sp
+    val setLabel = theme.t("Set ${index + 1}", "Set ${index + 1}")
+    Row(
+        modifier
+            .height(h)
+            .sinemaCapsuleGlass(
+                shape,
+                fillTop = when (state) { SetRowState.Pending -> 0.10f; SetRowState.Active -> 0.14f; SetRowState.Done -> 0.10f },
+                fillBottom = when (state) { SetRowState.Pending -> 0.06f; SetRowState.Active -> 0.14f; SetRowState.Done -> 0.10f },
+                overlay = if (done) accent.copy(0.18f) else null,
+                edgeColors = when (state) {
+                    SetRowState.Pending -> null
+                    SetRowState.Active -> listOf(accent.copy(0.75f), accent.copy(0.25f))
+                    SetRowState.Done -> listOf(accent.copy(0.45f))
+                },
+                glow = if (active) accent.copy(0.22f) else null,
+                shadow = !active
+            )
+            .semantics { contentDescription = setLabel }
+            .clickable(role = Role.Button, onClick = onOpen)
+            .padding(start = 12.dp, end = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // sıra diski: 28dp, "1" 13sp SemiBold
+        Box(
+            Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .then(
+                    if (active) Modifier.background(Sinema.Text)
+                    else Modifier.border(1.5.dp, Color.White.copy(0.30f), CircleShape)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "${index + 1}", color = if (active) Sinema.Ink else Sinema.Text,
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                style = TextStyle(fontFamily = com.cosmibit.profitness.core.theme.AppFontFamily, fontFeatureSettings = "tnum")
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        if (secondary != null) {
+            SetValueText(primary, numSize, Modifier.width(92.dp))
+            SetValueText(secondary, numSize, Modifier.weight(1f))
+        } else {
+            SetValueText(primary, numSize, Modifier.weight(1f))
+        }
+        SetCheck(state, accent, onAcc, toggleDescription, onToggle)
+    }
+}
+
+@Composable
+private fun SetValueText(v: SetValue, numSize: androidx.compose.ui.unit.TextUnit, modifier: Modifier) {
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontSize = numSize, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em)) { append(v.number) }
+            withStyle(SpanStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)) { append("\u2009" + v.unit) }
+        },
+        color = Sinema.Text, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+        style = TextStyle(fontFamily = com.cosmibit.profitness.core.theme.AppFontFamily, fontFeatureSettings = "tnum"),
+        modifier = modifier
+    )
+}
+
+/** Onay dairesi: görsel 30dp, dokunma 48dp. Bekleyen halka beyaz .40 · aktif 2dp vurgu · tamamlanan dolu vurgu + tik. */
+@Composable
+private fun SetCheck(state: SetRowState, accent: Color, onAccent: Color, description: String, onToggle: () -> Unit) {
+    val done = state == SetRowState.Done
+    val pop = remember { Animatable(1f) }
+    var first by remember { mutableStateOf(true) }
+    val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
+    LaunchedEffect(done) {
+        if (done && !first && motion) {
+            pop.snapTo(0.7f)
+            pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+        }
+        first = false
+    }
+    Box(
+        Modifier
+            .size(48.dp)
+            .semantics { contentDescription = description }
+            .clickable(role = Role.Checkbox, onClick = onToggle),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier
+                .size(30.dp)
+                .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+                .clip(CircleShape)
+                .then(
+                    when (state) {
+                        SetRowState.Done -> Modifier.background(accent)
+                        SetRowState.Active -> Modifier.border(2.dp, accent, CircleShape)
+                        SetRowState.Pending -> Modifier.border(1.5.dp, Color.White.copy(0.40f), CircleShape)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (done) Icon(SinemaIcons.Check, null, tint = onAccent, modifier = Modifier.size(16.dp))
         }
     }
 }

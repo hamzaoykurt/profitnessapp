@@ -1292,7 +1292,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     val haze = remember { HazeState() }
     val promptFocus = remember { FocusRequester() }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(Sinema.Page)) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) { SinemaScene(Modifier.fillMaxSize()) }
 
         // ── Scrollable content ───────────────────────────────────────────────
