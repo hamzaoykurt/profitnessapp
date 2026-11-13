@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -852,7 +853,7 @@ private fun BuilderChooseScreen(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = com.cosmibit.profitness.core.theme.SinemaNavHeight + 24.dp + timerExtraPad)
     ) {
-        item { ProgramsHero(active = activeProgram, today = todayInfo, onStart = onStartWorkout) }
+        item { ProgramsHero(active = activeProgram, today = todayInfo, onStart = onStartWorkout, onOpen = activeProgram?.let { p -> { onEditProgram(p) } }) }
         item {
             Box(Modifier.offset(y = (-28).dp)) {
                 ProgramsSheet {
@@ -921,6 +922,12 @@ private fun ProgramDetailDialog(
     val theme   = LocalAppTheme.current
     val accent  = theme.effectiveAccentColor
     val strings = theme.strings
+    val catalog = rememberExerciseCatalog()
+    var viewerExercise by remember { mutableStateOf<com.cosmibit.profitness.presentation.workout.Exercise?>(null) }
+    val templateDays = remember(program.title) {
+        com.cosmibit.profitness.data.program.PROGRAM_TEMPLATES.firstOrNull { it.key == program.title }?.days.orEmpty()
+    }
+    ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
 
     Dialog(
         onDismissRequest = { if (!isApplying) onDismiss() },
@@ -1041,6 +1048,40 @@ private fun ProgramDetailDialog(
                             .padding(16.dp)
                     ) {
                         Text(program.localizedSchedule(theme), color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 22.sp)
+                    }
+
+                    templateDays.filter { !it.isRestDay && it.exercises.isNotEmpty() }.forEachIndexed { dayIdx, day ->
+                        Spacer(Modifier.height(20.dp))
+                        Text(
+                            "${dayIdx + 1} · ${day.title}".sinemaUpper(theme),
+                            color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 2, overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            day.exercises.forEachIndexed { i, ex ->
+                                if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
+                                val open = {
+                                    viewerExercise = catalog.toViewerExercise(
+                                        ex.exerciseName, ex.sets, ex.reps, ex.restSeconds, ex.targetDurationSeconds
+                                    )
+                                }
+                                Row(
+                                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = open).padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        theme.exerciseDisplayName(ex.exerciseName), color = Sinema.text(theme), fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        if (ex.targetDurationSeconds != null) "${ex.targetDurationSeconds} ${theme.t("SN", "SEC")}" else "${ex.sets}×${ex.reps}",
+                                        color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1,
+                                        modifier = Modifier.padding(start = 10.dp)
+                                    )
+                                    ExercisePlayButton(onClick = open, modifier = Modifier.padding(start = 8.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -134,7 +134,7 @@ private val SheetTopRadius = 28.dp
 
 /** Tam boy foto kapak: foto + karartma + AKTİF PROGRAM çipi + başlık + ilerleme paneli + BAŞLA. 496dp; sheet altına 28dp biner. */
 @Composable
-fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit) {
+fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit, onOpen: (() -> Unit)? = null) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -148,7 +148,10 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
         1f, if (motion) 1.08f else 1f, infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse), label = "kb"
     )
     Box(Modifier.fillMaxWidth().height(496.dp).clipToBounds()) {
-        Box(Modifier.fillMaxSize().hazeSource(haze)) {
+        Box(
+            Modifier.fillMaxSize().hazeSource(haze)
+                .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+        ) {
             // Foto 640dp yüksekliğinde, üstten hizalı, -110dp kaydırılmış (çizim)
             Box(Modifier.fillMaxWidth().requiredHeight(640.dp).offset(y = (-110).dp).graphicsLayer { scaleX = kb; scaleY = kb }) {
                 SceneImage(url = imageUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1080, requestHeightPx = 1600,

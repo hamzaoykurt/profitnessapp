@@ -10,6 +10,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.cosmibit.profitness.presentation.program.toViewerExercise
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.clipToBounds
@@ -318,6 +319,9 @@ private fun SharedProgramDetailScreen(
 ) {
     val theme = LocalAppTheme.current
     val detail = remember(program.id, program.programData) { program.toDetailPlan() }
+    val catalog = com.cosmibit.profitness.presentation.program.rememberExerciseCatalog()
+    var viewerExercise by remember { mutableStateOf<com.cosmibit.profitness.presentation.workout.Exercise?>(null) }
+    com.cosmibit.profitness.presentation.program.ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
     val goBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -339,7 +343,11 @@ private fun SharedProgramDetailScreen(
             if (detail.days.isEmpty()) {
                 item { EmptyProgramDetailCard() }
             } else {
-                items(detail.days, key = { it.index }) { day -> SharedProgramDayCard(day = day) }
+                items(detail.days, key = { it.index }) { day ->
+                    SharedProgramDayCard(day = day, onViewExercise = { ex ->
+                        viewerExercise = catalog.toViewerExercise(ex.name, ex.sets, ex.reps, ex.restSeconds, ex.targetDurationSeconds)
+                    })
+                }
             }
         }
 
@@ -444,7 +452,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
 }
 
 @Composable
-private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
+private fun SharedProgramDayCard(day: SharedProgramDetailDay, onViewExercise: (SharedProgramDetailExercise) -> Unit) {
     val theme = LocalAppTheme.current
     Column(
         modifier = Modifier
@@ -488,17 +496,17 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay) {
             Spacer(Modifier.height(14.dp))
             day.exercises.forEachIndexed { i, exercise ->
                 if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
-                SharedProgramExerciseRow(exercise = exercise)
+                SharedProgramExerciseRow(exercise = exercise, onView = { onViewExercise(exercise) })
             }
         }
     }
 }
 
 @Composable
-private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
+private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise, onView: () -> Unit) {
     val theme = LocalAppTheme.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onView).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -512,6 +520,7 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise) {
                 maxLines = 1, modifier = Modifier.padding(start = 12.dp)
             )
         }
+        com.cosmibit.profitness.presentation.program.ExercisePlayButton(onClick = onView, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
@@ -1361,7 +1370,7 @@ private fun ProgramPage(
         1f, if (isSettled && motion) 1.08f else 1f,
         infiniteRepeatable(tween(Sinema.KenBurnsMs, easing = LinearEasing), RepeatMode.Reverse), label = "kb"
     )
-    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().clickable(role = Role.Button, onClick = onOpen)) {
         val compact = maxHeight < 700.dp
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             SceneImage(
