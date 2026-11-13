@@ -71,6 +71,9 @@ import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.accent3TextColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
@@ -574,11 +577,11 @@ private fun ChallengeInvitesSection(
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(13.dp))
+                Icon(Icons.Rounded.PersonAdd, null, tint = theme.accent3TextColor, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     theme.t("DAVETLER", "INVITES"),
-                    color = accent,
+                    color = theme.accent3TextColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.1.sp
@@ -632,7 +635,8 @@ private fun ChallengeInviteRow(
     val statusColor = challengeStatusAccent(
         status = status,
         completed = challenge.isCompleted,
-        accent = accent
+        accent = theme.accent2Color,
+        trophy = theme.accent3Color
     )
     Row(
         modifier = Modifier
@@ -681,19 +685,18 @@ private fun ChallengeInviteRow(
         Box(
             modifier = Modifier
                 .height(48.dp)
-                .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                 .clip(CircleShape)
-                .background(accent)
+                .background(Color.White.copy(0.14f))
                 .clickable(enabled = !inFlight && status != CardStatus.Ended && !challenge.isCompleted) { onAccept() }
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             if (inFlight) {
-                CircularProgressIndicator(color = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(color = accent, modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
             } else {
                 Text(
                     theme.t("KATIL", "JOIN"),
-                    color = theme.effectiveOnAccentColor,
+                    color = accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.9.sp
@@ -816,8 +819,18 @@ private fun FilterChip(
     accent: Color,
     onClick: () -> Unit
 ) {
-    SinemaChip(active = active, onClick = onClick, height = 34.dp) { fg ->
-        Text(label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
+    // c1 ekranda tek dolgu (FAB); ikincil seçili taş nötr cam
+    val shape = RoundedCornerShape(17.dp)
+    Box(
+        Modifier
+            .heightIn(min = 34.dp)
+            .clip(shape)
+            .background(Color.White.copy(if (active) 0.22f else 0.08f))
+            .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (active) Color.White else Color.White.copy(0.75f), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
 }
 
@@ -877,14 +890,13 @@ private fun ScopeChip(
     Row(
         modifier = modifier
             .fillMaxHeight()
-            .then(if (isActive) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
             .clip(shape)
-            .then(if (isActive) Modifier.background(accent) else Modifier)
+            .then(if (isActive) Modifier.background(Color.White.copy(0.22f)) else Modifier)
             .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        val fg = if (isActive) theme.effectiveOnAccentColor else Color.White.copy(0.75f)
+        val fg = if (isActive) Color.White else Color.White.copy(0.75f)
         Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
         Text(label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
@@ -912,11 +924,12 @@ private fun statusOf(start: String, end: String): CardStatus {
 private fun challengeStatusAccent(
     status: CardStatus,
     completed: Boolean,
-    accent: Color
+    accent: Color,
+    trophy: Color
 ): Color = when {
-    completed -> Color(0xFF38BDF8)
+    completed -> trophy
     status == CardStatus.Ended -> Color(0xFF9CA3AF)
-    status == CardStatus.NotStarted -> Color(0xFFFFB74D)
+    status == CardStatus.NotStarted -> Color.White.copy(0.6f)
     else -> accent
 }
 
@@ -1005,7 +1018,7 @@ private fun ChallengeCard(
                         status == CardStatus.Live -> theme.t("DEVAM EDİYOR", "LIVE")
                         else -> theme.t("SONA ERDİ", "ENDED")
                     },
-                    dot = if (c.isCompleted || status == CardStatus.Live) accent else Color.White.copy(0.5f)
+                    dot = if (c.isCompleted) theme.accent3Color else if (status == CardStatus.Live) theme.accent2Color else Color.White.copy(0.5f)
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Rounded.People, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
@@ -1065,10 +1078,10 @@ private fun ChallengeCard(
                             color = Color.White.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.weight(1f))
-                        Text("%${(c.progressPct * 100).toInt()}", color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("%${(c.progressPct * 100).toInt()}", color = theme.accent2Color, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
                     }
                     Spacer(Modifier.height(6.dp))
-                    ProgressBar(pct = c.progressPct, accent = accent, strokeColor = Color.Transparent)
+                    ProgressBar(pct = c.progressPct, accent = theme.accent2Color, strokeColor = Color.Transparent)
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -1102,12 +1115,18 @@ private fun ChallengeCard(
                         Spacer(Modifier.width(8.dp))
                         Text(theme.t("KATILDIN", "JOINED"), color = fg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
                     }
-                    else -> SinemaGoButton(
-                        label = if (c.isInvited) theme.t("DAVET", "INVITE") else theme.t("KATIL", "JOIN"),
-                        icon = Icons.Rounded.Bolt,
-                        onClick = { if (!inFlight) onToggle() },
-                        dim = inFlight
-                    )
+                    // c1 ekranda tek dolgu (FAB): kart eylemi nötr cam + c1 ikon/metin
+                    else -> SinemaCapsule(
+                        Modifier.fillMaxWidth(), onClick = { if (!inFlight) onToggle() }, enabled = !inFlight, height = 56.dp,
+                        horizontalArrangement = Arrangement.Center
+                    ) { _ ->
+                        Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (c.isInvited) theme.t("DAVET", "INVITE") else theme.t("KATIL", "JOIN"),
+                            color = accent, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
+                        )
+                    }
                 }
             }
         }
@@ -1159,7 +1178,7 @@ private fun EmptyBlock(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(Modifier.size(72.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.EmojiEvents, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp))
+            Icon(Icons.Rounded.EmojiEvents, null, tint = theme.accent3Color, modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))
         Text(
@@ -1168,7 +1187,21 @@ private fun EmptyBlock(
         )
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(24.dp))
-            SinemaGoButton(label = actionLabel, icon = Icons.Rounded.Add, onClick = onAction, modifier = Modifier.widthIn(max = 300.dp))
+            // c1 ekranda tek dolgu (FAB) → CTA nötr cam + c1 metin
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(0.14f))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAction)
+                    .padding(horizontal = 22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Rounded.Add, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(actionLabel, color = theme.effectiveAccentColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
+            }
         }
     }
 }

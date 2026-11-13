@@ -55,6 +55,8 @@ import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaScene
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.accent2TextColor
+import com.cosmibit.profitness.core.theme.accent2Color
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import com.cosmibit.profitness.core.theme.sinemaUpper
@@ -256,10 +258,9 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
             Spacer(Modifier.height(10.dp))
             Box(
                 Modifier.size(92.dp)
-                    .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                     .clip(CircleShape)
                     .background(Sinema.surface(theme))
-                    .border(3.dp, accent, CircleShape),
+                    .border(3.dp, theme.accent2Color, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (user.avatarUrl != null) {
@@ -285,7 +286,7 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(xpFormat.format(user.totalXp), style = Sinema.Metric.copy(fontSize = 34.sp), color = Color.White, maxLines = 1)
                 Text(
-                    "XP", color = accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                    "XP", color = theme.accent2TextColor, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(start = 6.dp, bottom = 5.dp)
                 )
             }
@@ -341,10 +342,10 @@ private fun UserRow(
                     Text("@$it", color = Color.White.copy(0.65f), fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                     Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
                 }
-                Text("${xpFormat.format(user.totalXp)} XP", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("${xpFormat.format(user.totalXp)} XP", color = theme.accent2TextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 if (user.isMutual) {
                     Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
-                    Text(theme.t("ARKADAŞ", "FRIEND"), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(theme.t("ARKADAŞ", "FRIEND"), color = Color.White.copy(0.65f), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }

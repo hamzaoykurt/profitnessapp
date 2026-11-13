@@ -257,7 +257,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
         SinemaBigStat(
             value = summary.deltaKg?.let { "$sign${"%.1f".format(it)}" } ?: "—",
             label = theme.t("Fark", "Change"), size = 26, modifier = Modifier.weight(1f),
-            color = if (summary.deltaKg != null) theme.effectiveAccentColor else Sinema.text(theme)
+            color = if (summary.deltaKg != null) theme.accent2TextColor else Sinema.text(theme)
         )
     }
 }
@@ -268,7 +268,8 @@ private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
 
 @Composable
 private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent2Color
+    val record = theme.accent3Color   // c3: hedef/rekor (en düşük) noktası
     val gridColor = Sinema.line(theme)
     val minKg = (points.minOf { it.weightKg } - 1.0).coerceAtLeast(0.0)
     val maxKg = points.maxOf { it.weightKg } + 1.0
@@ -343,7 +344,7 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
             val minIdx = points.indices.minByOrNull { points[it].weightKg } ?: 0
             val maxIdx = points.indices.maxByOrNull { points[it].weightKg } ?: points.lastIndex
             setOf(0, points.lastIndex, minIdx, maxIdx).forEach { i ->
-                drawGlowDot(Offset(xOf(i), yOf(points[i].weightKg)), accent, 3.5.dp.toPx())
+                drawGlowDot(Offset(xOf(i), yOf(points[i].weightKg)), if (i == minIdx) record else accent, 3.5.dp.toPx())
             }
         }
 
@@ -378,7 +379,7 @@ private fun AiInsightCard(
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accent3Color, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label)

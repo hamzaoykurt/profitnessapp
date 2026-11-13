@@ -285,7 +285,7 @@ private fun ProgressionSummaryHero(
             value = "$trackedCount",
             label = theme.t("Takip edilen hareket", "Tracked exercises"),
             size = 72,
-            color = theme.effectiveAccentColor
+            color = theme.accent2TextColor
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SinemaBigStat("$weightCount", theme.t("Ağırlık", "Weight"), Modifier.weight(1f), size = 28)
@@ -521,7 +521,7 @@ private fun LastSessionBreakdown(
     history : List<SetCompletionEntity>,
     theme   : AppThemeState
 ) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent2Color
     val lastDate = history.mapNotNull { it.date }.maxOrNull() ?: return
     val lastSets = history
         .filter { it.date == lastDate }
@@ -615,7 +615,8 @@ private fun ProgressionChartSection(
     chartData : List<ProgressPoint>,
     theme     : AppThemeState
 ) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent2Color
+    val record = theme.accent3Color
     val gridColor = Sinema.line(theme)
     val firstKg = chartData.first().maxKg
     val lastKg  = chartData.last().maxKg
@@ -671,9 +672,12 @@ private fun ProgressionChartSection(
             fillPath.lineTo(xOf(chartData.lastIndex), h); fillPath.close()
             drawPath(fillPath, Brush.verticalGradient(listOf(accent.copy(0.16f), Color.Transparent), padV, h))
             drawGlowLine(linePath, accent, 2.5.dp.toPx())
-            listOf(0, chartData.lastIndex).forEach { i ->
+            val prIdx = chartData.indices.maxByOrNull { chartData[it].maxKg } ?: chartData.lastIndex
+            listOf(0, chartData.lastIndex).filter { it != prIdx }.forEach { i ->
                 drawGlowDot(Offset(xOf(i), yOf(chartData[i].maxKg)), accent, 3.dp.toPx())
             }
+            // c3: rekor noktası
+            drawGlowDot(Offset(xOf(prIdx), yOf(chartData[prIdx].maxKg)), record, 4.dp.toPx())
         }
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
@@ -704,7 +708,7 @@ private fun AiInsightCard(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(16.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)

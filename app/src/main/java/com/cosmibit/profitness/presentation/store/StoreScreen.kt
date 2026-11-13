@@ -631,7 +631,7 @@ private fun StoreTopBar(
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) { fg ->
-                    Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Bolt, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
                     Text("$credits", color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 }
             }
@@ -899,6 +899,16 @@ private fun Modifier.storeCard(theme: AppThemeState, accent: Color, featured: Bo
 /** Küçük cam rozet (SinemaCapsule ailesi): dolu = accent + glow. */
 @Composable
 private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
+    if (filled) {
+        // c3 = işaretle: öne çıkan rozet (dolgu düğme/taş değil, %16 örtü)
+        Box(
+            Modifier.height(24.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)).padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text, color = theme.accent3TextColor, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        }
+        return
+    }
     SinemaCapsule(
         height = 24.dp,
         shape = CircleShape,
@@ -1055,7 +1065,7 @@ private fun SimpleEnergyBalanceCard(
             size = if (creditsText.length >= 5) 64 else 88
         )
         Spacer(Modifier.height(18.dp))
-        SinemaGlowBar(progress = fill, height = 10.dp)
+        SinemaGlowBar(progress = fill, height = 10.dp, color = theme.accent2Color)
     }
 }
 

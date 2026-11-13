@@ -268,19 +268,23 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
     val accent = theme.effectiveAccentColor
     val first = row.position == 1L
     val shape = RoundedCornerShape(28.dp)
-    val fg = if (first) theme.effectiveOnAccentColor else Sinema.text(theme)
-    val fg2 = if (first) theme.effectiveOnAccentColor.copy(0.75f) else Sinema.textSecondary(theme)
+    val gold = theme.accent3Color   // c3: 1. podyum işareti
+    val fg = Sinema.text(theme)
+    val fg2 = if (first) theme.accent3TextColor else Sinema.textSecondary(theme)
     Column(
         modifier = modifier
-            .then(if (first) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
-            .then(if (first) Modifier.clip(shape).background(accent) else Modifier.sinemaCard(theme, shape))
+            .sinemaCard(theme, shape)
+            .then(
+                if (row.isMe) Modifier.border(1.5.dp, accent, shape)   // kendi sıran: c1 kenar
+                else if (first) Modifier.border(1.5.dp, gold, shape) else Modifier
+            )
             .padding(horizontal = 8.dp)
             .padding(top = if (first) 22.dp else 16.dp, bottom = if (first) 22.dp else 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("#${row.position}", color = fg2, style = Sinema.Label)
         Spacer(Modifier.height(8.dp))
-        RingAvatar(row, if (first) 64.dp else 52.dp, if (first) theme.effectiveOnAccentColor else accent, theme)
+        RingAvatar(row, if (first) 64.dp else 52.dp, if (first) gold else if (row.isMe) accent else Sinema.line(theme), theme)
         Spacer(Modifier.height(10.dp))
         Text(
             row.displayName, color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
@@ -294,7 +298,7 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
         Text(scoreUnit(tab, theme), color = fg2, fontSize = 11.sp, maxLines = 1)
         if (row.isMe) {
             Spacer(Modifier.height(6.dp))
-            Text(theme.t("SEN", "YOU"), color = if (first) fg else accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            Text(theme.t("SEN", "YOU"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
         }
     }
 }
@@ -324,7 +328,7 @@ private fun MyPositionCard(
             SinemaBigStat(
                 value = "#${if (summary.position == 0L) "-" else summary.position}",
                 label = theme.t("Senin pozisyonun", "Your position"),
-                size = 52, color = accent, modifier = Modifier.weight(1f)
+                size = 52, color = theme.accent2TextColor, modifier = Modifier.weight(1f)
             )
             SinemaBigStat(
                 value = summary.score.toString(), label = scoreUnit(tab, theme), size = 32
@@ -354,14 +358,14 @@ private fun LeaderboardRowItem(
     val accent = theme.effectiveAccentColor
     val me = row.isMe
     val shape = RoundedCornerShape(24.dp)
-    val fg = if (me) theme.effectiveOnAccentColor else Sinema.text(theme)
-    val fg2 = if (me) theme.effectiveOnAccentColor.copy(0.75f) else Sinema.textSecondary(theme)
+    val fg = Sinema.text(theme)
+    val fg2 = Sinema.textSecondary(theme)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (me) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape) else Modifier)
-            .then(if (me) Modifier.clip(shape).background(accent) else Modifier.sinemaCard(theme, shape))
+            .sinemaCard(theme, shape)
+            .then(if (me) Modifier.border(1.5.dp, accent, shape) else Modifier)   // kendi sıran: c1 kenar
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -369,7 +373,7 @@ private fun LeaderboardRowItem(
             "#${row.position}", color = fg2, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.width(44.dp), maxLines = 1
         )
-        RingAvatar(row, 44.dp, if (me) theme.effectiveOnAccentColor else Sinema.line(theme), theme)
+        RingAvatar(row, 44.dp, if (me) accent else Sinema.line(theme), theme)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -379,7 +383,7 @@ private fun LeaderboardRowItem(
                 )
                 if (me) {
                     Spacer(Modifier.width(8.dp))
-                    Text(theme.t("SEN", "YOU"), color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text(theme.t("SEN", "YOU"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }
             }
             Text(scoreUnit(tab, theme), color = fg2, fontSize = 12.sp)

@@ -272,7 +272,7 @@ fun AICoachScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(SinemaIcons.Spark, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+                    Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
                     Text("AI Koç", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
@@ -289,7 +289,7 @@ fun AICoachScreen(
                     Icon(Icons.Rounded.Settings, theme.t("Ayarlar", "Settings"), tint = Color.White, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = onNavigateToStore) {
-                    Icon(SinemaIcons.Bolt, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(14.dp))
+                    Icon(SinemaIcons.Bolt, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (hasPlan) state.userPlan.displayName
@@ -469,7 +469,7 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
     val accent = theme.effectiveAccentColor
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Text(
-            theme.t("Bugünkü plan", "Today's plan").sinemaUpper(theme), color = accent, style = Sinema.Label
+            theme.t("Bugünkü plan", "Today's plan").sinemaUpper(theme), color = Color.White.copy(0.75f), style = Sinema.Label
         )
         if (summary != null && summary.exercises > 0) {
             val frac = (summary.completed.toFloat() / summary.exercises).coerceIn(0f, 1f)
@@ -480,8 +480,7 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
             Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
                 Box(
                     Modifier.fillMaxWidth(fill).fillMaxHeight()
-                        .sinemaGlow(accent, 12.dp, 0.dp, CircleShape)
-                        .clip(CircleShape).background(accent)
+                        .clip(CircleShape).background(theme.accent2Color)
                 )
             }
             Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
@@ -595,7 +594,7 @@ private fun SanctuaryMessage(
                     .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
+                Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
             }
 
             Column(horizontalAlignment = Alignment.Start) {
@@ -664,7 +663,7 @@ private fun SanctuaryMessage(
                                 verticalAlignment     = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(11.dp))
+                                Icon(Icons.Rounded.FitnessCenter, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(11.dp))
                                 Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -941,7 +940,7 @@ private fun SanctuaryTypingIndicator() {
                 .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
         }
 
         Box(

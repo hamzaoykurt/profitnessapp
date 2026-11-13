@@ -88,7 +88,7 @@ fun AchievementsDetailScreen(
                         unit  = "/ $totalCount",
                         label = theme.t("Açılan başarım", "Unlocked"),
                         size  = 72,
-                        color = theme.effectiveAccentColor
+                        color = theme.accent3TextColor
                     )
                 }
             }
@@ -216,7 +216,7 @@ private fun XpProgressCard(
                 Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(progress)
+            SinemaGlowBar(progress, color = theme.accent2Color)
         }
 
         Column {
@@ -225,7 +225,7 @@ private fun XpProgressCard(
                 Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(rankProgress)
+            SinemaGlowBar(rankProgress, color = theme.accent2Color)
         }
     }
 }
@@ -238,7 +238,7 @@ private fun AchievementRow(
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent3Color   // c3: açılan başarım işareti
     val isUnlocked = achievement.isUnlocked
 
     Row(
@@ -252,9 +252,9 @@ private fun AchievementRow(
         Box(
             Modifier
                 .size(48.dp)
-                .then(if (isUnlocked) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape) else Modifier)
                 .clip(CircleShape)
-                .background(if (isUnlocked) accent else Sinema.line(theme)),
+                .background(if (isUnlocked) Color.White.copy(0.10f) else Sinema.line(theme))
+                .then(if (isUnlocked) Modifier.border(1.5.dp, accent, CircleShape) else Modifier),
             contentAlignment = Alignment.Center
         ) {
             if (isUnlocked) Text(achievement.icon, fontSize = 22.sp)

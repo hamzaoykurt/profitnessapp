@@ -21,6 +21,8 @@ import androidx.compose.ui.semantics.selected as semSelected
 import androidx.compose.ui.unit.em
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3TextColor
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaGoButton
@@ -395,7 +397,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = accent,
+                    program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = Color.White.copy(0.78f),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
                 Text(program.creatorName, style = Sinema.Label, color = Color.White.copy(0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -775,7 +777,7 @@ private fun SinemaPhotoCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    tag?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = accent,
+                    tag?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = Color.White.copy(0.78f),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
                 if (!rightLabel.isNullOrBlank()) {
@@ -1338,7 +1340,7 @@ private fun SinemaProgramsPager(
                     repeat(segs) { i ->
                         val f by animateFloatAsState(if (i <= cur) 1f else 0f, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "dseg")
                         Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(accent))
+                            Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(LocalAppTheme.current.accent2Color))
                         }
                     }
                 }
@@ -1381,7 +1383,7 @@ private fun ProgramPage(
             ) {
                 Row {
                     Text(
-                        program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = accent,
+                        program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = theme.accent3TextColor,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                     )
                     Text("%02d / %02d".format(index + 1, total), style = Sinema.Label, color = Color.White.copy(0.70f))
@@ -1391,7 +1393,7 @@ private fun ProgramPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(accent),
+                        Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(0.18f)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!program.creatorAvatarUrl.isNullOrBlank()) {
@@ -1401,7 +1403,7 @@ private fun ProgramPage(
                             )
                         } else {
                             Text(
-                                program.creatorName.take(1).uppercase(), color = theme.effectiveOnAccentColor,
+                                program.creatorName.take(1).uppercase(), color = Color.White,
                                 fontSize = 14.sp, fontWeight = FontWeight.ExtraBold
                             )
                         }
