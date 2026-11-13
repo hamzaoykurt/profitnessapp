@@ -57,7 +57,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
-import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
 import com.cosmibit.profitness.presentation.components.glassCard
 import com.cosmibit.profitness.presentation.components.PremiumButton
 import com.cosmibit.profitness.presentation.components.GhostButton
@@ -230,6 +229,7 @@ data class WorkoutDayState(
 @Composable
 fun WorkoutScreen(
     bottomPadding           : Dp = 0.dp,
+    floatingTimerPad        : Dp = 0.dp,
     onNavigateToAIBuilder   : () -> Unit = {},
     onNavigateToManualBuilder: () -> Unit = {},
     onNavigateToStore       : () -> Unit = {},
@@ -313,10 +313,8 @@ fun WorkoutScreen(
         onResume = { viewModel.refresh() }
     )
 
-    // Timer değişkenleri — hem overlay hem içerik için kullanılır
-    val statusBarPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive  = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
-    val timerBannerH = statusBarPad + 60.dp  // pill altından içeriğe mesafe
+    // Kronometre artık üstte değil: DashboardScreen'deki yüzen kapsül tüm sayfalarda gösterir.
+    val focusExerciseId by viewModel.focusExerciseRequest.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -330,7 +328,7 @@ fun WorkoutScreen(
             }
             state.dayStates.isEmpty() -> {
                 NoProgramView(
-                    bottomPadding = bottomPadding,
+                    bottomPadding = bottomPadding + floatingTimerPad,
                     onAI = onNavigateToAIBuilder,
                     onManual = onNavigateToManualBuilder
                 )
@@ -341,24 +339,12 @@ fun WorkoutScreen(
                     restTimer = restTimer,
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
-                    timerActive = timerActive,
-                    timerBannerH = timerBannerH,
+                    floatingTimerPad = floatingTimerPad,
+                    focusExerciseId = focusExerciseId,
                     runWithNotificationPermission = runWithNotificationPermission
                 )
             }
         }
-
-        // ── Dynamic Island — rest timer overlay ──────────────────────────────
-        DynamicIslandTimer(
-            timer     = restTimer,
-            topOffset = statusBarPad + 8.dp,
-            onStop    = { viewModel.stopVisibleTimer() },
-            onTogglePause = {
-                if (restTimer.isPaused) viewModel.resumeVisibleTimer()
-                else viewModel.pauseVisibleTimer()
-            },
-            onDismiss = { viewModel.dismissVisibleTimer() }
-         )
 
         // ── Bildirim izni banner — Neon Forge glass stili ─────────────────────
         AnimatedVisibility(
@@ -571,8 +557,8 @@ private fun WorkoutContent(
     restTimer: RestTimerState,
     viewModel: WorkoutViewModel,
     bottomPadding: Dp,
-    timerActive: Boolean = false,
-    timerBannerH: Dp = 0.dp,
+    floatingTimerPad: Dp = 0.dp,
+    focusExerciseId: String? = null,
     runWithNotificationPermission: (() -> Unit) -> Unit = { action -> action() }
 ) {
     val dayStates = state.dayStates
@@ -611,13 +597,6 @@ private fun WorkoutContent(
     }
 
     BackHandler(enabled = detailChallengeId != null) { detailChallengeId = null }
-
-    // Timer aktifken üst çubuk pill'in altına kayar, kapanınca geri döner
-    val extraTopPad by animateDpAsState(
-        targetValue   = if (timerActive) (timerBannerH - 60.dp).coerceAtLeast(0.dp) else 0.dp,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
-        label         = "timer_top_pad"
-    )
 
     val allDone = currentState.totalCount > 0 && currentState.completedCount >= currentState.totalCount
     val isRestHero = currentDay.isRestDay && visibleExercises.isEmpty()
@@ -720,7 +699,10 @@ private fun WorkoutContent(
         allDone = allDone,
         dataFor = dataFor,
         actions = actions,
-        topExtra = extraTopPad,
+        topExtra = 0.dp,
+        bottomExtra = floatingTimerPad,
+        focusExerciseId = focusExerciseId,
+        onFocusConsumed = { viewModel.consumeFocusExercise() },
         listExtras = { dismiss ->
             if (hasUpcomingSection) {
                 UpcomingEventsSection(events = upcomingEvents, onOpen = { dismiss(); detailChallengeId = it.id })

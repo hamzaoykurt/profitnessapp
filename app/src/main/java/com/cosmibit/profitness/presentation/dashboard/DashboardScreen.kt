@@ -73,7 +73,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.cosmibit.profitness.presentation.components.DynamicIslandTimer
+import com.cosmibit.profitness.presentation.components.FloatingWorkoutTimer
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.presentation.workout.RestTimerState
 import com.cosmibit.profitness.presentation.workout.WorkoutScreen
@@ -196,27 +196,24 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     }
     DashboardViewModelWarmup(stage = warmupStage)
 
-    // Timer aktifken diğer ekranlardaki içerik aşağı kayar
-    val statusBarPad  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val timerActive   = restTimer.isRunning || restTimer.isPaused || restTimer.isDone
-    val timerExtraPadTarget by remember(timerActive, statusBarPad) {
-        derivedStateOf {
-            if (timerActive && selectedTab != DashboardTab.Workout) {
-                statusBarPad + 60.dp
-            } else {
-                0.dp
-            }
+    // Yüzen kronometre (alt menünün üstü): görünürken listeler/BAŞLA bu kadar yukarı alınır, kapsül içeriği örtmez.
+    val anyOverlay = showPerformanceDetail || showAchievementsDetail || showLeaderboard ||
+        showEditProfile || showWeightTracking || showExerciseProgression || showStore
+    val timerVisible = (restTimer.isRunning || restTimer.isPaused || restTimer.isDone) && !imeVisible
+    val motionOn = rememberSinemaMotionOn()
+    val timerReserve by animateDpAsState(
+        targetValue   = if (timerVisible) FloatingTimerReserve else 0.dp,
+        animationSpec = tween(if (motionOn) 220 else 0, easing = FastOutSlowInEasing),
+        label         = "dash_timer_reserve"
+    )
+    val contentPadWithTimer = contentPad + timerReserve
+    // Bitti geri bildirimi kısa süre görünür, sonra kronometre kapanır (eski Dynamic Island davranışı).
+    LaunchedEffect(restTimer.isDone) {
+        if (restTimer.isDone) {
+            delay(3_500)
+            workoutViewModel.dismissVisibleTimer()
         }
     }
-    val showGlobalTimer by remember {
-        derivedStateOf { selectedTab != DashboardTab.Workout }
-    }
-    val timerExtraPad by animateDpAsState(
-        targetValue   = timerExtraPadTarget,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
-        label         = "dash_timer_pad"
-    )
-    val contentPadWithTimer = contentPad
 
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers
     var swipeAccum by remember { mutableStateOf(0f) }
@@ -304,6 +301,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             } else when (tab) {
                 DashboardTab.Workout -> WorkoutScreen(
                     bottomPadding = contentPad,
+                    floatingTimerPad = timerReserve,
                     viewModel = workoutViewModel,
                     onNavigateToAIBuilder = {
                         programInitialMode = com.cosmibit.profitness.presentation.program.BuilderMode.AI
@@ -331,7 +329,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                         todayInfo         = todayInfo,
                         onStartWorkout    = { selectedTabRoute = DashboardTab.Workout.route },
                         initialMode       = capturedMode,
-                        timerExtraPad     = timerExtraPad,
+                        timerExtraPad     = timerReserve,
                         onNavigateToStore = { showStore = true },
                         onProgramShared   = { discoverRefreshSignal++ }
                     )
@@ -352,8 +350,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 )
                 }
                 DashboardTab.Discover -> DiscoverScreen(
-                    bottomPadding         = contentPad,
-                    timerExtraPad         = timerExtraPad,
+                    bottomPadding         = contentPadWithTimer,
+                    timerExtraPad         = 0.dp,
                     externalRefreshSignal = discoverRefreshSignal
                 )
                 DashboardTab.Profile -> ProfileScreen(
@@ -367,7 +365,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     onLogout                        = onLogout,
                     onEditProfile                   = { showEditProfile = true },
                     onNavigateToStore               = { showStore = true },
-                    timerExtraPad                   = timerExtraPad
+                    timerExtraPad                   = timerReserve
                 )
             }
         }
@@ -397,19 +395,35 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             )
         }
 
-        // ── Global Dynamic Island — Workout dışı tablarda üstte göster ─────
-        if (showGlobalTimer) {
-            DynamicIslandTimer(
-                timer     = restTimer,
-                topOffset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                onStop    = { workoutViewModel.stopVisibleTimer() },
-                onTogglePause = {
-                    if (restTimer.isPaused) workoutViewModel.resumeVisibleTimer()
-                    else workoutViewModel.pauseVisibleTimer()
-                },
-                onDismiss = { workoutViewModel.dismissVisibleTimer() }
-            )
-        }
+        // ── Yüzen kronometre — her sekmede ve alt ekranda (overlay'lerin de üstünde) ─────
+        val timerOnLightPage = !theme.isDark && (anyOverlay || sinemaNav.lightPage ||
+            selectedTab == DashboardTab.Program || selectedTab == DashboardTab.Profile)
+        FloatingWorkoutTimer(
+            timer         = if (imeVisible) RestTimerState() else restTimer,
+            light         = timerOnLightPage,
+            onOpen        = {
+                workoutViewModel.requestFocusExercise(restTimer.exerciseId)
+                showStore = false; showExerciseProgression = false; showWeightTracking = false
+                showEditProfile = false; showLeaderboard = false; showAchievementsDetail = false
+                showPerformanceDetail = false
+                if (selectedTab != DashboardTab.Workout) selectedTabRoute = DashboardTab.Workout.route
+            },
+            onTogglePause = {
+                if (restTimer.isPaused) workoutViewModel.resumeVisibleTimer()
+                else workoutViewModel.pauseVisibleTimer()
+            },
+            onStop        = {
+                workoutViewModel.stopVisibleTimer()
+                workoutViewModel.dismissVisibleTimer()
+            },
+            modifier      = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = if (useNavRail) responsive.navRailWidth + 16.dp else 16.dp, end = 16.dp,
+                    bottom = navBarBottom + if (useNavRail || anyOverlay) 16.dp else SinemaNavHeight + 6.dp
+                )
+                .zIndex(400f)
+        )
 
         // Shared spring spec for full-screen overlays — feels instant yet smooth
         val overlayEnterSpec = spring<IntOffset>(
@@ -534,7 +548,9 @@ private fun DashboardViewModelWarmup(stage: Int) {
     }
 }
 
-// ── Global Rest Timer Banner ───────────────────────────────────────────────────
+/** Kronometre kapsülü (48dp) + menüyle arası; görünürken içerik alt boşluğuna eklenir. */
+private val FloatingTimerReserve = 56.dp
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  APP BACKGROUND
 // ═══════════════════════════════════════════════════════════════════════════

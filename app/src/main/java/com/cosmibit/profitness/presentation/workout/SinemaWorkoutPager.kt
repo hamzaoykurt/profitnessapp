@@ -209,7 +209,10 @@ fun SinemaWorkoutPager(
     actions: SinemaWorkoutActions,
     topExtra: Dp,
     listExtras: @Composable (dismiss: () -> Unit) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomExtra: Dp = 0.dp,
+    focusExerciseId: String? = null,
+    onFocusConsumed: () -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
     val nav = LocalSinemaNav.current
@@ -265,6 +268,16 @@ fun SinemaWorkoutPager(
         }
         rememberPagerState(initialPage = initial) { pageCount }
     }
+    // Yüzen kronometreden gelen istek: kronometrenin hareketine kay (bu günde yoksa yalnız isteği düşür).
+    LaunchedEffect(focusExerciseId, pagerState) {
+        val id = focusExerciseId ?: return@LaunchedEffect
+        val idx = if (single) -1 else exercises.indexOfFirst { it.id == id }
+        if (idx >= 0 && idx != pagerState.currentPage) {
+            if (animEnabled) pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = FastOutSlowInEasing))
+            else pagerState.scrollToPage(idx)
+        }
+        onFocusConsumed()
+    }
     run {
         val scrolling = pagerState.isScrollInProgress || hScrolling
         LaunchedEffect(scrolling) {
@@ -295,6 +308,7 @@ fun SinemaWorkoutPager(
         var sheet by remember(selectedDayIdx) { mutableStateOf<Pair<String, Int>?>(null) }   // exerciseId, setIndex
         var showList by remember(selectedDayIdx) { mutableStateOf(false) }
 
+        CompositionLocalProvider(LocalPagerBottomExtra provides bottomExtra) {
         Box(modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(
                 state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
@@ -363,6 +377,7 @@ fun SinemaWorkoutPager(
                 topExtra = topExtra, onOpenList = { showList = true },
                 modifier = Modifier.align(Alignment.TopStart)
             )
+        }
         }
 
         sheet?.let { (exId, setIdx) ->
@@ -474,8 +489,11 @@ private fun SweepLayer(trigger: Int, animEnabled: Boolean) {
     )
 }
 
+/** Yüzen kronometre görünürken sayfa içeriği (BAŞLA vb.) bu kadar yukarı alınır; kapsül içeriği örtmez. */
+private val LocalPagerBottomExtra = androidx.compose.runtime.compositionLocalOf { 0.dp }
+
 @Composable
-private fun navInset(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+private fun navInset(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + LocalPagerBottomExtra.current
 
 @Composable
 private fun ExercisePage(
@@ -535,12 +553,14 @@ private fun ExercisePage(
                     exercise.target.sinemaUpper(theme), style = Sinema.Label, color = accent,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
+                // Görünür "Hareketi gör" hapı: detay sheet'ini (görsel/animasyon + nasıl yapılır) açar.
+                HowToPill(onClick = { actions.onShowDetail(exercise) })
+                Spacer(Modifier.width(12.dp))
                 Text(
                     "%02d / %02d".format(page + 1, total), style = Sinema.Label, color = Color.White.copy(0.70f)
                 )
             }
-            Spacer(Modifier.height(6.dp))
-            // Başlık; dokununca hareket detayı ("Hareketi gör") açılır — çizimde ayrı düğme yok
+            // Başlık; dokununca da hareket detayı açılır (üstteki "Hareketi gör" hapıyla aynı eylem)
             val watch = theme.t("Hareketi gör", "Watch exercise")
             Text(
                 theme.exerciseCompactDisplayName(exercise.name), style = Sinema.Title, color = Color.White,
@@ -574,6 +594,23 @@ private fun ExercisePage(
             )
         }
         }
+    }
+}
+
+/** Küçük cam hap: oynat ikonu + "Hareketi gör"; 32dp görsel, 48dp dokunma hedefi. */
+@Composable
+private fun HowToPill(onClick: () -> Unit) {
+    val theme = LocalAppTheme.current
+    SinemaCapsule(
+        onClick = onClick, height = 32.dp,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) { fg ->
+        Icon(Icons.Rounded.PlayCircle, contentDescription = null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+        Text(
+            theme.t("Hareketi gör", "How to"), color = fg, fontSize = 12.sp,
+            fontWeight = FontWeight.Bold, maxLines = 1
+        )
     }
 }
 

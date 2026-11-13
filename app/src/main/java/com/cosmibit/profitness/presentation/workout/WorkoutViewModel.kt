@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.workout
 
+import android.os.SystemClock
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.notification.WorkoutNotificationAction
@@ -51,6 +52,14 @@ import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 enum class TimerPurpose { Rest, Activity, TimedSet }
+
+/** Zaman damgası tabanlı süre: arka plan/Doze gecikmesinde sayaç kaymaz (tik sayımı yerine geçen gerçek süre). */
+internal fun timerElapsedSeconds(baseSeconds: Int, anchorMs: Long, nowMs: Long): Int =
+    baseSeconds + ((nowMs - anchorMs).coerceAtLeast(0L) / 1000L).toInt()
+
+/** Bir sonraki tam saniye sınırına kalan süre (en az 50ms) — tikler gerçek saniyeye hizalı kalır. */
+internal fun timerTickDelayMs(anchorMs: Long, nowMs: Long): Long =
+    (1000L - ((nowMs - anchorMs).coerceAtLeast(0L) % 1000L)).coerceAtLeast(50L)
 
 enum class TimerMode { Countdown, Stopwatch }
 
@@ -138,6 +147,11 @@ class WorkoutViewModel @Inject constructor(
     private var timerJob: Job? = null
     private val _restTimer = MutableStateFlow(RestTimerState())
     val restTimer: StateFlow<RestTimerState> = _restTimer.asStateFlow()
+    // Yüzen kronometreye dokununca Antrenman sayfası bu hareketin sayfasına kayar (tek seferlik istek).
+    private val _focusExerciseRequest = MutableStateFlow<String?>(null)
+    val focusExerciseRequest: StateFlow<String?> = _focusExerciseRequest.asStateFlow()
+    fun requestFocusExercise(exerciseId: String) { if (exerciseId.isNotBlank()) _focusExerciseRequest.value = exerciseId }
+    fun consumeFocusExercise() { _focusExerciseRequest.value = null }
     private val _draftInputs = MutableStateFlow<Map<String, DraftInput>>(emptyMap())
     val draftInputs: StateFlow<Map<String, DraftInput>> = _draftInputs.asStateFlow()
     // Set bazlı weight/reps yazımları için debounce — her hızlı karakter girişinde Room'a yazmaktan kaçınır
@@ -180,9 +194,11 @@ class WorkoutViewModel @Inject constructor(
 
         timerJob = viewModelScope.launch {
             var remaining = restSeconds
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update { it.copy(secondsLeft = remaining) }
                 // Bildirim güncellemeleri UI timer'ından daha seyrek akar.
                 withContext(Dispatchers.IO) {
@@ -233,9 +249,11 @@ class WorkoutViewModel @Inject constructor(
         )
         timerJob = viewModelScope.launch {
             var remaining = total
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update {
                     it.copy(
                         secondsLeft = remaining,
@@ -280,9 +298,11 @@ class WorkoutViewModel @Inject constructor(
         )
         timerJob = viewModelScope.launch {
             var elapsed = 0
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickBase = elapsed
             while (true) {
-                delay(1000L)
-                elapsed++
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                elapsed = timerElapsedSeconds(tickBase, tickAnchor, SystemClock.elapsedRealtime())
                 _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
                 notificationManager.updateActivityTimer(
                     exerciseName = exerciseName,
@@ -320,9 +340,11 @@ class WorkoutViewModel @Inject constructor(
         )
         timerJob = viewModelScope.launch {
             var remaining = total
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update {
                     it.copy(
                         secondsLeft = remaining,
@@ -369,9 +391,11 @@ class WorkoutViewModel @Inject constructor(
         )
         timerJob = viewModelScope.launch {
             var elapsed = 0
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickBase = elapsed
             while (true) {
-                delay(1000L)
-                elapsed++
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                elapsed = timerElapsedSeconds(tickBase, tickAnchor, SystemClock.elapsedRealtime())
                 _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
                 notificationManager.updateActivityTimer(
                     exerciseName = notificationName,
@@ -517,9 +541,11 @@ class WorkoutViewModel @Inject constructor(
         notificationManager.startWorkoutSession(timer.exerciseName)
         notificationManager.updateRestTimer(timer.exerciseName, remaining, total)
         timerJob = viewModelScope.launch {
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update { it.copy(secondsLeft = remaining) }
                 withContext(Dispatchers.IO) {
                     notificationManager.updateRestTimer(timer.exerciseName, remaining, total)
@@ -543,9 +569,11 @@ class WorkoutViewModel @Inject constructor(
             force = true
         )
         timerJob = viewModelScope.launch {
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update {
                     it.copy(
                         secondsLeft = remaining,
@@ -577,9 +605,11 @@ class WorkoutViewModel @Inject constructor(
             force = true
         )
         timerJob = viewModelScope.launch {
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickBase = elapsed
             while (true) {
-                delay(1000L)
-                elapsed++
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                elapsed = timerElapsedSeconds(tickBase, tickAnchor, SystemClock.elapsedRealtime())
                 _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
                 notificationManager.updateActivityTimer(
                     exerciseName = timer.exerciseName,
@@ -603,9 +633,11 @@ class WorkoutViewModel @Inject constructor(
             force = true
         )
         timerJob = viewModelScope.launch {
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickStart = remaining
             while (remaining > 0) {
-                delay(1000L)
-                remaining--
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                remaining = (tickStart - timerElapsedSeconds(0, tickAnchor, SystemClock.elapsedRealtime())).coerceAtLeast(0)
                 _restTimer.update {
                     it.copy(
                         secondsLeft = remaining,
@@ -638,9 +670,11 @@ class WorkoutViewModel @Inject constructor(
             force = true
         )
         timerJob = viewModelScope.launch {
+            val tickAnchor = SystemClock.elapsedRealtime()
+            val tickBase = elapsed
             while (true) {
-                delay(1000L)
-                elapsed++
+                delay(timerTickDelayMs(tickAnchor, SystemClock.elapsedRealtime()))
+                elapsed = timerElapsedSeconds(tickBase, tickAnchor, SystemClock.elapsedRealtime())
                 _restTimer.update { it.copy(elapsedSeconds = elapsed, secondsLeft = elapsed) }
                 notificationManager.updateActivityTimer(
                     exerciseName = notificationName,
