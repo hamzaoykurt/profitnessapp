@@ -83,7 +83,8 @@ data class ExerciseNameDto(
     val category: String? = null,   // DB'de NULL olabilir
     val image_url: String? = null,  // DB'de NULL olabilir
     val sport_type: String? = null,
-    val tracking_mode: String? = null
+    val tracking_mode: String? = null,
+    val video_url: String? = null   // henüz DB'de yok; gelirse eşlenir (select listesine EKLENMEDİ)
 )
 
 fun ProgramExerciseWithNameDto.toDomain() = ProgramExercise(
@@ -111,7 +112,8 @@ fun ProgramExerciseWithNameDto.toDomain() = ProgramExercise(
     groupType = group_type,
     groupLabel = group_label,
     groupRounds = group_rounds,
-    groupRestSeconds = group_rest_seconds
+    groupRestSeconds = group_rest_seconds,
+    videoUrl = exercises?.video_url?.takeIf { it.isNotBlank() }
 )
 
 @Serializable

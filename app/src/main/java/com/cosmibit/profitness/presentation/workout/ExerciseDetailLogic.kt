@@ -48,30 +48,45 @@ internal data class HistorySession(val date: String, val sets: List<SetCompletio
 internal data class ExerciseRecord(val weightKg: Float, val reps: Int?, val date: String)
 
 internal data class ExerciseHistoryStats(
-    /** Eskiden yeniye seanslar. */
+    /** Eskiden yeniye seanslar; yalnız gerçek kaydı olan setler (bkz. [hasLoggedData]), boş seans yok. */
     val sessions: List<HistorySession>,
     val record: ExerciseRecord?
 ) {
     val last: HistorySession? get() = sessions.lastOrNull()
     val previous: HistorySession? get() = sessions.getOrNull(sessions.size - 2)
 
-    /** Son seansın en yüksek ağırlığı − önceki seansınki; ikisinden biri kg'sızsa null. */
+    /**
+     * Son seansın en yüksek seti − kg'lı bir önceki seansın en yüksek seti (aynı metrik: en yüksek set vs en yüksek set).
+     * Son seans kg'sız ise, karşılaştırılacak kg'lı seans yoksa ya da fark şüpheliyse ([isSuspiciousWeightJump]) null.
+     */
     val topWeightDeltaKg: Float?
         get() {
             val a = last?.topWeightKg ?: return null
-            val b = previous?.topWeightKg ?: return null
+            val b = sessions.dropLast(1).lastOrNull { it.topWeightKg != null }?.topWeightKg ?: return null
+            if (isSuspiciousWeightJump(b, a)) return null
             return a - b
         }
 }
 
+/** Setin gösterilecek gerçek bir kaydı var mı (kg > 0, tekrar > 0, süre > 0 veya mesafe > 0). Hepsi boşsa "—" satırı olur, gösterilmez. */
+internal fun SetCompletionEntity.hasLoggedData(): Boolean =
+    (weightKg ?: 0f) > 0f || (repsActual ?: 0) > 0 || (durationSeconds ?: 0) > 0 || (distanceMeters ?: 0f) > 0f
+
+/**
+ * Şüpheli fark: en yüksek set yarıdan fazla düşmüş ya da iki katından fazla artmışsa (ör. 35 → 5 kg) büyük olasılıkla
+ * eksik/hatalı giriş veya farklı ekipman; "önceki seansa göre" metni yanıltıcı olur, gösterilmez.
+ */
+internal fun isSuspiciousWeightJump(previousKg: Float, lastKg: Float): Boolean =
+    previousKg > 0f && (lastKg < previousKg * 0.5f || lastKg > previousKg * 2f)
+
 internal fun buildHistoryStats(history: List<SetCompletionEntity>): ExerciseHistoryStats {
-    val sessions = history
-        .filter { !it.deleted }
+    val logged = history.filter { !it.deleted && it.hasLoggedData() }
+    val sessions = logged
         .groupBy { it.date }
         .map { (date, sets) -> HistorySession(date, sets.sortedBy { it.setIndex }) }
         .sortedBy { it.date }
-    val best = history
-        .filter { !it.deleted && (it.weightKg ?: 0f) > 0f }
+    val best = logged
+        .filter { (it.weightKg ?: 0f) > 0f }
         .maxWithOrNull(compareBy<SetCompletionEntity> { it.weightKg!! }.thenBy { it.repsActual ?: 0 })
     return ExerciseHistoryStats(
         sessions = sessions,

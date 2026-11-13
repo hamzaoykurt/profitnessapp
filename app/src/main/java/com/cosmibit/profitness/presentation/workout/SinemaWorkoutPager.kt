@@ -113,6 +113,7 @@ import com.cosmibit.profitness.core.theme.accent2Color
 import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
+import com.cosmibit.profitness.presentation.components.SinemaVideo
 import com.cosmibit.profitness.core.theme.LocalSinemaNav
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import androidx.compose.runtime.CompositionLocalProvider
@@ -403,7 +404,10 @@ private fun PhotoLayer(
     @Suppress("UNUSED_PARAMETER") isSettled: Boolean,
     @Suppress("UNUSED_PARAMETER") animEnabled: Boolean,
     offset: () -> Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Doluysa foto altta poster kalır, üstünde dikey video oynar (yalnız [playVideo] iken). */
+    videoUrl: String? = null,
+    playVideo: Boolean = false
 ) {
     Box(
         modifier
@@ -424,6 +428,9 @@ private fun PhotoLayer(
             alignment = Alignment.Center,
             fallbackIconSize = 64.dp, fallbackIconBias = -0.2f, fallbackGradient = true
         )
+        if (!videoUrl.isNullOrBlank()) {
+            SinemaVideo(url = videoUrl, posterUrl = null, playing = playVideo, modifier = Modifier.fillMaxSize())
+        }
     }
 }
 
@@ -527,7 +534,7 @@ private fun ExercisePage(
         val photo = exercise.image.ifBlank { categoryImageUrl(exercise.category) }
         val haze = remember { HazeState() }
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            PhotoLayer(photo, isSettled, animEnabled, offset)
+            PhotoLayer(photo, isSettled, animEnabled, offset, videoUrl = exercise.videoUrl, playVideo = isSettled)
             Scrims(bottomAlpha = 0.65f, solidAt = 0.45f)
             SweepLayer(sweepKey, animEnabled)
         }

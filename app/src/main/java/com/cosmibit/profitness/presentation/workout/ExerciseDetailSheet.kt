@@ -1,6 +1,26 @@
 package com.cosmibit.profitness.presentation.workout
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.cosmibit.profitness.presentation.components.SinemaVideo
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -50,8 +70,9 @@ private fun AppThemeState.uiLocale(): Locale =
     if (language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale.forLanguageTag("tr-TR")
 
 /**
- * "Hareketi gör": üstte hareket görseli (yoksa kategori fotoğrafı); altında başlık + kas/ekipman çipleri + kas haritası + REKOR,
- * PLAN, SON PERFORMANS, İLERLEME, NOTLAR, (varsa) harekete özel talimat, AI analiz.
+ * "Hareketi gör": TAM EKRAN dikey video (yoksa foto) + üstte cam kapat düğmesi + altta küçük cam bilgi kartı (ad, çipler, plan).
+ * Karta dokununca / yukarı çekince cam panel açılır: kas haritası + REKOR, PLAN, SON PERFORMANS, İLERLEME, NOTLAR,
+ * (varsa) harekete özel talimat, AI analiz. Videoya dokunmak sesi açar/kapatır.
  * [showHistory] false ise geçmiş bölümleri çizilmez (program önizlemesi: geçmiş verilmiyor).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -70,7 +91,6 @@ fun ExerciseDetailSheet(
 ) {
     val theme = LocalAppTheme.current
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val accent = theme.effectiveAccentColor
     val locale = remember(theme.language) { theme.uiLocale() }
     val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
@@ -83,59 +103,203 @@ fun ExerciseDetailSheet(
     val catalog = rememberExerciseCatalog()
     val instructions = remember(catalog, exercise.name) { catalog.find(exercise.name)?.description.orEmpty().trim() }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Sinema.page(theme),
-        dragHandle = {
+    val videoUrl = exercise.videoUrl?.takeIf { it.isNotBlank() }
+    val photoUrl = if (exercise.image.isNotBlank()) exercise.image else categoryImageUrl(exercise.category)
+    val imageRequest = remember(context, photoUrl) {
+        ImageRequest.Builder(context).data(photoUrl).size(1080, 1920).crossfade(false).build()
+    }
+    var expanded by remember { mutableStateOf(false) }
+    var muted by remember { mutableStateOf(true) }
+    var soundHintKey by remember { mutableIntStateOf(0) }
+    var showSoundHint by remember { mutableStateOf(false) }
+    LaunchedEffect(soundHintKey) {
+        if (soundHintKey > 0) {
+            showSoundHint = true
+            delay(900)
+            showSoundHint = false
+        }
+    }
+    val planSummary = buildList {
+        if (isStrength) {
+            if (exercise.sets > 0) add("${exercise.sets} ${theme.t("set", "sets")}")
+            exercise.reps.takeIf { it.isNotBlank() }?.let { add("$it ${theme.t("tekrar", "reps")}") }
+        } else {
+            plannedDurationLabel(exercise.reps, theme).takeIf { it != "—" }?.let { add(it) }
+        }
+        if (exercise.restSeconds > 0) add("${exercise.restSeconds} ${theme.t("sn dinlenme", "sec rest")}")
+    }.joinToString(" · ")
+    val panelScrollGuard = remember {
+        // Panel en üstteyken aşağı çekmek paneli kapatır (kalan kaydırma = içerik zaten en üstte).
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 24f) expanded = false
+                return Offset.Zero
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { if (expanded) expanded = false else onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            // ── Tam ekran medya: dikey video (yoksa foto). Dokununca ses aç/kapat; panel açıkken dokunma paneli kapatır ──
             Box(
                 Modifier
-                    .padding(vertical = 10.dp)
-                    .size(width = 32.dp, height = 3.dp)
-                    .clip(CircleShape)
-                    .background(Sinema.line(theme))
-            )
-        },
-        tonalElevation = 0.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
-        ) {
-            // ── Görsel: en üstte; hareket görseli yoksa kategori fotoğrafı ──
-            val pageBg = Sinema.page(theme)
-            val hasImage = exercise.image.isNotBlank()
-            val photoUrl = if (hasImage) exercise.image else categoryImageUrl(exercise.category)
-            val imageRequest = remember(context, photoUrl) {
-                ImageRequest.Builder(context).data(photoUrl).size(1080, 1080).crossfade(false).build()
+                    .fillMaxSize()
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        if (expanded) expanded = false
+                        else if (videoUrl != null) { muted = !muted; soundHintKey++ }
+                    }
+            ) {
+                if (videoUrl != null) {
+                    SinemaVideo(url = videoUrl, posterUrl = photoUrl, playing = true, muted = muted, modifier = Modifier.fillMaxSize())
+                } else {
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = theme.t("Hareket gösterimi", "Movement demonstration"),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
             Box(
                 Modifier
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .height(240.dp)
-                    .background(Sinema.surface(theme))
+                    .height(160.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Black.copy(0.50f), Color.Transparent)))
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.72f))))
+            )
+
+            AnimatedVisibility(
+                visible = showSoundHint,
+                modifier = Modifier.align(Alignment.Center),
+                enter = fadeIn(), exit = fadeOut()
             ) {
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = theme.t("Hareket gösterimi", "Movement demonstration"),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = if (hasImage) ContentScale.Fit else ContentScale.Crop
-                )
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.70f to Color.Transparent,
-                                1f to pageBg
-                            )
-                        )
-                )
+                Box(Modifier.size(64.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+                        theme.t(if (muted) "Ses kapalı" else "Ses açık", if (muted) "Muted" else "Sound on"),
+                        tint = Color.White, modifier = Modifier.size(28.dp)
+                    )
+                }
             }
 
+            SinemaCapsuleIconButton(
+                icon = Icons.Rounded.Close,
+                description = theme.t("Kapat", "Close"),
+                onClick = onDismiss,
+                selected = false,
+                size = 44.dp,
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 8.dp)
+            )
+
+            // ── Küçük cam bilgi kartı: ad + kas/ekipman çipleri + plan; yukarı çekince / dokununca panel açılır ──
+            AnimatedVisibility(
+                visible = !expanded,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(), exit = fadeOut()
+            ) {
+                val chips = listOf(exercise.target to true, exercise.category to false)
+                    .map { (t, muscle) -> theme.fitnessTermCompactDisplayName(t).capFirst() to muscle }
+                    .filter { it.first.isNotBlank() }
+                    .distinctBy { it.first.lowercase() }
+                val openLabel = theme.t("Ayrıntıları aç", "Open details")
+                var drag by remember { mutableFloatStateOf(0f) }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .sinemaCapsuleGlass(RoundedCornerShape(26.dp), fillTop = 0.16f, fillBottom = 0.10f)
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { drag = 0f },
+                                onDragEnd = { if (drag < -40f) expanded = true },
+                                onVerticalDrag = { _, dy -> drag += dy }
+                            )
+                        }
+                        .clickable(role = Role.Button, onClickLabel = openLabel) { expanded = true }
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(Modifier.size(width = 32.dp, height = 3.dp).clip(CircleShape).background(Color.White.copy(0.40f)))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        theme.exerciseDisplayName(exercise.name),
+                        style = Sinema.Title.copy(fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold),
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                    if (chips.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            chips.forEach { (text, muscle) ->
+                                val c = if (muscle) theme.accent2Color else theme.accent3Color
+                                Text(
+                                    text,
+                                    color = if (muscle) theme.accent2TextColor else theme.accent3TextColor,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(c.copy(alpha = 0.18f))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (planSummary.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(planSummary, color = Color.White.copy(0.82f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+
+            // ── Cam panel: mevcut içerik (kas haritası, rekor, plan, son performans, ilerleme, notlar, talimat, AI) ──
+            AnimatedVisibility(
+                visible = expanded,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it }
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.88f)
+                        .sinemaGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), fillAlpha = 0.94f)
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.Button, onClickLabel = theme.t("Paneli kapat", "Close panel")) { expanded = false }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(Color.White.copy(0.30f)))
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .nestedScroll(panelScrollGuard)
+                            .verticalScroll(rememberScrollState())
+                            .navigationBarsPadding()
+                    ) {
             Column(Modifier.padding(horizontal = 20.dp)) {
                 Spacer(Modifier.height(4.dp))
 
@@ -401,6 +565,9 @@ fun ExerciseDetailSheet(
             }
 
             Spacer(Modifier.height(28.dp))
+                    }
+                }
+            }
         }
     }
 }
@@ -570,7 +737,7 @@ private fun ProgressionCard(
             Text(valueText, style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold), color = theme.accent2TextColor)
             Spacer(Modifier.width(6.dp))
             Text(
-                if (isStrength) theme.t("kg en yüksek, son seans", "kg top set, last session") else theme.t("dk toplam, son seans", "min total, last session"),
+                if (isStrength) theme.t("kg · son seansın en yüksek seti", "kg · last session's top set") else theme.t("dk toplam, son seans", "min total, last session"),
                 color = Sinema.textSecondary(theme),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 3.dp)

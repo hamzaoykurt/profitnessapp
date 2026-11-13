@@ -1749,6 +1749,7 @@ class WorkoutViewModel @Inject constructor(
                             sets = pe.sets,
                             reps = pe.reps.toString(),
                             image = pe.imageUrl.ifBlank { categoryImageFallback(pe.category) },
+                            videoUrl = pe.videoUrl,
                             category = pe.category.ifBlank { "Strength" },
                             restSeconds = pe.restSeconds,
                             exerciseRestSeconds = if (!pe.groupId.isNullOrBlank() && pe.groupId == next?.groupId) {

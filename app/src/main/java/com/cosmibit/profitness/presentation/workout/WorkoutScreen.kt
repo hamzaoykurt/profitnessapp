@@ -146,7 +146,9 @@ data class Exercise(
     val groupLabel: String = "",
     val groupRounds: Int? = null,
     val groupRestSeconds: Int? = null,
-    val challengeId: String? = null
+    val challengeId: String? = null,
+    /** Dikey (9:16) hareket videosu; null → bugünkü gibi foto. Kaynak: uzak `exercises.video_url` (bkz. ExerciseNameDto). */
+    val videoUrl: String? = null
 )
 
 data class WorkoutDay(

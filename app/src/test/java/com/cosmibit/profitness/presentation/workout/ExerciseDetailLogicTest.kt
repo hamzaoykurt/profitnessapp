@@ -51,6 +51,40 @@ class ExerciseDetailLogicTest {
     }
 
     @Test
+    fun `empty set rows are dropped and empty sessions vanish`() {
+        // Ekrandaki "2 —" satırı: kg=0, tekrar yok → kayıt sayılmaz.
+        val stats = buildHistoryStats(
+            listOf(set("2026-11-13", 0, 5f, null), set("2026-11-13", 1, 0f, null), set("2026-11-14", 0, 0f, null))
+        )
+        assertEquals(1, stats.sessions.size)
+        assertEquals(listOf(0), stats.last!!.sets.map { it.setIndex })
+    }
+
+    @Test
+    fun `suspicious drop hides delta but record and chart stay consistent`() {
+        // Ekrandaki durum: önceki seans 35 kg, son seans 5 kg → "−30 kg" gösterilmez; REKOR 35, grafik son değeri 5.
+        val stats = buildHistoryStats(
+            listOf(set("2026-11-06", 0, 35f, 8), set("2026-11-06", 1, 35f, 8), set("2026-11-13", 0, 5f, null), set("2026-11-13", 1, 0f, null))
+        )
+        assertNull(stats.topWeightDeltaKg)
+        assertEquals(35f, stats.record!!.weightKg, 0.001f)
+        assertEquals(listOf(35f, 5f), chartSeries(stats.sessions, strength = true).map { it.value })
+        assertTrue(isSuspiciousWeightJump(35f, 5f))
+        assertTrue(isSuspiciousWeightJump(20f, 45f))
+        assertTrue(!isSuspiciousWeightJump(30f, 20f))
+    }
+
+    @Test
+    fun `delta skips previous session without kg and needs kg in last session`() {
+        val skip = buildHistoryStats(
+            listOf(set("2026-11-01", 0, 20f, 10), set("2026-11-05", 0, null, 12), set("2026-11-08", 0, 22.5f, 10))
+        )
+        assertEquals(2.5f, skip.topWeightDeltaKg!!, 0.001f)
+        val lastNoKg = buildHistoryStats(listOf(set("2026-11-01", 0, 20f, 10), set("2026-11-08", 0, null, 12)))
+        assertNull(lastNoKg.topWeightDeltaKg)
+    }
+
+    @Test
     fun `muscle regions map TR and EN targets and ignore unknown`() {
         assertEquals(setOf(MuscleRegion.CHEST), muscleRegionsFor("CHEST (GÖĞÜS)"))
         assertEquals(setOf(MuscleRegion.TRICEPS), muscleRegionsFor("Arka kol"))

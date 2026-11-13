@@ -60,7 +60,9 @@ data class ProgramExercise(
     val groupType: String = "straight",
     val groupLabel: String = "",
     val groupRounds: Int? = null,
-    val groupRestSeconds: Int? = null
+    val groupRestSeconds: Int? = null,
+    /** Uzak `exercises.video_url` (yalnız uzak DTO yolu; Room'da sütun yok → yerelden okunan kayıtlarda null). */
+    val videoUrl: String? = null
 )
 
 @Serializable

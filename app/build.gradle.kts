@@ -204,6 +204,9 @@ dependencies {
 
     // Haze: gerçek bulanık cam (Sinema alt menü)
     implementation(libs.haze)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.datasource)
+    implementation(libs.media3.database)
 
     // Google Places autocomplete
     implementation(libs.google.places)
