@@ -98,7 +98,7 @@ fun ExerciseCatalog.toViewerExercise(
 
 /**
  * Program bağlamında hareket gösterimi: [exercise] doluysa ExerciseDetailSheet açılır.
- * Kilo geçmişi boş olduğundan sheet AI analiz bölümünü zaten göstermez (weightHistory.isNotEmpty koşulu).
+ * Geçmiş verilmediğinden showHistory=false: "geçmiş yok" kartı çizilmez, AI analiz bölümü zaten gizli (weightHistory.isNotEmpty koşulu).
  */
 @Composable
 fun ProgramExerciseSheet(exercise: Exercise?, onDismiss: () -> Unit) {
@@ -109,7 +109,8 @@ fun ProgramExerciseSheet(exercise: Exercise?, onDismiss: () -> Unit) {
             weightHistory = emptyList(),
             aiInsight = "",
             isAiLoading = false,
-            isFree = true
+            isFree = true,
+            showHistory = false
         )
     }
 }

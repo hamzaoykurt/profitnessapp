@@ -40,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -678,7 +679,7 @@ private fun PerformanceMetricsSection(
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = buildList {
-        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.effectiveAccentColor))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.accent3Color))
         add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
         add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.supportStrength))
         if (totalDurationSeconds > 0) {

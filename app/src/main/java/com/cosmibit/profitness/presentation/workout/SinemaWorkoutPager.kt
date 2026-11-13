@@ -109,6 +109,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.cosmibit.profitness.core.theme.AppThemeState
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.LocalSinemaNav
@@ -731,6 +733,7 @@ private fun SetRow(
     )
     val shape = RoundedCornerShape(h / 2)
     val onAcc = if (onAccent == Color.Black) Sinema.Ink else onAccent
+    val measure = theme.accent2Color   // c2 = ölç: tamamlanan set
     val numSize = if (active) 24.sp else 20.sp
     val setLabel = theme.t("Set ${index + 1}", "Set ${index + 1}")
     Row(
@@ -740,11 +743,11 @@ private fun SetRow(
                 shape,
                 fillTop = when (state) { SetRowState.Pending -> 0.10f; SetRowState.Active -> 0.14f; SetRowState.Done -> 0.10f },
                 fillBottom = when (state) { SetRowState.Pending -> 0.06f; SetRowState.Active -> 0.14f; SetRowState.Done -> 0.10f },
-                overlay = if (done) accent.copy(0.18f) else null,
+                overlay = if (done) measure.copy(0.18f) else null,
                 edgeColors = when (state) {
                     SetRowState.Pending -> null
                     SetRowState.Active -> listOf(accent.copy(0.75f), accent.copy(0.25f))
-                    SetRowState.Done -> listOf(accent.copy(0.45f))
+                    SetRowState.Done -> listOf(measure.copy(0.45f))
                 },
                 glow = if (active) accent.copy(0.22f) else null,
                 shadow = !active
@@ -778,7 +781,7 @@ private fun SetRow(
         } else {
             SetValueText(primary, numSize, Modifier.weight(1f))
         }
-        SetCheck(state, accent, onAcc, toggleDescription, onToggle)
+        SetCheck(state, accent, measure, Sinema.Ink, toggleDescription, onToggle)
     }
 }
 
@@ -795,9 +798,9 @@ private fun SetValueText(v: SetValue, numSize: androidx.compose.ui.unit.TextUnit
     )
 }
 
-/** Onay dairesi: görsel 30dp, dokunma 48dp. Bekleyen halka beyaz .40 · aktif 2dp vurgu · tamamlanan dolu vurgu + tik. */
+/** Onay dairesi: görsel 30dp, dokunma 48dp. Bekleyen halka beyaz .40 · aktif 2dp c1 · tamamlanan dolu c2 + Ink tik. */
 @Composable
-private fun SetCheck(state: SetRowState, accent: Color, onAccent: Color, description: String, onToggle: () -> Unit) {
+private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone: Color, description: String, onToggle: () -> Unit) {
     val done = state == SetRowState.Done
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
@@ -823,14 +826,14 @@ private fun SetCheck(state: SetRowState, accent: Color, onAccent: Color, descrip
                 .clip(CircleShape)
                 .then(
                     when (state) {
-                        SetRowState.Done -> Modifier.background(accent)
+                        SetRowState.Done -> Modifier.background(doneColor)
                         SetRowState.Active -> Modifier.border(2.dp, accent, CircleShape)
                         SetRowState.Pending -> Modifier.border(1.5.dp, Color.White.copy(0.40f), CircleShape)
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (done) Icon(SinemaIcons.Check, null, tint = onAccent, modifier = Modifier.size(16.dp))
+            if (done) Icon(SinemaIcons.Check, null, tint = onDone, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -1095,7 +1098,7 @@ private fun SinemaTopBar(
                     else (dataFor(ex).doneSetIndices.size.toFloat() / ex.sets.coerceAtLeast(1)).coerceIn(0f, 1f)
                     val f by animateFloatAsState(frac, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "seg")
                     Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
-                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(accent))
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(theme.accent2Color))
                     }
                 }
             }
@@ -1119,7 +1122,7 @@ private fun SinemaTopBar(
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(SinemaIcons.Flame, null, tint = accent, modifier = Modifier.size(14.dp))
+                Icon(SinemaIcons.Flame, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(
                     streak.coerceAtLeast(0).toString(), color = Color.White, fontSize = 13.sp,

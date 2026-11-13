@@ -15,7 +15,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -24,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,21 +35,26 @@ import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
-import com.cosmibit.profitness.presentation.components.SinemaBigStat
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
-import com.cosmibit.profitness.presentation.components.drawGlowDot
 import com.cosmibit.profitness.presentation.components.drawGlowLine
+import com.cosmibit.profitness.presentation.program.rememberExerciseCatalog
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-private val SHORT_DATE = DateTimeFormatter.ofPattern("d MMM")
+// shortcut: c2/c3 token'ları (accentSecondary/accentTertiary) core/theme'e girene kadar geçici ve yalnız burada (Hamza seti: TEAL VIVID).
+// Sobi birleştirirken bu iki satır token okumasıyla değişecek.
+
+private fun AppThemeState.uiLocale(): Locale =
+    if (language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale.forLanguageTag("tr-TR")
 
 /**
- * Sinema hareket detayı: kenardan kenara büyük gösterim (hareket görseli; yoksa kategori fotoğrafı),
- * altta karartma + ad + kas grubu; sonra dev rakamlar, NASIL YAPILIR, notlar, kilo geçmişi, AI analiz.
+ * "Hareketi gör": üstte hareket görseli (yoksa kategori fotoğrafı); altında başlık + kas/ekipman çipleri + kas haritası + REKOR,
+ * PLAN, SON PERFORMANS, İLERLEME, NOTLAR, (varsa) harekete özel talimat, AI analiz.
+ * [showHistory] false ise geçmiş bölümleri çizilmez (program önizlemesi: geçmiş verilmiyor).
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ExerciseDetailSheet(
     exercise: Exercise,
@@ -57,15 +65,23 @@ fun ExerciseDetailSheet(
     isAiLoading: Boolean = false,
     isFree: Boolean = true,
     aiCredits: Int = 0,
-    onRequestAiInsight: () -> Unit = {}
+    onRequestAiInsight: () -> Unit = {},
+    showHistory: Boolean = true
 ) {
     val theme = LocalAppTheme.current
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val accent = theme.effectiveAccentColor
+    val locale = remember(theme.language) { theme.uiLocale() }
     val activityMetric = remember(exercise.category, exercise.name, exercise.target, exercise.reps) {
         exerciseActivityMetric(exercise)
     }
+    val isStrength = activityMetric == ActivityMetric.Strength
+    val stats = remember(weightHistory) { buildHistoryStats(weightHistory) }
+    val regions = remember(exercise.target) { muscleRegionsFor(exercise.target) }
+    // Harekete özel talimat: katalog (ExerciseEntity.description). Boşsa bölüm hiç çizilmez.
+    val catalog = rememberExerciseCatalog()
+    val instructions = remember(catalog, exercise.name) { catalog.find(exercise.name)?.description.orEmpty().trim() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -88,7 +104,7 @@ fun ExerciseDetailSheet(
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
         ) {
-            // ── Gösterim: kenardan kenara, altta karartma + ad + kas grubu ──
+            // ── Görsel: en üstte; hareket görseli yoksa kategori fotoğrafı ──
             val pageBg = Sinema.page(theme)
             val hasImage = exercise.image.isNotBlank()
             val photoUrl = if (hasImage) exercise.image else categoryImageUrl(exercise.category)
@@ -98,15 +114,13 @@ fun ExerciseDetailSheet(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(360.dp)
+                    .height(240.dp)
                     .background(Sinema.surface(theme))
             ) {
                 AsyncImage(
                     model = imageRequest,
                     contentDescription = theme.t("Hareket gösterimi", "Movement demonstration"),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = if (hasImage) 76.dp else 0.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = if (hasImage) ContentScale.Fit else ContentScale.Crop
                 )
                 Box(
@@ -115,49 +129,71 @@ fun ExerciseDetailSheet(
                         .background(
                             Brush.verticalGradient(
                                 0f to Color.Transparent,
-                                0.45f to Color.Transparent,
-                                0.80f to pageBg.copy(0.80f),
+                                0.70f to Color.Transparent,
                                 1f to pageBg
                             )
                         )
                 )
-                Column(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 6.dp)
-                ) {
-                    val categoryText = theme.fitnessTermDisplayName(exercise.category)
-                    val targetText = theme.fitnessTermDisplayName(exercise.target)
-                    val muscle = listOf(targetText, categoryText)
-                        .filter { it.isNotBlank() }
-                        .distinctBy { it.lowercase() }
-                        .joinToString(" · ")
-                    if (muscle.isNotBlank()) {
-                        Text(
-                            muscle.sinemaUpper(theme),
-                            color = accent,
-                            style = Sinema.Label,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Sinema.surface(theme))
-                                .border(1.dp, theme.stroke.copy(0.8f), CircleShape)
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
-                        Spacer(Modifier.height(10.dp))
-                    }
-                    Text(
-                        theme.exerciseDisplayName(exercise.name),
-                        style = Sinema.Title.copy(fontSize = 32.sp, fontWeight = FontWeight.ExtraBold),
-                        color = Sinema.text(theme),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
 
             Column(Modifier.padding(horizontal = 20.dp)) {
+                Spacer(Modifier.height(4.dp))
+
+                // ── Başlık bloğu: [kas haritası] başlık + çipler + REKOR ──
+                Row(verticalAlignment = Alignment.Top) {
+                    if (regions.isNotEmpty()) {
+                        MuscleMap(
+                            regions = regions,
+                            description = theme.t(
+                                "Hedef kas: ${theme.fitnessTermCompactDisplayName(exercise.target).capFirst()}",
+                                "Target muscle: ${theme.fitnessTermCompactDisplayName(exercise.target).capFirst()}"
+                            )
+                        )
+                        Spacer(Modifier.width(16.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            theme.exerciseDisplayName(exercise.name),
+                            style = Sinema.Title.copy(fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold),
+                            color = Sinema.text(theme),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val chips = listOf(exercise.target, exercise.category)
+                            .map { theme.fitnessTermCompactDisplayName(it).capFirst() }
+                            .filter { it.isNotBlank() }
+                            .distinctBy { it.lowercase() }
+                        if (chips.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) { chips.forEach { InfoChip(it) } }
+                        }
+                        val record = stats.record
+                        if (isStrength && record != null) {
+                            Spacer(Modifier.height(10.dp))
+                            val recordText = buildString {
+                                append(theme.t("REKOR", "RECORD")).append(' ')
+                                append(formatWeightNumber(record.weightKg, locale)).append(" kg")
+                                record.reps?.takeIf { it > 0 }?.let { append(" × ").append(it) }
+                            }
+                            Text(
+                                recordText,
+                                color = theme.accent3TextColor,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.06.sp,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(theme.accent3Color.copy(alpha = 0.16f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
                 // Set tipi / grup
                 if (!exercise.groupId.isNullOrBlank()) {
                     val groupName = exercise.groupLabel.ifBlank {
@@ -172,139 +208,185 @@ fun ExerciseDetailSheet(
                         exercise.groupRestSeconds?.let { add(theme.t("$it sn tur arası", "$it sec between rounds")) }
                     }.joinToString(" · ")
                     Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = listOf(groupName, groupDetails).filter { it.isNotBlank() }.joinToString(" · "),
-                        color = accent,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Sinema.surface(theme))
-                            .border(1.dp, theme.stroke.copy(0.8f), CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
+                    InfoChip(listOf(groupName, groupDetails).filter { it.isNotBlank() }.joinToString(" · "))
                 }
 
-                Spacer(Modifier.height(20.dp))
-
-                // ── Dev rakamlı istatistikler ──
+                // ── PLAN ──
+                Spacer(Modifier.height(24.dp))
+                val planCells = buildList {
+                    if (isStrength) {
+                        add(exercise.sets.toString() to theme.t("set", "sets"))
+                        add(exercise.reps.ifBlank { "—" } to theme.t("tekrar", "reps"))
+                        if (exercise.weightKg > 0f) add(formatWeightNumber(exercise.weightKg, locale) to "kg")
+                    } else {
+                        add(plannedDurationLabel(exercise.reps, theme) to theme.t("süre", "duration"))
+                        exercise.targetDistanceMeters?.takeIf { it > 0f }?.let {
+                            add(formatDistance(it, locale) to theme.t("mesafe", "distance"))
+                        }
+                    }
+                    if (exercise.restSeconds > 0) add(exercise.restSeconds.toString() to theme.t("sn dinlenme", "sec rest"))
+                }
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .sinemaCard(theme, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 8.dp, vertical = 16.dp)
                 ) {
-                    if (activityMetric == ActivityMetric.Strength) {
-                        SinemaBigStat(exercise.sets.toString(), "SET", Modifier.weight(1f), size = 40, color = accent)
-                        SinemaBigStat(exercise.reps, theme.t("TEKRAR", "REPS"), Modifier.weight(1f), size = 40, color = accent)
-                    } else {
-                        val totalDistance = weightHistory.mapNotNull { it.distanceMeters }.sum()
-                        SinemaBigStat(
-                            plannedDurationLabel(exercise.reps, theme), theme.t("SÜRE", "DURATION"),
-                            Modifier.weight(1f), size = 40, color = accent
-                        )
-                        if (activityMetric == ActivityMetric.DurationDistance) {
-                            SinemaBigStat(
-                                totalDistance.takeIf { it > 0f }?.let { formatDistance(it) } ?: "—",
-                                theme.t("MESAFE", "DISTANCE"), Modifier.weight(1f), size = 40, color = accent
+                    planCells.forEach { (value, label) ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                value,
+                                style = Sinema.Title.copy(fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold),
+                                color = Sinema.text(theme),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                label,
+                                color = Sinema.textSecondary(theme),
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp,
+                                maxLines = 1,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
+            }
 
-                // ── Notlar ──
-                if (dayNotes.isNotBlank() || exercise.notes.isNotBlank()) {
-                    Spacer(Modifier.height(16.dp))
+            // ── SON PERFORMANS + İLERLEME (veya geçmiş yok kartı) ──
+            if (showHistory) {
+                val last = stats.last
+                if (last == null) {
+                    Spacer(Modifier.height(24.dp))
+                    EmptyHistoryCard(
+                        theme.t(
+                            "Bu hareketi henüz kaydetmedin. İlk setini tamamladığında son performansın ve grafiğin burada görünür.",
+                            "You haven't logged this movement yet. Once you finish your first set, your last performance and chart show up here."
+                        ),
+                        theme
+                    )
+                } else {
+                    val dateFormat = remember(locale) { DateTimeFormatter.ofPattern("d MMM", locale) }
+                    SinemaSectionLabel(
+                        theme.t("SON PERFORMANS · ${formatDate(last.date, dateFormat)}", "LAST PERFORMANCE · ${formatDate(last.date, dateFormat)}"),
+                        Modifier.padding(top = 8.dp)
+                    )
                     Column(
-                        modifier = Modifier
+                        Modifier
+                            .padding(horizontal = 20.dp)
                             .fillMaxWidth()
                             .sinemaCard(theme, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 18.dp, vertical = 16.dp)
+                            .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) {
-                        if (dayNotes.isNotBlank()) {
-                            DetailNote(theme.t("GÜN NOTU", "DAY NOTE"), dayNotes, accent, theme)
+                        last.sets.forEachIndexed { i, set ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 40.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${i + 1}",
+                                    color = Sinema.textSecondary(theme),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.width(28.dp)
+                                )
+                                Text(
+                                    setLine(set, isStrength, locale, theme),
+                                    color = Sinema.text(theme),
+                                    style = Sinema.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum")
+                                )
+                            }
                         }
-                        if (dayNotes.isNotBlank() && exercise.notes.isNotBlank()) {
-                            Spacer(Modifier.height(12.dp))
-                            HorizontalDivider(color = theme.stroke)
-                            Spacer(Modifier.height(12.dp))
-                        }
-                        if (exercise.notes.isNotBlank()) {
-                            DetailNote(theme.t("HAREKET NOTU", "EXERCISE NOTE"), exercise.notes, accent, theme)
-                        }
-                    }
-                }
-            }
-
-            // ── NASIL YAPILIR ──
-            Spacer(Modifier.height(12.dp))
-            SinemaSectionLabel(theme.t("NASIL YAPILIR", "HOW TO DO IT"))
-            val steps = if (activityMetric == ActivityMetric.Strength) {
-                listOf(
-                    theme.t("Doğru başlangıç pozisyonunu al ve postürüne dikkat et.", "Start in the correct position and keep your posture clean."),
-                    theme.t("Hareketi kontrollü ve yavaş bir tempoda gerçekleştir.", "Move with control at a steady tempo."),
-                    theme.t("Hedef kas grubunu kasılırken hissetmeye odaklan.", "Focus on feeling the target muscle contract."),
-                    theme.t("Baskı anında nefes ver, geri dönüşte nefes al.", "Exhale during effort, inhale on the return.")
-                )
-            } else {
-                listOf(
-                    theme.t("Süre hedefini antrenman kartında gir ve sayacı başlat.", "Enter the duration target on the workout card and start the timer."),
-                    theme.t("Mesafe kullanılan sporlarda tamamladığın metreyi ekle.", "For distance-based sports, add the meters you completed."),
-                    theme.t("Temponu sürdürülebilir tut ve performansı seanslar arasında karşılaştır.", "Keep a sustainable pace and compare performance between sessions."),
-                    theme.t("Bitirdiğinde hareketi tamamlayarak kaydı performans ölçütlerine aktar.", "When finished, complete the exercise to save it to performance metrics.")
-                )
-            }
-            Column(
-                Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth()
-                    .sinemaCard(theme, RoundedCornerShape(24.dp))
-                    .padding(horizontal = 18.dp, vertical = 8.dp)
-            ) {
-                steps.forEachIndexed { i, step ->
-                    if (i > 0) HorizontalDivider(color = Sinema.line(theme))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 14.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            Modifier
-                                .size(30.dp)
-                                .sinemaGlow(accent.copy(0.4f), 10.dp, 0.dp, CircleShape)
-                                .clip(CircleShape)
-                                .background(accent),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        val delta = if (isStrength) stats.topWeightDeltaKg else null
+                        if (delta != null) {
+                            Spacer(Modifier.height(4.dp))
+                            val deltaText = when {
+                                delta > 0.001f -> theme.t(
+                                    "+${formatWeightNumber(delta, locale)} kg önceki seansa göre",
+                                    "+${formatWeightNumber(delta, locale)} kg vs previous session"
+                                )
+                                delta < -0.001f -> theme.t(
+                                    "−${formatWeightNumber(-delta, locale)} kg önceki seansa göre",
+                                    "−${formatWeightNumber(-delta, locale)} kg vs previous session"
+                                )
+                                else -> theme.t("Önceki seansla aynı ağırlık", "Same weight as previous session")
+                            }
                             Text(
-                                "${i + 1}",
-                                color = theme.effectiveOnAccentColor,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.ExtraBold
+                                deltaText,
+                                color = if (delta >= -0.001f) theme.accent2TextColor else Sinema.textSecondary(theme),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(start = 28.dp, bottom = 6.dp)
                             )
                         }
-                        Spacer(Modifier.width(14.dp))
-                        Text(
-                            step,
-                            color = Sinema.text(theme),
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            modifier = Modifier.weight(1f).padding(top = 3.dp)
+                    }
+
+                    SinemaSectionLabel(theme.t("İLERLEME", "PROGRESS"), Modifier.padding(top = 8.dp))
+                    val series = remember(stats, isStrength) { chartSeries(stats.sessions, isStrength) }
+                    if (stats.sessions.size < 2 || series.size < 2) {
+                        EmptyHistoryCard(
+                            theme.t("Grafik için en az 2 seans gerekiyor.", "At least 2 sessions are needed for the chart."),
+                            theme
+                        )
+                    } else {
+                        ProgressionCard(
+                            series = series,
+                            recordDate = if (isStrength) stats.record?.date else null,
+                            isStrength = isStrength,
+                            locale = locale,
+                            dateFormat = dateFormat,
+                            theme = theme
                         )
                     }
                 }
             }
 
-            // ── Kilo geçmişi ──
-            val chartData = remember(weightHistory) { buildChartData(weightHistory) }
-            if (chartData.size >= 2) {
-                Spacer(Modifier.height(20.dp))
-                ProgressionSection(chartData = chartData, accent = accent, theme = theme)
+            // ── NOTLAR ──
+            if (dayNotes.isNotBlank() || exercise.notes.isNotBlank()) {
+                SinemaSectionLabel(theme.t("NOTLAR", "NOTES"), Modifier.padding(top = 8.dp))
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .fillMaxWidth()
+                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 18.dp, vertical = 16.dp)
+                ) {
+                    if (dayNotes.isNotBlank()) {
+                        DetailNote(theme.t("GÜN NOTU", "DAY NOTE"), dayNotes, theme)
+                    }
+                    if (dayNotes.isNotBlank() && exercise.notes.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = theme.stroke)
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    if (exercise.notes.isNotBlank()) {
+                        DetailNote(theme.t("HAREKET NOTU", "EXERCISE NOTE"), exercise.notes, theme)
+                    }
+                }
             }
 
-            // ── AI analiz ──
+            // ── NASIL YAPILIR: yalnız harekete özel gerçek metin varsa ──
+            if (instructions.isNotBlank()) {
+                SinemaSectionLabel(theme.t("NASIL YAPILIR", "HOW TO DO IT"), Modifier.padding(top = 8.dp))
+                Text(
+                    instructions,
+                    color = Sinema.text(theme),
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .fillMaxWidth()
+                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 18.dp, vertical = 16.dp)
+                )
+            }
+
+            // ── AI analiz (mevcut davranış korunur) ──
             if (weightHistory.isNotEmpty()) {
                 Spacer(Modifier.height(20.dp))
                 AiProgressionSection(
@@ -323,35 +405,238 @@ fun ExerciseDetailSheet(
     }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  PARÇALAR
+// ═════════════════════════════════════════════════════════════════════════════
+
+private fun String.capFirst(): String = replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.forLanguageTag("tr-TR")) else it.toString() }
+
 @Composable
-private fun DetailNote(
-    label: String,
-    text: String,
-    accent: Color,
-    theme: AppThemeState
-) {
-    Text(text = label, color = accent, style = Sinema.Label)
+private fun InfoChip(text: String) {
+    Text(
+        text,
+        color = Sinema.Text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .heightIn(min = 32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    )
+}
+
+@Composable
+private fun EmptyHistoryCard(text: String, theme: AppThemeState) {
+    Text(
+        text,
+        color = Sinema.textSecondary(theme),
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .sinemaCard(theme, RoundedCornerShape(20.dp))
+            .padding(18.dp)
+    )
+}
+
+@Composable
+private fun DetailNote(label: String, text: String, theme: AppThemeState) {
+    Text(text = label, color = Sinema.textSecondary(theme), style = Sinema.Label)
     Spacer(Modifier.height(6.dp))
     Text(text = text, color = Sinema.text(theme), fontSize = 15.sp, lineHeight = 22.sp)
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  PROGRESSION CHART
-// ═════════════════════════════════════════════════════════════════════════════
+private fun formatDate(date: String, format: DateTimeFormatter): String =
+    runCatching { LocalDate.parse(date).format(format) }.getOrDefault(date)
 
-private data class ProgressionPoint(val date: LocalDate, val maxWeightKg: Float)
+private fun setLine(set: SetCompletionEntity, strength: Boolean, locale: Locale, theme: AppThemeState): String {
+    if (strength) {
+        val kg = set.weightKg?.takeIf { it > 0f }
+        val reps = set.repsActual
+        return when {
+            kg != null && reps != null -> "${formatWeightNumber(kg, locale)} kg × $reps"
+            kg != null -> "${formatWeightNumber(kg, locale)} kg"
+            reps != null -> "$reps ${theme.t("tekrar", "reps")}"
+            else -> "—"
+        }
+    }
+    val parts = listOfNotNull(
+        set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it, theme) },
+        set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it, locale) }
+    )
+    return parts.joinToString(" · ").ifBlank { "—" }
+}
 
-private fun buildChartData(history: List<SetCompletionEntity>): List<ProgressionPoint> =
-    history
-        .filter { it.weightKg != null }
-        .groupBy { it.date }
-        .map { (date, sets) ->
-            ProgressionPoint(
-                date = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() },
-                maxWeightKg = sets.maxOf { it.weightKg!! }
+private fun formatDuration(seconds: Int, theme: AppThemeState): String {
+    val dk = theme.t("dk", "min")
+    val sn = theme.t("sn", "sec")
+    val m = seconds / 60
+    val s = seconds % 60
+    return when {
+        m == 0 -> "$s $sn"
+        s == 0 -> "$m $dk"
+        else -> "$m $dk $s $sn"
+    }
+}
+
+// ── Kas haritası: düz ön + arka siluet (96×120), hedef kas c2, diğerleri beyaz .10 ──
+private enum class Side { FRONT, BACK, BOTH }
+private data class Part(val side: Side, val region: MuscleRegion?, val x: Float, val y: Float, val w: Float, val h: Float, val r: Float)
+
+// Figür koordinatı: 44 × 120. Sol/sağ çiftler tek parça çizilir.
+private val MuscleParts = listOf(
+    Part(Side.BOTH, MuscleRegion.SHOULDERS, 6f, 18f, 10f, 9f, 4f),
+    Part(Side.BOTH, MuscleRegion.SHOULDERS, 28f, 18f, 10f, 9f, 4f),
+    Part(Side.FRONT, MuscleRegion.CHEST, 16f, 19f, 12f, 11f, 3f),
+    Part(Side.FRONT, MuscleRegion.ABS, 17f, 31f, 10f, 16f, 3f),
+    Part(Side.BACK, MuscleRegion.BACK, 15f, 19f, 14f, 28f, 4f),
+    Part(Side.FRONT, MuscleRegion.BICEPS, 3f, 28f, 6f, 13f, 3f),
+    Part(Side.FRONT, MuscleRegion.BICEPS, 35f, 28f, 6f, 13f, 3f),
+    Part(Side.BACK, MuscleRegion.TRICEPS, 3f, 28f, 6f, 13f, 3f),
+    Part(Side.BACK, MuscleRegion.TRICEPS, 35f, 28f, 6f, 13f, 3f),
+    Part(Side.BOTH, MuscleRegion.FOREARM, 2f, 42f, 6f, 14f, 3f),
+    Part(Side.BOTH, MuscleRegion.FOREARM, 36f, 42f, 6f, 14f, 3f),
+    Part(Side.BACK, MuscleRegion.GLUTES, 15f, 48f, 14f, 10f, 4f),
+    Part(Side.FRONT, MuscleRegion.QUADS, 15f, 50f, 6.5f, 30f, 3f),
+    Part(Side.FRONT, MuscleRegion.QUADS, 22.5f, 50f, 6.5f, 30f, 3f),
+    Part(Side.BACK, MuscleRegion.HAMSTRINGS, 15f, 59f, 6.5f, 22f, 3f),
+    Part(Side.BACK, MuscleRegion.HAMSTRINGS, 22.5f, 59f, 6.5f, 22f, 3f),
+    Part(Side.BOTH, MuscleRegion.CALVES, 15.5f, 84f, 5.5f, 26f, 3f),
+    Part(Side.BOTH, MuscleRegion.CALVES, 23f, 84f, 5.5f, 26f, 3f)
+)
+
+@Composable
+private fun MuscleMap(regions: Set<MuscleRegion>, description: String) {
+    val theme = LocalAppTheme.current
+    val off = Color.White.copy(alpha = 0.10f)
+    Canvas(
+        Modifier
+            .size(width = 96.dp, height = 120.dp)
+            .semantics { contentDescription = description }
+    ) {
+        val u = size.width / 96f
+        listOf(0f to Side.FRONT, 52f to Side.BACK).forEach { (ox, side) ->
+            drawCircle(off, radius = 7f * u, center = Offset((ox + 22f) * u, 9f * u))
+            MuscleParts.forEach { p ->
+                if (p.side == Side.BOTH || p.side == side) {
+                    drawRoundRect(
+                        color = if (p.region in regions) theme.accent2Color else off,
+                        topLeft = Offset((ox + p.x) * u, p.y * u),
+                        size = Size(p.w * u, p.h * u),
+                        cornerRadius = CornerRadius(p.r * u)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── İlerleme grafiği: çizgi c2, rekor noktası c3 ──
+@Composable
+private fun ProgressionCard(
+    series: List<ChartPoint>,
+    recordDate: String?,
+    isStrength: Boolean,
+    locale: Locale,
+    dateFormat: DateTimeFormatter,
+    theme: AppThemeState
+) {
+    val lastValue = series.last().value
+    val unit = if (isStrength) "kg" else theme.t("dk", "min")
+    val valueText = formatWeightNumber(lastValue, locale)
+    val minV = (series.minOf { it.value } - if (isStrength) 2f else 1f).coerceAtLeast(0f)
+    val maxV = series.maxOf { it.value } + if (isStrength) 2f else 1f
+    val range = (maxV - minV).coerceAtLeast(1f)
+    val gridColor = Sinema.line(theme)
+    val recordIndex = recordDate?.let { d -> series.indexOfFirst { it.date == d } } ?: -1
+    val chartDesc = theme.t(
+        "${if (isStrength) "Ağırlık" else "Süre"} grafiği: ${formatWeightNumber(series.first().value, locale)} $unit değerinden $valueText $unit değerine",
+        "${if (isStrength) "Weight" else "Duration"} chart: ${formatWeightNumber(series.first().value, locale)} $unit to $valueText $unit"
+    )
+
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .sinemaCard(theme, RoundedCornerShape(20.dp))
+            .padding(18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(valueText, style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold), color = theme.accent2TextColor)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (isStrength) theme.t("kg en yüksek, son seans", "kg top set, last session") else theme.t("dk toplam, son seans", "min total, last session"),
+                color = Sinema.textSecondary(theme),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 3.dp)
             )
         }
-        .sortedBy { it.date }
+        Spacer(Modifier.height(16.dp))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .semantics { contentDescription = chartDesc }
+        ) {
+            val w = size.width
+            val h = size.height
+            val padH = 12.dp.toPx()
+            val padV = 12.dp.toPx()
+            val chartW = w - padH * 2f
+            val chartH = h - padV * 2f
+            val n = series.lastIndex.coerceAtLeast(1)
+
+            fun xOf(i: Int) = padH + (i.toFloat() / n) * chartW
+            fun yOf(v: Float) = padV + chartH * (1f - (v - minV) / range)
+
+            repeat(4) { i ->
+                val gy = padV + chartH * (i.toFloat() / 3f)
+                drawLine(gridColor, Offset(padH, gy), Offset(w - padH, gy), 1f)
+            }
+
+            val linePath = Path()
+            val fillPath = Path()
+            series.forEachIndexed { i, pt ->
+                val x = xOf(i)
+                val y = yOf(pt.value)
+                if (i == 0) {
+                    linePath.moveTo(x, y)
+                    fillPath.moveTo(x, h)
+                    fillPath.lineTo(x, y)
+                } else {
+                    val px = xOf(i - 1)
+                    val py = yOf(series[i - 1].value)
+                    val cpX = (px + x) / 2f
+                    linePath.cubicTo(cpX, py, cpX, y, x, y)
+                    fillPath.cubicTo(cpX, py, cpX, y, x, y)
+                }
+            }
+            fillPath.lineTo(xOf(series.lastIndex), h)
+            fillPath.close()
+
+            drawPath(fillPath, Brush.verticalGradient(listOf(theme.accent2Color.copy(0.12f), Color.Transparent), padV, h))
+            drawGlowLine(linePath, theme.accent2Color, 2.5.dp.toPx())
+            if (recordIndex >= 0) {
+                drawCircle(theme.accent3Color, radius = 5.dp.toPx(), center = Offset(xOf(recordIndex), yOf(series[recordIndex].value)))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth()) {
+            Text(formatDate(series.first().date, dateFormat), color = Sinema.textSecondary(theme), style = Sinema.Label)
+            Spacer(Modifier.weight(1f))
+            Text(formatDate(series.last().date, dateFormat), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  AKTİVİTE TÜRÜ
+// ═════════════════════════════════════════════════════════════════════════════
 
 private enum class ActivityMetric { Strength, Duration, DurationDistance }
 
@@ -387,112 +672,11 @@ private fun plannedDurationLabel(reps: String, theme: AppThemeState): String {
     }
 }
 
-private fun formatDistance(meters: Float): String =
-    if (meters >= 1000f) "${"%.1f".format(meters / 1000f)} km" else "${meters.toInt()} m"
-
-@Composable
-private fun ProgressionSection(
-    chartData: List<ProgressionPoint>,
-    accent: Color,
-    theme: AppThemeState
-) {
-    val firstKg = chartData.first().maxWeightKg
-    val lastKg = chartData.last().maxWeightKg
-    val delta = lastKg - firstKg
-    val isGain = delta >= 0
-    val minKg = (chartData.minOf { it.maxWeightKg } - 2f).coerceAtLeast(0f)
-    val maxKg = chartData.maxOf { it.maxWeightKg } + 2f
-    val range = (maxKg - minKg).coerceAtLeast(1f)
-    val gridColor = Sinema.line(theme)
-    val chartDesc = theme.t(
-        "Ağırlık grafiği: ${"%.1f".format(firstKg)} kg'dan ${"%.1f".format(lastKg)} kg'a",
-        "Weight chart: ${"%.1f".format(firstKg)} kg to ${"%.1f".format(lastKg)} kg"
-    )
-
-    SinemaSectionLabel(theme.t("İLERLEME", "PROGRESS"))
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .padding(18.dp)
-    ) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            SinemaBigStat(
-                "%.1f".format(lastKg), theme.t("SON AĞIRLIK", "LATEST WEIGHT"),
-                Modifier.weight(1f), unit = "kg", size = 40, color = accent
-            )
-            Text(
-                "${if (isGain) "+" else ""}${"%.1f".format(delta)} kg",
-                color = if (isGain) accent else Sinema.textSecondary(theme),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Sinema.line(theme))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .semantics { contentDescription = chartDesc }
-        ) {
-            val w = size.width
-            val h = size.height
-            val padH = 12.dp.toPx()
-            val padV = 10.dp.toPx()
-            val chartW = w - padH * 2f
-            val chartH = h - padV * 2f
-            val n = chartData.lastIndex.coerceAtLeast(1)
-
-            fun xOf(i: Int) = padH + (i.toFloat() / n) * chartW
-            fun yOf(kg: Float) = padV + chartH * (1f - (kg - minKg) / range)
-
-            repeat(4) { i ->
-                val gy = padV + chartH * (i.toFloat() / 3f)
-                drawLine(gridColor, Offset(padH, gy), Offset(w - padH, gy), 1f)
-            }
-
-            val linePath = Path()
-            val fillPath = Path()
-            chartData.forEachIndexed { i, pt ->
-                val x = xOf(i)
-                val y = yOf(pt.maxWeightKg)
-                if (i == 0) {
-                    linePath.moveTo(x, y)
-                    fillPath.moveTo(x, h)
-                    fillPath.lineTo(x, y)
-                } else {
-                    val px = xOf(i - 1)
-                    val py = yOf(chartData[i - 1].maxWeightKg)
-                    val cpX = (px + x) / 2f
-                    linePath.cubicTo(cpX, py, cpX, y, x, y)
-                    fillPath.cubicTo(cpX, py, cpX, y, x, y)
-                }
-            }
-            fillPath.lineTo(xOf(chartData.lastIndex), h)
-            fillPath.close()
-
-            drawPath(fillPath, Brush.verticalGradient(listOf(accent.copy(0.18f), Color.Transparent), padV, h))
-            drawGlowLine(linePath, accent, 2.5.dp.toPx())
-            listOf(0, chartData.lastIndex).forEach { i ->
-                drawGlowDot(Offset(xOf(i), yOf(chartData[i].maxWeightKg)), accent, 3.5.dp.toPx())
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Text(chartData.first().date.format(SHORT_DATE), color = Sinema.textSecondary(theme), style = Sinema.Label)
-            Spacer(Modifier.weight(1f))
-            Text(chartData.last().date.format(SHORT_DATE), color = Sinema.textSecondary(theme), style = Sinema.Label)
-        }
-    }
-}
+private fun formatDistance(meters: Float, locale: Locale): String =
+    if (meters >= 1000f) "${"%.1f".format(locale, meters / 1000f)} km" else "${meters.toInt()} m"
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  AI INSIGHT
+//  AI INSIGHT (davranış değişmedi)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable

@@ -63,6 +63,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent2TextColor
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
@@ -349,7 +351,7 @@ private fun PerformanceCover(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     ringSel = if (ringSel == i) null else i
                 },
-                accent = theme.effectiveAccentColor,
+                accent = theme.accent2Color,   // c2 = ölç
                 description = theme.t("Bu haftanın günlük aktivitesi", "This week's daily activity"),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -411,11 +413,6 @@ private fun WeekRing(
                 val arcSize = Size(2 * r, 2 * r)
                 val active = level > 0f
                 val full = (isToday && active) || chosen
-                if (full) {
-                    // glow: 0 0 12 vurgu %50
-                    drawArc(accent.copy(0.12f), start, sweep, false, arcTl, arcSize, style = Stroke(stroke + 12.dp.toPx(), cap = StrokeCap.Round))
-                    drawArc(accent.copy(0.22f), start, sweep, false, arcTl, arcSize, style = Stroke(stroke + 6.dp.toPx(), cap = StrokeCap.Round))
-                }
                 val color = when {
                     full -> accent
                     active -> accent.copy(ringArcAlpha(level))
@@ -540,7 +537,7 @@ private fun RhythmChart(
     theme: AppThemeState,
     english: Boolean
 ) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent2Color   // c2 = ölç (çubuklar)
     val motion = rememberSinemaMotionOn()
     val haptic = LocalHapticFeedback.current
     val grow = remember { Animatable(1f) }
@@ -588,10 +585,6 @@ private fun RhythmChart(
                 } else {
                     val h = (capsuleFraction(c, best) * maxBar.toPx() * grow.value).coerceAtLeast(8.dp.toPx())
                     val full = isNow || chosen
-                    if (full) {
-                        drawRoundRect(accent.copy(0.14f), Offset(x - 6.dp.toPx(), size.height - h - 6.dp.toPx()), Size(bw + 12.dp.toPx(), h + 12.dp.toPx()), CornerRadius(14.dp.toPx()))
-                        drawRoundRect(accent.copy(0.26f), Offset(x - 3.dp.toPx(), size.height - h - 3.dp.toPx()), Size(bw + 6.dp.toPx(), h + 6.dp.toPx()), CornerRadius(11.dp.toPx()))
-                    }
                     drawRoundRect(if (full) accent else accent.copy(0.55f), Offset(x, size.height - h), Size(bw, h), radius)
                 }
             }
@@ -798,7 +791,7 @@ private fun BodySection(
                     Spacer(Modifier.height(18.dp))
                     PText("BMI ${formatNumber(state.bmi, 1, english)} · ${zoneNames[bmiZone(state.bmi)]}", 13, FontWeight.Bold)
                     Spacer(Modifier.height(10.dp))
-                    BmiScale(state.bmi, accent)
+                    BmiScale(state.bmi, theme.accent2Color)
                 }
                 if (hasHeight || hasFat) {
                     Spacer(Modifier.height(22.dp))
@@ -858,7 +851,7 @@ private fun BmiScale(bmi: Double, accent: Color, modifier: Modifier = Modifier) 
 
 @Composable
 private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Boolean, modifier: Modifier = Modifier) {
-    val accent = theme.effectiveAccentColor
+    val accent = theme.accent2Color   // c2 = ölç (en uzun seriye oran çubuğu)
     Column(modifier) {
         SectionLabel(theme.t("Aktif seri", "Current streak"))
         Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
@@ -1631,7 +1624,7 @@ private fun CalculationResultCard(
         Text(value, style = Sinema.Metric.copy(fontSize = 52.sp), color = Sinema.text(theme), maxLines = 1)
         if (subtitle.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(subtitle, color = theme.effectiveAccentColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            Text(subtitle, color = theme.accent2TextColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }

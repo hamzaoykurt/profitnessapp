@@ -231,15 +231,15 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
     }
 )
 
-// ── Destek renkleri: vurgu preset'inden bağımsız 5 sabit anlam rengi ──────────
+// ── Destek renkleri: 3 renk sistemine katlandı (Success/Rest/Strength→c2, Reward→c3); yalnız Alert sabit ──────────
 /** Başarı / tamamlandı. */
-val AppThemeState.supportSuccess: Color get() = Color(0xFF46CC8C)
+val AppThemeState.supportSuccess: Color get() = accent2Color
 /** Dinlenme / kardiyo / su. */
-val AppThemeState.supportRest: Color get() = Color(0xFF3DB5E8)
+val AppThemeState.supportRest: Color get() = accent2Color
 /** Kuvvet / hacim / kas. */
-val AppThemeState.supportStrength: Color get() = Color(0xFFA48BF7)
+val AppThemeState.supportStrength: Color get() = accent2Color
 /** Ödül: XP / rütbe / seri değeri. */
-val AppThemeState.supportReward: Color get() = Color(0xFFF2C23F)
+val AppThemeState.supportReward: Color get() = accent3Color
 /** Uyarı / hata / atlandı. */
 val AppThemeState.supportAlert: Color get() = Color(0xFFF4748A)
 /** Dolgu (çip/satır) için yumuşak ton: koyu α.16, açık α.12. */

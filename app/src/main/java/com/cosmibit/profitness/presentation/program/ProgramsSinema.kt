@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,6 +74,8 @@ import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
@@ -96,7 +99,7 @@ data class ProgramTodayInfo(
     val week: List<WeekCell>
 )
 
-data class WeekCell(val label: String, val isToday: Boolean, val isRest: Boolean)
+data class WeekCell(val label: String, val isToday: Boolean, val isRest: Boolean, val isDone: Boolean = false)
 
 fun buildProgramTodayInfo(
     days: List<WorkoutDayState>,
@@ -116,7 +119,8 @@ fun buildProgramTodayInfo(
         todayExercises = today.totalCount,
         todayIsRest = today.day.isRestDay,
         week = days.mapIndexed { i, d ->
-            WeekCell(com.cosmibit.profitness.presentation.workout.localizedWorkoutDayLabel(d.day.day, theme), i == selectedIdx, d.day.isRestDay)
+            WeekCell(com.cosmibit.profitness.presentation.workout.localizedWorkoutDayLabel(d.day.day, theme), i == selectedIdx, d.day.isRestDay,
+                isDone = d.totalCount > 0 && d.day.exercises.count { it.id in d.completedIds } >= d.totalCount)
         }
     )
 }
@@ -171,14 +175,14 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             // AKTİF PROGRAM çipi
             Row(
                 Modifier.padding(start = 16.dp, top = statusTop + 16.dp).height(28.dp)
-                    .sinemaGlow(accent.copy(0.4f), 18.dp, 8.dp, RoundedCornerShape(14.dp))
-                    .clip(RoundedCornerShape(14.dp)).background(accent).padding(horizontal = 12.dp),
+                    .clip(RoundedCornerShape(14.dp)).background(theme.accent3Color).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(SinemaIcons.Bolt, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(14.dp))
+                // c3 = işaretle (rozet); hale yok (hale yalnız c1)
+                Icon(SinemaIcons.Bolt, null, tint = Sinema.Ink, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = theme.effectiveOnAccentColor,
+                    theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink,
                     fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
                 )
             }
@@ -218,6 +222,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val frac = (info.completed.toFloat() / info.total).coerceIn(0f, 1f)
+            val ring = theme.accent2Color   // c2 = ölç
             Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw = 6.dp.toPx()
@@ -225,8 +230,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                     val tl = Offset(sw / 2, sw / 2)
                     drawArc(Color.White.copy(0.22f), -90f, 360f, false, tl, Size(d, d), style = Stroke(sw))
                     if (frac > 0f) {
-                        drawArc(accent.copy(0.35f), -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw + 6.dp.toPx(), cap = StrokeCap.Round))
-                        drawArc(accent, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
+                        drawArc(ring, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
                     }
                 }
                 Text("${info.completed}/${info.total}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em)
@@ -258,7 +262,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                 ) {
                     Text(c.label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     Spacer(Modifier.height(4.dp))
-                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else Color.White.copy(0.4f)))
+                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else if (c.isDone) theme.accent2Color else Color.White.copy(0.4f)))
                 }
             }
         }
@@ -299,29 +303,22 @@ private fun raiseBrush(theme: AppThemeState): Brush =
 @Composable
 fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val on = theme.effectiveOnAccentColor
     val shape = RoundedCornerShape(28.dp)
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        // AI
+        // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
             Modifier.weight(1f).height(148.dp)
-                .sinemaGlow(accent.copy(0.4f), 14.dp, 8.dp, shape)
                 .clip(shape)
-                .background(Brush.linearGradient(listOf(lerp(Color.White, accent, 0.78f), accent, lerp(accent, Color.Black, 0.4f)), Offset(0f, 0f), Offset(260f, 420f)))
-                .drawWithContent {
-                    drawContent()
-                    drawRect(Brush.verticalGradient(listOf(Color.White.copy(0.55f), Color.Transparent), 0f, 3.dp.toPx()), size = Size(size.width, 3.dp.toPx()))
-                }
+                .background(Sinema.Surface)
+                .border(1.dp, Sinema.line(theme), shape)
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
-            Icon(SinemaIcons.Spark, null, tint = on.copy(0.2f), modifier = Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = (-14).dp).size(110.dp).graphicsLayer { rotationZ = 12f })
-            Box(Modifier.padding(14.dp).size(42.dp).clip(CircleShape).background(Color.White.copy(0.35f)), contentAlignment = Alignment.Center) {
-                Icon(SinemaIcons.Spark, null, tint = on, modifier = Modifier.size(22.dp))
+            Box(Modifier.padding(14.dp).size(42.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)), contentAlignment = Alignment.Center) {
+                Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = on, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Sana özel plan", "A plan made for you"), color = on.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
+                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
         }
         // Manuel
@@ -333,13 +330,10 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
                 .border(1.dp, Sinema.line(theme), shape)
                 .clickable(role = Role.Button, onClick = onManual)
         ) {
-            Icon(SinemaIcons.Plus, null, tint = accent.copy(0.3f), modifier = Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = (-14).dp).size(110.dp).graphicsLayer { rotationZ = 12f })
             Box(
-                Modifier.padding(14.dp).size(42.dp)
-                    .sinemaGlow(accent.copy(0.4f), 16.dp, 8.dp, CircleShape)
-                    .clip(CircleShape).background(accent),
+                Modifier.padding(14.dp).size(42.dp).clip(CircleShape).background(Color.White.copy(0.10f)),
                 contentAlignment = Alignment.Center
-            ) { Icon(SinemaIcons.Plus, null, tint = on, modifier = Modifier.size(22.dp)) }
+            ) { Icon(SinemaIcons.Plus, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp)) }
             Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
                 Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
                 Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
@@ -365,11 +359,11 @@ fun SavedProgramCard(
     onSetActive: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    showTypeBadge: Boolean = true
 ) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val on = theme.effectiveOnAccentColor
+    val badge = theme.accent3Color   // c3 = işaretle; ekranda ≤3 öğe → yalnız ilk kartta
     val shape = RoundedCornerShape(28.dp)
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -416,9 +410,10 @@ fun SavedProgramCard(
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(typeIcon, null, tint = accent, modifier = Modifier.size(14.dp))
+                val typeTint = if (showTypeBadge) badge else Color.White.copy(0.85f)
+                Icon(typeIcon, null, tint = typeTint, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(typeLabel.sinemaUpper(theme), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
+                Text(typeLabel.sinemaUpper(theme), color = typeTint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
                 Box {
                     Box(
                         Modifier.size(32.dp).sinemaCapsuleGlass(CircleShape, blur = 16.dp)
@@ -458,8 +453,7 @@ fun SavedProgramCard(
                 if (program.isActive) {
                     Row(
                         Modifier.fillMaxWidth().height(42.dp)
-                            .sinemaGlow(accent.copy(0.4f), 14.dp, 8.dp, RoundedCornerShape(21.dp))
-                            .sinemaCapsuleGlass(RoundedCornerShape(21.dp), edge = accent, fillAlpha = 0.4f, blur = 12.dp),
+                            .sinemaCapsuleGlass(RoundedCornerShape(21.dp), edge = Color.White.copy(0.3f), fillAlpha = 0.4f, blur = 12.dp),
                         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(SinemaIcons.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
@@ -474,21 +468,17 @@ fun SavedProgramCard(
     }
 }
 
-/** Çizim .act: 42dp vurgu hapı (üst iç parlama + vurgu gölgesi). */
+/** 42dp ikincil hap (nötr cam; c1 yalnız ekranın tek birincil düğmesinde). */
 @Composable
 fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val on = theme.effectiveOnAccentColor
+    val on = Color.White
     val shape = RoundedCornerShape(21.dp)
+    // İkincil eylem: nötr cam (ekranda tek c1 düğme = BAŞLA)
     Row(
         modifier.height(42.dp)
-            .sinemaGlow(accent.copy(0.4f), 18.dp, 8.dp, shape)
-            .clip(shape).background(accent)
-            .drawWithContent {
-                drawContent()
-                drawRect(Brush.verticalGradient(listOf(Color.White.copy(0.4f), Color.Transparent), 0f, 3.dp.toPx()), size = Size(size.width, 3.dp.toPx()))
-            }
+            .clip(shape).background(Color.White.copy(0.18f))
+            .border(1.dp, Color.White.copy(0.2f), shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 18.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
@@ -548,7 +538,7 @@ fun ReadyProgramCard(
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 1f to Color.Black.copy(0.85f))))
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
-            Text(tag.sinemaUpper(theme), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
+            Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
                 modifier = Modifier.padding(start = 14.dp, top = 14.dp))
             Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
@@ -569,8 +559,8 @@ fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, on
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        items(programs, key = { it.id }) { p ->
-            SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) })
+        itemsIndexed(programs, key = { _, p -> p.id }) { i, p ->
+            SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) }, showTypeBadge = i == 0)
         }
     }
 }

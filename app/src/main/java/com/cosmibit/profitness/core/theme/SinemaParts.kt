@@ -68,13 +68,15 @@ fun rememberSinemaMotionOn(): Boolean {
 /**
  * SAYFA ZEMİNİ — TEK KAYNAK (.ekip/yon-cam-siyah.md "Sayfa zemini sistemi", seçenek C).
  * Her sayfada aynı, SABİT (animasyon yok, içerikle kaymaz): zemin #0C0D10;
- * üst ışık r360 merkez (120,130) vurgu α.30 → %92'de 0; alt ışık r310 merkez (260, alt−220) vurgu α.22 → 0;
+ * üst ışık r360 merkez (120,130) vurgu α.30 → %92'de 0; alt ışık r310 merkez (260, alt−220) c2 α.18 (yon-renk-hareket.md) → 0;
  * alt 380dp: saydam → (alt−84dp) sayfa rengi %45. Ölçüler 360dp genişlik çizimine göre ekran genişliğiyle ölçeklenir.
  * Tek çizim: 2 radyal + 1 dikey degrade, Brush'lar drawWithCache'te (kare başı ayırma yok).
  */
 @Composable
 fun SinemaBackdrop(modifier: Modifier = Modifier) {
-    val accent = LocalAppTheme.current.effectiveAccentColor
+    val theme = LocalAppTheme.current
+    val accent = theme.effectiveAccentColor
+    val accent2 = theme.accent2Color   // alt ışık = c2 (ölç)
     Spacer(
         modifier
             .fillMaxSize()
@@ -90,7 +92,7 @@ fun SinemaBackdrop(modifier: Modifier = Modifier) {
                 val c2 = Offset(d(260f), size.height - d(220f))
                 val r2 = d(310f)
                 val o2 = Brush.radialGradient(
-                    0f to accent.copy(SinemaBackdropBottomAlpha), 1f to Color.Transparent, center = c2, radius = r2
+                    0f to accent2.copy(SinemaBackdropBottomAlpha), 1f to Color.Transparent, center = c2, radius = r2
                 )
                 val sh = d(380f).coerceAtMost(size.height)
                 val shTop = size.height - sh
@@ -111,7 +113,7 @@ fun SinemaBackdrop(modifier: Modifier = Modifier) {
 
 /** Seçenek C ışık güçleri (sayfaya göre DEĞİŞMEZ). */
 const val SinemaBackdropTopAlpha = 0.30f
-const val SinemaBackdropBottomAlpha = 0.22f
+const val SinemaBackdropBottomAlpha = 0.18f   // c2 c1'den açık → .22 değil .18
 
 /** Eski ad: gövdesi artık [SinemaBackdrop] (orb hareketi kalktı). Çağıranlar otomatik yeni zemine geçer. */
 @Composable

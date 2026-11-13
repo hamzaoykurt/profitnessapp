@@ -55,6 +55,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent2TextColor
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.presentation.components.glassCard
@@ -873,7 +875,7 @@ fun CircularProgressRing(
     val resolvedRingColor = when {
         ringColor != Color.Unspecified -> ringColor
         complete -> theme.supportSuccess
-        else -> MaterialTheme.colorScheme.primary
+        else -> theme.accent2Color   // c2 = ölç
     }
     val resolvedTrackColor = if (trackColor == Color.Unspecified) theme.supportRest.copy(0.10f) else trackColor
 
@@ -926,7 +928,7 @@ fun CircularProgressRing(
         val responsive = rememberResponsiveLayoutInfo()
         Text(
             text = label,
-            color = if (progress > 0) (if (ringColor == Color.Unspecified) (if (complete) theme.supportSuccess else theme.accentTextColor) else resolvedRingColor) else theme.text1,
+            color = if (progress > 0) (if (ringColor == Color.Unspecified) (if (complete) theme.supportSuccess else theme.accent2TextColor) else resolvedRingColor) else theme.text1,
             fontSize = if (!bigRing) 13.sp else if (responsive.isLargeFont) 13.sp else 16.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(fontFeatureSettings = "tnum"),
