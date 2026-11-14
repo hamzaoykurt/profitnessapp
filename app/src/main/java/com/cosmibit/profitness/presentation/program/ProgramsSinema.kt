@@ -80,6 +80,7 @@ import com.cosmibit.profitness.core.theme.AppThemeState
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.supportAlert
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.accent2Color
@@ -160,7 +161,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 .drawWithContent {
                     drawContent()
                     drawRect(
-                        Brush.verticalGradient(0.58f to Color.Black, 1f to Color.Transparent),
+                        Brush.verticalGradient(0.58f to Sinema.scrim(1f), 1f to Color.Transparent),
                         blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                     )
                 }
@@ -175,13 +176,13 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        0f to Color.Black.copy(0.5f), 0.24f to Color.Transparent,
-                        0.42f to Color.Black.copy(0.12f), 0.80f to Color.Black.copy(0.88f), 1f to Color.Black.copy(0.88f)
+                        0f to Sinema.scrim(0.5f), 0.24f to Color.Transparent,
+                        0.42f to Sinema.scrim(0.12f), 0.80f to Sinema.scrim(0.88f), 1f to Sinema.scrim(0.88f)
                     )
                 )
             )
             // çizimdeki foto karanlık (dk filtre); gerçek fotoğraf daha parlak olduğundan genel hafif karartma
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(0.22f)))
+            Box(Modifier.fillMaxSize().background(Sinema.scrim(0.22f)))
         }
         if (active != null) {
             // AKTİF PROGRAM çipi
@@ -309,7 +310,7 @@ private fun Modifier.insetLook(theme: AppThemeState, shape: androidx.compose.ui.
     drawContent()
     // çizim --ins: üstten iç gölge + altta ince beyaz çizgi (Compose'ta inset gölge yok → degrade)
     val h = 9.dp.toPx()
-    drawRect(Brush.verticalGradient(listOf(Color.Black.copy(0.6f), Color.Transparent), 0f, h), size = Size(size.width, h))
+    drawRect(Brush.verticalGradient(listOf(Sinema.scrim(0.6f), Color.Transparent), 0f, h), size = Size(size.width, h))
     drawRect(Color.White.copy(0.10f), topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
 }
 
@@ -399,7 +400,7 @@ fun SavedProgramCard(
     }
     val workoutDays = program.days.count { !it.isRestDay }
     val totalExercises = program.days.sumOf { it.exercises.size }
-    val coral = com.cosmibit.profitness.core.theme.CardCoral
+    val coral = theme.supportAlert
 
     if (confirmDelete) {
         AlertDialog(
@@ -422,13 +423,13 @@ fun SavedProgramCard(
         Modifier.width(226.dp).height(288.dp)
             .shadow(16.dp, shape, ambientColor = cardBorderShadow(theme), spotColor = cardBorderShadow(theme))
             .clip(shape)
-            .background(Color.Black)
+            .background(Sinema.scrim(1f))
             .border(1.dp, Color.White.copy(0.2f), shape)
             .clickable(role = Role.Button, onClick = onEdit)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             SceneImage(url = photo, modifier = Modifier.fillMaxSize(), requestWidthPx = 452, requestHeightPx = 576, fallbackGradient = true)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(0.3f), 0.35f to Color.Transparent, 0.82f to Color.Black.copy(0.9f), 1f to Color.Black.copy(0.9f))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Sinema.scrim(0.3f), 0.35f to Color.Transparent, 0.82f to Sinema.scrim(0.9f), 1f to Sinema.scrim(0.9f))))
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -551,13 +552,13 @@ fun ReadyProgramCard(
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp).height(176.dp)
             .shadow(16.dp, shape, ambientColor = cardBorderShadow(theme), spotColor = cardBorderShadow(theme))
-            .clip(shape).background(Color.Black).border(1.dp, Color.White.copy(0.2f), shape)
+            .clip(shape).background(Sinema.scrim(1f)).border(1.dp, Color.White.copy(0.2f), shape)
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             SceneImage(url = photoUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1000, requestHeightPx = 480, fallbackGradient = true)
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color.Black.copy(0.7f), Color.Black.copy(0.1f)), Offset(0f, 0f), Offset(900f, 300f))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 1f to Color.Black.copy(0.85f))))
+            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Sinema.scrim(0.7f), Sinema.scrim(0.1f)), Offset(0f, 0f), Offset(900f, 300f))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 1f to Sinema.scrim(0.85f))))
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
@@ -591,5 +592,5 @@ fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, on
 
 @Composable
 fun ProgramsTopScrim() {
-    Box(Modifier.fillMaxWidth().height(56.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(0.6f), Color.Transparent))))
+    Box(Modifier.fillMaxWidth().height(56.dp).background(Brush.verticalGradient(listOf(Sinema.scrim(0.6f), Color.Transparent))))
 }

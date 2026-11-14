@@ -22,6 +22,8 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ErrorOutline
+import com.cosmibit.profitness.core.theme.supportAlert
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.People
@@ -183,7 +185,11 @@ fun ChallengesTab(
                         .clickable { vm.clearError() }
                         .padding(14.dp)
                 ) {
-                    Text(err, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.ErrorOutline, null, tint = theme.supportAlert, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(err, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 
@@ -231,18 +237,17 @@ fun ChallengesTab(
                                 .sortedFor(DiscoverSort.NEWEST) // shortcut: Yeni/Trend menüsü Challenge listesini etkilemez
                         }
                         if (list.isEmpty()) {
+                            val filtered = kindFilter != ChallengeKindFilter.All || sportFilterRaw != null ||
+                                targetFilterRaw != null || mineStatusFilter != MyChallengeStatusFilter.All
+                            val browse = state.scope == ChallengesScope.Browse
+                            // CTA yok: oluşturma eylemi ekranda yalnız FAB'da (tek birincil eylem).
                             EmptyBlock(
-                                text = if (state.scope == ChallengesScope.Browse)
-                                    theme.t(
-                                        "Bu filtrelere uygun aktif challenge yok.",
-                                        "No active challenges match these filters."
-                                    )
-                                else theme.t(
-                                    "Bu filtrelere uygun katıldığın challenge yok.",
-                                    "No joined challenges match these filters."
-                                ),
-                                actionLabel = theme.t("CHALLENGE OLUŞTUR", "CREATE CHALLENGE"),
-                                onAction = { vm.openCreate() },
+                                text = when {
+                                    browse && filtered -> theme.t("Bu filtrelere uygun aktif challenge yok.", "No active challenges match these filters.")
+                                    browse -> theme.t("Şu an aktif challenge yok. İlkini sen başlat.", "No active challenges right now. Start the first one.")
+                                    filtered -> theme.t("Bu filtrelere uygun katıldığın challenge yok.", "No joined challenges match these filters.")
+                                    else -> theme.t("Henüz katıldığın bir challenge yok.", "You haven't joined any challenges yet.")
+                                },
                                 theme = theme
                             )
                         } else {
@@ -390,7 +395,7 @@ private fun InviteFriendsDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(0.72f)),
+                .background(Sinema.scrim(0.72f)),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -417,12 +422,18 @@ private fun InviteFriendsDialog(
                         Text(theme.t("ARKADAŞLARINI DAVET ET", "INVITE FRIENDS"), color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
                         Text(title.ifBlank { theme.t("Yeni challenge", "New challenge") }, color = theme.text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Icon(
-                        Icons.Rounded.Close,
-                        null,
-                        tint = theme.text2,
-                        modifier = Modifier.size(22.dp).clickable(enabled = !inFlight) { onSkip() }
-                    )
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape)
+                            .clickable(enabled = !inFlight, role = androidx.compose.ui.semantics.Role.Button) { onSkip() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = theme.t("Atla", "Skip"),
+                            tint = theme.text2,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(14.dp))

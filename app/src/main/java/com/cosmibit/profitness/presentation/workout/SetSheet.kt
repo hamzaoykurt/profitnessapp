@@ -230,53 +230,28 @@ private fun StrengthSetContent(
     )
     Spacer(Modifier.height(12.dp))
     val step = 2.5f
-    fun nudge(delta: Float) {
-        val base = value.replace(',', '.').toFloatOrNull() ?: defaultWeightKg
-        val next = (base + delta).coerceAtLeast(0f)
-        val text = if (next % 1f == 0f) next.toInt().toString() else "%.1f".format(java.util.Locale.US, next)
-        actions.onSetWeightChanged(exercise, setIndex, text)
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        SinemaCapsuleIconButton(
-            icon = Icons.Rounded.Remove, description = theme.t("Azalt", "Decrease"),
-            onClick = { nudge(-step) }, selected = false, size = 48.dp
-        )
-        Spacer(Modifier.width(12.dp))
-        BoxWithConstraints(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            // Alan genişliğe göre küçülür (rakam başına ~0.64em); yazı ölçeği ≤×1.15 (dev rakam kuralı).
-            val actual = with(LocalDensity.current) { 64.sp.toDp().value } / 64f
-            val chars = maxOf(value.length, placeholder.length, 3)
-            val fit = maxWidth.value / (chars * 0.64f * minOf(actual, 1.15f))
-            val sp = cappedDisplaySp(minOf(64f, fit).coerceAtLeast(26f), actual)
-            val big = TextStyle(
-                fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = sp.sp,
-                fontFeatureSettings = "tnum", textAlign = TextAlign.Center, color = Color.White
-            )
-            BasicTextField(
-                value = value,
-                onValueChange = { v -> actions.onSetWeightChanged(exercise, setIndex, v.filter { it.isDigit() || it == '.' || it == ',' }) },
-                textStyle = big,
-                cursorBrush = SolidColor(accent),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                decorationBox = { inner ->
-                    Box(contentAlignment = Alignment.Center) {
-                        if (value.isEmpty()) Text(placeholder, style = big.copy(color = Color.White.copy(0.35f)), maxLines = 1)
-                        inner()
-                    }
-                }
-            )
+    StepperField(
+        value = value, placeholder = placeholder, unit = "KG", keyboardType = KeyboardType.Decimal, accent = accent,
+        onValueChange = { v -> actions.onSetWeightChanged(exercise, setIndex, v.filter { it.isDigit() || it == '.' || it == ',' }) },
+        onNudge = { delta ->
+            val base = value.replace(',', '.').toFloatOrNull() ?: defaultWeightKg
+            val next = ((base + delta * step).coerceAtLeast(0f))
+            val text = if (next % 1f == 0f) next.toInt().toString() else "%.1f".format(java.util.Locale.US, next)
+            actions.onSetWeightChanged(exercise, setIndex, text)
         }
-        Spacer(Modifier.width(12.dp))
-        SinemaCapsuleIconButton(
-            icon = Icons.Rounded.Add, description = theme.t("Artır", "Increase"),
-            onClick = { nudge(step) }, selected = false, size = 48.dp
-        )
-    }
-    Text(
-        "KG", color = Color.White.copy(0.70f), style = Sinema.Label,
-        modifier = Modifier.fillMaxWidth().padding(top = 2.dp), textAlign = TextAlign.Center
+    )
+    // Tekrar: kayıt/taslak yoksa planlanan değer ön dolu gösterilir (adım 1).
+    val plannedReps = leadingInt(exercise.reps)
+    val repsValue = data.setReps[setIndex] ?: ""
+    Spacer(Modifier.height(10.dp))
+    StepperField(
+        value = repsValue, placeholder = plannedReps?.toString() ?: "0",
+        unit = theme.t("TEKRAR", "REPS"), keyboardType = KeyboardType.Number, accent = accent,
+        onValueChange = { v -> actions.onSetRepsChanged(exercise, setIndex, v.filter { it.isDigit() }.take(3)) },
+        onNudge = { delta ->
+            val base = repsValue.toIntOrNull() ?: plannedReps ?: 0
+            actions.onSetRepsChanged(exercise, setIndex, (base + delta.toInt()).coerceIn(0, 999).toString())
+        }
     )
     val last = data.lastSessionData[setIndex]
     if (last != null && (last.first != null || last.second != null)) {
@@ -297,5 +272,61 @@ private fun StrengthSetContent(
     SinemaGoButton(
         label = label, icon = Icons.Rounded.Check, dim = done,
         onClick = { actions.onToggleSet(exercise, setIndex); onDismiss() }
+    )
+}
+
+/** ± düğmeli dev rakam alanı (kg ve tekrar için ortak). [onNudge] −1 / +1 çarpanı alır. */
+@Composable
+private fun StepperField(
+    value: String,
+    placeholder: String,
+    unit: String,
+    keyboardType: KeyboardType,
+    accent: Color,
+    onValueChange: (String) -> Unit,
+    onNudge: (Float) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        SinemaCapsuleIconButton(
+            icon = Icons.Rounded.Remove, description = theme.t("Azalt", "Decrease") + " " + unit,
+            onClick = { onNudge(-1f) }, selected = false, size = 48.dp
+        )
+        Spacer(Modifier.width(12.dp))
+        BoxWithConstraints(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            // Alan genişliğe göre küçülür (rakam başına ~0.64em); yazı ölçeği ≤×1.15 (dev rakam kuralı).
+            val actual = with(LocalDensity.current) { 64.sp.toDp().value } / 64f
+            val chars = maxOf(value.length, placeholder.length, 3)
+            val fit = maxWidth.value / (chars * 0.64f * minOf(actual, 1.15f))
+            val sp = cappedDisplaySp(minOf(64f, fit).coerceAtLeast(26f), actual)
+            val big = TextStyle(
+                fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = sp.sp,
+                fontFeatureSettings = "tnum", textAlign = TextAlign.Center, color = Color.White
+            )
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = big,
+                cursorBrush = SolidColor(accent),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.Center) {
+                        if (value.isEmpty()) Text(placeholder, style = big.copy(color = Color.White.copy(0.35f)), maxLines = 1)
+                        inner()
+                    }
+                }
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        SinemaCapsuleIconButton(
+            icon = Icons.Rounded.Add, description = theme.t("Artır", "Increase") + " " + unit,
+            onClick = { onNudge(1f) }, selected = false, size = 48.dp
+        )
+    }
+    Text(
+        unit, color = Color.White.copy(0.70f), style = Sinema.Label,
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp), textAlign = TextAlign.Center
     )
 }

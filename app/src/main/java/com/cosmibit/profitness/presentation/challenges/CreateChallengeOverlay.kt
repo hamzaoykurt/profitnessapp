@@ -202,6 +202,24 @@ fun CreateChallengeOverlay(
     }
     val timezone = remember { ZoneId.systemDefault().id }
 
+    // Kaydedilmemiş değişiklik onayı (kaydet burada doğrulamaya bağlı → yalnız Vazgeç/Devam).
+    val isDirty = title.isNotBlank() || description.isNotBlank() || eventLocation.isNotBlank() ||
+        eventEndLocation.isNotBlank() || eventOnlineUrl.isNotBlank() || password.isNotBlank() ||
+        selectedMovements.isNotEmpty()
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val requestClose: () -> Unit = { if (isDirty && !inFlight) showDiscardDialog = true else onDismiss() }
+    if (showDiscardDialog) {
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { showDiscardDialog = false },
+            title = theme.t("Taslak silinsin mi?", "Discard draft?"),
+            body = theme.t("Çıkarsan girdiğin bilgiler silinir.", "If you leave, what you entered will be discarded."),
+            confirmLabel = theme.t("VAZGEÇ, SİL", "DISCARD"),
+            confirmIcon = Icons.Rounded.Close,
+            onConfirm = { showDiscardDialog = false; onDismiss() },
+            dismissLabel = theme.t("Düzenlemeye devam", "Keep editing")
+        )
+    }
+
     LaunchedEffect(
         kind,
         title,
@@ -233,7 +251,7 @@ fun CreateChallengeOverlay(
     }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestClose,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
@@ -264,7 +282,7 @@ fun CreateChallengeOverlay(
                     .fillMaxWidth()
                     .height(280.dp)
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                    .background(Color.Black)
+                    .background(Sinema.scrim(1f))
             ) {
                 SceneImage(
                     url = categoryImageUrl(sceneCategory),
@@ -274,7 +292,7 @@ fun CreateChallengeOverlay(
                 Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
                 Box(
                     Modifier.fillMaxWidth().height(130.dp).background(
-                        Brush.verticalGradient(0f to Color.Black.copy(0.55f), 1f to Color.Transparent)
+                        Brush.verticalGradient(0f to Sinema.scrim(0.55f), 1f to Color.Transparent)
                     )
                 )
                 Column(
@@ -283,7 +301,7 @@ fun CreateChallengeOverlay(
                 ) {
                     SinemaCapsuleIconButton(
                         icon = Icons.Rounded.Close, description = theme.t("Kapat", "Close"),
-                        onClick = onDismiss, selected = false, size = 44.dp
+                        onClick = requestClose, selected = false, size = 44.dp
                     )
                     Column {
                         Text(

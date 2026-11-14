@@ -151,6 +151,8 @@ import kotlinx.coroutines.launch
 class SinemaExerciseData(
     val doneSetIndices: Set<Int>,
     val setWeights: Map<Int, String>,
+    /** Kullanıcının girdiği/kaydettiği tekrar (yoksa planlanan gösterilir). */
+    val setReps: Map<Int, String>,
     val setDurations: Map<Int, String>,
     val lastSessionData: Map<Int, Pair<Float?, Int?>>,
     val profileWeightKg: Float,
@@ -165,6 +167,7 @@ class SinemaWorkoutActions(
     val onToggleSet: (Exercise, Int) -> Unit,
     val onComplete: (Exercise) -> Unit,
     val onSetWeightChanged: (Exercise, Int, String) -> Unit,
+    val onSetRepsChanged: (Exercise, Int, String) -> Unit,
     val onSetDurationChanged: (Exercise, Int, String) -> Unit,
     val onActivityDurationChanged: (Exercise, String) -> Unit,
     val onActivityDistanceChanged: (Exercise, String) -> Unit,
@@ -212,7 +215,8 @@ fun SinemaWorkoutPager(
     modifier: Modifier = Modifier,
     bottomExtra: Dp = 0.dp,
     focusExerciseId: String? = null,
-    onFocusConsumed: () -> Unit = {}
+    onFocusConsumed: () -> Unit = {},
+    onFinish: () -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
     val nav = LocalSinemaNav.current
@@ -224,6 +228,7 @@ fun SinemaWorkoutPager(
     val single = isRestDay || isSkipped || n == 0
     val pageCount = if (single) 1 else n + if (allDone) 1 else 0
     val animEnabled = rememberSinemaMotionOn()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Yatay pager = gün. Kaydırınca ViewModel güncellenir, dışarıdan gün değişince pager gider.
     // Pager ve durumu gün değişiminden bağımsız (key DIŞINDA): kaydırmalar boyunca alt ağaç yeniden kurulmaz.
@@ -360,6 +365,23 @@ fun SinemaWorkoutPager(
                     }
                     else -> CelebrationPage(
                         programTitle = programTitle, total = n,
+                        summary = computeWorkoutSummary(exercises.map { ex ->
+                            val d = dataFor(ex)
+                            SummaryExerciseInput(
+                                kind = sinemaSetKind(ex), exerciseCompleted = ex.id in completedIds,
+                                plannedSets = ex.sets, doneSetIndices = d.doneSetIndices,
+                                setWeights = d.setWeights, setReps = d.setReps, plannedReps = ex.reps,
+                                defaultWeightKg = when {
+                                    ex.weightKg > 0f -> ex.weightKg
+                                    ex.category.equals("Bodyweight", ignoreCase = true) && d.profileWeightKg > 0f -> d.profileWeightKg
+                                    else -> 0f
+                                }
+                            )
+                        }),
+                        onFinish = {
+                            onFinish()
+                            scope.launch { pagerState.scrollToPage(0) }
+                        },
                         photoUrl = exercises.last().image.ifBlank { categoryImageUrl(exercises.last().category) },
                         isSettled = isSettled, animEnabled = animEnabled, offset = offset
                     )
@@ -545,7 +567,10 @@ private fun ExercisePage(
             SweepLayer(sweepKey, animEnabled)
         }
 
-        CompositionLocalProvider(LocalSinemaHaze provides haze) {
+        // Video OYNARKEN haze kaynağı her karede değişir → cam blur'ları her karede yeniden hesaplanırdı.
+        // Bu sürede haze verilmez: cam aynı dolgu/kenarla çizilir, yalnız blur yok (sinemaCapsuleGlass'ın haze'siz yolu).
+        val videoPlaying = isSettled && !exercise.videoUrl.isNullOrBlank()
+        CompositionLocalProvider(LocalSinemaHaze provides if (videoPlaying) null else haze) {
         // Alta yaslı; içerik yüksekliği aşarsa (kısa ekran + büyük yazı) alttan başlayıp yukarı kaydırılır (BAŞLA hep görünür).
         Column(
             Modifier
@@ -685,7 +710,10 @@ private fun SetCapsules(
                 defaultWeightKg > 0f -> SetValue(formatWeightNumber(defaultWeightKg, locale), "kg")
                 else -> null
             }
-            val reps = SetValue(exercise.reps.ifBlank { "—" }, theme.t("tekrar", "reps"))
+            val reps = SetValue(
+                data.setReps[i]?.takeIf { it.isNotBlank() } ?: exercise.reps.ifBlank { "—" },
+                theme.t("tekrar", "reps")
+            )
             if (weight == null) primary = reps
             else if (twoCols) primary = weight
             else { primary = weight; secondary = reps }
@@ -1096,6 +1124,8 @@ private fun RestPage(isSkipped: Boolean) {
 private fun CelebrationPage(
     programTitle: String,
     total: Int,
+    summary: WorkoutSummary,
+    onFinish: () -> Unit,
     photoUrl: String,
     isSettled: Boolean,
     animEnabled: Boolean,
@@ -1103,6 +1133,8 @@ private fun CelebrationPage(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
+    val locale = if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+        else java.util.Locale.forLanguageTag("tr-TR")
     var sweepKey by remember { mutableIntStateOf(0) }
     var played by remember { mutableStateOf(false) }
     LaunchedEffect(isSettled) { if (isSettled && !played) { played = true; sweepKey++ } }
@@ -1120,7 +1152,28 @@ private fun CelebrationPage(
             Text(theme.t("%$pct", "$pct%"), style = Sinema.Display, color = Color.White, maxLines = 1)
             Spacer(Modifier.height(6.dp))
             Text(programTitle, style = Sinema.Title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // Özet: yalnız gerçek kayıttan (set sayısı + hacim); hacim 0 ise gösterilmez.
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                SummaryStat(summary.completedSets.toString(), theme.t("SET", "SETS").sinemaUpper(theme))
+                if (summary.volumeKg > 0f) {
+                    SummaryStat(formatWeightNumber(summary.volumeKg, locale) + " kg", theme.t("HACİM", "VOLUME").sinemaUpper(theme))
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            // shortcut: "Bitir" yeni bir bitiş akışı değil; çalışan sayacı/bildirimi kapatır ve ilk harekete döner.
+            com.cosmibit.profitness.core.theme.SinemaGoButton(
+                label = theme.t("BİTİR", "FINISH"), icon = Icons.Rounded.Check, onClick = onFinish
+            )
         }
+    }
+}
+
+@Composable
+private fun SummaryStat(value: String, label: String) {
+    Column {
+        Text(value, style = Sinema.Title, color = Color.White, maxLines = 1)
+        Text(label, style = Sinema.Label, color = Color.White.copy(0.70f))
     }
 }
 

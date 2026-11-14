@@ -531,6 +531,7 @@ private fun NoProgramView(
 @Stable
 private data class ExerciseDraftInputs(
     val setWeights: Map<Int, String> = emptyMap(),
+    val setReps: Map<Int, String> = emptyMap(),
     val setDurations: Map<Int, String> = emptyMap()
 )
 
@@ -539,10 +540,14 @@ private fun Map<String, DraftInput>.draftsForExercise(exerciseId: String, totalS
 
     val weights = mutableMapOf<Int, String>()
     val durations = mutableMapOf<Int, String>()
+    val reps = mutableMapOf<Int, String>()
     for (setIndex in 0 until totalSets) {
         val draft = this[draftInputKey(exerciseId, setIndex)] ?: continue
         if (draft.hasWeight) {
             weights[setIndex] = draft.weight
+        }
+        if (draft.hasReps) {
+            reps[setIndex] = draft.reps
         }
         if (draft.hasDuration) {
             durations[setIndex] = draft.duration
@@ -550,6 +555,7 @@ private fun Map<String, DraftInput>.draftsForExercise(exerciseId: String, totalS
     }
     return ExerciseDraftInputs(
         setWeights = if (weights.isEmpty()) emptyMap() else weights.toMap(),
+        setReps = if (reps.isEmpty()) emptyMap() else reps.toMap(),
         setDurations = if (durations.isEmpty()) emptyMap() else durations.toMap()
     )
 }
@@ -623,6 +629,7 @@ private fun WorkoutContent(
                 else viewModel.toggleExercise(selectedDayIdx, ex.id)
             },
             onSetWeightChanged = { ex, si, v -> viewModel.updateSetWeight(ex.id, si, v) },
+            onSetRepsChanged = { ex, si, v -> viewModel.updateSetReps(ex.id, si, v) },
             onSetDurationChanged = { ex, si, v -> viewModel.updateSetDuration(ex.id, si, v) },
             onActivityDurationChanged = { ex, v -> viewModel.updateActivityDuration(ex.id, v) },
             onActivityDistanceChanged = { ex, v -> viewModel.updateActivityDistance(ex.id, v) },
@@ -661,9 +668,12 @@ private fun WorkoutContent(
         val exerciseDrafts = draftInputs.draftsForExercise(exercise.id, exercise.sets)
         val savedWeights = state.setWeights[exercise.id].orEmpty()
         val savedDurations = state.setDurations[exercise.id].orEmpty()
+        // Kayıtlı tekrar yalnız yapılmış setler için (yapılmamış setlerin state değeri önceki seans/plan ön dolgusudur).
+        val savedReps = state.setReps[exercise.id].orEmpty().filterKeys { it in doneSetIndices }
         SinemaExerciseData(
             doneSetIndices = doneSetIndices,
             setWeights = if (exerciseDrafts.setWeights.isEmpty()) savedWeights else savedWeights + exerciseDrafts.setWeights,
+            setReps = if (exerciseDrafts.setReps.isEmpty()) savedReps else savedReps + exerciseDrafts.setReps,
             setDurations = if (exerciseDrafts.setDurations.isEmpty()) savedDurations else savedDurations + exerciseDrafts.setDurations,
             lastSessionData = state.lastSessionData[exercise.id] ?: emptyMap(),
             profileWeightKg = state.profileWeightKg,
@@ -706,6 +716,7 @@ private fun WorkoutContent(
         bottomExtra = floatingTimerPad,
         focusExerciseId = focusExerciseId,
         onFocusConsumed = { viewModel.consumeFocusExercise() },
+        onFinish = { viewModel.dismissRestTimer() },
         listExtras = { dismiss ->
             if (hasUpcomingSection) {
                 UpcomingEventsSection(events = upcomingEvents, onOpen = { dismiss(); detailChallengeId = it.id })

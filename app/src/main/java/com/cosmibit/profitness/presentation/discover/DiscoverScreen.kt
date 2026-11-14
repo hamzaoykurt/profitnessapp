@@ -104,6 +104,7 @@ import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.discover.MySharedProgram
 import com.cosmibit.profitness.domain.discover.SharedProgram
+import com.cosmibit.profitness.core.theme.supportAlert
 import com.cosmibit.profitness.presentation.components.AppToast
 import com.cosmibit.profitness.presentation.components.AppToastData
 import com.cosmibit.profitness.presentation.components.AppToastType
@@ -147,6 +148,26 @@ fun DiscoverScreen(
 
     val viewModel: DiscoverViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Uygula aktif programı değiştirir → önce onay (geri al güvenle yapılamadığı için yalnız onay).
+    var pendingApplyId by remember { mutableStateOf<String?>(null) }
+    val requestApply: (String) -> Unit = { id -> pendingApplyId = id }
+    pendingApplyId?.let { id ->
+        val title = state.items.firstOrNull { it.id == id }?.title
+            ?: state.savedItems.firstOrNull { it.id == id }?.title.orEmpty()
+        val dlgTheme = LocalAppTheme.current
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { pendingApplyId = null },
+            title = dlgTheme.t("Programı uygula?", "Apply program?"),
+            body = dlgTheme.t(
+                "Aktif programın «$title» olacak. Mevcut aktif programın yerine geçer.",
+                "Your active program will become “$title”. It replaces your current active program."
+            ),
+            confirmLabel = dlgTheme.t("UYGULA", "APPLY"),
+            confirmIcon = SinemaIcons.Bolt,
+            onConfirm = { pendingApplyId = null; viewModel.applyProgram(id) },
+            dismissLabel = dlgTheme.t("Vazgeç", "Cancel")
+        )
+    }
     val myPrograms by viewModel.myPrograms.collectAsStateWithLifecycle()
     val myProgramIds = remember(myPrograms) { myPrograms.map { it.id }.toImmutableSet() }
     val sharedProgramIds = remember(state.myShared) {
@@ -234,7 +255,7 @@ fun DiscoverScreen(
                 isApplied = live.isAppliedByMe || appliedByHash || appliedFallback,
                 onLike = { viewModel.toggleLike(live.id) },
                 onSave = { viewModel.toggleSave(live.id) },
-                onApply = { viewModel.applyProgram(live.id) },
+                onApply = { requestApply(live.id) },
                 onBack = { selectedProgram = null }
             )
         } ?: Box(Modifier.fillMaxSize()) {
@@ -244,14 +265,14 @@ fun DiscoverScreen(
                     ProgramsSubTab.Community -> SinemaProgramsPager(
                         state = state, myProgramIds = myProgramIds, myProgramHashes = myProgramHashes,
                         bottomPadding = bottomPadding, topOffset = controlsTop,
-                        onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = viewModel::applyProgram,
+                        onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = requestApply,
                         onOpenDetails = { selectedProgram = it }, onLoadMore = viewModel::loadMore, onRefresh = viewModel::refresh
                     )
                     ProgramsSubTab.Saved -> Box(Modifier.fillMaxSize().padding(top = listTop)) {
                         SavedProgramsList(
                             state = state, myProgramIds = myProgramIds, myProgramHashes = myProgramHashes,
                             bottomPadding = bottomPadding, onBack = { programsSub = ProgramsSubTab.Community },
-                            onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = viewModel::applyProgram,
+                            onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = requestApply,
                             onOpenDetails = { selectedProgram = it }, onLoadMore = viewModel::loadMoreSaved, onRefresh = viewModel::refresh
                         )
                     }
@@ -1081,7 +1102,7 @@ private fun MySharedCard(
     onDelete   : () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val danger = Color(0xFFEF476F)
+    val danger = theme.supportAlert
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -1215,6 +1236,8 @@ private fun DiscoverTopControls(
                     .clip(stoneShape)
                     .background(accent)
             )
+            // Tek ortak etiket boyu: biri taşarsa üçü birlikte küçülür; taban 11sp.
+            var labelSp by remember { mutableFloatStateOf(13f) }
             Row(Modifier.fillMaxSize()) {
                 tabs.forEach { (tab, label) ->
                     val on = tab == selected
@@ -1226,12 +1249,11 @@ private fun DiscoverTopControls(
                             .clickable(role = Role.Tab) { onSelect(tab) },
                         contentAlignment = Alignment.Center
                     ) {
-                        var labelSp by remember(label) { mutableFloatStateOf(13f) }
                         Text(
                             label, color = fg, fontSize = labelSp.sp, fontWeight = FontWeight.ExtraBold,
                             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                            onTextLayout = { if (it.didOverflowWidth && labelSp > 6f) labelSp = (labelSp - 0.5f).coerceAtLeast(6f) }
+                            modifier = Modifier.padding(horizontal = 2.dp),
+                            onTextLayout = { if (it.didOverflowWidth && labelSp > 11f) labelSp = (labelSp - 0.5f).coerceAtLeast(11f) }
                         )
                     }
                 }

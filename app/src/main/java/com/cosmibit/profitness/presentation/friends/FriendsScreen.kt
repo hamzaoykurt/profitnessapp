@@ -224,11 +224,16 @@ private fun SearchCapsule(
             )
         }
         if (value.isNotEmpty()) {
-            Icon(
-                Icons.Rounded.Close, theme.t("Aramayı temizle", "Clear search"),
-                tint = fg.copy(0.75f),
-                modifier = Modifier.size(20.dp).clickable(role = Role.Button) { onChange("") }
-            )
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button) { onChange("") },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Close, theme.t("Aramayı temizle", "Clear search"),
+                    tint = fg.copy(0.75f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

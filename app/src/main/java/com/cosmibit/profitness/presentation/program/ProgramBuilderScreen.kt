@@ -1898,6 +1898,52 @@ private fun EditProgramScreen(
         }
     }
 
+    val doSave: () -> Unit = doSave@{
+                        if (uiState.isLoading || uiState.aiEditLoading) return@doSave
+                        val dayDrafts = days.mapIndexed { i, d ->
+                            ManualDayDraft(
+                                title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                                isRestDay = d.isRestDay,
+                                notes     = d.notes,
+                                selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                                    com.cosmibit.profitness.data.program.ManualExerciseInput(
+                                        exerciseId  = ex.exerciseId,
+                                        sets        = ex.sets,
+                                        reps        = ex.reps,
+                                        restSeconds = ex.restSeconds,
+                                        weightKg    = ex.weightKg,
+                                        orderIndex  = ei,
+                                        targetDurationSeconds = ex.targetDurationSeconds,
+                                        targetDistanceMeters = ex.targetDistanceMeters,
+                                        section = ex.section,
+                                        notes = ex.notes,
+                                        groupId = ex.groupId,
+                                        groupType = ex.groupType,
+                                        groupLabel = ex.groupLabel,
+                                        groupRounds = ex.groupRounds,
+                                        groupRestSeconds = ex.groupRestSeconds
+                                    )
+                                }
+                            )
+                        }
+                        viewModel.updateManualProgram(
+                            programId = program.id,
+                            name      = programName,
+                            days      = dayDrafts
+                        )
+    }
+    val initialSig = remember { programName to days.map { listOf(it.title, it.isRestDay, it.notes, it.exercises.toList()) } }
+    val isDirty = (programName to days.map { listOf(it.title, it.isRestDay, it.notes, it.exercises.toList()) }) != initialSig
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    BackHandler(enabled = isDirty) { showDiscardDialog = true }
+    if (showDiscardDialog) {
+        UnsavedChangesDialog(
+            onSave = { showDiscardDialog = false; doSave() },
+            onDiscard = { showDiscardDialog = false; onBack() },
+            onKeepEditing = { showDiscardDialog = false }
+        )
+    }
+
     val navBarHeight = 78.dp
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentPad   = navBarHeight + navBarBottom + 8.dp
@@ -1914,7 +1960,7 @@ private fun EditProgramScreen(
                 name = programName,
                 onNameChange = { programName = it },
                 namePlaceholder = editTheme.t("Program adı...", "Program name..."),
-                onBack = onBack
+                onBack = { if (isDirty) showDiscardDialog = true else onBack() }
             )
 
             // Günler listesi
@@ -1986,40 +2032,7 @@ private fun EditProgramScreen(
                 SinemaGoButton(
                     label = editTheme.t("Kaydet", "Save"),
                     icon = Icons.Rounded.Check,
-                    onClick = {
-                        if (!actionsEnabled) return@SinemaGoButton
-                        val dayDrafts = days.mapIndexed { i, d ->
-                            ManualDayDraft(
-                                title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
-                                isRestDay = d.isRestDay,
-                                notes     = d.notes,
-                                selectedExercises = d.exercises.mapIndexed { ei, ex ->
-                                    com.cosmibit.profitness.data.program.ManualExerciseInput(
-                                        exerciseId  = ex.exerciseId,
-                                        sets        = ex.sets,
-                                        reps        = ex.reps,
-                                        restSeconds = ex.restSeconds,
-                                        weightKg    = ex.weightKg,
-                                        orderIndex  = ei,
-                                        targetDurationSeconds = ex.targetDurationSeconds,
-                                        targetDistanceMeters = ex.targetDistanceMeters,
-                                        section = ex.section,
-                                        notes = ex.notes,
-                                        groupId = ex.groupId,
-                                        groupType = ex.groupType,
-                                        groupLabel = ex.groupLabel,
-                                        groupRounds = ex.groupRounds,
-                                        groupRestSeconds = ex.groupRestSeconds
-                                    )
-                                }
-                            )
-                        }
-                        viewModel.updateManualProgram(
-                            programId = program.id,
-                            name      = programName,
-                            days      = dayDrafts
-                        )
-                    },
+                    onClick = { doSave() },
                     modifier = Modifier.weight(1f),
                     dim = !actionsEnabled
                 )
@@ -2098,6 +2111,51 @@ private fun ManualBuilderScreen(
     val contentPad   = navBarHeight + navBarBottom + 8.dp
     val isLoading = uiState.isLoading
 
+    val doSave: () -> Unit = doSave@{
+                if (isLoading) return@doSave
+                val dayDrafts = days.mapIndexed { i, d ->
+                    ManualDayDraft(
+                        title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
+                        isRestDay = d.isRestDay,
+                        notes     = d.notes,
+                        selectedExercises = d.exercises.mapIndexed { ei, ex ->
+                            ManualExerciseInput(
+                                exerciseId  = ex.exerciseId,
+                                sets        = ex.sets,
+                                reps        = ex.reps,
+                                restSeconds = ex.restSeconds,
+                                weightKg    = ex.weightKg,
+                                orderIndex  = ei,
+                                targetDurationSeconds = ex.targetDurationSeconds,
+                                targetDistanceMeters = ex.targetDistanceMeters,
+                                section = ex.section,
+                                notes = ex.notes,
+                                groupId = ex.groupId,
+                                groupType = ex.groupType,
+                                groupLabel = ex.groupLabel,
+                                groupRounds = ex.groupRounds,
+                                groupRestSeconds = ex.groupRestSeconds
+                            )
+                        }
+                    )
+                }
+                viewModel.createManualProgram(
+                    name = programName,
+                    days = dayDrafts
+                )
+    }
+    val isDirty = programName.isNotBlank() || days.size > 1 ||
+        days.any { it.title.isNotBlank() || it.notes.isNotBlank() || it.exercises.isNotEmpty() }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    BackHandler(enabled = isDirty) { showDiscardDialog = true }
+    if (showDiscardDialog) {
+        UnsavedChangesDialog(
+            onSave = { showDiscardDialog = false; doSave() },
+            onDiscard = { showDiscardDialog = false; onBack() },
+            onKeepEditing = { showDiscardDialog = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2110,7 +2168,7 @@ private fun ManualBuilderScreen(
             name = programName,
             onNameChange = { programName = it },
             namePlaceholder = manTheme.t("Program adı...", "Program name..."),
-            onBack = onBack
+            onBack = { if (isDirty) showDiscardDialog = true else onBack() }
         )
 
         // ── Days list ─────────────────────────────────────────────────────────
@@ -2142,39 +2200,7 @@ private fun ManualBuilderScreen(
         SinemaGoButton(
             label = manStrings.saveProtocol,
             icon = Icons.Rounded.Check,
-            onClick = {
-                if (isLoading) return@SinemaGoButton
-                val dayDrafts = days.mapIndexed { i, d ->
-                    ManualDayDraft(
-                        title     = d.title.ifBlank { autoTitle(d.exercises.map { it.targetMuscle }) },
-                        isRestDay = d.isRestDay,
-                        notes     = d.notes,
-                        selectedExercises = d.exercises.mapIndexed { ei, ex ->
-                            ManualExerciseInput(
-                                exerciseId  = ex.exerciseId,
-                                sets        = ex.sets,
-                                reps        = ex.reps,
-                                restSeconds = ex.restSeconds,
-                                weightKg    = ex.weightKg,
-                                orderIndex  = ei,
-                                targetDurationSeconds = ex.targetDurationSeconds,
-                                targetDistanceMeters = ex.targetDistanceMeters,
-                                section = ex.section,
-                                notes = ex.notes,
-                                groupId = ex.groupId,
-                                groupType = ex.groupType,
-                                groupLabel = ex.groupLabel,
-                                groupRounds = ex.groupRounds,
-                                groupRestSeconds = ex.groupRestSeconds
-                            )
-                        }
-                    )
-                }
-                viewModel.createManualProgram(
-                    name = programName,
-                    days = dayDrafts
-                )
-            },
+            onClick = { doSave() },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             dim = isLoading
         )
@@ -2182,6 +2208,35 @@ private fun ManualBuilderScreen(
 }
 
 // ── Manual Day Card ───────────────────────────────────────────────────────────
+
+/** Kaydedilmemiş değişiklik onayı: Kaydet / Vazgeç (sil) / Düzenlemeye devam. */
+@Composable
+private fun UnsavedChangesDialog(onSave: () -> Unit, onDiscard: () -> Unit, onKeepEditing: () -> Unit) {
+    val theme = LocalAppTheme.current
+    androidx.compose.ui.window.Dialog(onDismissRequest = onKeepEditing) {
+        Column(
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(theme.t("Değişiklikler kaydedilsin mi?", "Save your changes?"), style = Sinema.Title, color = Sinema.text(theme))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                theme.t("Kaydetmeden çıkarsan yaptığın değişiklikler silinir.", "If you leave without saving, your changes will be discarded."),
+                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+            )
+            Spacer(Modifier.height(24.dp))
+            SinemaGoButton(label = theme.t("KAYDET", "SAVE"), icon = Icons.Rounded.Check, onClick = onSave)
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onKeepEditing),
+                contentAlignment = Alignment.Center
+            ) { Text(theme.t("Düzenlemeye devam", "Keep editing"), color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDiscard),
+                contentAlignment = Alignment.Center
+            ) { Text(theme.t("Vazgeç, sil", "Discard"), color = theme.supportAlert, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
 
 @Composable
 private fun BuilderSceneHeader(
