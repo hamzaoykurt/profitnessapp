@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.runtime.setValue
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
@@ -310,7 +312,7 @@ fun CreateChallengeOverlay(
                             style = Sinema.ScreenTitle, color = Color.White, maxLines = 2
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text(headerSubtitle, color = Color.White.copy(0.78f), fontSize = 14.sp, maxLines = 1)
+                        Text(headerSubtitle, color = Color.White.copy(0.78f), fontSize = SinemaType.Body, maxLines = 1)
                     }
                 }
             }
@@ -482,10 +484,10 @@ error?.let {
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .sinemaCard(theme, RoundedCornerShape(24.dp))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                         .padding(16.dp)
                 ) {
-                    Text(it, color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(it, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -589,7 +591,7 @@ error?.let {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showTimePicker = false }) {
 Column(
                 modifier = Modifier
-                    .sinemaCard(theme, RoundedCornerShape(28.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
                     .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -674,7 +676,7 @@ private fun MetricForm(
     Text(
         theme.t("Bitiş: ${endDate.format(fmt)}", "Ends: ${endDate.format(fmt)}"),
         color = Sinema.textSecondary(theme),
-        fontSize = 11.sp,
+        fontSize = SinemaType.Caption,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
     )
 }
@@ -819,7 +821,7 @@ Row(
                     "Pick a location from the list so similarly named places are saved correctly."
                 ),
                 color = Sinema.textSecondary(LocalAppTheme.current),
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
             OptionalMetricTargetSection(
@@ -859,13 +861,13 @@ Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .sinemaCard(theme, RoundedCornerShape(24.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             ) {
                 if (movements.isEmpty()) {
                     Text(
                         theme.t("Henüz hareket seçilmedi", "No movements selected yet"),
                         color = Sinema.textSecondary(theme),
-                        fontSize = 12.sp,
+                        fontSize = SinemaType.Caption,
                         modifier = Modifier.padding(14.dp)
                     )
                 } else {
@@ -877,7 +879,7 @@ Column(
                             Text(
                                 "${idx + 1}.",
                                 color = accent,
-                                fontSize = 11.sp,
+                                fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.Black,
                                 modifier = Modifier.width(22.dp)
                             )
@@ -885,13 +887,13 @@ Column(
                                 exerciseById[mv.exerciseId]?.let { theme.exerciseDisplayName(it.name, it.nameEn) }
                                     ?: mv.exerciseId.take(8) + "...",
                                 color = Sinema.text(theme),
-                                fontSize = 13.sp,
+                                fontSize = SinemaType.BodySm,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
                             val suffix = movementSpecLabel(mv, theme)
                             if (suffix.isNotEmpty()) {
-                                Text(suffix, color = Sinema.textSecondary(theme), fontSize = 11.sp)
+                                Text(suffix, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
                             }
                         }
                         if (idx < movements.size - 1) {
@@ -912,7 +914,7 @@ SinemaCapsule(
                 Text(
                     if (movements.isEmpty()) theme.t("HAREKET SEÇ", "SELECT MOVEMENTS")
                     else theme.t("HAREKETLERİ DÜZENLE", "EDIT MOVEMENTS"),
-                    color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
+                    color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
                 )
             }
             Text(
@@ -921,7 +923,7 @@ SinemaCapsule(
                     "Automatic target: ${movements.size} movements"
                 ),
                 color = Sinema.textSecondary(theme),
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
             )
         }
@@ -948,7 +950,7 @@ contentPadding = PaddingValues(horizontal = 16.dp),
             ) { fg ->
                 Text(
                     sport.displayLabel(theme).sinemaUpper(theme),
-                    color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1
+                    color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1
                 )
             }
         }
@@ -973,7 +975,7 @@ Row(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .sinemaClickable(onClick = { onEnabled(!enabled) }, scale = 0.98f)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -992,7 +994,7 @@ Row(
             Text(
                 theme.t("MESAFE / SÜRE HEDEFİ", "DISTANCE / DURATION TARGET"),
                 color = Sinema.text(theme),
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
@@ -1002,7 +1004,7 @@ Row(
                     "The challenge ends when participants complete the target"
                 ),
                 color = Sinema.textSecondary(theme),
-                fontSize = 10.sp
+                fontSize = SinemaType.Caption
             )
         }
     }
@@ -1042,7 +1044,7 @@ Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(16.dp)
     ) {
         Row(
@@ -1066,13 +1068,13 @@ Column(
                 Text(
                     theme.t("KİŞİ SAYISINI SINIRLA", "LIMIT PARTICIPANTS"),
                     color = Sinema.text(theme),
-                    fontSize = 13.sp,
+                    fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     theme.t("Limit dolunca yeni katılım kapanır", "Joining closes when the limit is reached"),
                     color = Sinema.textSecondary(theme),
-                    fontSize = 12.sp
+                    fontSize = SinemaType.Caption
                 )
             }
         }
@@ -1169,14 +1171,14 @@ SinemaCapsule(
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    textStyle = TextStyle(color = Sinema.text(theme), fontSize = 15.sp, lineHeight = 20.sp),
+                    textStyle = TextStyle(color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 20.sp),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
                         if (value.isEmpty()) {
-                            Text(placeholder, color = Sinema.textSecondary(theme).copy(0.72f), fontSize = 15.sp, lineHeight = 20.sp)
+                            Text(placeholder, color = Sinema.textSecondary(theme).copy(0.72f), fontSize = SinemaType.BodyLg, lineHeight = 20.sp)
                         }
                         inner()
                     }
@@ -1208,7 +1210,7 @@ SinemaCapsule(
             Text(
                 theme.t("Seçili konum kaydedilecek.", "Selected location will be saved."),
                 color = MaterialTheme.colorScheme.primary,
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(start = 4.dp, top = 5.dp)
             )
         } else if (value.isNotBlank() && required) {
@@ -1218,7 +1220,7 @@ SinemaCapsule(
                     "Select a location from the results below to continue."
                 ),
                 color = Sinema.textSecondary(theme),
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(start = 4.dp, top = 5.dp)
             )
         }
@@ -1227,7 +1229,7 @@ SinemaCapsule(
 Column(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .sinemaCard(theme, RoundedCornerShape(20.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
             ) {
                 candidates.forEachIndexed { index, candidate ->
                     val isResolving = resolvingPlaceId == candidate.placeId
@@ -1265,7 +1267,7 @@ Icon(
                             Text(
                                 candidate.title,
                                 color = Sinema.text(theme),
-                                fontSize = 13.sp,
+                                fontSize = SinemaType.BodySm,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -1273,7 +1275,7 @@ Icon(
                                 Text(
                                     candidate.subtitle,
                                     color = Sinema.textSecondary(theme),
-                                    fontSize = 10.5.sp,
+                                    fontSize = SinemaType.Caption,
                                     maxLines = 1
                                 )
                             }
@@ -1291,7 +1293,7 @@ Icon(
                 Text(
                     "Powered by Google",
                     color = Sinema.textSecondary(theme).copy(0.82f),
-                    fontSize = 9.sp,
+                    fontSize = SinemaType.Caption,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 )
             }
@@ -1299,7 +1301,7 @@ Icon(
             Text(
                 message.orEmpty(),
                 color = Sinema.textSecondary(theme),
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(start = 4.dp, top = 6.dp)
             )
         }
@@ -1412,14 +1414,14 @@ private fun GlassInput(
     SinemaCapsule(
         modifier.fillMaxWidth(),
         height = if (multi) 96.dp else 52.dp,
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = if (multi) 14.dp else 0.dp),
         verticalAlignment = if (multi) Alignment.Top else Alignment.CenterVertically
     ) { fg ->
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = TextStyle(color = fg, fontSize = 16.sp, fontWeight = if (bold) FontWeight.ExtraBold else FontWeight.SemiBold, lineHeight = 22.sp),
+            textStyle = TextStyle(color = fg, fontSize = SinemaType.BodyLg, fontWeight = if (bold) FontWeight.ExtraBold else FontWeight.SemiBold, lineHeight = 22.sp),
             cursorBrush = SolidColor(theme.effectiveAccentColor),
             singleLine = !multi,
             minLines = minLines,
@@ -1429,7 +1431,7 @@ private fun GlassInput(
             decorationBox = { inner ->
                 Box {
                     if (value.isEmpty()) {
-                        Text(placeholder, color = fg.copy(0.4f), fontSize = 16.sp, lineHeight = 22.sp, maxLines = 1)
+                        Text(placeholder, color = fg.copy(0.4f), fontSize = SinemaType.BodyLg, lineHeight = 22.sp, maxLines = 1)
                     }
                     inner()
                 }
@@ -1496,7 +1498,7 @@ private fun PickerField(
         contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
         Icon(icon, null, tint = fg.copy(0.7f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(10.dp))
-        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
+        Text(text, color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
         trailing?.invoke()
     }
 }
@@ -1592,10 +1594,10 @@ private fun TargetTypeOption(
         Icon(iconForTargetType(type), null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Text(
-            type.displayLabel(theme), color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+            type.displayLabel(theme), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f), maxLines = 1
         )
-        Text(type.displayUnit(theme), color = fg.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+        Text(type.displayUnit(theme), color = fg.copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -1628,7 +1630,7 @@ private fun KindChip(
         modifier, selected = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
     ) { fg ->
-        Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
+        Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
     }
 }
 
@@ -1648,7 +1650,7 @@ private fun EventModeChip(
     ) { fg ->
         Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(5.dp))
-        Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
+        Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
 }
 
@@ -1670,7 +1672,7 @@ private fun VisibilityChip(
             Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1)
+        Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1)
     }
 }
 

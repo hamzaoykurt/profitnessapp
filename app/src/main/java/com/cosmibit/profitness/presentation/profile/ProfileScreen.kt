@@ -244,11 +244,11 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier
                         .padding(32.dp)
-                        .clip(RoundedCornerShape(28.dp))
+                        .clip(RoundedCornerShape(SinemaRadius.R28))
                         .background(
                             Brush.verticalGradient(listOf(Color(0xFF0D2B1F), Color(0xFF051A12)))
                         )
-                        .border(1.dp, accent.copy(0.5f), RoundedCornerShape(28.dp))
+                        .border(1.dp, accent.copy(0.5f), RoundedCornerShape(SinemaRadius.R28))
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -293,9 +293,9 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(accent.copy(0.15f))
-                            .border(1.dp, accent.copy(0.3f), RoundedCornerShape(12.dp))
+                            .border(1.dp, accent.copy(0.3f), RoundedCornerShape(SinemaRadius.R12))
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -398,7 +398,7 @@ private fun ProfileChip(
     fill: Color = Color.Transparent,
     onClick: (() -> Unit)? = null
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
     Box(
         modifier
             .height(28.dp)
@@ -409,7 +409,7 @@ private fun ProfileChip(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            text, color = textColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold,
             letterSpacing = 0.06.em, maxLines = 1
         )
     }
@@ -479,12 +479,12 @@ private fun ProfileHeroBanner(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "$xpInLevel / $xpPerLevel XP",
-                        color = Sinema.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        color = Sinema.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         if (xpLeft == 0) theme.t("hazır", "ready") else theme.t("$xpLeft kaldı", "$xpLeft left"),
-                        color = Sinema.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                        color = Sinema.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -637,12 +637,12 @@ private fun SeeAllLink(theme: AppThemeState, text: String, onClick: () -> Unit) 
         modifier = Modifier
             .heightIn(min = 48.dp)
             .sinemaClickable(onClick = onClick)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R24))
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(text, color = Sinema.text(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = Sinema.text(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
         Icon(Icons.Rounded.ArrowForwardIos, null, tint = Sinema.text(theme), modifier = Modifier.size(11.dp))
     }
 }
@@ -710,7 +710,7 @@ private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick:
         modifier = Modifier
             .width(132.dp)
             .sinemaClickable(onClick = onClick)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .padding(vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -723,7 +723,7 @@ private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick:
             Spacer(Modifier.width(6.dp))
             Text(
                 metric.unit,
-                color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 modifier = Modifier.alignByBaseline()
             )
@@ -731,7 +731,7 @@ private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick:
         Spacer(Modifier.height(10.dp))
         Box(Modifier.width(28.dp).height(3.dp).clip(CircleShape).background(metric.color))
         Spacer(Modifier.height(10.dp))
-        Text(metric.label, color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
+        Text(metric.label, color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, maxLines = 2)
     }
 }
 
@@ -753,7 +753,7 @@ private fun WeeklyActivitySection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = sinemaGutter())
-                .sinemaCard(theme, RoundedCornerShape(24.dp))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                 .padding(20.dp)
         ) {
             if (weekWorkoutCount > 0) {
@@ -767,7 +767,7 @@ private fun WeeklyActivitySection(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         theme.t("antrenman", "workouts"),
-                        color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         modifier = Modifier.alignByBaseline()
                     )
@@ -863,7 +863,7 @@ private fun TrophyGallery(
             Text(
                 theme.t("Başarımlar yükleniyor...", "Loading achievements..."),
                 color    = sub,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 modifier = Modifier.padding(horizontal = sinemaGutter())
             )
         } else {
@@ -889,7 +889,7 @@ private fun AchievementCard(achievement: AchievementUiModel, theme: AppThemeStat
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        Text(achievement.icon, fontSize = 24.sp, modifier = Modifier.alpha(if (unlocked) 1f else 0.3f))
+        Text(achievement.icon, fontSize = SinemaType.Headline, modifier = Modifier.alpha(if (unlocked) 1f else 0.3f))
     }
 }
 
@@ -911,7 +911,7 @@ private fun SettingsSection(
     displayName         : String     = "",
     avatar              : String     = "🏋️"
 ) {
-    val groupShape = RoundedCornerShape(20.dp)
+    val groupShape = RoundedCornerShape(SinemaRadius.R20)
     val surface = Sinema.surface(theme)
     val divider: @Composable () -> Unit = {
         Box(Modifier.fillMaxWidth().padding(start = 72.dp, end = 20.dp).height(1.dp).background(Sinema.line(theme)))
@@ -941,16 +941,16 @@ private fun SettingsSection(
                             modifier = Modifier.fillMaxSize().clip(CircleShape)
                         )
                     } else {
-                        Text(avatar, fontSize = 20.sp)
+                        Text(avatar, fontSize = SinemaType.Title)
                     }
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
-                        color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+                        color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 0.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
-                    Text(strings.editProfileHint, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(strings.editProfileHint, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Rounded.Edit, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
             }
@@ -1003,7 +1003,7 @@ private fun SettingsSection(
                 "XP, credits, rankings and social data are not included."
             ),
             color = Sinema.textSecondary(theme),
-            fontSize = 12.sp,
+            fontSize = SinemaType.Caption,
             lineHeight = 16.sp,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
         )
@@ -1057,8 +1057,8 @@ private fun SettingsRow(
             Icon(icon, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(label, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(sub, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
+            Text(label, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.SemiBold)
+            Text(sub, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, lineHeight = 16.sp)
         }
         Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
     }
@@ -1177,7 +1177,7 @@ private fun ThemeSettingsSheet(
                 )
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp),
+            shape    = RoundedCornerShape(SinemaRadius.R12),
             colors   = ButtonDefaults.buttonColors(
                 containerColor = previewAccent,
                 contentColor   = previewOnAccent
@@ -1187,7 +1187,7 @@ private fun ThemeSettingsSheet(
                 pressedElevation = 0.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.SemiBold, fontSize = SinemaType.Body)
         }
     }
 
@@ -1221,7 +1221,7 @@ private fun PreviewCard(preview: AppThemeState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(preview, RoundedCornerShape(24.dp))
+            .sinemaCard(preview, RoundedCornerShape(SinemaRadius.R24))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -1250,12 +1250,12 @@ private fun PreviewCard(preview: AppThemeState) {
         Text(
             preview.strings.helloAthlete,
             color    = preview.text1,
-            fontSize = 12.sp
+            fontSize = SinemaType.Caption
         )
         Box(
             Modifier
                 .padding(top = 4.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R12))
                 .background(acc)
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
@@ -1283,12 +1283,12 @@ private fun <T> SegmentedSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(18.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R16))
             .padding(4.dp)
     ) {
         options.forEach { (value, label) ->
             val isSel = value == selected
-            val segShape = RoundedCornerShape(14.dp)
+            val segShape = RoundedCornerShape(SinemaRadius.R12)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -1343,7 +1343,7 @@ private fun NotificationsSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .profilePremiumSurface(theme, RoundedCornerShape(16.dp), accent)
+                .profilePremiumSurface(theme, RoundedCornerShape(SinemaRadius.R16), accent)
         ) {
             NotifToggleRow(
                 label           = strings.workoutReminders,
@@ -1367,7 +1367,7 @@ private fun NotificationsSettingsSheet(
         Button(
             onClick  = { onApply(workoutReminders || progressUpdates) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp),
+            shape    = RoundedCornerShape(SinemaRadius.R12),
             colors   = ButtonDefaults.buttonColors(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
@@ -1378,7 +1378,7 @@ private fun NotificationsSettingsSheet(
                 pressedElevation = 2.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = SinemaType.BodySm)
         }
     }
 }
@@ -1402,7 +1402,7 @@ private fun NotifToggleRow(
         Box(
             Modifier
                 .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R12))
                 .background(theme.bg3),
             contentAlignment = Alignment.Center
         ) {
@@ -1462,7 +1462,7 @@ private fun LanguageSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(24.dp))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
         ) {
             LanguageOptionRow(
                 flag       = "🇹🇷",
@@ -1486,7 +1486,7 @@ private fun LanguageSettingsSheet(
         Button(
             onClick  = { onApply(selected) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp),
+            shape    = RoundedCornerShape(SinemaRadius.R12),
             colors   = ButtonDefaults.buttonColors(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
@@ -1497,7 +1497,7 @@ private fun LanguageSettingsSheet(
                 pressedElevation = 2.dp
             )
         ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = 13.sp)
+            Text(strings.applyLabel, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, fontSize = SinemaType.BodySm)
         }
     }
 }
@@ -1518,7 +1518,7 @@ private fun LanguageOptionRow(
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(flag, fontSize = 24.sp)
+        Text(flag, fontSize = SinemaType.Headline)
         Text(
             name,
             color      = theme.text0,
@@ -1576,7 +1576,7 @@ private fun ModeOption(
     Box(
         modifier = modifier
             .sinemaClickable(onClick = onClick)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(if (isSelected) accent.copy(0.15f) else Color.Transparent)
             .padding(12.dp),
         contentAlignment = Alignment.Center
@@ -1736,7 +1736,7 @@ private fun BodyMetricTile(
     Box(
         modifier = modifier
             .heightIn(min = 92.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(theme.bg3)
             .padding(12.dp)
     ) {
@@ -1745,10 +1745,10 @@ private fun BodyMetricTile(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-            Text(value, color = theme.text0, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text(unit, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = theme.text0, fontSize = SinemaType.Title, fontWeight = FontWeight.Black)
+            Text(unit, color = color, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
-            Text(label, color = theme.text2, fontSize = 8.sp, letterSpacing = 0.5.sp)
+            Text(label, color = theme.text2, fontSize = SinemaType.Caption, letterSpacing = 0.5.sp)
         }
     }
 }
@@ -1808,7 +1808,7 @@ private fun PerformanceShortcutCard(
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R12))
                 .background(accent.copy(0.12f)),
             contentAlignment = Alignment.Center
         ) {
@@ -1830,7 +1830,7 @@ private fun PerformanceShortcutCard(
             Text(
                 subtitle,
                 color    = theme.text2,
-                fontSize = 11.sp
+                fontSize = SinemaType.Caption
             )
         }
 
@@ -1872,7 +1872,7 @@ fun WeightTrackingCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(accent.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -1895,7 +1895,7 @@ fun WeightTrackingCard(
                     if (weightKg > 0) theme.t("${"%.1f".format(weightKg)} kg · Trend & AI Analiz", "${"%.1f".format(weightKg)} kg · Trend & AI Analysis")
                     else theme.t("Kilo ölçümlerini performans verilerinle birlikte takip et", "Track weight measurements alongside your performance data"),
                     color    = theme.text2,
-                    fontSize = 11.sp
+                    fontSize = SinemaType.Caption
                 )
             }
 
@@ -1936,7 +1936,7 @@ fun ExerciseProgressionCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(accent.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -1957,7 +1957,7 @@ fun ExerciseProgressionCard(
                 Text(
                     theme.t("Ağırlık · Süre · Mesafe · AI Analiz", "Weight · Duration · Distance · AI Analysis"),
                     color    = theme.text2,
-                    fontSize = 11.sp
+                    fontSize = SinemaType.Caption
                 )
             }
             Icon(
@@ -2014,7 +2014,7 @@ private fun LeaderboardPreviewCard(
                 Text(
                     theme.t("Diğer kullanıcılarla kıyasla", "Compare with other users"),
                     color    = theme.text2,
-                    fontSize = 11.sp
+                    fontSize = SinemaType.Caption
                 )
             }
         }
@@ -2058,7 +2058,7 @@ private fun RankModeTile(
                 theme = theme,
                 accent = accent,
                 onClick = onClick,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(SinemaRadius.R12)
             )
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -2086,7 +2086,7 @@ private fun RankModeTile(
         Text(
             subtitle,
             color    = theme.text2,
-            fontSize = 10.sp
+            fontSize = SinemaType.Caption
         )
     }
 }

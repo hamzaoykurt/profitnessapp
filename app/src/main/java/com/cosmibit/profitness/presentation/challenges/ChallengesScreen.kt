@@ -75,6 +75,8 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
@@ -143,7 +145,7 @@ fun ChallengesTab(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
-                        .sinemaCapsuleGlass(RoundedCornerShape(22.dp), blur = 16.dp)
+                        .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R20), blur = 16.dp)
                         .padding(3.dp)
                 ) {
                     ScopeChip(
@@ -185,14 +187,14 @@ fun ChallengesTab(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
                         .clickable { vm.clearError() }
                         .padding(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.ErrorOutline, null, tint = theme.supportAlert, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text(err, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(err, color = theme.text0, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -406,7 +408,7 @@ private fun InviteFriendsDialog(
                     .widthIn(max = 460.dp)
                     .heightIn(max = 560.dp)
                     .padding(horizontal = 16.dp)
-                    .sinemaCard(theme, RoundedCornerShape(28.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
                     .padding(20.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -421,8 +423,8 @@ private fun InviteFriendsDialog(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(theme.t("ARKADAŞLARINI DAVET ET", "INVITE FRIENDS"), color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-                        Text(title.ifBlank { theme.t("Yeni challenge", "New challenge") }, color = theme.text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(theme.t("ARKADAŞLARINI DAVET ET", "INVITE FRIENDS"), color = theme.text0, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                        Text(title.ifBlank { theme.t("Yeni challenge", "New challenge") }, color = theme.text2, fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Box(
                         Modifier.size(48.dp).clip(CircleShape)
@@ -448,7 +450,7 @@ private fun InviteFriendsDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(150.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R20))
                             .background(Sinema.line(theme)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -458,7 +460,7 @@ private fun InviteFriendsDialog(
                                 "You need mutual friends to send invites."
                             ),
                             color = theme.text2,
-                            fontSize = 12.sp,
+                            fontSize = SinemaType.Caption,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 24.dp)
                         )
@@ -482,13 +484,13 @@ private fun InviteFriendsDialog(
 
                 message?.let {
                     Spacer(Modifier.height(10.dp))
-                    Text(it, color = theme.text2, fontSize = 11.sp)
+                    Text(it, color = theme.text2, fontSize = SinemaType.Caption)
                 }
 
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SinemaChip(active = false, onClick = onSkip, enabled = !inFlight, height = 48.dp, modifier = Modifier.weight(1f)) { fg ->
-                        Text(theme.t("GEÇ", "SKIP"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                        Text(theme.t("GEÇ", "SKIP"), color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                     }
                     SinemaChip(active = selected.isNotEmpty(), onClick = onSend, enabled = selected.isNotEmpty() && !inFlight, height = 48.dp, modifier = Modifier.weight(1.4f)) { fg ->
                         if (inFlight) {
@@ -499,7 +501,7 @@ private fun InviteFriendsDialog(
                             Text(
                                 if (selected.isEmpty()) theme.t("DAVET GÖNDER", "SEND INVITE")
                                 else theme.t("${selected.size} DAVET GÖNDER", "SEND ${selected.size} INVITES"),
-                                color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
+                                color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp
                             )
                         }
                     }
@@ -521,8 +523,8 @@ private fun InviteFriendRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(20.dp))
-            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(20.dp)) else Modifier)
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
+            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -531,13 +533,13 @@ private fun InviteFriendRow(
             if (user.avatarUrl != null) {
                 AsyncImage(model = user.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
             } else {
-                Text(user.displayName.take(1).uppercase(), color = theme.text1, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Text(user.displayName.take(1).uppercase(), color = theme.text1, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Black)
             }
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(user.displayName, color = theme.text0, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            user.username?.let { Text("@$it", color = theme.text2, fontSize = 11.sp, maxLines = 1) }
+            Text(user.displayName, color = theme.text0, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            user.username?.let { Text("@$it", color = theme.text2, fontSize = SinemaType.Caption, maxLines = 1) }
         }
         Box(
             modifier = Modifier
@@ -599,7 +601,7 @@ private fun ChallengeInvitesSection(
                 Text(
                     theme.t("DAVETLER", "INVITES"),
                     color = theme.accent3TextColor,
-                    fontSize = 10.sp,
+                    fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.1.sp
                 )
@@ -608,7 +610,7 @@ private fun ChallengeInvitesSection(
             Text(
                 theme.t("${invites.size} bekleyen challenge", "${invites.size} pending challenges"),
                 color = theme.text2,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -627,12 +629,12 @@ private fun ChallengeInvitesSection(
         }
         if (invites.size > 3) {
             Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable { showAll = !showAll },
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(SinemaRadius.R24)).clickable { showAll = !showAll },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     if (showAll) theme.t("Daha az göster", "Show less") else theme.t("Tümünü gör (${invites.size})", "See all (${invites.size})"),
-                    color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold
+                    color = accent, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold
                 )
             }
         }
@@ -658,7 +660,7 @@ private fun ChallengeInviteRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .clickable(onClick = onOpen)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -682,7 +684,7 @@ private fun ChallengeInviteRow(
             Text(
                 challenge.title,
                 color = theme.text0,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -693,7 +695,7 @@ private fun ChallengeInviteRow(
                     "${challenge.creatorName} invited you · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}"
                 ),
                 color = theme.text2,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -714,7 +716,7 @@ private fun ChallengeInviteRow(
                 Text(
                     theme.t("KATIL", "JOIN"),
                     color = accent,
-                    fontSize = 11.sp,
+                    fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.9.sp
                 )
@@ -837,7 +839,7 @@ private fun FilterChip(
     onClick: () -> Unit
 ) {
     // c1 ekranda tek dolgu (FAB); ikincil seçili taş nötr cam
-    val shape = RoundedCornerShape(17.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R16)
     Box(
         Modifier
             .heightIn(min = 34.dp)
@@ -847,7 +849,7 @@ private fun FilterChip(
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = if (active) Color.White else Color.White.copy(0.75f), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
+        Text(label, color = if (active) Color.White else Color.White.copy(0.75f), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
 }
 
@@ -903,7 +905,7 @@ private fun ScopeChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val shape = RoundedCornerShape(19.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R20)
     Row(
         modifier = modifier
             .fillMaxHeight()
@@ -916,7 +918,7 @@ private fun ScopeChip(
         val fg = if (isActive) Color.White else Color.White.copy(0.75f)
         Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -1013,7 +1015,7 @@ private fun ChallengeCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
         SceneImage(
@@ -1042,7 +1044,7 @@ private fun ChallengeCard(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     c.maxParticipants?.let { "${c.participantsCount}/$it" } ?: "${c.participantsCount}",
-                    color = Color.White.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold
+                    color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold
                 )
             }
 
@@ -1092,10 +1094,10 @@ private fun ChallengeCard(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(
                             "${challengeNumberFormat.format(c.myProgress)} / ${challengeNumberFormat.format(c.targetValue)} $unit",
-                            color = Color.White.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold
+                            color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.weight(1f))
-                        Text("%${(c.progressPct * 100).toInt()}", color = theme.accent2Color, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("%${(c.progressPct * 100).toInt()}", color = theme.accent2Color, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
                     }
                     Spacer(Modifier.height(6.dp))
                     ProgressBar(pct = c.progressPct, accent = theme.accent2Color, strokeColor = Color.Transparent)
@@ -1105,7 +1107,7 @@ private fun ChallengeCard(
 
                 when {
                     !canAct -> Row(
-                        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(Color.White.copy(0.14f)),
+                        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(SinemaRadius.R28)).background(Color.White.copy(0.14f)),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1117,7 +1119,7 @@ private fun ChallengeCard(
                                 c.isCompleted -> theme.t("TAMAMLANDI", "COMPLETED")
                                 else -> theme.t("KAPALI", "CLOSED")
                             },
-                            color = Color.White.copy(0.55f), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
+                            color = Color.White.copy(0.55f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
                         )
                     }
                     c.isJoined -> SinemaCapsule(
@@ -1130,7 +1132,7 @@ private fun ChallengeCard(
                             Icon(Icons.Rounded.Check, null, tint = fg, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(8.dp))
-                        Text(theme.t("KATILDIN", "JOINED"), color = fg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
+                        Text(theme.t("KATILDIN", "JOINED"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
                     }
                     // c1 ekranda tek dolgu (FAB): kart eylemi nötr cam + c1 ikon/metin
                     else -> SinemaCapsule(
@@ -1141,7 +1143,7 @@ private fun ChallengeCard(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             if (c.isInvited) theme.t("DAVET", "INVITE") else theme.t("KATIL", "JOIN"),
-                            color = accent, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
+                            color = accent, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
                         )
                     }
                 }
@@ -1159,7 +1161,7 @@ private fun PosterStatusLabel(text: String, dot: Color) {
     ) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
         Spacer(Modifier.width(6.dp))
-        Text(text, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1)
+        Text(text, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1)
     }
 }
 

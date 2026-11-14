@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
@@ -80,6 +82,36 @@ object Sinema {
     const val KenBurnsMs = 14000
     const val SweepMs = 500
     const val NavMs = 200
+}
+
+/**
+ * Tek tipografi ölçeği (sp). Satır içi `fontSize = N.sp` yerine bunlar kullanılır; ağırlık/renk çağrı yerinde kalır.
+ * Ekran başlığı ve dev rakamlar Sinema.ScreenTitle/Display/Metric + SinemaFitText ile kalır. Stiller: SinemaType.*Style.
+ */
+object SinemaType {
+    val Caption = 12.sp
+    val BodySm = 13.sp
+    val Body = 14.sp
+    val BodyLg = 16.sp
+    val Title = 18.sp
+    val Headline = 22.sp
+
+    val CaptionStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Medium, fontSize = Caption, lineHeight = 16.sp)
+    val BodySmStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Normal, fontSize = BodySm, lineHeight = 18.sp)
+    val BodyStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Normal, fontSize = Body, lineHeight = 20.sp)
+    val BodyLgStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Normal, fontSize = BodyLg, lineHeight = 24.sp)
+    val TitleStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Bold, fontSize = Title, lineHeight = 24.sp)
+    val HeadlineStyle = TextStyle(fontFamily = AppFontFamily, fontWeight = FontWeight.Bold, fontSize = Headline, lineHeight = 28.sp, letterSpacing = (-0.01).em)
+}
+
+/** Tek yarıçap ölçeği: 12 / 16 / 20 / 24 / 28 / kapsül. */
+object SinemaRadius {
+    val R12 = 12.dp
+    val R16 = 16.dp
+    val R20 = 20.dp
+    val R24 = 24.dp
+    val R28 = 28.dp
+    val Pill = RoundedCornerShape(percent = 50)
 }
 
 /** Label stili BÜYÜK HARF: Türkçe için i/İ doğru dönüşümü. */

@@ -831,7 +831,7 @@ private fun BuilderChooseScreen(
                     Row(
                         Modifier.fillMaxWidth().sinemaClickable(onClick = {
                             activeCategory = category; showFilterSheet = false
-                        }, scale = 0.98f).clip(RoundedCornerShape(14.dp)).padding(vertical = 14.dp),
+                        }, scale = 0.98f).clip(RoundedCornerShape(SinemaRadius.R12)).padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(category.icon, null, tint = if (category == activeCategory) MaterialTheme.colorScheme.primary else theme.text1)
@@ -977,7 +977,7 @@ private fun ProgramDetailDialog(
                     }
                 }
                 Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 128.dp).navigationBarsPadding()) {
-                    Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp)
+                    Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
 
                     Spacer(Modifier.height(20.dp))
 
@@ -985,7 +985,7 @@ private fun ProgramDetailDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1000,7 +1000,7 @@ private fun ProgramDetailDialog(
                     Spacer(Modifier.height(20.dp))
 
                     // Description
-                    Text(program.localizedDescription(theme), color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 21.sp)
+                    Text(program.localizedDescription(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
 
                     Spacer(Modifier.height(24.dp))
 
@@ -1010,8 +1010,8 @@ private fun ProgramDetailDialog(
                     program.muscleLabels.forEachIndexed { i, label ->
                         Column(Modifier.padding(bottom = 12.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(program.localizedText(label, theme), color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                                Text(program.musclePct[i], color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                Text(program.localizedText(label, theme), color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium)
+                                Text(program.musclePct[i], color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
                             }
                             Spacer(Modifier.height(6.dp))
                             Box(
@@ -1041,10 +1041,10 @@ private fun ProgramDetailDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                             .padding(16.dp)
                     ) {
-                        Text(program.localizedSchedule(theme), color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 22.sp)
+                        Text(program.localizedSchedule(theme), color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 22.sp)
                     }
 
                     templateDays.filter { !it.isRestDay && it.exercises.isNotEmpty() }.forEachIndexed { dayIdx, day ->
@@ -1054,7 +1054,7 @@ private fun ProgramDetailDialog(
                             color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 2, overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(8.dp))
-                        Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp, vertical = 4.dp)) {
+                        Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(horizontal = 16.dp, vertical = 4.dp)) {
                             day.exercises.forEachIndexed { i, ex ->
                                 if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
                                 val open = {
@@ -1067,7 +1067,7 @@ private fun ProgramDetailDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        theme.exerciseDisplayName(ex.exerciseName), color = Sinema.text(theme), fontSize = 14.sp,
+                                        theme.exerciseDisplayName(ex.exerciseName), color = Sinema.text(theme), fontSize = SinemaType.Body,
                                         fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f)
                                     )
                                     Text(
@@ -1119,14 +1119,14 @@ private fun ProgramDetailDialog(
                             theme.t("PROGRAM UYGULANIYOR", "APPLYING PROGRAM"),
                             color = theme.text0,
                             fontWeight = FontWeight.Black,
-                            fontSize = 13.sp,
+                            fontSize = SinemaType.BodySm,
                             letterSpacing = 1.2.sp
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             theme.t("Tamamlanana kadar bekleyin", "Please wait until it finishes"),
                             color = theme.text1,
-                            fontSize = 12.sp,
+                            fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1207,7 +1207,7 @@ private fun DialogStat(
         Box(Modifier.heightIn(min = 40.dp), contentAlignment = Alignment.Center) {
             Text(value, color = theme.text0, fontWeight = FontWeight.Black, fontSize = valueSize, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
-        Text(label, color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(label, color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -1283,7 +1283,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
     val glassSub = Color.White.copy(0.62f)
     val accentAi = aiTheme.effectiveAccentColor
     val inputStyle = androidx.compose.ui.text.TextStyle(
-        color = glassText, fontFamily = AppFontFamily, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp
+        color = glassText, fontFamily = AppFontFamily, fontWeight = FontWeight.Medium, fontSize = SinemaType.BodyLg, lineHeight = 24.sp
     )
 
     val haze = remember { HazeState() }
@@ -1342,7 +1342,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 onClick = { if (!uiState.aiLoading) promptFocus.requestFocus() },
                 height = 220.dp,
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(SinemaRadius.R28),
                 contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.Top
             ) {
@@ -1408,7 +1408,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             height = 40.dp,
                             contentPadding = PaddingValues(horizontal = 16.dp)
                         ) { fg ->
-                            Text(option, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(option, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                     }
                 }
@@ -1439,7 +1439,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     Text(
                         text = if (selectedBase64 != null) aiTheme.t("Değiştir", "Change")
                         else aiTheme.t("Görsel / PDF Yükle", "Upload Image / PDF"),
-                        color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1
+                        color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1
                     )
                 }
                 if (selectedBase64 != null) {
@@ -1466,13 +1466,13 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(Icons.Rounded.InsertDriveFile, contentDescription = null, tint = glassSub, modifier = Modifier.size(14.dp))
-                    Text(name, color = glassSub, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(name, color = glassSub, fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
 
             selectedFileError?.let { message ->
                 Spacer(Modifier.height(8.dp))
-                Text(message, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 28.dp))
+                Text(message, color = CardCoral, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 28.dp))
             }
 
             // Hata: kutusuz, uyarı ikonlu metin
@@ -1484,7 +1484,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(Icons.Rounded.ErrorOutline, null, tint = CardCoral, modifier = Modifier.size(16.dp))
-                    Text(errMsg, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(errMsg, color = CardCoral, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -1506,7 +1506,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         Spacer(Modifier.width(4.dp))
                         Text(
                             aiTheme.t("6-10 Enerji · Kalan ${uiState.aiCredits}", "6-10 Energy · ${uiState.aiCredits} left"),
-                            color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1
+                            color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1
                         )
                     }
                 }
@@ -1544,14 +1544,14 @@ private fun SinemaGoOrIdle(
             modifier = modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R28))
                 .background(Color.White.copy(0.10f)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(icon, null, tint = Color.White.copy(0.40f), modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
-            Text(label, color = Color.White.copy(0.40f), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(label, color = Color.White.copy(0.40f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }
@@ -1735,7 +1735,7 @@ private fun EditProgramScreen(
                 viewModel.clearAiEditError()
             }
         }) {
-            val modalShape = RoundedCornerShape(28.dp)
+            val modalShape = RoundedCornerShape(SinemaRadius.R28)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1768,7 +1768,7 @@ private fun EditProgramScreen(
                             color = Sinema.text(editTheme),
                             fontFamily = AppFontFamily,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp
+                            fontSize = SinemaType.Title
                         )
                     }
                     if (uiState.userPlan == UserPlan.FREE) {
@@ -1780,7 +1780,7 @@ private fun EditProgramScreen(
                         ) {
                             Text(
                                 editTheme.t("${uiState.aiCredits} Enerji", "${uiState.aiCredits} Energy"),
-                                color = Sinema.text(editTheme), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold
+                                color = Sinema.text(editTheme), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
@@ -1789,9 +1789,9 @@ private fun EditProgramScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(SinemaRadius.R20))
                         .background(Sinema.page(editTheme))
-                        .border(1.dp, Sinema.line(editTheme), RoundedCornerShape(20.dp))
+                        .border(1.dp, Sinema.line(editTheme), RoundedCornerShape(SinemaRadius.R20))
                         .padding(16.dp)
                 ) {
                     BasicTextField(
@@ -1800,7 +1800,7 @@ private fun EditProgramScreen(
                         enabled       = !uiState.aiEditLoading,
                         textStyle     = MaterialTheme.typography.bodyMedium.copy(
                             color    = Sinema.text(editTheme),
-                            fontSize = 15.sp
+                            fontSize = SinemaType.BodyLg
                         ),
                         cursorBrush   = androidx.compose.ui.graphics.SolidColor(editAccent),
                         modifier      = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 200.dp).verticalScroll(rememberScrollState()),
@@ -1825,7 +1825,7 @@ private fun EditProgramScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(Icons.Rounded.ErrorOutline, null, tint = CardCoral, modifier = Modifier.size(16.dp))
-                        Text(uiState.aiEditError!!, color = CardCoral, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(uiState.aiEditError!!, color = CardCoral, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -1844,11 +1844,11 @@ private fun EditProgramScreen(
                         },
                         enabled = !uiState.aiEditLoading,
                         height = 56.dp,
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(SinemaRadius.R28),
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.Center
                     ) { fg ->
-                        Text(editTheme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                        Text(editTheme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = SinemaType.Body, maxLines = 1)
                     }
                     SinemaGoOrIdle(
                         label = if (uiState.aiEditLoading) editTheme.t("Uygulanıyor…", "Applying…")
@@ -2016,7 +2016,7 @@ private fun EditProgramScreen(
                     onClick = { showAiEditDialog = true },
                     enabled = actionsEnabled,
                     height = 56.dp,
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(SinemaRadius.R28),
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.Center
                 ) { fg ->
@@ -2024,7 +2024,7 @@ private fun EditProgramScreen(
                     Spacer(Modifier.width(6.dp))
                     Text(
                         editTheme.t("AI ile düzenle", "Edit with AI"),
-                        color = fg, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1
+                        color = fg, fontWeight = FontWeight.Bold, fontSize = SinemaType.Caption, maxLines = 1
                     )
                 }
 
@@ -2215,25 +2215,25 @@ private fun UnsavedChangesDialog(onSave: () -> Unit, onDiscard: () -> Unit, onKe
     val theme = LocalAppTheme.current
     androidx.compose.ui.window.Dialog(onDismissRequest = onKeepEditing) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(theme.t("Değişiklikler kaydedilsin mi?", "Save your changes?"), style = Sinema.Title, color = Sinema.text(theme))
             Spacer(Modifier.height(8.dp))
             Text(
                 theme.t("Kaydetmeden çıkarsan yaptığın değişiklikler silinir.", "If you leave without saving, your changes will be discarded."),
-                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
             )
             Spacer(Modifier.height(24.dp))
             SinemaGoButton(label = theme.t("KAYDET", "SAVE"), icon = Icons.Rounded.Check, onClick = onSave)
             Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onKeepEditing, scale = 0.98f).clip(RoundedCornerShape(24.dp)),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onKeepEditing, scale = 0.98f).clip(RoundedCornerShape(SinemaRadius.R24)),
                 contentAlignment = Alignment.Center
-            ) { Text(theme.t("Düzenlemeye devam", "Keep editing"), color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+            ) { Text(theme.t("Düzenlemeye devam", "Keep editing"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold) }
             Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onDiscard, scale = 0.98f).clip(RoundedCornerShape(24.dp)),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onDiscard, scale = 0.98f).clip(RoundedCornerShape(SinemaRadius.R24)),
                 contentAlignment = Alignment.Center
-            ) { Text(theme.t("Vazgeç, sil", "Discard"), color = theme.supportAlert, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+            ) { Text(theme.t("Vazgeç, sil", "Discard"), color = theme.supportAlert, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -2288,7 +2288,7 @@ private fun BuilderSceneHeader(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { nameFocus.requestFocus() },
                 height = 68.dp,
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(SinemaRadius.R24),
                 contentPadding = PaddingValues(horizontal = 20.dp)
             ) {
                 BasicTextField(
@@ -2298,7 +2298,7 @@ private fun BuilderSceneHeader(
                         color = Color.White,
                         fontFamily = AppFontFamily,
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
+                        fontSize = SinemaType.Headline
                     ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                     singleLine = true,
@@ -2310,7 +2310,7 @@ private fun BuilderSceneHeader(
                                 color = Color.White.copy(0.45f),
                                 fontFamily = AppFontFamily,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 22.sp,
+                                fontSize = SinemaType.Headline,
                                 maxLines = 1
                             )
                         }
@@ -2331,7 +2331,7 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick, scale = 0.98f)
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -2351,7 +2351,7 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
             color = Sinema.text(theme),
             fontFamily = AppFontFamily,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 18.sp,
+            fontSize = SinemaType.Title,
             modifier = Modifier.weight(1f)
         )
         Text(
@@ -2398,7 +2398,7 @@ private fun ManualDayCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(16.dp)
     ) {
         // Day header row
@@ -2430,7 +2430,7 @@ private fun ManualDayCard(
                     color = textPrimary,
                     fontFamily = AppFontFamily,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp
+                    fontSize = SinemaType.Title
                 ),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 singleLine = true,
@@ -2443,7 +2443,7 @@ private fun ManualDayCard(
                             color = textSec,
                             fontFamily = AppFontFamily,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp,
+                            fontSize = SinemaType.Title,
                             maxLines = 1
                         )
                     }
@@ -2459,7 +2459,7 @@ private fun ManualDayCard(
                 height = 36.dp,
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
             ) { fg ->
-                Text(theme.t("Dinlenme", "Rest"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(theme.t("Dinlenme", "Rest"), color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
             }
 
             if (canRemove) {
@@ -2481,15 +2481,15 @@ private fun ManualDayCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R16))
                 .background(Sinema.page(theme))
-                .border(1.dp, line, RoundedCornerShape(16.dp))
+                .border(1.dp, line, RoundedCornerShape(SinemaRadius.R16))
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             BasicTextField(
                 value = day.notes,
                 onValueChange = { day.notes = it.take(600) },
-                textStyle = MaterialTheme.typography.bodySmall.copy(color = textPrimary, fontSize = 13.sp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = textPrimary, fontSize = SinemaType.BodySm),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
@@ -2497,7 +2497,7 @@ private fun ManualDayCard(
                         Text(
                             theme.t("Gün notu (isteğe bağlı)", "Day note (optional)"),
                             color = textSec,
-                            fontSize = 13.sp
+                            fontSize = SinemaType.BodySm
                         )
                     }
                     inner()
@@ -2537,7 +2537,7 @@ private fun ManualDayCard(
                             Text(
                                 listOf(groupName, groupDetails).filter { it.isNotBlank() }.joinToString(" · "),
                                 color = accent,
-                                fontSize = 12.sp,
+                                fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
                             )
@@ -2546,9 +2546,9 @@ private fun ManualDayCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .sinemaClickable(onClick = { onEditExercise(i) }, scale = 0.98f)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(SinemaRadius.R20))
                                 .background(Sinema.page(theme))
-                                .border(1.dp, line, RoundedCornerShape(20.dp))
+                                .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                                 .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -2557,7 +2557,7 @@ private fun ManualDayCard(
                                     theme.exerciseDisplayName(ex.name),
                                     color = textPrimary,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    fontSize = SinemaType.Body
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2571,7 +2571,7 @@ private fun ManualDayCard(
                                             Text(
                                                 badge,
                                                 color = textPrimary,
-                                                fontSize = 11.sp,
+                                                fontSize = SinemaType.Caption,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1
                                             )
@@ -2583,7 +2583,7 @@ private fun ManualDayCard(
                                     Text(
                                         ex.notes,
                                         color = textSec,
-                                        fontSize = 11.sp,
+                                        fontSize = SinemaType.Caption,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -2626,7 +2626,7 @@ private fun ManualDayCard(
                     theme.t("Hareket ekle", "Add exercise"),
                     color = fg,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = SinemaType.Body
                 )
             }
         }
@@ -2719,7 +2719,7 @@ private fun ExerciseEditDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(28.dp))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -2756,9 +2756,9 @@ private fun ExerciseEditDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R20))
                     .background(Sinema.page(theme))
-                    .border(1.dp, line, RoundedCornerShape(20.dp))
+                    .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                     .padding(horizontal = 16.dp)
             ) {
                 if (spec.metric == ExerciseMetric.Strength) {
@@ -2816,15 +2816,15 @@ private fun ExerciseEditDialog(
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R20))
                     .background(Sinema.page(theme))
-                    .border(1.dp, line, RoundedCornerShape(20.dp))
+                    .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                     .padding(16.dp),
                 decorationBox = { inner ->
                     if (notes.isBlank()) Text(
                         theme.t("Hareket notu / uygulama talimatı", "Exercise note / instruction"),
                         color = Sinema.textSecondary(theme),
-                        fontSize = 13.sp
+                        fontSize = SinemaType.BodySm
                     )
                     inner()
                 }
@@ -2840,11 +2840,11 @@ private fun ExerciseEditDialog(
                     modifier = Modifier.weight(1f),
                     onClick = onDismiss,
                     height = 56.dp,
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(SinemaRadius.R28),
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.Center
                 ) { fg ->
-                    Text(theme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    Text(theme.t("İptal", "Cancel"), color = fg, fontWeight = FontWeight.Bold, fontSize = SinemaType.Body, maxLines = 1)
                 }
                 SinemaGoButton(
                     label = theme.t("Kaydet", "Save"),

@@ -363,7 +363,7 @@ fun StoreScreen(
                 ) { fg ->
                     Icon(Icons.Rounded.CheckCircle, null,
                         tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
-                    Text(msg, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text(msg, color = fg, fontWeight = FontWeight.SemiBold, fontSize = SinemaType.BodySm)
                 }
             }
         }
@@ -404,7 +404,7 @@ private fun PendingOrderPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
@@ -415,13 +415,13 @@ private fun PendingOrderPanel(
             Icon(Icons.AutoMirrored.Rounded.ReceiptLong, null, tint = accent, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(theme.t("Demo ödeme", "Demo payment"), color = textMain, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                Text(theme.t("Demo ödeme", "Demo payment"), color = textMain, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     if (state.sandboxAvailable) theme.t("Test kartı ile satın alma akışını tamamla.", "Complete the purchase flow with a test card.")
                     else theme.t("Demo ödeme modu şu an kapalı.", "Demo payment mode is currently off."),
                     color = textSub,
-                    fontSize = 12.sp,
+                    fontSize = SinemaType.Caption,
                     lineHeight = 16.sp
                 )
             }
@@ -471,7 +471,7 @@ private fun PendingOrderPanel(
             Text(
                 theme.t("Test kartı hazır dolduruldu. Gerçek ödeme alınmaz.", "The test card is prefilled. No real payment is charged."),
                 color = textSub,
-                fontSize = 12.sp,
+                fontSize = SinemaType.Caption,
                 lineHeight = 16.sp
             )
             Spacer(Modifier.height(14.dp))
@@ -490,7 +490,7 @@ private fun PendingOrderPanel(
                     "Membership and Energy benefits are applied automatically after payment is completed."
                 ),
                 color = textSub,
-                fontSize = 12.sp,
+                fontSize = SinemaType.Caption,
                 lineHeight = 16.sp
             )
         }
@@ -507,7 +507,7 @@ private fun PaymentModeBand(
     SinemaCapsule(
         modifier = modifier.fillMaxWidth(),
         height = 56.dp,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) { fg ->
         Icon(
@@ -521,7 +521,7 @@ private fun PaymentModeBand(
             Text(
                 if (state.billingSandboxAvailable) theme.t("Demo ödeme modu açık", "Demo payment mode on") else theme.t("Demo ödeme modu kapalı", "Demo payment mode off"),
                 color = fg,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.ExtraBold
             )
             Text(
@@ -530,7 +530,7 @@ private fun PaymentModeBand(
                 else
                     theme.t("Ödeme tamamlanınca haklar hesabına işlenir.", "Benefits are applied when payment is completed."),
                 color = fg.copy(0.7f),
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 lineHeight = 14.sp
             )
         }
@@ -631,7 +631,7 @@ private fun StoreTopBar(
                             horizontalArrangement = Arrangement.Center,
                             contentPadding = PaddingValues(horizontal = 8.dp)
                         ) { fg ->
-                            Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                     }
                 }
@@ -641,7 +641,7 @@ private fun StoreTopBar(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) { fg ->
                     Icon(Icons.Rounded.Bolt, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
-                    Text("$credits", color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                    Text("$credits", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -715,7 +715,7 @@ private fun SubscriptionTab(
                 ) { fg ->
                     Icon(Icons.Rounded.Cancel, null, tint = fg.copy(0.6f), modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(theme.t("Aboneliği iptal et", "Cancel subscription"), color = fg.copy(0.8f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("Aboneliği iptal et", "Cancel subscription"), color = fg.copy(0.8f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -743,7 +743,7 @@ private fun StoreAccountStrip(
         Spacer(Modifier.height(2.dp))
         Text(
             theme.t("Planın, Enerjin ve AI hamlelerin", "Your plan, Energy, and AI moves"),
-            color = Color.White.copy(0.78f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1
+            color = Color.White.copy(0.78f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium, maxLines = 1
         )
     }
 }
@@ -765,7 +765,7 @@ private fun BillingCycleSelector(
         Spacer(Modifier.height(8.dp))
         Text(
             if (isYearly) theme.t("%40'a varan avantaj", "Up to 40% value") else theme.t("Esnek", "Flexible"),
-            color = Sinema.textSecondary(theme), fontSize = 12.sp,
+            color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
             modifier = Modifier.padding(horizontal = 4.dp)
         )
     }
@@ -818,12 +818,12 @@ private fun PlanOfferCard(
         )
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tier.localizedLabel(theme), color = textMain, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold)
             tier.localizedBadge(theme)?.let { badge -> StoreChip(badge, filled = true, theme = theme) }
             if (isCurrent) StoreChip(theme.t("AKTİF", "ACTIVE"), filled = true, theme = theme)
         }
         Spacer(Modifier.height(4.dp))
-        Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = 13.sp, lineHeight = 18.sp)
+        Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, lineHeight = 18.sp)
 
         Spacer(Modifier.height(if (selected) 14.dp else 10.dp))
         Row(verticalAlignment = Alignment.Bottom) {
@@ -837,7 +837,7 @@ private fun PlanOfferCard(
             if (period.isNotEmpty()) {
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    period, color = textSub, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    period, color = textSub, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(bottom = if (selected) 10.dp else 4.dp)
                 )
             }
@@ -846,7 +846,7 @@ private fun PlanOfferCard(
         if (isYearly && tier.discountBadge.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tier.yearlyPerMonth, color = textSub, fontSize = 12.sp)
+                Text(tier.yearlyPerMonth, color = textSub, fontSize = SinemaType.Caption)
                 StoreChip(tier.discountBadge, filled = false, theme = theme)
             }
         }
@@ -878,7 +878,7 @@ private fun PlanOfferCard(
                 enabled = !isLoading,
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
-                Text(ctaLabel, color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(ctaLabel, color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
     }
@@ -907,7 +907,7 @@ private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
             Modifier.height(24.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)).padding(horizontal = 10.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(text, color = theme.accent3TextColor, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(text, color = theme.accent3TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
         return
     }
@@ -918,7 +918,7 @@ private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
         contentPadding = PaddingValues(horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center
     ) { fg ->
-        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(text, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -951,7 +951,7 @@ private fun CompactPlanFeature(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
-        Text(text, color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
+        Text(text, color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 18.sp, modifier = Modifier.weight(1f))
     }
 }
 
@@ -985,7 +985,7 @@ private fun StoreSectionHeader(
             Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
             if (subtitle.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp, lineHeight = 16.sp)
+                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, lineHeight = 16.sp)
             }
         }
         trailing?.invoke()
@@ -1057,7 +1057,7 @@ private fun SimpleEnergyBalanceCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp)
     ) {
         SinemaBigStat(
@@ -1108,7 +1108,7 @@ private fun SimpleEnergyPackageRow(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     theme.t("Enerji", "Energy"),
-                    color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 5.dp)
                 )
             }
@@ -1119,7 +1119,7 @@ private fun SimpleEnergyPackageRow(
         }
         Text(
             pkg.price,
-            color = Sinema.text(theme), fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
+            color = Sinema.text(theme), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold,
             letterSpacing = (-0.02).em, maxLines = 1
         )
     }
@@ -1168,7 +1168,7 @@ private fun CancelPlanDialog(
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -1181,7 +1181,7 @@ private fun CancelPlanDialog(
                     "$planName aboneliğini iptal etmek istediğine emin misin?\nMevcut dönem sonunda ücretsiz plana geçilecek.",
                     "Are you sure you want to cancel your $planName subscription?\nYou will move to the free plan at the end of the current period."
                 ),
-                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
             )
             Spacer(Modifier.height(24.dp))
             SinemaGoButton(
@@ -1197,7 +1197,7 @@ private fun CancelPlanDialog(
                 onClick = onConfirm,
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
-                Text(theme.t("İptal Et", "Cancel"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                Text(theme.t("İptal Et", "Cancel"), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
