@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.em
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.accent3TextColor
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
@@ -267,12 +269,14 @@ fun DiscoverScreen(
             val listTop = controlsTop + 54.dp + 12.dp
             when (selected) {
                 DiscoverTab.Programs -> when (programsSub) {
-                    ProgramsSubTab.Community -> SinemaProgramsPager(
-                        state = state, myProgramIds = myProgramIds, myProgramHashes = myProgramHashes,
-                        bottomPadding = bottomPadding, topOffset = controlsTop,
-                        onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = requestApply,
-                        onOpenDetails = { selectedProgram = it }, onLoadMore = viewModel::loadMore, onRefresh = viewModel::refresh
-                    )
+                    ProgramsSubTab.Community -> Box(Modifier.fillMaxSize().padding(top = listTop)) {
+                        SinemaProgramsFeed(
+                            state = state, myProgramIds = myProgramIds, myProgramHashes = myProgramHashes,
+                            bottomPadding = bottomPadding,
+                            onLike = viewModel::toggleLike, onSave = viewModel::toggleSave, onApply = requestApply,
+                            onOpenDetails = { selectedProgram = it }, onLoadMore = viewModel::loadMore, onRefresh = viewModel::refresh
+                        )
+                    }
                     ProgramsSubTab.Saved -> Box(Modifier.fillMaxSize().padding(top = listTop)) {
                         SavedProgramsList(
                             state = state, myProgramIds = myProgramIds, myProgramHashes = myProgramHashes,
@@ -1205,13 +1209,13 @@ private fun DiscoverMenuSheet(
     }
 }
 
+/** Topluluk akışı: Challenge posteri dilinde dikey foto kart listesi (sayfalama listenin sonunda). */
 @Composable
-private fun SinemaProgramsPager(
+private fun SinemaProgramsFeed(
     state: DiscoverProgramsState,
     myProgramIds: ImmutableSet<String>,
     myProgramHashes: ImmutableSet<String>,
     bottomPadding: Dp,
-    topOffset: Dp,
     onLike: (String) -> Unit,
     onSave: (String) -> Unit,
     onApply: (String) -> Unit,
@@ -1221,140 +1225,138 @@ private fun SinemaProgramsPager(
 ) {
     val theme = LocalAppTheme.current
     val items = state.items
-    when {
-        items.isEmpty() && state.isLoading -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { LoadingState() }
-        items.isEmpty() && state.error != null -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { SinemaErrorState(state.error, onRefresh) }
-        items.isEmpty() -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) {
-            SinemaEmptyState(
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            total > 0 && lastVisible >= total - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMore, state.canLoadMore, items.size) {
+        if (shouldLoadMore && state.canLoadMore && !state.isLoading) onLoadMore()
+    }
+    PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+        when {
+            items.isEmpty() && state.isLoading -> LoadingState()
+            items.isEmpty() && state.error != null -> SinemaErrorState(state.error, onRefresh)
+            items.isEmpty() -> SinemaEmptyState(
                 icon = SinemaIcons.Compass,
                 title = theme.t("Henüz paylaşılan program yok", "No shared programs yet"),
                 body = theme.t(
-                    "İlk paylaşan sen ol. Sağ alttaki + butonuna dokun.",
-                    "Be the first to share. Tap the + button at the bottom right."
+                    "İlk paylaşan sen ol. Sağ üstteki yer imi menüsünden Paylaşımlarım'a git.",
+                    "Be the first to share. Open the bookmark menu at the top right and go to My shares."
                 )
             )
-        }
-        else -> {
-            val pagerState = androidx.compose.foundation.pager.rememberPagerState { items.size }
-            val settled = pagerState.settledPage
-            LaunchedEffect(settled, items.size, state.canLoadMore) {
-                if (state.canLoadMore && !state.isLoading && settled >= items.size - 3) onLoadMore()
-            }
-            Box(Modifier.fillMaxSize()) {
-                SinemaBackdrop(Modifier.fillMaxSize())
-                androidx.compose.foundation.pager.VerticalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1,
-                    key = { items[it].id }
-                ) { page ->
-                    val program = items[page]
+            else -> LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding + 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(items, key = { _, p -> p.id }) { i, program ->
                     val isAppliedByHash = program.contentHash != null && program.contentHash in myProgramHashes
                     val appliedLocalId = state.appliedProgramMap[program.id]
                     val isAppliedFallback = appliedLocalId != null &&
                         appliedLocalId !in state.localDeletingProgramIds && myProgramIds.contains(appliedLocalId)
-                    ProgramPage(
-                        program = program, index = page, total = items.size,
-                        isApplying = program.id in state.applyingProgramIds,
-                        isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback,
-                        isSettled = page == settled,
-                        contentBottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp),
-                        onLike = { onLike(program.id) }, onSave = { onSave(program.id) },
-                        onApply = { onApply(program.id) }, onOpen = { onOpenDetails(program) }
-                    )
-                }
-                // Üst segment çubukları (çizim `.bars`): en çok 12 parça
-                val segs = items.size.coerceAtMost(12)
-                val cur = if (items.size <= 12) pagerState.currentPage else (pagerState.currentPage * 12 / items.size)
-                val accent = LocalAppTheme.current.effectiveAccentColor
-                Row(
-                    Modifier.fillMaxWidth().padding(top = topOffset - 12.dp).padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    repeat(segs) { i ->
-                        val f by animateFloatAsState(if (i <= cur) 1f else 0f, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "dseg")
-                        Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(LocalAppTheme.current.accent2Color))
-                        }
+                    Box(Modifier.animateItem().sinemaListEnter(i)) {
+                        ProgramPosterCard(
+                            program = program,
+                            isApplying = program.id in state.applyingProgramIds,
+                            isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback,
+                            onLike = { onLike(program.id) }, onSave = { onSave(program.id) },
+                            onApply = { onApply(program.id) }, onOpen = { onOpenDetails(program) }
+                        )
                     }
+                }
+                if (state.isLoading) {
+                    item { SinemaSkeletonCard(Modifier.padding(vertical = 4.dp), height = 120.dp) }
                 }
             }
         }
     }
 }
 
+/** Challenge posteri görsel dili: foto + alt karartma, üstte cam etiket, altta başlık/dev rakam/meta/sayaç/eylem. */
 @Composable
-private fun ProgramPage(
+private fun ProgramPosterCard(
     program: SharedProgram,
-    index: Int,
-    total: Int,
     isApplying: Boolean,
     isApplied: Boolean,
-    isSettled: Boolean,
-    contentBottom: Dp,
     onLike: () -> Unit,
     onSave: () -> Unit,
     onApply: () -> Unit,
     onOpen: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val haze = remember { dev.chrisbanes.haze.HazeState() }
-    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().clickable(role = Role.Button, onClick = onOpen)) {
-        val compact = maxHeight < 700.dp
-        Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SceneImage(
-                url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
-                modifier = Modifier.fillMaxSize(),
-                requestWidthPx = 1080, requestHeightPx = 1920, fallbackGradient = true
-            )
-            Scrims()
-        }
-        CompositionLocalProvider(LocalSinemaHaze provides haze) {
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = contentBottom),
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                Row {
-                    Text(
-                        program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = theme.accent3TextColor,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
-                    )
-                    Text("%02d / %02d".format(index + 1, total), style = Sinema.Label, color = Color.White.copy(0.70f))
-                }
-                Row(
-                    Modifier.padding(top = 10.dp, bottom = 8.dp).clickable(role = Role.Button, onClick = onOpen),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(0.18f)),
-                        contentAlignment = Alignment.Center
+    val shape = RoundedCornerShape(SinemaRadius.R28)
+    val tag = program.tags.firstOrNull()
+    Box(
+        Modifier.fillMaxWidth()
+            .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
+            .sinemaCard(theme, shape)
+    ) {
+        SceneImage(
+            url = categoryImageUrl(tag.orEmpty()),
+            modifier = Modifier.matchParentSize(),
+            requestWidthPx = 960, requestHeightPx = 960, fallbackGradient = true
+        )
+        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!tag.isNullOrBlank()) {
+                    Row(
+                        Modifier.weight(1f, fill = false)
+                            .sinemaCapsuleGlass(CircleShape, blur = 16.dp).padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (!program.creatorAvatarUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current).data(program.creatorAvatarUrl).crossfade(true).build(),
-                                contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape)
-                            )
-                        } else {
-                            Text(
-                                program.creatorName.take(1).uppercase(), color = Color.White,
-                                fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold
-                            )
-                        }
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(theme.accent3Color))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            tag.sinemaUpper(theme), color = Color.White, fontSize = SinemaType.Caption,
+                            fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Text(program.creatorName, color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier.size(24.dp).clip(CircleShape).background(Color.White.copy(0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!program.creatorAvatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(program.creatorAvatarUrl).crossfade(true).build(),
+                            contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    } else {
+                        Text(program.creatorName.take(1).uppercase(), color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    program.title, style = Sinema.Title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)
+                    program.creatorName, color = Color.White.copy(0.85f), fontSize = SinemaType.Caption,
+                    fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    program.title, style = Sinema.Title.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
+                    color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 program.daysPerWeek?.let { d ->
-                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                        SinemaFitText("$d", style = Sinema.Display, baseSp = if (compact) 80f else 104f, color = Color.White)
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
+                        SinemaFitText(
+                            "$d", style = Sinema.Display, baseSp = 56f, floorSp = 32f,
+                            color = Color.White, modifier = Modifier.weight(1f, fill = false)
+                        )
                         Text(
-                            theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 26.sp),
-                            color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+                            theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
+                            color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                         )
                     }
                 }
@@ -1365,46 +1367,34 @@ private fun ProgramPage(
                     null -> null
                 }
                 val weeks = program.durationWeeks?.let { theme.t("$it hafta", "$it weeks") }
-                if (weeks != null || diffLabel != null) {
-                    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOfNotNull(weeks, diffLabel).forEach { t ->
-                            Box(
-                                Modifier.height(28.dp).sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R12), blur = 16.dp).padding(horizontal = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) { Text(t, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1) }
-                        }
-                    }
+                val meta = listOfNotNull(weeks, diffLabel).joinToString(" · ")
+                if (meta.isNotEmpty()) {
+                    Text(
+                        meta.sinemaUpper(theme), style = Sinema.Label, color = Color.White.copy(0.78f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Row(Modifier.padding(top = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    @Composable
-                    fun count(icon: ImageVector, iconOn: ImageVector?, n: Int, on: Boolean, desc: String, click: (() -> Unit)?) {
-                        val c = if (on) accent else Color.White.copy(0.85f)
-                        Row(
-                            Modifier.height(40.dp)
-                                .then(if (click != null) Modifier.clickable(role = Role.Button, onClick = click) else Modifier)
-                                .semantics { contentDescription = desc },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(if (on && iconOn != null) iconOn else icon, null, tint = c, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(countFormat.format(n), color = c, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    count(SinemaIcons.Heart, Icons.Rounded.Favorite, program.likesCount, program.isLikedByMe, theme.t("Beğen", "Like"), onLike)
-                    count(SinemaIcons.Bookmark, Icons.Rounded.Bookmark, program.savesCount, program.isSavedByMe, theme.t("Kaydet", "Save"), onSave)
-                    count(SinemaIcons.Download, null, program.downloadsCount, false, theme.t("Uygulanma sayısı", "Applied count"), null)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    PhotoCount(SinemaIcons.Heart, Icons.Rounded.Favorite, program.likesCount, program.isLikedByMe, theme.t("Beğen", "Like"), onLike)
+                    PhotoCount(SinemaIcons.Bookmark, Icons.Rounded.Bookmark, program.savesCount, program.isSavedByMe, theme.t("Kaydet", "Save"), onSave)
+                    PhotoCount(SinemaIcons.Download, null, program.downloadsCount, false, theme.t("Uygulanma sayısı", "Applied count"), null)
                 }
                 Spacer(Modifier.height(8.dp))
-                SinemaGoButton(
-                    label = when {
-                        isApplied -> theme.t("UYGULANDI", "APPLIED")
-                        isApplying -> theme.t("UYGULANIYOR", "APPLYING")
-                        else -> theme.t("UYGULA", "APPLY")
-                    },
-                    icon = if (isApplied) SinemaIcons.Check else SinemaIcons.Bolt,
-                    onClick = { if (!isApplying && !isApplied) onApply() },
-                    dim = isApplying
-                )
+                if (isApplied) {
+                    SinemaCapsule(Modifier.fillMaxWidth(), height = 56.dp, horizontalArrangement = Arrangement.Center) { fg ->
+                        Icon(SinemaIcons.Check, null, tint = fg, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(theme.t("UYGULANDI", "APPLIED"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
+                    }
+                } else {
+                    SinemaGoButton(
+                        label = if (isApplying) theme.t("UYGULANIYOR", "APPLYING") else theme.t("UYGULA", "APPLY"),
+                        icon = SinemaIcons.Bolt,
+                        onClick = { if (!isApplying) onApply() },
+                        dim = isApplying
+                    )
+                }
             }
         }
     }
