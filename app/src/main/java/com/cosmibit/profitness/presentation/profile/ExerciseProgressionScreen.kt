@@ -277,7 +277,7 @@ private fun ProgressionSummaryHero(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -311,7 +311,7 @@ private fun EmptyProgressionState(
         Spacer(Modifier.height(18.dp))
         Text(
             theme.t("Henüz performans kaydı yok", "No performance records yet"),
-            color = Sinema.text(theme), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+            color = Sinema.text(theme), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -319,7 +319,7 @@ private fun EmptyProgressionState(
                 "Antrenman sırasında ağırlık, süre veya mesafe girerek gelişimini takip et.",
                 "Track progress by entering weight, duration or distance during workouts."
             ),
-            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center
+            color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(24.dp))
         SinemaGoButton(
@@ -355,7 +355,7 @@ private fun ExerciseProgressionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
     ) {
         // ── Header row ────────────────────────────────────────────────────
         Row(
@@ -370,7 +370,7 @@ private fun ExerciseProgressionCard(
             Box(
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R16))
                     .background(Sinema.line(theme))
             ) {
                 if (summary.imageUrl.isNotBlank()) {
@@ -393,7 +393,7 @@ private fun ExerciseProgressionCard(
                 Text(
                     displayName,
                     color = Sinema.text(theme),
-                    fontSize = 15.sp,
+                    fontSize = SinemaType.BodyLg,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -402,7 +402,7 @@ private fun ExerciseProgressionCard(
                 Text(
                     targetName,
                     color = Sinema.textSecondary(theme),
-                    fontSize = 12.sp,
+                    fontSize = SinemaType.Caption,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -457,7 +457,7 @@ private fun ExerciseProgressionCard(
                             "Ağırlık grafiği için en az 2 farklı günden veri gerekli",
                             "Weight chart needs data from at least 2 different days"
                         ),
-                        color = Sinema.textSecondary(theme), fontSize = 12.sp,
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
@@ -507,7 +507,7 @@ private fun StatsGrid(
         if (!summary.lastDate.isNullOrBlank()) {
             Text(
                 text = theme.t("Son antrenman", "Last workout") + ": ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
-                color = Sinema.textSecondary(theme), fontSize = 12.sp
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
             )
         }
     }
@@ -546,7 +546,7 @@ private fun LastSessionBreakdown(
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
             )
             if (sessionSummary.isNotBlank()) {
-                Text(sessionSummary, color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                Text(sessionSummary, color = accent, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -560,7 +560,7 @@ private fun LastSessionBreakdown(
                     modifier = Modifier.size(28.dp).clip(CircleShape).background(Sinema.line(theme)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("${set.setIndex + 1}", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("${set.setIndex + 1}", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
@@ -568,7 +568,7 @@ private fun LastSessionBreakdown(
                         ?: set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it) }
                         ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it, theme) }
                         ?: "-",
-                    color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                    color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -579,13 +579,13 @@ private fun LastSessionBreakdown(
                         set.distanceMeters != null -> theme.t("mesafe", "distance")
                         else -> theme.t("taslak", "draft")
                     },
-                    color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                    color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
                 )
                 if (set.weightKg != null && set.repsActual != null) {
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "= ${"%.0f".format(set.weightKg!! * set.repsActual!!)}",
-                        color = accent, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold
+                        color = accent, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold
                     )
                 }
             }
@@ -635,7 +635,7 @@ private fun ProgressionChartSection(
                     null, tint = fg, modifier = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(5.dp))
-                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
             }
         }
 
@@ -680,9 +680,9 @@ private fun ProgressionChartSection(
         }
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-            Text(chartData.first().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = 11.sp)
+            Text(chartData.first().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
             Spacer(Modifier.weight(1f))
-            Text(chartData.last().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = 11.sp)
+            Text(chartData.last().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -702,7 +702,7 @@ private fun AiInsightCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R20))
             .background(Sinema.line(theme))
             .padding(16.dp)
     ) {
@@ -716,7 +716,7 @@ private fun AiInsightCard(
                         if (credits <= 0) theme.t("Enerjin bitti · Enerji yükle veya plana yükselt", "Out of energy · Get more energy or upgrade")
                         else theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
                         color = if (credits <= 0) Sinema.text(theme) else Sinema.textSecondary(theme),
-                        fontSize = 12.sp, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
+                        fontSize = SinemaType.Caption, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
@@ -745,13 +745,13 @@ private fun AiInsightCard(
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = 13.sp)
+                Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm)
             }
             insight.isBlank() -> Text(
                 theme.t("AI koçtan gelişim analizi al", "Get progression analysis from AI coach"),
-                color = Sinema.textSecondary(theme), fontSize = 13.sp, lineHeight = 18.sp
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, lineHeight = 18.sp
             )
-            else -> Text(localizedProgressionMessage(insight, theme), color = Sinema.text(theme), fontSize = 13.sp, lineHeight = 19.sp)
+            else -> Text(localizedProgressionMessage(insight, theme), color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 19.sp)
         }
     }
 }
@@ -763,11 +763,11 @@ private fun StatChip(label: String) {
     val theme = LocalAppTheme.current
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(Sinema.line(theme))
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(label, color = Sinema.text(theme), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 

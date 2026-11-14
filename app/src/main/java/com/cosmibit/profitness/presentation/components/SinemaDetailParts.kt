@@ -56,6 +56,8 @@ import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 /**
  * Sinema detay sayfası parçaları (Profil detayları + Kilo): düz zemin sayfa başlığı, dev rakam,
@@ -90,7 +92,7 @@ fun SinemaDetailHeader(
         Text(title, style = Sinema.ScreenTitle, color = Sinema.text(theme), maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (!subtitle.isNullOrBlank()) {
             Spacer(Modifier.height(4.dp))
-            Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
+            Text(subtitle, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp)
         }
     }
 }
@@ -188,14 +190,14 @@ fun SinemaGlassField(
         ) { fg ->
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    Text(placeholder, color = fg.copy(0.4f), fontSize = 15.sp, maxLines = 1)
+                    Text(placeholder, color = fg.copy(0.4f), fontSize = SinemaType.BodyLg, maxLines = 1)
                 }
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = singleLine,
                     visualTransformation = visualTransformation,
-                    textStyle = TextStyle(color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                    textStyle = TextStyle(color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold),
                     cursorBrush = SolidColor(theme.effectiveAccentColor),
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction, capitalization = capitalization),
                     keyboardActions = keyboardActions,
@@ -204,7 +206,7 @@ fun SinemaGlassField(
             }
             if (suffix != null) {
                 Spacer(Modifier.width(8.dp))
-                Text(suffix, color = fg.copy(0.6f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(suffix, color = fg.copy(0.6f), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -242,21 +244,21 @@ fun SinemaDialog(
     val theme = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(title, style = Sinema.Title, color = Sinema.text(theme))
             Spacer(Modifier.height(8.dp))
-            if (body.isNotEmpty()) Text(body, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
+            if (body.isNotEmpty()) Text(body, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp)
             content?.invoke(this)
             if (showActions) {
                 Spacer(Modifier.height(24.dp))
                 SinemaGoButton(label = confirmLabel, icon = confirmIcon, onClick = onConfirm)
                 Box(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDismiss),
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(SinemaRadius.R24)).clickable(onClick = onDismiss),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(dismissLabel, color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(dismissLabel, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -281,7 +283,7 @@ fun <T> SinemaSegmentRow(
                 height = height,horizontalArrangement = Arrangement.Center,
                 contentPadding = PaddingValues(horizontal = 8.dp)
             ) { fg ->
-                Text(label(opt), color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label(opt), color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -302,13 +304,13 @@ fun SinemaGoOrIdle(
     } else {
         val fg = Sinema.textSecondary(theme).copy(0.7f)
         Row(
-            modifier = modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(Sinema.line(theme)),
+            modifier = modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(SinemaRadius.R28)).background(Sinema.line(theme)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             androidx.compose.material3.Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
-            Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(label, color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }

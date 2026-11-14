@@ -132,7 +132,7 @@ fun ExerciseMultiPickerSheet(
                     Text(
                         theme.t("HAREKETLERİ SEÇ", "SELECT EXERCISES"),
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 10.sp,
+                        fontSize = SinemaType.Caption,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
@@ -141,7 +141,7 @@ fun ExerciseMultiPickerSheet(
                             "${selected.size} hareket seçildi · ${exercises.size} mevcut",
                             "${selected.size} selected · ${exercises.size} available"
                         ),
-                        color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light
+                        color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Light
                     )
                 }
                 IconButton(onClick = onDismiss) {
@@ -156,7 +156,7 @@ fun ExerciseMultiPickerSheet(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
+                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(SinemaRadius.R12))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -175,7 +175,7 @@ fun ExerciseMultiPickerSheet(
                                 Text(
                                     theme.t("Hareket ara...", "Search exercise..."),
                                     color = theme.text2,
-                                    fontSize = 14.sp,
+                                    fontSize = SinemaType.Body,
                                     fontWeight = FontWeight.Light
                                 )
                             }
@@ -240,8 +240,8 @@ fun ExerciseMultiPickerSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(
-                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
-                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
+                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(SinemaRadius.R16))
+                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(SinemaRadius.R16))
                             )
                     ) {
                         Row(
@@ -282,12 +282,12 @@ fun ExerciseMultiPickerSheet(
                                     theme.exerciseDisplayName(exercise.name, exercise.nameEn),
                                     color = theme.text0,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp
+                                    fontSize = SinemaType.Body
                                 )
                                 Text(
                                     theme.fitnessTermDisplayName(exercise.targetMuscle),
                                     color = accent,
-                                    fontSize = 10.sp,
+                                    fontSize = SinemaType.Caption,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
                                 )
@@ -357,10 +357,10 @@ fun ExerciseMultiPickerSheet(
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(SinemaRadius.R12),
                     border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
                 }
                 PickerPrimaryButton(
                     onClick = {
@@ -379,7 +379,7 @@ fun ExerciseMultiPickerSheet(
                     Text(
                         theme.t("EKLE (${selected.size})", "ADD (${selected.size})"),
                         fontWeight = FontWeight.Black,
-                        fontSize = 12.sp,
+                        fontSize = SinemaType.Caption,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -410,7 +410,7 @@ private fun MovementConfigPanel(
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R12))
                 .background(theme.bg2)
                 .padding(horizontal = 14.dp)
         ) {
@@ -450,7 +450,7 @@ private fun MovementConfigPanel(
             } else {
                 theme.t("0 = öneri yok (isteğe bağlı)", "0 = no suggestion (optional)")
             },
-            color = theme.text2, fontSize = 10.sp, fontWeight = FontWeight.Light
+            color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Light
         )
         Spacer(Modifier.height(10.dp))
 
@@ -463,7 +463,7 @@ private fun MovementConfigPanel(
             Text(
                 theme.t("Listeden Çıkar", "Remove from List"),
                 color = CardCoral,
-                fontSize = 12.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
@@ -489,7 +489,7 @@ private fun MultiCounterField(
         Text(
             label,
             color = accent,
-            fontSize = 13.sp,
+            fontSize = SinemaType.BodySm,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp,
             modifier = Modifier.weight(1f)
@@ -509,7 +509,7 @@ private fun MultiCounterField(
             displayOverride ?: value.toString(),
             color = theme.text0,
             fontWeight = FontWeight.Black,
-            fontSize = 22.sp,
+            fontSize = SinemaType.Headline,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 60.dp)
         )
@@ -548,7 +548,7 @@ private fun MultiPickerCategoryChip(
         Text(
             label,
             color = if (selected) color else theme.text1,
-            fontSize = 10.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
         )

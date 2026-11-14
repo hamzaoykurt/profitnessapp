@@ -71,6 +71,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 /**
  * Bir kullanıcının public profilini overlay olarak gösteren composable.
@@ -115,10 +117,10 @@ fun PublicProfileOverlay(
                     ) {
                         Text(
                             theme.t("Profil yüklenemedi", "Profile could not be loaded"),
-                            color = Sinema.text(theme), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+                            color = Sinema.text(theme), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text(state.error ?: "", color = Sinema.textSecondary(theme), fontSize = 14.sp, textAlign = TextAlign.Center)
+                        Text(state.error ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, textAlign = TextAlign.Center)
                     }
                 }
                 state.profile != null -> {
@@ -223,11 +225,11 @@ private fun ProfileContent(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
-                        Text(theme.t("Seviye ${profile.level}", "Level ${profile.level}"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(theme.t("Seviye ${profile.level}", "Level ${profile.level}"), color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
                     }
                     if (profile.isMutual) {
                         SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
-                            Text(theme.t("Karşılıklı takip", "Mutual follow"), color = fg, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(theme.t("Karşılıklı takip", "Mutual follow"), color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
                         }
                     }
                 }
@@ -237,7 +239,7 @@ private fun ProfileContent(
                     maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 profile.username?.let {
-                    Text("@$it", color = Color.White.copy(0.72f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("@$it", color = Color.White.copy(0.72f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium)
                 }
                 Spacer(Modifier.height(16.dp))
                 FollowActionButton(isFollowing = profile.isFollowing, onClick = onToggleFollow)
@@ -261,7 +263,7 @@ private fun ProfileContent(
                     SinemaBigStat("${profile.totalXp}", "XP", size = 52, color = theme.effectiveAccentColor)
                     Text(
                         theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
-                        color = Sinema.textSecondary(theme), fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -271,7 +273,7 @@ private fun ProfileContent(
             Spacer(Modifier.height(24.dp))
 
             Row(
-                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(20.dp),
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SinemaBigStat(profile.totalWorkouts.toString(), theme.t("Antrenman", "Workouts"), Modifier.weight(1f), size = 36)
@@ -282,7 +284,7 @@ private fun ProfileContent(
             Spacer(Modifier.height(12.dp))
 
             Row(
-                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(28.dp)).padding(20.dp),
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SinemaBigStat(profile.followersCount.toString(), theme.t("Takipçi", "Followers"), Modifier.weight(1f), size = 36)
@@ -294,7 +296,7 @@ private fun ProfileContent(
             Text(
                 theme.t("Üyelik", "Member since") + ": " +
                     joinDate.uppercase(if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale("tr")),
-                color = Sinema.textSecondary(theme), fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp)
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, modifier = Modifier.padding(start = 4.dp)
             )
 
             Spacer(Modifier.height(12.dp))
@@ -323,7 +325,7 @@ private fun FollowActionButton(isFollowing: Boolean, onClick: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text(
             if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
-            color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp
+            color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp
         )
     }
 }
@@ -352,7 +354,7 @@ private fun ActivitySection(
                     "Henüz görünür challenge veya program paylaşımı yok.",
                     "No visible challenges or program shares yet."
                 ),
-                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp,
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             return@Column
@@ -426,7 +428,7 @@ private fun ChallengeActivityCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .then(if (canOpen) Modifier.sinemaClickable(role = Role.Button, onClick = onOpen) else Modifier)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -443,7 +445,7 @@ private fun ChallengeActivityCard(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                challenge.title, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                challenge.title, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -451,14 +453,14 @@ private fun ChallengeActivityCard(
                     "${challenge.participantsCount} katılımcı · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}",
                     "${challenge.participantsCount} participants · ${challenge.targetValue} ${challenge.targetType.displayUnit(theme)}"
                 ),
-                color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
         Spacer(Modifier.width(8.dp))
         SinemaCapsule(
             selected = status == ProfileChallengeStatus.Active, height = 26.dp,
             contentPadding = PaddingValues(horizontal = 10.dp)
-        ) { fg -> Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1) }
+        ) { fg -> Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1) }
         if (canOpen) {
             Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(18.dp))
         }
@@ -476,7 +478,7 @@ private fun ActivityMiniCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .then(if (onClick != null) Modifier.sinemaClickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -489,8 +491,8 @@ private fun ActivityMiniCard(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(meta, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(meta, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

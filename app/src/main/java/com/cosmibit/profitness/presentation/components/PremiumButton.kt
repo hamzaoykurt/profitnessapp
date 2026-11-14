@@ -61,7 +61,7 @@ fun PremiumButton(
         animationSpec = tween(SinemaMotion.Quick),
         label = "premiumButtonPress"
     )
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
 
     Box(
         modifier = modifier
@@ -109,7 +109,7 @@ fun GhostButton(
         animationSpec = tween(SinemaMotion.Quick),
         label = "ghostButtonPress"
     )
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
 
     Box(
         modifier = modifier
@@ -146,7 +146,7 @@ private fun ButtonContent(text: String, leadingIcon: ImageVector?, color: Color,
             text = text,
             color = color,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
+            fontSize = SinemaType.Body,
             letterSpacing = 0.2.sp,
             lineHeight = 18.sp,
             maxLines = 2,
@@ -163,7 +163,7 @@ fun PremiumIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier.size(54.dp),
     isEnabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(12.dp)
+    shape: Shape = RoundedCornerShape(SinemaRadius.R12)
 ) {
     val theme = LocalAppTheme.current
     val haptic = LocalHapticFeedback.current

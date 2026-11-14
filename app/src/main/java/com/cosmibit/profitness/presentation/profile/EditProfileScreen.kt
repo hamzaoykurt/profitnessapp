@@ -371,15 +371,15 @@ fun EditProfileScreen(
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         SinemaCapsule(onClick = { showAvatarPicker = true }, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
-                            Text(theme.t("Emoji Seç", "Choose Emoji"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(theme.t("Emoji Seç", "Choose Emoji"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
                         }
                         SinemaCapsule(onClick = { photoPickerLauncher.launch("image/*") }, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
-                            Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
                         }
                     }
                     avatarError?.let {
                         Spacer(Modifier.height(8.dp))
-                        Text(it, color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(it, color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -449,11 +449,11 @@ fun EditProfileScreen(
                             else       -> theme.t("Obez", "Obese")
                         }
                         Row(
-                            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+                            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
                             SinemaBigStat("%.1f".format(bmi), "BMI", Modifier.weight(1f), size = 44, color = accent)
-                            Text(bmiLabel, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 6.dp))
+                            Text(bmiLabel, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 6.dp))
                         }
                     }
 
@@ -552,10 +552,10 @@ fun EditProfileScreen(
                                     modifier = Modifier.weight(1f).aspectRatio(1f),
                                     selected = emoji == avatar,
                                     onClick = { avatar = emoji; showAvatarPicker = false },
-                                    height = 44.dp, shape = RoundedCornerShape(18.dp),
+                                    height = 44.dp, shape = RoundedCornerShape(SinemaRadius.R16),
                                     horizontalArrangement = Arrangement.Center,
                                     contentPadding = PaddingValues(0.dp)
-                                ) { Text(emoji, fontSize = 24.sp) }
+                                ) { Text(emoji, fontSize = SinemaType.Headline) }
                             }
                             repeat(6 - rowEmojis.size) {
                                 Box(modifier = Modifier.weight(1f).aspectRatio(1f))
@@ -595,7 +595,7 @@ private fun ProfileChoiceSection(
                         contentPadding = PaddingValues(horizontal = 10.dp)
                     ) { fg ->
                         Text(
-                            text = labelFor(option), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            text = labelFor(option), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp
                         )
                     }

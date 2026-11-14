@@ -134,7 +134,7 @@ private fun RankRoadmapSection(
     modifier   : Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         RANKS.forEach { (rankName, threshold, color) ->
@@ -157,19 +157,19 @@ private fun RankRoadmapSection(
                     Text(
                         rankName,
                         color      = if (isReached) Sinema.text(theme) else Sinema.textSecondary(theme),
-                        fontSize   = 16.sp,
+                        fontSize   = SinemaType.BodyLg,
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
                         theme.t("$threshold XP gerekli", "$threshold XP required"),
                         color    = Sinema.textSecondary(theme),
-                        fontSize = 12.sp
+                        fontSize = SinemaType.Caption
                     )
                 }
                 if (isCurrent) {
                     SinemaCapsule(selected = true, height = 28.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
                         Text(
-                            theme.t("MEVCUT", "CURRENT"), color = fg, fontSize = 11.sp,
+                            theme.t("MEVCUT", "CURRENT"), color = fg, fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp
                         )
                     }
@@ -203,7 +203,7 @@ private fun XpProgressCard(
     val rankProgress = if (nextRankXp > 0) (xp.toFloat() / nextRankXp).coerceIn(0f, 1f) else 1f
 
     Column(
-        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(24.dp)).padding(20.dp),
+        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -214,7 +214,7 @@ private fun XpProgressCard(
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(theme.t("SEVİYE $level", "LEVEL $level").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-                Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
             SinemaGlowBar(progress, color = theme.accent2Color)
@@ -223,7 +223,7 @@ private fun XpProgressCard(
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(theme.t("SONRAKİ RANK", "NEXT RANK").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-                Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
             SinemaGlowBar(rankProgress, color = theme.accent2Color)
@@ -245,7 +245,7 @@ private fun AchievementRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -258,7 +258,7 @@ private fun AchievementRow(
                 .then(if (isUnlocked) Modifier.border(1.5.dp, accent, CircleShape) else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            if (isUnlocked) Text(achievement.icon, fontSize = 22.sp)
+            if (isUnlocked) Text(achievement.icon, fontSize = SinemaType.Headline)
             else Icon(Icons.Rounded.Lock, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
         }
 
@@ -266,14 +266,14 @@ private fun AchievementRow(
             Text(
                 localizedAchievementText(achievement.name, theme),
                 color      = if (isUnlocked) Sinema.text(theme) else Sinema.textSecondary(theme),
-                fontSize   = 15.sp,
+                fontSize   = SinemaType.BodyLg,
                 fontWeight = FontWeight.ExtraBold
             )
             if (achievement.description.isNotBlank()) {
                 Text(
                     localizedAchievementText(achievement.description, theme),
                     color    = Sinema.textSecondary(theme),
-                    fontSize = 12.sp,
+                    fontSize = SinemaType.Caption,
                     lineHeight = 16.sp,
                     maxLines = 2
                 )
@@ -286,7 +286,7 @@ private fun AchievementRow(
             Text(
                 "${achievement.threshold}",
                 color      = Sinema.textSecondary(theme),
-                fontSize   = 16.sp,
+                fontSize   = SinemaType.BodyLg,
                 fontWeight = FontWeight.ExtraBold
             )
         }

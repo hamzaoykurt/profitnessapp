@@ -46,7 +46,7 @@ fun AiCreditInfoRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.bg2)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
@@ -65,7 +65,7 @@ fun AiCreditInfoRow(
                 Text(
                     if (outOfCredits) theme.ui("Enerjin bitti!") else theme.ui(costLabel),
                     color = badgeColor,
-                    fontSize = 12.sp,
+                    fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 16.sp,
                     maxLines = 1,
@@ -75,7 +75,7 @@ fun AiCreditInfoRow(
                     if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
                     else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
                     color = theme.text2,
-                    fontSize = 11.sp,
+                    fontSize = SinemaType.Caption,
                     lineHeight = 15.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -91,7 +91,7 @@ fun AiCreditInfoRow(
 private fun EnergyBadge(text: String, color: Color) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R20))
             .background(color.copy(alpha = 0.12f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
@@ -99,7 +99,7 @@ private fun EnergyBadge(text: String, color: Color) {
         Text(
             text,
             color = color,
-            fontSize = 10.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 13.sp,
             maxLines = 1

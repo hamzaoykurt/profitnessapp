@@ -65,6 +65,8 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.domain.social.UserSummary
 import com.cosmibit.profitness.presentation.profile.PublicProfileOverlay
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 private val xpFormat: java.text.NumberFormat get() = java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr"))
 
@@ -101,7 +103,7 @@ fun FriendsTab(
                 if (state.following.isNotEmpty())
                     theme.t("${state.following.size} kişiyi takip ediyorsun", "You follow ${state.following.size} people")
                 else theme.t("Kişi bul, takip et, birlikte çalış", "Find people, follow, train together"),
-                color = Color.White.copy(0.70f), fontSize = 14.sp,
+                color = Color.White.copy(0.70f), fontSize = SinemaType.Body,
                 modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp, bottom = 14.dp)
             )
 
@@ -122,7 +124,7 @@ fun FriendsTab(
                             item {
                                 Text(
                                     theme.t("Kullanıcı bulunamadı. Farklı bir isim veya @kullanıcıadı dene.", "User not found. Try another name or @username."),
-                                    color = Color.White.copy(0.70f), fontSize = 14.sp, textAlign = TextAlign.Center,
+                                    color = Color.White.copy(0.70f), fontSize = SinemaType.Body, textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 32.dp)
                                 )
                             }
@@ -146,12 +148,12 @@ fun FriendsTab(
                         Spacer(Modifier.height(18.dp))
                         Text(
                             theme.t("Henüz kimseyi takip etmiyorsun", "You are not following anyone yet"),
-                            color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+                            color = Color.White, fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             theme.t("Takip ettiklerin burada büyük kartlarda görünür.", "People you follow show up here as big cards."),
-                            color = Color.White.copy(0.65f), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center
+                            color = Color.White.copy(0.65f), fontSize = SinemaType.Body, lineHeight = 20.sp, textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(24.dp))
                         SinemaGoButton(
@@ -212,13 +214,13 @@ private fun SearchCapsule(
         Icon(Icons.Rounded.Search, null, tint = fg.copy(0.75f), modifier = Modifier.size(18.dp))
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text(theme.t("@kullanıcıadı veya isim", "@username or name"), color = Color.White.copy(0.60f), fontSize = 14.sp)
+                Text(theme.t("@kullanıcıadı veya isim", "@username or name"), color = Color.White.copy(0.60f), fontSize = SinemaType.Body)
             }
             BasicTextField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.Medium),
                 cursorBrush = SolidColor(accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus)
@@ -244,7 +246,7 @@ private fun SearchCapsule(
 private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> Unit) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     Box(
         Modifier.width(184.dp).height(300.dp)
             .sinemaClickable(role = Role.Button, onClick = onTap, scale = 0.98f)
@@ -282,18 +284,18 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                user.displayName, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
+                user.displayName, color = Color.White, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center
             )
             Text(
                 listOfNotNull(user.username?.let { "@$it" }, if (user.isMutual) theme.t("ARKADAŞ", "FRIEND") else null).joinToString(" · "),
-                color = Color.White.copy(0.65f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                color = Color.White.copy(0.65f), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(xpFormat.format(user.totalXp), style = Sinema.Metric.copy(fontSize = 34.sp), color = Color.White, maxLines = 1)
                 Text(
-                    "XP", color = theme.accent2TextColor, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                    "XP", color = theme.accent2TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(start = 6.dp, bottom = 5.dp)
                 )
             }
@@ -311,7 +313,7 @@ private fun UserRow(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R24)
 
     Row(
         modifier = Modifier
@@ -330,21 +332,21 @@ private fun UserRow(
             if (user.avatarUrl != null) {
                 AsyncImage(model = user.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
             } else {
-                Text(user.displayName.take(1).uppercase(), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(user.displayName.take(1).uppercase(), color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold)
             }
         }
 
         Column(Modifier.weight(1f)) {
-            Text(user.displayName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(user.displayName, color = Color.White, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 user.username?.let {
-                    Text("@$it", color = Color.White.copy(0.65f), fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                    Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
+                    Text("@$it", color = Color.White.copy(0.65f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("·", color = Color.White.copy(0.4f), fontSize = SinemaType.Caption)
                 }
-                Text("${xpFormat.format(user.totalXp)} XP", color = theme.accent2TextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("${xpFormat.format(user.totalXp)} XP", color = theme.accent2TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                 if (user.isMutual) {
-                    Text("·", color = Color.White.copy(0.4f), fontSize = 11.sp)
-                    Text(theme.t("ARKADAŞ", "FRIEND"), color = Color.White.copy(0.65f), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("·", color = Color.White.copy(0.4f), fontSize = SinemaType.Caption)
+                    Text(theme.t("ARKADAŞ", "FRIEND"), color = Color.White.copy(0.65f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -364,7 +366,7 @@ private fun FollowButton(isFollowing: Boolean, onClick: () -> Unit) {
         Text(
             if (isFollowing) theme.t("TAKİPTE", "FOLLOWING") else theme.t("TAKİP ET", "FOLLOW"),
             color = fg,
-            fontSize = 11.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.8.sp,
             maxLines = 1

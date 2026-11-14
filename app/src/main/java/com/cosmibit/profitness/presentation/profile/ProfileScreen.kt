@@ -269,14 +269,14 @@ fun ProfileScreen(
                         Text(
                             theme.t("YENİ BAŞARIM!", "NEW ACHIEVEMENT!"),
                             color         = accent,
-                            fontSize      = 11.sp,
+                            fontSize      = SinemaType.Caption,
                             fontWeight    = FontWeight.Black,
                             letterSpacing = 1.2.sp
                         )
                         Text(
                             localizedAchievementText(name, theme),
                             color      = Snow,
-                            fontSize   = 22.sp,
+                            fontSize   = SinemaType.Headline,
                             fontWeight = FontWeight.Black,
                             textAlign  = androidx.compose.ui.text.style.TextAlign.Center
                         )
@@ -284,7 +284,7 @@ fun ProfileScreen(
                             Text(
                                 localizedAchievementText(desc, theme),
                                 color     = Snow.copy(0.6f),
-                                fontSize  = 13.sp,
+                                fontSize  = SinemaType.BodySm,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -302,7 +302,7 @@ fun ProfileScreen(
                         Text(
                             "Harika! Devam et 🔥",
                             color      = accent,
-                            fontSize   = 13.sp,
+                            fontSize   = SinemaType.BodySm,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -818,7 +818,7 @@ private fun WeeklyActivitySection(
                         Text(
                             day,
                             color      = if (isToday) Sinema.text(theme) else Sinema.textSecondary(theme),
-                            fontSize   = 10.sp,
+                            fontSize   = SinemaType.Caption,
                             fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Medium
                         )
                     }
@@ -1025,7 +1025,7 @@ private fun SettingsSection(
             Text(
                 strings.logoutLabel,
                 color      = coral,
-                fontSize   = 15.sp,
+                fontSize   = SinemaType.BodyLg,
                 fontWeight = FontWeight.Bold,
                 modifier   = Modifier.weight(1f)
             )
@@ -1208,7 +1208,7 @@ private fun SectionLabel(text: String, theme: AppThemeState) {
     Text(
         text,
         color         = theme.text1,
-        fontSize      = 11.sp,
+        fontSize      = SinemaType.Caption,
         fontWeight    = FontWeight.Bold,
         letterSpacing = 1.2.sp
     )
@@ -1236,7 +1236,7 @@ private fun PreviewCard(preview: AppThemeState) {
             Text(
                 preview.accentDisplayLabel,
                 color         = preview.accentTextColor,
-                fontSize      = 12.sp,
+                fontSize      = SinemaType.Caption,
                 fontWeight    = FontWeight.Black,
                 letterSpacing = 1.2.sp
             )
@@ -1244,7 +1244,7 @@ private fun PreviewCard(preview: AppThemeState) {
         Text(
             "Profitness",
             color      = preview.text0,
-            fontSize   = 18.sp,
+            fontSize   = SinemaType.Title,
             fontWeight = FontWeight.Bold
         )
         Text(
@@ -1262,7 +1262,7 @@ private fun PreviewCard(preview: AppThemeState) {
             Text(
                 preview.strings.applyLabel,
                 color         = preview.effectiveOnAccentColor,
-                fontSize      = 11.sp,
+                fontSize      = SinemaType.Caption,
                 fontWeight    = FontWeight.Black,
                 letterSpacing = 1.2.sp
             )
@@ -1302,7 +1302,7 @@ private fun <T> SegmentedSelector(
                 Text(
                     label,
                     color         = if (isSel) onAccent else theme.text1,
-                    fontSize      = 11.sp,
+                    fontSize      = SinemaType.Caption,
                     fontWeight    = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp
                 )
@@ -1416,7 +1416,7 @@ private fun NotifToggleRow(
         Text(
             label,
             color      = theme.text0,
-            fontSize   = 14.sp,
+            fontSize   = SinemaType.Body,
             fontWeight = FontWeight.SemiBold,
             modifier   = Modifier.weight(1f)
         )
@@ -1522,7 +1522,7 @@ private fun LanguageOptionRow(
         Text(
             name,
             color      = theme.text0,
-            fontSize   = 15.sp,
+            fontSize   = SinemaType.BodyLg,
             fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
             modifier   = Modifier.weight(1f)
         )
@@ -1594,7 +1594,7 @@ private fun ModeOption(
             Text(
                 label,
                 color         = if (isSelected) accent else theme.text2,
-                fontSize      = 11.sp,
+                fontSize      = SinemaType.Caption,
                 fontWeight    = if (isSelected) FontWeight.Black else FontWeight.Normal,
                 letterSpacing = 1.sp
             )
@@ -1824,7 +1824,7 @@ private fun PerformanceShortcutCard(
             Text(
                 title,
                 color      = theme.text0,
-                fontSize   = 15.sp,
+                fontSize   = SinemaType.BodyLg,
                 fontWeight = FontWeight.Bold
             )
             Text(
@@ -1888,7 +1888,7 @@ fun WeightTrackingCard(
                 Text(
                     theme.t("Vücut Kilosu", "Body Weight"),
                     color      = theme.text0,
-                    fontSize   = 15.sp,
+                    fontSize   = SinemaType.BodyLg,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -1951,7 +1951,7 @@ fun ExerciseProgressionCard(
                 Text(
                     theme.t("Hareket Performansı", "Exercise Performance"),
                     color      = theme.text0,
-                    fontSize   = 15.sp,
+                    fontSize   = SinemaType.BodyLg,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -2007,7 +2007,7 @@ private fun LeaderboardPreviewCard(
                 Text(
                     theme.t("SIRALAMA", "RANKINGS"),
                     color         = theme.text0,
-                    fontSize      = 13.sp,
+                    fontSize      = SinemaType.BodySm,
                     fontWeight    = FontWeight.Black,
                     letterSpacing = 1.2.sp
                 )
@@ -2073,7 +2073,7 @@ private fun RankModeTile(
             Text(
                 title,
                 color      = theme.text0,
-                fontSize   = 14.sp,
+                fontSize   = SinemaType.Body,
                 fontWeight = FontWeight.Black
             )
             Spacer(Modifier.weight(1f))

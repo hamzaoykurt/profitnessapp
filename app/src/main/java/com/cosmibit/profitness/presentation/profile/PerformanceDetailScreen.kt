@@ -305,7 +305,7 @@ private fun PerformanceCover(
                     loading -> {
                         SectionLabel(theme.t("Bu hafta", "This week"))
                         Spacer(Modifier.height(10.dp))
-                        Box(Modifier.size(width = 112.dp, height = 96.dp).clip(RoundedCornerShape(16.dp)).background(Sinema.White.copy(0.08f)))
+                        Box(Modifier.size(width = 112.dp, height = 96.dp).clip(RoundedCornerShape(SinemaRadius.R16)).background(Sinema.White.copy(0.08f)))
                     }
                     empty -> {
                         PText(
@@ -699,7 +699,7 @@ private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVec
 
 @Composable
 private fun ExercisePoster(theme: AppThemeState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R24)
     val title = theme.t("Hareket gelişimi", "Exercise progress")
     Box(
         modifier
@@ -758,7 +758,7 @@ private fun BodySection(
     )
 
     SinemaCapsule(
-        modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), height = 1.dp,
+        modifier.fillMaxWidth(), shape = RoundedCornerShape(SinemaRadius.R28), height = 1.dp,
         contentPadding = PaddingValues(20.dp), verticalAlignment = Alignment.Top
     ) {
         Column(Modifier.weight(1f)) {
@@ -933,7 +933,7 @@ private fun CalculationsSheet(
         Spacer(Modifier.height(4.dp))
         Text(
             theme.t("1RM, BMI, yağ oranı, kalori, nabız, protein ve VO2 max", "1RM, BMI, body fat, calories, heart rate, protein and VO2 max"),
-            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+            color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
         )
 
         Spacer(Modifier.height(20.dp))
@@ -1008,7 +1008,7 @@ private fun CalculatorModeButton(
     ) { fg ->
         Icon(calculatorModeIcon(mode), null, tint = fg, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(calculatorModeTitle(mode, theme), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(calculatorModeTitle(mode, theme), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -1548,7 +1548,7 @@ private fun ProteinGoalSelector(
                 modifier = Modifier.fillMaxWidth(), selected = selectedGoal == goal, onClick = { onGoalSelected(goal) },
                 height = 44.dp, horizontalArrangement = Arrangement.Center
             ) { fg ->
-                Text(proteinGoalLabel(goal, theme), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(proteinGoalLabel(goal, theme), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }
@@ -1565,7 +1565,7 @@ private fun CalculatorPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1576,8 +1576,8 @@ private fun CalculatorPanel(
                 Icon(icon, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(22.dp))
             }
             Column {
-                Text(title, color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
-                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = 12.sp)
+                Text(title, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold)
+                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
             }
         }
 
@@ -1628,7 +1628,7 @@ private fun CalculationResultCard(
         SinemaFitText(value, style = Sinema.Metric, baseSp = 52f, floorSp = 28f, color = Sinema.text(theme))
         if (subtitle.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(subtitle, color = theme.accent2TextColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            Text(subtitle, color = theme.accent2TextColor, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
@@ -1645,15 +1645,15 @@ private fun CalculationRow(
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Sinema.textSecondary(theme), fontSize = 14.sp)
-        Text(value, color = Sinema.text(theme), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
+        Text(value, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
     }
 }
 
 @Composable
 private fun EmptyCalculationHint(message: String) {
     val theme = LocalAppTheme.current
-    Text(message, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
+    Text(message, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp)
 }
 
 private fun calculatorModeTitle(mode: CalculatorMode, theme: AppThemeState): String = when (mode) {

@@ -145,6 +145,8 @@ import com.cosmibit.profitness.presentation.components.toDurationSetSecondsLabel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 // ── Veri / eylem sözleşmesi (WorkoutContent doldurur; ViewModel mantığı değişmez) ──────────────
 
@@ -646,7 +648,7 @@ private fun HowToPill(onClick: () -> Unit) {
     ) { fg ->
         Icon(Icons.Rounded.PlayCircle, contentDescription = null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
         Text(
-            theme.t("Hareketi gör", "How to"), color = fg, fontSize = 12.sp,
+            theme.t("Hareketi gör", "How to"), color = fg, fontSize = SinemaType.Caption,
             fontWeight = FontWeight.Bold, maxLines = 1
         )
     }
@@ -818,7 +820,7 @@ private fun SetRow(
         ) {
             Text(
                 "${index + 1}", color = if (active) Sinema.Ink else Sinema.Text,
-                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, maxLines = 1,
                 style = TextStyle(fontFamily = com.cosmibit.profitness.core.theme.AppFontFamily, fontFeatureSettings = "tnum")
             )
         }
@@ -838,7 +840,7 @@ private fun SetValueText(v: SetValue, numSize: androidx.compose.ui.unit.TextUnit
     Text(
         buildAnnotatedString {
             withStyle(SpanStyle(fontSize = numSize, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em)) { append(v.number) }
-            withStyle(SpanStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)) { append("\u2009" + v.unit) }
+            withStyle(SpanStyle(fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)) { append("\u2009" + v.unit) }
         },
         color = Sinema.Text, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
         style = TextStyle(fontFamily = com.cosmibit.profitness.core.theme.AppFontFamily, fontFeatureSettings = "tnum"),
@@ -943,7 +945,7 @@ private fun CapsuleRow(
         )
         Spacer(Modifier.width(10.dp))
         Text(
-            if (extra != null) "$value · $extra" else value, color = fg.copy(0.80f), fontSize = 14.sp,
+            if (extra != null) "$value · $extra" else value, color = fg.copy(0.80f), fontSize = SinemaType.Body,
             fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFeatureSettings = "tnum"), modifier = Modifier.weight(1f)
         )
@@ -1009,7 +1011,7 @@ private fun ProgressRow(progress: Float, showChevron: Boolean, animEnabled: Bool
     }
     Row(Modifier.fillMaxWidth().height(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            theme.t("%$pct", "$pct%"), color = Color.White.copy(0.75f), fontSize = 11.sp,
+            theme.t("%$pct", "$pct%"), color = Color.White.copy(0.75f), fontSize = SinemaType.Caption,
             fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.em, style = TextStyle(fontFeatureSettings = "tnum")
         )
         Spacer(Modifier.weight(1f))
@@ -1033,7 +1035,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
         if (pressed) 0.96f else 1f, SinemaMotion.press(), label = "start_scale"
     )
     val haptic = LocalHapticFeedback.current
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     // Çizim: düz vurgu dolgusu + üstte inset 1px beyaz %40 + altta `0 8px 20px` vurgu %40 parlaması.
     Box(
         Modifier
@@ -1058,7 +1060,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
             Icon(SinemaIcons.Play, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Text(
-                label, color = theme.effectiveOnAccentColor, fontSize = 16.sp,
+                label, color = theme.effectiveOnAccentColor, fontSize = SinemaType.BodyLg,
                 fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
             )
         }
@@ -1223,7 +1225,7 @@ private fun SinemaTopBar(
         }
         Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                programTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                programTitle, color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).then(if (showSegments) Modifier.sinemaClickable(role = Role.Button, onClick = onOpenList) else Modifier)
             )
@@ -1243,7 +1245,7 @@ private fun SinemaTopBar(
                 Icon(SinemaIcons.Flame, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(
-                    streak.coerceAtLeast(0).toString(), color = Color.White, fontSize = 13.sp,
+                    streak.coerceAtLeast(0).toString(), color = Color.White, fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum")
                 )
             }
@@ -1266,7 +1268,7 @@ private fun DayPill(
             onClick = { open = !open }, height = 32.dp, shape = CircleShape,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
         ) { fg ->
-            Text(selectedLabel, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(selectedLabel, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1)
             Spacer(Modifier.width(5.dp))
             // gün sayısı kadar ince nokta: kaydırmayla güncellenir
             if (days.size in 2..8) {
@@ -1293,16 +1295,16 @@ private fun DayPill(
             ) {
                 Column(
                     // Sinema menü yüzeyi: sinemaCard r20 (pencere dışı olduğundan blur yok), satırlar 48dp
-                    Modifier.width(132.dp).sinemaCard(theme, RoundedCornerShape(20.dp)).padding(6.dp)
+                    Modifier.width(132.dp).sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20)).padding(6.dp)
                 ) {
                     days.forEachIndexed { i, st ->
                         val sel = i == selectedIdx
                         Box(
                             Modifier
                                 .fillMaxWidth().height(48.dp)
-                                .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, RoundedCornerShape(14.dp)) else Modifier)
+                                .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, RoundedCornerShape(SinemaRadius.R12)) else Modifier)
                                 .sinemaClickable(onClick = { open = false; onSelect(i) }, role = Role.Button, scale = 0.98f)
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(SinemaRadius.R12))
                                 .then(if (sel) Modifier.background(accent) else Modifier)
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.CenterStart
@@ -1310,7 +1312,7 @@ private fun DayPill(
                             Text(
                                 localizedWorkoutDayLabel(st.day.day, theme),
                                 color = if (sel) theme.effectiveOnAccentColor else Sinema.text(theme),
-                                fontSize = 14.sp, fontWeight = FontWeight.ExtraBold
+                                fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
@@ -1348,7 +1350,7 @@ private fun ExerciseListSheet(
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))) {
+                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(SinemaRadius.R12))) {
                         SceneImage(
                             url = ex.image.ifBlank { categoryImageUrl(ex.category) },
                             modifier = Modifier.fillMaxSize(), requestWidthPx = 224, requestHeightPx = 224
@@ -1357,12 +1359,12 @@ private fun ExerciseListSheet(
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            theme.exerciseCompactDisplayName(ex.name), color = Color.White, fontSize = 16.sp,
+                            theme.exerciseCompactDisplayName(ex.name), color = Color.White, fontSize = SinemaType.BodyLg,
                             fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             exercisePrescription(ex, isActivityBasedExercise(ex), theme),
-                            color = Color.White.copy(0.70f), fontSize = 13.sp, maxLines = 1,
+                            color = Color.White.copy(0.70f), fontSize = SinemaType.BodySm, maxLines = 1,
                             style = TextStyle(fontFeatureSettings = "tnum")
                         )
                     }

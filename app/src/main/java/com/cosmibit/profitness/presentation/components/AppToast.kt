@@ -124,11 +124,11 @@ private fun ToastContent(toast: AppToastData) {
             .padding(top = 8.dp)
             .shadow(
                 elevation = 8.dp,
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(SinemaRadius.R16),
                 spotColor = Color.Black.copy(alpha = 0.38f),
                 ambientColor = Color.Transparent
             )
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -146,7 +146,7 @@ private fun ToastContent(toast: AppToastData) {
                         accentColor.copy(alpha = 0.20f)
                     )
                 ),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(SinemaRadius.R16)
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +174,7 @@ private fun ToastContent(toast: AppToastData) {
         Text(
             text = toast.message,
             color = theme.text0,
-            fontSize = 13.sp,
+            fontSize = SinemaType.BodySm,
             fontWeight = FontWeight.Medium,
             lineHeight = 18.sp,
             modifier = Modifier.weight(1f)

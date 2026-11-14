@@ -529,7 +529,7 @@ private fun StepName(
             ) { fg ->
                 Icon(Icons.Rounded.PhotoCamera, null, tint = fg, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(theme.t("Profil fotoğrafı yükle", "Upload profile photo"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("Profil fotoğrafı yükle", "Upload profile photo"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -541,7 +541,7 @@ private fun StepName(
         Spacer(Modifier.height(16.dp))
 
         // Avatar grid
-        val avatarShape = RoundedCornerShape(16.dp)
+        val avatarShape = RoundedCornerShape(SinemaRadius.R16)
         val onAccent = theme.effectiveOnAccentColor
         SPORT_AVATAR_ROWS.forEach { row ->
             Row(
@@ -561,7 +561,7 @@ private fun StepName(
                             .selectable(selected = selected, role = Role.RadioButton, onClick = { vm.setAvatar(emoji) }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(emoji, fontSize = 24.sp, color = onAccent)
+                        Text(emoji, fontSize = SinemaType.Headline, color = onAccent)
                     }
                 }
             }
@@ -705,7 +705,7 @@ private fun OnboardingChoiceGrid(
     val responsive = rememberResponsiveLayoutInfo()
     val accent = theme.effectiveAccentColor
     val onAccent = theme.effectiveOnAccentColor
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R24)
     val renderedOptions = options.map { it to labelFor(it) }
     val useSingleColumn = responsive.isVeryLargeFont ||
         responsive.screenWidth < 350.dp ||
@@ -740,7 +740,7 @@ private fun OnboardingChoiceGrid(
                     Text(
                         text = label,
                         color = if (isSelected) onAccent else Sinema.text(theme),
-                        fontSize = 13.sp,
+                        fontSize = SinemaType.BodySm,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 17.sp,
                         maxLines = 2,
@@ -894,20 +894,20 @@ private fun StepBodyMetrics(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .sinemaCard(theme, RoundedCornerShape(24.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 SinemaBigStat(value = "%.1f".format(bmi), label = theme.t("BMI / VKİ", "BMI"), size = 44)
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(bmiLabel, color = Sinema.text(theme), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(bmiLabel, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold)
                     if (bodyFat > 0) {
                         Spacer(Modifier.height(2.dp))
                         Text(
                             theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%").format(bodyFat),
                             color = Sinema.textSecondary(theme),
-                            fontSize = 12.sp,
+                            fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -1016,7 +1016,7 @@ private fun StepPersonalProgram(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(28.dp))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -1033,10 +1033,10 @@ private fun StepPersonalProgram(
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(theme.sportBranchLabel(state.sportBranch), color = Sinema.text(theme), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(theme.sportBranchLabel(state.sportBranch), color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold)
                     Text(
                         "${theme.experienceLabel(state.experienceLevel)} • ${theme.t("Haftada ${state.weeklyDays} gün", "${state.weeklyDays} days/week")}",
-                        color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -1056,7 +1056,7 @@ private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState
         Text(
             label.sinemaUpper(theme),
             color = Sinema.textSecondary(theme),
-            fontSize = 11.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.1.em,
             modifier = m
@@ -1072,7 +1072,7 @@ private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState
             Text(
                 value,
                 color = Sinema.text(theme),
-                fontSize = 16.sp,
+                fontSize = SinemaType.BodyLg,
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.ExtraBold
             )
@@ -1087,7 +1087,7 @@ private fun ProfileSummaryRow(label: String, value: String, theme: AppThemeState
             Text(
                 value,
                 color = Sinema.text(theme),
-                fontSize = 16.sp,
+                fontSize = SinemaType.BodyLg,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.End,
                 modifier = Modifier.weight(1f)
@@ -1122,7 +1122,7 @@ private fun StepHeader(
     Text(
         subtitle,
         color = Sinema.textSecondary(theme),
-        fontSize = 14.sp,
+        fontSize = SinemaType.Body,
         lineHeight = 20.sp,
         fontWeight = FontWeight.Medium,
         maxLines = 3,
@@ -1145,7 +1145,7 @@ private fun OnboardingErrorCapsule(text: String, theme: AppThemeState, modifier:
     ) { fg ->
         Icon(Icons.Rounded.ErrorOutline, null, tint = CriticalRed, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text, color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+        Text(text, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
     }
 }
 
@@ -1192,7 +1192,7 @@ horizontalArrangement = Arrangement.Center,
                         onClick = onSkip, enabled = !locked, height = 40.dp, shape = CircleShape,
 contentPadding = PaddingValues(horizontal = 16.dp)
                     ) { fg ->
-                        Text(skipLabel, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(skipLabel, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(4.dp))
                         Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = fg, modifier = Modifier.size(15.dp))
                     }
@@ -1213,11 +1213,11 @@ contentPadding = PaddingValues(horizontal = 16.dp)
 @Composable
 private fun ThemePreviewCard(preview: AppThemeState) {
     val accent = preview.effectiveAccentColor
-    val btnShape = RoundedCornerShape(16.dp)
+    val btnShape = RoundedCornerShape(SinemaRadius.R16)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(preview, RoundedCornerShape(28.dp))
+            .sinemaCard(preview, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -1232,13 +1232,13 @@ private fun ThemePreviewCard(preview: AppThemeState) {
             Text(
                 preview.accentDisplayLabel,
                 color         = preview.accentTextColor,
-                fontSize      = 12.sp,
+                fontSize      = SinemaType.Caption,
                 fontWeight    = FontWeight.ExtraBold,
                 letterSpacing = 0.1.em
             )
         }
-        Text("Profitness", color = Sinema.text(preview), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-        Text("Merhaba, Atlet 👋", color = Sinema.textSecondary(preview), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text("Profitness", color = Sinema.text(preview), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold)
+        Text("Merhaba, Atlet 👋", color = Sinema.textSecondary(preview), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium)
         Box(
             Modifier
                 .padding(top = 4.dp)
@@ -1250,7 +1250,7 @@ private fun ThemePreviewCard(preview: AppThemeState) {
             Text(
                 "UYGULA",
                 color         = preview.effectiveOnAccentColor,
-                fontSize      = 11.sp,
+                fontSize      = SinemaType.Caption,
                 fontWeight    = FontWeight.ExtraBold,
                 letterSpacing = 0.1.em
             )

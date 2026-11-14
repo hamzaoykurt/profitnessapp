@@ -108,6 +108,8 @@ import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.discover.MySharedProgram
 import com.cosmibit.profitness.domain.discover.SharedProgram
 import com.cosmibit.profitness.core.theme.supportAlert
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.presentation.components.AppToast
 import com.cosmibit.profitness.presentation.components.AppToastData
 import com.cosmibit.profitness.presentation.components.AppToastType
@@ -365,7 +367,7 @@ private fun SharedProgramDetailScreen(
                 item {
                     Text(
                         text = program.description,
-                        color = Color.White.copy(0.78f), fontSize = 14.sp, lineHeight = 20.sp,
+                        color = Color.White.copy(0.78f), fontSize = SinemaType.Body, lineHeight = 20.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
                 }
@@ -460,17 +462,17 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 SinemaCapsule(selected = program.isLikedByMe, onClick = onLike, height = 48.dp) { fg ->
                     Icon(if (program.isLikedByMe) Icons.Rounded.Favorite else SinemaIcons.Heart, theme.t("Beğen", "Like"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(countFormat.format(program.likesCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(countFormat.format(program.likesCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
                 SinemaCapsule(selected = program.isSavedByMe, onClick = onSave, height = 48.dp) { fg ->
                     Icon(if (program.isSavedByMe) Icons.Rounded.Bookmark else SinemaIcons.Bookmark, theme.t("Kaydet", "Save"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(countFormat.format(program.savesCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(countFormat.format(program.savesCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
                 SinemaCapsule(height = 48.dp) { fg ->
                     Icon(SinemaIcons.Download, theme.t("Uygulanma sayısı", "Applied count"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(countFormat.format(program.downloadsCount), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(countFormat.format(program.downloadsCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
@@ -488,7 +490,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay, onViewExercise: (S
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -499,7 +501,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay, onViewExercise: (S
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = day.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+                    text = day.title, color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold,
                     maxLines = 2, lineHeight = 22.sp
                 )
                 if (day.isRestDay) {
@@ -520,7 +522,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay, onViewExercise: (S
                 } else {
                     theme.t("Bu gün için hareket bulunamadı.", "No exercises found for this day.")
                 },
-                color = Color.White.copy(0.65f), fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp)
+                color = Color.White.copy(0.65f), fontSize = SinemaType.BodySm, modifier = Modifier.padding(top = 14.dp)
             )
         } else {
             Spacer(Modifier.height(14.dp))
@@ -540,7 +542,7 @@ private fun SharedProgramExerciseRow(exercise: SharedProgramDetailExercise, onVi
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = theme.exerciseDisplayName(exercise.name), color = Color.White, fontSize = 15.sp,
+            text = theme.exerciseDisplayName(exercise.name), color = Color.White, fontSize = SinemaType.BodyLg,
             fontWeight = FontWeight.Bold, maxLines = 2, lineHeight = 19.sp, modifier = Modifier.weight(1f)
         )
         val badges = exercise.badges(theme)
@@ -561,13 +563,13 @@ private fun EmptyProgramDetailCard() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             theme.t("Program içeriği bulunamadı", "Program content not found"),
-            color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+            color = Color.White, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -575,7 +577,7 @@ private fun EmptyProgramDetailCard() {
                 "Bu paylaşımda görüntülenecek gün ve hareket snapshot'ı yok.",
                 "This share does not include a day and exercise snapshot to display."
             ),
-            color = Color.White.copy(0.65f), fontSize = 13.sp, textAlign = TextAlign.Center
+            color = Color.White.copy(0.65f), fontSize = SinemaType.BodySm, textAlign = TextAlign.Center
         )
     }
 }
@@ -715,7 +717,7 @@ private fun SinemaPhotoCard(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     Box(
         Modifier.fillMaxWidth()
             .sinemaCard(theme, shape)
@@ -782,7 +784,7 @@ private fun PhotoCount(icon: ImageVector, iconOn: ImageVector?, n: Int, on: Bool
     ) {
         Icon(if (on && iconOn != null) iconOn else icon, null, tint = c, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(countFormat.format(n), color = c, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(countFormat.format(n), color = c, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -842,7 +844,7 @@ private fun SubListHeader(
         Spacer(Modifier.width(12.dp))
         Text(
             if (count > 0) "$title  $count" else title, color = Color.White,
-            fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
         trailing?.invoke()
@@ -1057,7 +1059,7 @@ private fun MySharedCard(
                 Icon(Icons.Rounded.DeleteOutline, null, tint = fg, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(8.dp))
-            Text(theme.t("Yayından kaldır", "Unpublish"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+            Text(theme.t("Yayından kaldır", "Unpublish"), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
@@ -1070,7 +1072,7 @@ private fun StatusBanner(icon: ImageVector, color: Color, text: String) {
     ) {
         Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
+        Text(text, color = color, fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
     }
 }
 
@@ -1105,7 +1107,7 @@ private fun DiscoverTopControls(
     ) {
         BoxWithConstraints(
             Modifier.weight(1f).heightIn(min = 54.dp)
-                .sinemaCapsuleGlass(RoundedCornerShape(27.dp), blur = 16.dp)
+                .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), blur = 16.dp)
                 .padding(3.dp)
         ) {
             val tabW = maxWidth / 3
@@ -1115,7 +1117,7 @@ private fun DiscoverTopControls(
                 if (motion) SinemaMotion.settle() else snap(),
                 label = "discover_stone"
             )
-            val stoneShape = RoundedCornerShape(24.dp)
+            val stoneShape = RoundedCornerShape(SinemaRadius.R24)
             Box(
                 Modifier.offset(x = x).width(tabW).fillMaxHeight()
                     .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, stoneShape)
@@ -1181,7 +1183,7 @@ private fun DiscoverMenuSheet(
         ) {
             Text(
                 theme.t("Programlar", "Programs"), color = Color.White,
-                fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 4.dp)
+                fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 4.dp)
             )
             @Composable
             fun row(active: Boolean, icon: ImageVector, label: String, count: Int?, onClick: () -> Unit) {
@@ -1190,8 +1192,8 @@ private fun DiscoverMenuSheet(
                 ) { fg ->
                     Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text(label, color = fg, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f), maxLines = 1)
-                    if (count != null) Text(count.toString(), color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f), maxLines = 1)
+                    if (count != null) Text(count.toString(), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
                 }
             }
             val feed = programsSub == ProgramsSubTab.Community
@@ -1336,12 +1338,12 @@ private fun ProgramPage(
                         } else {
                             Text(
                                 program.creatorName.take(1).uppercase(), color = Color.White,
-                                fontSize = 14.sp, fontWeight = FontWeight.ExtraBold
+                                fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
                     Spacer(Modifier.width(10.dp))
-                    Text(program.creatorName, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(program.creatorName, color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text(
                     program.title, style = Sinema.Title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -1367,9 +1369,9 @@ private fun ProgramPage(
                     Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOfNotNull(weeks, diffLabel).forEach { t ->
                             Box(
-                                Modifier.height(28.dp).sinemaCapsuleGlass(RoundedCornerShape(14.dp), blur = 16.dp).padding(horizontal = 12.dp),
+                                Modifier.height(28.dp).sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R12), blur = 16.dp).padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.Center
-                            ) { Text(t, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1) }
+                            ) { Text(t, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1) }
                         }
                     }
                 }
@@ -1385,7 +1387,7 @@ private fun ProgramPage(
                         ) {
                             Icon(if (on && iconOn != null) iconOn else icon, null, tint = c, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(countFormat.format(n), color = c, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(countFormat.format(n), color = c, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     count(SinemaIcons.Heart, Icons.Rounded.Favorite, program.likesCount, program.isLikedByMe, theme.t("Beğen", "Like"), onLike)

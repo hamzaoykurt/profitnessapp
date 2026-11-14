@@ -89,6 +89,8 @@ import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.domain.model.ProgramType
@@ -187,7 +189,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             // AKTİF PROGRAM çipi
             Row(
                 Modifier.padding(start = 16.dp, top = statusTop + 16.dp).height(28.dp)
-                    .clip(RoundedCornerShape(14.dp)).background(theme.accent3Color).padding(horizontal = 12.dp),
+                    .clip(RoundedCornerShape(SinemaRadius.R12)).background(theme.accent3Color).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // c3 = işaretle (rozet); hale yok (hale yalnız c1)
@@ -195,7 +197,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 Spacer(Modifier.width(6.dp))
                 Text(
                     theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink,
-                    fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
+                    fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
                 )
             }
             val workoutDays = active.days.count { !it.isRestDay }
@@ -210,7 +212,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                         active.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = if (wc.isTight) 2 else 3, overflow = TextOverflow.Ellipsis
                     )
-                    Text(info, color = Color.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    Text(info, color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
                     if (today != null) TodayPanel(today)
                     SinemaGoButton(
@@ -229,7 +231,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
     val onAccent = theme.effectiveOnAccentColor
     Column(
         Modifier.fillMaxWidth().padding(bottom = 12.dp)
-            .sinemaCapsuleGlass(RoundedCornerShape(26.dp), edge = Color.White.copy(0.2f), fillAlpha = 0.38f, blur = 22.dp)
+            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), edge = Color.White.copy(0.2f), fillAlpha = 0.38f, blur = 22.dp)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -258,13 +260,13 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                     lineHeight = 1.05.em, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 if (!info.todayIsRest) {
-                    Text(theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises"), color = Color.White.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text(theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises"), color = Color.White.copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium)
                 }
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             info.week.forEach { c ->
-                val shape = RoundedCornerShape(14.dp)
+                val shape = RoundedCornerShape(SinemaRadius.R12)
                 val fg = if (c.isToday) onAccent else Color.White.copy(0.85f)
                 Column(
                     Modifier.weight(1f).heightIn(min = 42.dp)
@@ -321,7 +323,7 @@ private fun raiseBrush(theme: AppThemeState): Brush =
 @Composable
 fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
     val theme = LocalAppTheme.current
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
@@ -336,8 +338,8 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
                 Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
-                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
+                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }
@@ -356,8 +358,8 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) { Icon(SinemaIcons.Plus, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp)) }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
-                Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
+                Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }
@@ -367,9 +369,9 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
 @Composable
 private fun GlassTag(text: String) {
     Box(
-        Modifier.height(24.dp).sinemaCapsuleGlass(RoundedCornerShape(12.dp), blur = 12.dp).padding(horizontal = 10.dp),
+        Modifier.height(24.dp).sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R12), blur = 12.dp).padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center
-    ) { Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
+    ) { Text(text, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
 }
 
 private fun cardBorderShadow(theme: AppThemeState) = Color.Black.copy(0.6f)
@@ -386,7 +388,7 @@ fun SavedProgramCard(
 ) {
     val theme = LocalAppTheme.current
     val badge = theme.accent3Color   // c3 = işaretle; ekranda ≤3 öğe → yalnız ilk kartta
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val photo = remember(program) {
@@ -431,7 +433,7 @@ fun SavedProgramCard(
                 val typeTint = if (showTypeBadge) badge else Color.White.copy(0.85f)
                 Icon(typeIcon, null, tint = typeTint, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(typeLabel.sinemaUpper(theme), color = typeTint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
+                Text(typeLabel.sinemaUpper(theme), color = typeTint, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
                 Box {
                     Box(
                         Modifier.size(32.dp).sinemaCapsuleGlass(CircleShape, blur = 16.dp)
@@ -440,7 +442,7 @@ fun SavedProgramCard(
                     ) { Icon(SinemaIcons.More, theme.t("Diğer", "More"), tint = Color.White, modifier = Modifier.size(18.dp)) }
                     DropdownMenu(
                         expanded = menu, onDismissRequest = { menu = false },
-                        containerColor = Sinema.surface(theme), shape = RoundedCornerShape(20.dp),
+                        containerColor = Sinema.surface(theme), shape = RoundedCornerShape(SinemaRadius.R20),
                         tonalElevation = 0.dp, shadowElevation = 12.dp,
                         border = androidx.compose.foundation.BorderStroke(1.dp, Sinema.line(theme))
                     ) {
@@ -463,7 +465,7 @@ fun SavedProgramCard(
                 }
             }
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp)) {
-                Text(program.name.sinemaUpper(theme), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 1.15.em, letterSpacing = (-0.01).em, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(program.name.sinemaUpper(theme), color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, lineHeight = 1.15.em, letterSpacing = (-0.01).em, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     GlassTag(theme.t("$workoutDays gün", "$workoutDays days"))
                     if (totalExercises > 0) GlassTag(theme.t("$totalExercises egzersiz", "$totalExercises exercises"))
@@ -471,12 +473,12 @@ fun SavedProgramCard(
                 if (program.isActive) {
                     Row(
                         Modifier.fillMaxWidth().height(42.dp)
-                            .sinemaCapsuleGlass(RoundedCornerShape(21.dp), edge = Color.White.copy(0.3f), fillAlpha = 0.4f, blur = 12.dp),
+                            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R20), edge = Color.White.copy(0.3f), fillAlpha = 0.4f, blur = 12.dp),
                         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(SinemaIcons.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(theme.t("Aktif", "Active"), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(theme.t("Aktif", "Active"), color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
                     }
                 } else {
                     ActPill(theme.t("Aktif et", "Activate"), SinemaIcons.Play, filled = true, onClick = onSetActive, modifier = Modifier.fillMaxWidth())
@@ -491,7 +493,7 @@ fun SavedProgramCard(
 fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val theme = LocalAppTheme.current
     val on = Color.White
-    val shape = RoundedCornerShape(21.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R20)
     // İkincil eylem: nötr cam (ekranda tek c1 düğme = BAŞLA)
     Row(
         modifier.height(42.dp)
@@ -503,7 +505,7 @@ fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Un
     ) {
         Icon(icon, null, tint = on, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = on, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(label, color = on, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -512,7 +514,7 @@ fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Un
 fun ProgramFilterPill(label: String, icon: ImageVector?, selected: Boolean, onClick: () -> Unit) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R16)
     val fg = if (selected) theme.effectiveOnAccentColor else Sinema.text(theme)
     Box(Modifier.heightIn48().clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Row(
@@ -524,7 +526,7 @@ fun ProgramFilterPill(label: String, icon: ImageVector?, selected: Boolean, onCl
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (icon != null) { Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)) }
-            Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, maxLines = 1)
+            Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, maxLines = 1)
         }
     }
 }
@@ -542,7 +544,7 @@ fun ReadyProgramCard(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     val haze = remember { HazeState() }
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp).height(176.dp)
@@ -556,11 +558,11 @@ fun ReadyProgramCard(
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 1f to Sinema.scrim(0.85f))))
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
-            Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
+            Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
                 modifier = Modifier.padding(start = 14.dp, top = 14.dp))
             Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
-                    Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em, lineHeight = 1.1.em, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(title, color = Color.White, fontSize = SinemaType.Headline, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em, lineHeight = 1.1.em, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips.forEach { GlassTag(it) } }
                 }
                 Spacer(Modifier.width(10.dp))

@@ -387,7 +387,7 @@ private fun NotificationPermissionBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R16))
                 .background(theme.bg2)
                 .padding(20.dp, 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -396,7 +396,7 @@ private fun NotificationPermissionBanner(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(accent.copy(0.12f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -414,13 +414,13 @@ private fun NotificationPermissionBanner(
                 Text(
                     theme.t("Bildirim izni gerekli", "Notification permission needed"),
                     color      = theme.text0,
-                    fontSize   = 13.sp,
+                    fontSize   = SinemaType.BodySm,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     theme.t("Timer sesi + arka plan bildirimleri", "Timer sound + background notifications"),
                     color    = theme.text1,
-                    fontSize = 11.sp
+                    fontSize = SinemaType.Caption
                 )
             }
 
@@ -433,14 +433,14 @@ private fun NotificationPermissionBanner(
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onRequest()
                     }, haptic = SinemaTapHaptic.None)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(accent)
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
                 Text(
                     theme.t("İZİN VER", "ALLOW"),
                     color      = theme.effectiveOnAccentColor,
-                    fontSize   = 10.sp,
+                    fontSize   = SinemaType.Caption,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp
                 )
@@ -492,7 +492,7 @@ private fun NoProgramView(
         Text(
             theme.t("HENÜZ PROGRAMIN YOK", "NO PROGRAM YET"),
             color = accent,
-            fontSize = 13.sp,
+            fontSize = SinemaType.BodySm,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 1.2.sp
         )
@@ -503,7 +503,7 @@ private fun NoProgramView(
                 "Create your training program now.\nLet AI prepare a personal plan or build it yourself."
             ),
             color = theme.text2,
-            fontSize = 14.sp,
+            fontSize = SinemaType.Body,
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
         )
@@ -842,9 +842,9 @@ private fun SkippedProgramNotice() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 24.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(accent.copy(0.08f))
-            .border(1.dp, accent.copy(0.30f), RoundedCornerShape(18.dp))
+            .border(1.dp, accent.copy(0.30f), RoundedCornerShape(SinemaRadius.R16))
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -858,7 +858,7 @@ private fun SkippedProgramNotice() {
         Text(
             strings.skippedProgramTitle,
             color = accent,
-            fontSize = 11.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.2.sp
         )
@@ -866,7 +866,7 @@ private fun SkippedProgramNotice() {
         Text(
             strings.skippedProgramBody,
             color = theme.text1,
-            fontSize = 13.sp,
+            fontSize = SinemaType.BodySm,
             textAlign = TextAlign.Center,
             lineHeight = 18.sp
         )

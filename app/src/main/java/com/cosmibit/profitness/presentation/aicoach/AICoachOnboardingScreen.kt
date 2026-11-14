@@ -340,9 +340,9 @@ private fun CenteredOptionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, RoundedCornerShape(24.dp)) else Modifier)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(24.dp)) else Modifier)
+            .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, RoundedCornerShape(SinemaRadius.R24)) else Modifier)
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(SinemaRadius.R24)) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.CenterVertically,
@@ -357,8 +357,8 @@ private fun CenteredOptionCard(
             )
         )
         Column(Modifier.weight(1f)) {
-            Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(description, color = theme.text2, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = SinemaType.BodyLg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(description, color = theme.text2, fontSize = SinemaType.BodySm, lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -378,7 +378,7 @@ private fun PermissionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.Top,
@@ -399,7 +399,7 @@ private fun PermissionCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, lineHeight = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(title, color = theme.text0, fontWeight = FontWeight.ExtraBold, fontSize = SinemaType.BodyLg, lineHeight = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (recommended) {
                     Box(
                         modifier = Modifier
@@ -407,11 +407,11 @@ private fun PermissionCard(
                             .background(Sinema.line(theme))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = theme.accentTextColor, fontSize = 8.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
+                        Text(theme.t("ÖNERİLEN", "RECOMMENDED"), color = theme.accentTextColor, fontSize = SinemaType.Caption, letterSpacing = 1.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
-            Text(description, color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Light, lineHeight = 18.sp, maxLines = if (responsive.isLargeFont) 4 else 3, overflow = TextOverflow.Ellipsis)
+            Text(description, color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Light, lineHeight = 18.sp, maxLines = if (responsive.isLargeFont) 4 else 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }

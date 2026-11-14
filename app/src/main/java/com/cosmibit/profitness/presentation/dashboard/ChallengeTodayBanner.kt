@@ -40,6 +40,8 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.EventMode
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 /**
  * Shown above the daily workout program when the user has joined events today.
@@ -54,7 +56,7 @@ fun ChallengeTodayBanner(
     val theme = LocalAppTheme.current
     val strings = theme.strings
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R20)
     val surface = Brush.verticalGradient(listOf(theme.text0.copy(0.075f), theme.text0.copy(0.025f)))
 
     Column(
@@ -78,7 +80,7 @@ fun ChallengeTodayBanner(
             Text(
                 strings.todayEventsTitle,
                 color = accent,
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
             )
@@ -114,12 +116,12 @@ private fun EventMiniRow(summary: ChallengeSummary, onClick: () -> Unit) {
                 scaleY = if (pressed) 0.985f else 1f
                 translationY = if (pressed) 2.dp.toPx() else 0f
             }
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.text0.copy(0.055f))
             .border(
                 1.dp,
                 theme.text0.copy(0.10f),
-                RoundedCornerShape(12.dp)
+                RoundedCornerShape(SinemaRadius.R12)
             )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -131,7 +133,7 @@ private fun EventMiniRow(summary: ChallengeSummary, onClick: () -> Unit) {
             Text(
                 summary.title,
                 color = theme.text0,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
@@ -149,7 +151,7 @@ private fun EventMiniRow(summary: ChallengeSummary, onClick: () -> Unit) {
                 }
             }
             if (subtitle.isNotBlank()) {
-                Text(subtitle, color = theme.text2, fontSize = 11.sp, maxLines = 1)
+                Text(subtitle, color = theme.text2, fontSize = SinemaType.Caption, maxLines = 1)
             }
         }
         Icon(

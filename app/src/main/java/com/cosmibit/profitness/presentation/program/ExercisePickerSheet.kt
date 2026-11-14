@@ -118,14 +118,14 @@ fun ExercisePickerSheet(
                     Text(
                         theme.t("HAREKET SEÇ", "SELECT EXERCISE"),
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 10.sp,
+                        fontSize = SinemaType.Caption,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
                     Text(
                         theme.t("${exercises.size} hareket mevcut", "${exercises.size} exercises available"),
                         color = theme.text2,
-                        fontSize = 12.sp,
+                        fontSize = SinemaType.Caption,
                         fontWeight = FontWeight.Light
                     )
                 }
@@ -141,7 +141,7 @@ fun ExercisePickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(14.dp))
+                    .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(SinemaRadius.R12))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -166,7 +166,7 @@ fun ExercisePickerSheet(
                                 Text(
                                     theme.t("Hareket ara...", "Search exercise..."),
                                     color = theme.text2,
-                                    fontSize = 14.sp,
+                                    fontSize = SinemaType.Body,
                                     fontWeight = FontWeight.Light
                                 )
                             }
@@ -234,8 +234,8 @@ fun ExercisePickerSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(
-                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(16.dp))
-                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(16.dp))
+                                if (isSelected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(SinemaRadius.R16))
+                                else Modifier.performanceElevatedSurface(theme, RoundedCornerShape(SinemaRadius.R16))
                             )
                     ) {
                         // Exercise row
@@ -259,7 +259,7 @@ fun ExercisePickerSheet(
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(SinemaRadius.R12))
                                     .background(accent.copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -276,12 +276,12 @@ fun ExercisePickerSheet(
                                     theme.exerciseDisplayName(exercise.name, exercise.nameEn),
                                     color = theme.text0,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp
+                                    fontSize = SinemaType.Body
                                 )
                                 Text(
                                     theme.fitnessTermDisplayName(exercise.targetMuscle),
                                     color = accent,
-                                    fontSize = 10.sp,
+                                    fontSize = SinemaType.Caption,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
                                 )
@@ -290,7 +290,7 @@ fun ExercisePickerSheet(
                             Text(
                                 defaultManualSummary(exercise, spec, theme),
                                 color = theme.text2,
-                                fontSize = 11.sp,
+                                fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(Modifier.width(8.dp))
@@ -319,7 +319,7 @@ fun ExercisePickerSheet(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(14.dp))
+                                        .clip(RoundedCornerShape(SinemaRadius.R12))
                                         .background(theme.bg2)
                                         .padding(horizontal = 14.dp)
                                 ) {
@@ -395,7 +395,7 @@ fun ExercisePickerSheet(
                                     Text(
                                         theme.t("PROGRAMA EKLE", "ADD TO PROGRAM"),
                                         fontWeight = FontWeight.Black,
-                                        fontSize = 12.sp,
+                                        fontSize = SinemaType.Caption,
                                         letterSpacing = 0.5.sp
                                     )
                                 }
@@ -411,7 +411,7 @@ fun ExercisePickerSheet(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .performanceElevatedSurface(theme, RoundedCornerShape(14.dp))
+                                .performanceElevatedSurface(theme, RoundedCornerShape(SinemaRadius.R12))
                                 .clickable { showRequestDialog = true }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                         ) {
@@ -428,12 +428,12 @@ fun ExercisePickerSheet(
                                         theme.t("Aradığın hareketi bulamadın mı?", "Can't find the exercise?"),
                                         color = theme.text0,
                                         fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp
+                                        fontSize = SinemaType.BodySm
                                     )
                                     Text(
                                         theme.t("Eklenmesi için talep gönder", "Request it to be added"),
                                         color = theme.text2,
-                                        fontSize = 11.sp,
+                                        fontSize = SinemaType.Caption,
                                         fontWeight = FontWeight.Light
                                     )
                                 }
@@ -538,7 +538,7 @@ internal fun PickerPrimaryButton(
         tween(SinemaMotion.Quick),
         label = "picker_cta_scale"
     )
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
 
     Box(
         modifier = modifier
@@ -583,13 +583,13 @@ private fun ExerciseRequestDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .floatingGlassSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(20.dp), elevation = 8.dp)
+                .floatingGlassSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(SinemaRadius.R20), elevation = 8.dp)
                 .padding(20.dp)
         ) {
             Text(
                 theme.t("YENİ HAREKET TALEBİ", "NEW EXERCISE REQUEST"),
                 color = MaterialTheme.colorScheme.primary,
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 2.sp
             )
@@ -597,7 +597,7 @@ private fun ExerciseRequestDialog(
             Text(
                 theme.t("İstediğin hareket eklensin", "Request the exercise you need"),
                 color = theme.text2,
-                fontSize = 12.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Light
             )
             Spacer(Modifier.height(16.dp))
@@ -617,7 +617,7 @@ private fun ExerciseRequestDialog(
                         "Use only one exercise name per request. Send alternatives separately."
                     ),
                     color = CardCoral,
-                    fontSize = 11.sp,
+                    fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -645,10 +645,10 @@ private fun ExerciseRequestDialog(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(SinemaRadius.R12),
                     border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
                 ) {
-                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
                 }
                 PickerPrimaryButton(
                     onClick = {
@@ -666,7 +666,7 @@ private fun ExerciseRequestDialog(
                             color = theme.effectiveOnAccentColor
                         )
                     } else {
-                        Text(theme.t("Gönder", "Send"), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                        Text(theme.t("Gönder", "Send"), fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
                     }
                 }
             }
@@ -688,7 +688,7 @@ private fun RequestInputField(
         Text(
             label,
             color = theme.text2,
-            fontSize = 10.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
         )
@@ -696,7 +696,7 @@ private fun RequestInputField(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(10.dp))
+                .insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(SinemaRadius.R12))
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             BasicTextField(
@@ -710,7 +710,7 @@ private fun RequestInputField(
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     if (value.isEmpty()) {
-                        Text(placeholder, color = theme.text2, fontSize = 13.sp, fontWeight = FontWeight.Light)
+                        Text(placeholder, color = theme.text2, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Light)
                     }
                     inner()
                 }
@@ -742,7 +742,7 @@ private fun CounterField(
         Text(
             label,
             color         = accent,
-            fontSize      = 13.sp,
+            fontSize      = SinemaType.BodySm,
             fontWeight    = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp,
             modifier      = Modifier.weight(1f)
@@ -762,7 +762,7 @@ private fun CounterField(
             displayOverride ?: value.toString(),
             color      = theme.text0,
             fontWeight = FontWeight.Black,
-            fontSize   = 22.sp,
+            fontSize   = SinemaType.Headline,
             textAlign  = TextAlign.Center,
             modifier   = Modifier.widthIn(min = 60.dp)
         )
@@ -803,7 +803,7 @@ private fun PickerCategoryChip(
         Text(
             label,
             color = if (selected) color else theme.text1,
-            fontSize = 10.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
         )

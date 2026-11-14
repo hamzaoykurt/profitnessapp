@@ -58,6 +58,8 @@ import com.cosmibit.profitness.core.theme.text1
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.toSafeAccentArgb
 import com.cosmibit.profitness.core.theme.toSafeAccentColor
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 private const val MinPickerSaturation = 0.32f
 private const val MinPickerValue = 0.48f
@@ -155,7 +157,7 @@ fun CustomAccentColorDialog(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = theme.bg2,
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(SinemaRadius.R20),
             tonalElevation = 0.dp
         ) {
             Column(
@@ -167,20 +169,20 @@ fun CustomAccentColorDialog(
                         Text(
                             theme.t("OZEL RENK", "CUSTOM COLOR"),
                             color = theme.text0,
-                            fontSize = 14.sp,
+                            fontSize = SinemaType.Body,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
                         )
                         Text(
                             theme.t("Cok koyu, soluk ve asiri parlak tonlar secim alani disinda.", "Very dark, washed-out, and overly bright tones are outside the picker range."),
                             color = theme.text2,
-                            fontSize = 11.sp
+                            fontSize = SinemaType.Caption
                         )
                     }
                     Box(
                         Modifier
                             .size(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(safeColor)
                     )
                 }
@@ -205,14 +207,14 @@ fun CustomAccentColorDialog(
                         Modifier
                             .height(38.dp)
                             .width(82.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(safeColor)
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         "#%06X".format(0xFFFFFF and safeColor.toArgb()),
                         color = theme.text1,
-                        fontSize = 13.sp,
+                        fontSize = SinemaType.BodySm,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
@@ -222,13 +224,13 @@ fun CustomAccentColorDialog(
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(SinemaRadius.R12),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = theme.bg3,
                             contentColor = theme.text1
                         )
                     ) {
-                        Text(theme.t("IPTAL", "CANCEL"), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Text(theme.t("IPTAL", "CANCEL"), fontSize = SinemaType.Caption, fontWeight = FontWeight.Black)
                     }
                     Button(
                         onClick = {
@@ -236,13 +238,13 @@ fun CustomAccentColorDialog(
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(SinemaRadius.R12),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = safeColor,
                             contentColor = safeColor.readableOnAccentColor()
                         )
                     ) {
-                        Text(theme.t("SEC", "SELECT"), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Text(theme.t("SEC", "SELECT"), fontSize = SinemaType.Caption, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -274,7 +276,7 @@ private fun SaturationValuePanel(
         modifier = Modifier
             .fillMaxWidth()
             .height(190.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .onSizeChanged { size = it }
             .pointerInput(Unit) {
                 detectDragGestures(

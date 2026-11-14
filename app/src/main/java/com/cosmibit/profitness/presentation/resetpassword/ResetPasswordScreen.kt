@@ -72,7 +72,7 @@ private fun ExchangingContent() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = theme.effectiveAccentColor)
             Spacer(Modifier.height(16.dp))
-            Text(theme.t("Bağlantı doğrulanıyor...", "Verifying link..."), color = Color.White.copy(0.75f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(theme.t("Bağlantı doğrulanıyor...", "Verifying link..."), color = Color.White.copy(0.75f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -108,7 +108,7 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
                     "Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.\nLütfen yeni bir bağlantı isteyin.",
                     "This password reset link is invalid or has expired.\nPlease request a new link."
                 ),
-                color = Color.White.copy(0.75f), fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                color = Color.White.copy(0.75f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(32.dp))
@@ -126,7 +126,7 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
 private fun IconCapsule(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     SinemaCapsule(
         modifier = Modifier.width(88.dp),
-        selected = true, height = 88.dp, shape = RoundedCornerShape(28.dp),
+        selected = true, height = 88.dp, shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
     ) { fg -> Icon(icon, null, tint = fg, modifier = Modifier.size(44.dp)) }
 }
@@ -187,7 +187,7 @@ private fun NewPasswordContent(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         theme.t("Hesabın için güçlü bir şifre seç.", "Choose a strong password for your account."),
-                        color = Color.White.copy(0.8f), fontSize = 14.sp, fontWeight = FontWeight.Medium
+                        color = Color.White.copy(0.8f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium
                     )
                 }
             }

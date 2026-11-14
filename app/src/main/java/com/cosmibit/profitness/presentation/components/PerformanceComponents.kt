@@ -60,14 +60,14 @@ fun PremiumChip(
         tween(SinemaMotion.Standard), label = "premiumChip"
     )
     Row(
-        modifier.clip(RoundedCornerShape(14.dp))
-            .then(if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(14.dp)) else Modifier.background(bg))
+        modifier.clip(RoundedCornerShape(SinemaRadius.R12))
+            .then(if (selected) Modifier.insetControlSurface(accent, theme, RoundedCornerShape(SinemaRadius.R12)) else Modifier.background(bg))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         icon?.let { Icon(it, null, tint = if (selected) accent else theme.text1, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)) }
-        Text(text, color = if (selected) accent else theme.text1, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = if (selected) accent else theme.text1, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -80,16 +80,16 @@ fun <T> PremiumSegmentedControl(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    Row(modifier.clip(RoundedCornerShape(16.dp)).background(theme.bg1).padding(4.dp)) {
+    Row(modifier.clip(RoundedCornerShape(SinemaRadius.R16)).background(theme.bg1).padding(4.dp)) {
         items.forEach { item ->
             val active = item == selected
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                    .then(if (active) Modifier.insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(12.dp)) else Modifier)
+                Modifier.weight(1f).clip(RoundedCornerShape(SinemaRadius.R12))
+                    .then(if (active) Modifier.insetControlSurface(MaterialTheme.colorScheme.primary, theme, RoundedCornerShape(SinemaRadius.R12)) else Modifier)
                     .clickable { onSelected(item) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(label(item), color = if (active) theme.text0 else theme.text1, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(label(item), color = if (active) theme.text0 else theme.text1, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -109,7 +109,7 @@ fun MetricDisplay(
         icon?.let { Icon(it, null, tint = theme.text1, modifier = Modifier.size(18.dp)); Spacer(Modifier.height(12.dp)) }
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, color = theme.text0, fontSize = 32.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp)
-            if (unit.isNotBlank()) Text(unit, color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp, bottom = 3.dp))
+            if (unit.isNotBlank()) Text(unit, color = accent, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp, bottom = 3.dp))
         }
         Spacer(Modifier.height(6.dp))
         Text(label, color = theme.text2, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -130,11 +130,11 @@ fun PremiumCreationControl(
     val pressed by source.collectIsPressedAsState()
     Row(
         modifier.graphicsLayer { val s = if (pressed) 0.985f else 1f; scaleX = s; scaleY = s }
-            .performanceSignatureSurface(theme, accent, RoundedCornerShape(16.dp))
+            .performanceSignatureSurface(theme, accent, RoundedCornerShape(SinemaRadius.R16))
             .clickable(source, null, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(accent), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(accent), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(19.dp))
         }
         Spacer(Modifier.width(12.dp))

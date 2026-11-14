@@ -42,6 +42,8 @@ import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.domain.challenges.ChallengeSummary
 import com.cosmibit.profitness.domain.challenges.EventMode
 import java.time.LocalDate
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 /**
  * Horizontal scrollable strip of next-7-days events (user's joined events).
@@ -66,7 +68,7 @@ fun UpcomingEventsSection(
             Text(
                 strings.upcomingEventsTitle,
                 color = theme.text2,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
             )
@@ -92,7 +94,7 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R16)
     val ev = summary.event
     val icon = when (ev?.mode) {
         EventMode.Physical     -> Icons.Rounded.LocationOn
@@ -133,7 +135,7 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
             Text(
                 ev?.dateIso ?: "—",
                 color = accent,
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
@@ -141,7 +143,7 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
                 Text(
                     " · ${ev.timeIso.take(5)}",
                     color = theme.text2,
-                    fontSize = 10.sp,
+                    fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -150,7 +152,7 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
         Text(
             summary.title,
             color = theme.text0,
-            fontSize = 13.sp,
+            fontSize = SinemaType.BodySm,
             fontWeight = FontWeight.Black,
             maxLines = 2
         )
@@ -165,7 +167,7 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
             Text(
                 sub,
                 color = theme.text1,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 maxLines = 1
             )
         }

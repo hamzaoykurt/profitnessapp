@@ -227,7 +227,7 @@ fun ExerciseDetailSheet(
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = gutter, vertical = 16.dp)
-                        .sinemaCapsuleGlass(RoundedCornerShape(26.dp), fillTop = 0.16f, fillBottom = 0.10f)
+                        .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.16f, fillBottom = 0.10f)
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
                                 onDragStart = { drag = 0f },
@@ -260,7 +260,7 @@ fun ExerciseDetailSheet(
                                 Text(
                                     text,
                                     color = if (muscle) theme.accent2TextColor else theme.accent3TextColor,
-                                    fontSize = 12.sp,
+                                    fontSize = SinemaType.Caption,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -274,7 +274,7 @@ fun ExerciseDetailSheet(
                     }
                     if (planSummary.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
-                        Text(planSummary, color = Color.White.copy(0.82f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(planSummary, color = Color.White.copy(0.82f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -354,7 +354,7 @@ fun ExerciseDetailSheet(
                             Text(
                                 recordText,
                                 color = theme.accent3TextColor,
-                                fontSize = 11.sp,
+                                fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.SemiBold,
                                 letterSpacing = 0.06.sp,
                                 maxLines = 1,
@@ -402,7 +402,7 @@ fun ExerciseDetailSheet(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
                         .padding(horizontal = 8.dp, vertical = 16.dp)
                 ) {
                     planCells.forEach { (value, label) ->
@@ -419,7 +419,7 @@ fun ExerciseDetailSheet(
                             Text(
                                 label,
                                 color = Sinema.textSecondary(theme),
-                                fontSize = 11.sp,
+                                fontSize = SinemaType.Caption,
                                 lineHeight = 14.sp,
                                 maxLines = 1,
                                 textAlign = TextAlign.Center
@@ -451,7 +451,7 @@ fun ExerciseDetailSheet(
                         Modifier
                             .padding(horizontal = 20.dp)
                             .fillMaxWidth()
-                            .sinemaCard(theme, RoundedCornerShape(20.dp))
+                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
                             .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) {
                         last.sets.forEachIndexed { i, set ->
@@ -464,7 +464,7 @@ fun ExerciseDetailSheet(
                                 Text(
                                     "${i + 1}",
                                     color = Sinema.textSecondary(theme),
-                                    fontSize = 14.sp,
+                                    fontSize = SinemaType.Body,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.width(28.dp)
                                 )
@@ -492,7 +492,7 @@ fun ExerciseDetailSheet(
                             Text(
                                 deltaText,
                                 color = if (delta >= -0.001f) theme.accent2TextColor else Sinema.textSecondary(theme),
-                                fontSize = 13.sp,
+                                fontSize = SinemaType.BodySm,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(start = 28.dp, bottom = 6.dp)
                             )
@@ -526,7 +526,7 @@ fun ExerciseDetailSheet(
                     modifier = Modifier
                         .padding(horizontal = 20.dp)
                         .fillMaxWidth()
-                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
                         .padding(horizontal = 18.dp, vertical = 16.dp)
                 ) {
                     if (dayNotes.isNotBlank()) {
@@ -549,12 +549,12 @@ fun ExerciseDetailSheet(
                 Text(
                     instructions,
                     color = Sinema.text(theme),
-                    fontSize = 15.sp,
+                    fontSize = SinemaType.BodyLg,
                     lineHeight = 22.sp,
                     modifier = Modifier
                         .padding(horizontal = 20.dp)
                         .fillMaxWidth()
-                        .sinemaCard(theme, RoundedCornerShape(20.dp))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
                         .padding(horizontal = 18.dp, vertical = 16.dp)
                 )
             }
@@ -592,15 +592,15 @@ private fun InfoChip(text: String) {
     Text(
         text,
         color = Sinema.Text,
-        fontSize = 13.sp,
+        fontSize = SinemaType.BodySm,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .heightIn(min = 32.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(SinemaRadius.R16))
             .padding(horizontal = 12.dp, vertical = 7.dp)
     )
 }
@@ -610,12 +610,12 @@ private fun EmptyHistoryCard(text: String, theme: AppThemeState) {
     Text(
         text,
         color = Sinema.textSecondary(theme),
-        fontSize = 14.sp,
+        fontSize = SinemaType.Body,
         lineHeight = 20.sp,
         modifier = Modifier
             .padding(horizontal = 20.dp)
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(20.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
             .padding(18.dp)
     )
 }
@@ -624,7 +624,7 @@ private fun EmptyHistoryCard(text: String, theme: AppThemeState) {
 private fun DetailNote(label: String, text: String, theme: AppThemeState) {
     Text(text = label, color = Sinema.textSecondary(theme), style = Sinema.Label)
     Spacer(Modifier.height(6.dp))
-    Text(text = text, color = Sinema.text(theme), fontSize = 15.sp, lineHeight = 22.sp)
+    Text(text = text, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 22.sp)
 }
 
 private fun formatDate(date: String, format: DateTimeFormatter): String =
@@ -739,7 +739,7 @@ private fun ProgressionCard(
         modifier = Modifier
             .padding(horizontal = 20.dp)
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(20.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
             .padding(18.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -748,7 +748,7 @@ private fun ProgressionCard(
             Text(
                 if (isStrength) theme.t("kg · son seansın en yüksek seti", "kg · last session's top set") else theme.t("dk toplam, son seans", "min total, last session"),
                 color = Sinema.textSecondary(theme),
-                fontSize = 12.sp,
+                fontSize = SinemaType.Caption,
                 modifier = Modifier.padding(bottom = 3.dp)
             )
         }
@@ -875,17 +875,17 @@ private fun AiProgressionSection(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .sinemaCard(theme, RoundedCornerShape(24.dp))
+                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                     .padding(18.dp)
             ) {
                 if (isLoading) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
-                        Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = 14.sp)
+                        Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
                     }
                 } else {
-                    Text(insight, color = Sinema.text(theme), fontSize = 15.sp, lineHeight = 22.sp)
+                    Text(insight, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 22.sp)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -901,7 +901,7 @@ private fun AiProgressionSection(
             if (noEnergy) theme.t("Enerjin bitti. AI analizi 2 Enerji harcar.", "You're out of Energy. AI analysis costs 2 Energy.")
             else theme.t("AI analizi 2 Enerji harcar.", "AI analysis costs 2 Energy."),
             color = Sinema.textSecondary(theme),
-            fontSize = 12.sp,
+            fontSize = SinemaType.Caption,
             modifier = Modifier.fillMaxWidth()
         )
     }

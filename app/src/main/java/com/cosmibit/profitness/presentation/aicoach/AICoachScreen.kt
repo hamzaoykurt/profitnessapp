@@ -241,12 +241,12 @@ fun AICoachScreen(
                             SinemaCapsule(
                                 modifier = Modifier.weight(1f),
                                 onClick = { inputText = chip }, enabled = !state.isLoading,
-                                height = 40.dp, shape = RoundedCornerShape(20.dp),
+                                height = 40.dp, shape = RoundedCornerShape(SinemaRadius.R20),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
                                 horizontalArrangement = Arrangement.Center
                             ) { fg ->
                                 Text(
-                                    chip.substringBefore(" "), color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                    chip.substringBefore(" "), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
                             }
@@ -275,7 +275,7 @@ fun AICoachScreen(
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
-                    Text("AI Koç", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text("AI Koç", color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
                 SinemaPill(onClick = { viewModel.openHistory() }) {
@@ -296,7 +296,7 @@ fun AICoachScreen(
                     Text(
                         if (hasPlan) state.userPlan.displayName
                         else if (state.isBillingLoaded) theme.t("${state.aiCredits} kredi", "${state.aiCredits} credits") else "…",
-                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1
+                        color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1
                     )
                 }
             }
@@ -343,14 +343,14 @@ fun AICoachScreen(
                 content = {
                     when (val ps = state.programStatus) {
                         is ProgramStatus.Loading -> {
-                            Text(theme.t("Program oluşturuluyor...", "Creating program..."), color = Sinema.textSecondary(theme), fontSize = 13.sp)
+                            Text(theme.t("Program oluşturuluyor...", "Creating program..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm)
                             Spacer(Modifier.height(12.dp))
                             com.cosmibit.profitness.presentation.components.SinemaSkeletonBlock(Modifier.fillMaxWidth().height(14.dp))
                             Spacer(Modifier.height(8.dp))
                             com.cosmibit.profitness.presentation.components.SinemaSkeletonBlock(Modifier.fillMaxWidth(0.6f).height(14.dp))
                         }
                         is ProgramStatus.Error -> {
-                            Text(theme.ui(ps.msg), color = theme.supportAlert, fontSize = 13.sp)
+                            Text(theme.ui(ps.msg), color = theme.supportAlert, fontSize = SinemaType.BodySm)
                             Spacer(Modifier.height(12.dp))
                             ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
                         }
@@ -375,13 +375,13 @@ fun AICoachScreen(
                     .padding(top = 90.dp)
                     .shadow(
                         elevation = 10.dp,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(SinemaRadius.R12),
                         ambientColor = Color.Black.copy(0.44f),
                         spotColor = MaterialTheme.colorScheme.primary.copy(0.16f)
                     )
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(theme.bg2)
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(SinemaRadius.R12))
                     .clickable { viewModel.resetProgramStatus() }
                     .padding(16.dp)
             ) {
@@ -396,7 +396,7 @@ fun AICoachScreen(
                             "\"${ps.name}\" was added to your plans. You can find it in the Plan tab."
                         ),
                         color = theme.text0,
-                        fontSize = 13.sp,
+                        fontSize = SinemaType.BodySm,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f)
                     )
@@ -465,11 +465,11 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
             Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
                 Text(
                     theme.t("${summary.trainingDays} gün · ${summary.exercises} hareket", "${summary.trainingDays} days · ${summary.exercises} exercises"),
-                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                    color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
                 )
                 Text(
                     theme.t("${summary.exercises - summary.completed} kaldı", "${summary.exercises - summary.completed} left"),
-                    color = Color.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium
+                    color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
                 )
             }
         } else {
@@ -493,8 +493,8 @@ private fun ProgramNameField(value: String, onValueChange: (String) -> Unit, the
     OutlinedTextField(
         value         = value,
         onValueChange = onValueChange,
-        label         = { Text(theme.t("Program Adı", "Program Name"), fontSize = 12.sp) },
-        placeholder   = { Text(theme.t("AI Koç Programı", "AI Coach Program"), fontSize = 12.sp, color = theme.text2.copy(0.5f)) },
+        label         = { Text(theme.t("Program Adı", "Program Name"), fontSize = SinemaType.Caption) },
+        placeholder   = { Text(theme.t("AI Koç Programı", "AI Coach Program"), fontSize = SinemaType.Caption, color = theme.text2.copy(0.5f)) },
         singleLine    = true,
         modifier      = Modifier.fillMaxWidth(),
         colors        = OutlinedTextFieldDefaults.colors(
@@ -544,7 +544,7 @@ private fun SanctuaryMessage(
                     Text(
                         text       = msg.text,
                         color      = theme.effectiveOnAccentColor,
-                        fontSize   = 15.sp,
+                        fontSize   = SinemaType.BodyLg,
                         lineHeight = 23.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -553,7 +553,7 @@ private fun SanctuaryMessage(
                 Text(
                     text       = msg.timestamp,
                     color      = Color.White.copy(0.5f),
-                    fontSize   = 10.sp,
+                    fontSize   = SinemaType.Caption,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -581,7 +581,7 @@ private fun SanctuaryMessage(
                 Text(
                     "AI Koç",
                     color         = Color.White.copy(0.7f),
-                    fontSize      = 11.sp,
+                    fontSize      = SinemaType.Caption,
                     fontWeight    = FontWeight.ExtraBold,
                     letterSpacing = 0.sp,
                     modifier      = Modifier.padding(start = 4.dp, bottom = 4.dp)
@@ -597,7 +597,7 @@ private fun SanctuaryMessage(
                         Text(
                             text          = msg.text,
                             color         = Color.White,
-                            fontSize      = 14.sp,
+                            fontSize      = SinemaType.Body,
                             lineHeight    = 22.sp,
                             fontWeight    = FontWeight.Normal,
                             letterSpacing = 0.sp
@@ -614,7 +614,7 @@ private fun SanctuaryMessage(
                     Text(
                         text       = msg.timestamp,
                         color      = Color.White.copy(0.5f),
-                        fontSize   = 10.sp,
+                        fontSize   = SinemaType.Caption,
                         fontWeight = FontWeight.Medium
                     )
                     IconButton(
@@ -643,7 +643,7 @@ private fun SanctuaryMessage(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Rounded.FitnessCenter, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(11.dp))
-                                Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -697,21 +697,21 @@ private fun SanctuaryInput(
     val sendActive = value.isNotBlank() && !isTyping
     SinemaCapsule(
         modifier = Modifier.fillMaxWidth(),
-        height = 52.dp, shape = RoundedCornerShape(26.dp),
+        height = 52.dp, shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp)
     ) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (value.isEmpty()) {
                 Text(
                     theme.t("AI Koç'a bir şey sor…", "Ask AI Coach anything…"),
-                    color = Color.White.copy(0.6f), fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                    color = Color.White.copy(0.6f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
-                textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.Medium),
                 cursorBrush = SolidColor(accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
@@ -792,7 +792,7 @@ private fun SessionHistorySheet(
             ) { fg ->
                 Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(theme.t("Yeni Sohbet", "New Chat"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(theme.t("Yeni Sohbet", "New Chat"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -812,7 +812,7 @@ private fun SessionHistorySheet(
             ) {
                 items(sessions, key = { it.id }) { session ->
                     val isActive = session.id == currentId
-                    val rowShape = RoundedCornerShape(20.dp)
+                    val rowShape = RoundedCornerShape(SinemaRadius.R20)
                     val accent = theme.effectiveAccentColor
                     val fg = if (isActive) theme.effectiveOnAccentColor else Sinema.text(theme)
                     val fg2 = if (isActive) theme.effectiveOnAccentColor.copy(0.7f) else Sinema.textSecondary(theme)
@@ -831,7 +831,7 @@ private fun SessionHistorySheet(
                             Text(
                                 text     = session.title,
                                 color    = fg,
-                                fontSize = 14.sp,
+                                fontSize = SinemaType.Body,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -840,7 +840,7 @@ private fun SessionHistorySheet(
                             Text(
                                 text     = formatSessionDate(session.updatedAt, theme),
                                 color    = fg2,
-                                fontSize = 11.sp,
+                                fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.Medium
                             )
                         }

@@ -136,7 +136,7 @@ fun WeightTrackingScreen(
                             ) { fg ->
                                 Icon(Icons.Rounded.Add, null, tint = fg, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(theme.t("Kilo ekle", "Add weight"), color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                                Text(theme.t("Kilo ekle", "Add weight"), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                             }
                         }
                     )
@@ -228,7 +228,7 @@ private fun WeightHero(
             ) { fg ->
                 Icon(if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown, null, tint = fg, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
     }
@@ -245,7 +245,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(horizontal = 16.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -282,7 +282,7 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -290,7 +290,7 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
                 theme.t("Son 90 gün", "Last 90 days").sinemaUpper(theme),
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
             )
-            Text(theme.t("${points.size} ölçüm", "${points.size} entries"), color = Sinema.textSecondary(theme), fontSize = 12.sp)
+            Text(theme.t("${points.size} ölçüm", "${points.size} entries"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -353,9 +353,9 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
 
         Spacer(Modifier.height(6.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            Text(points.firstOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = 11.sp)
+            Text(points.firstOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
             Spacer(Modifier.weight(1f))
-            Text(points.lastOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = 11.sp)
+            Text(points.lastOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -378,7 +378,7 @@ private fun AiInsightCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -391,7 +391,7 @@ private fun AiInsightCard(
                         if (credits <= 0) theme.t("Enerjin bitti · Enerji yükle veya plana yükselt", "Out of energy · Get more energy or upgrade")
                         else theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
                         color = if (credits <= 0) Sinema.text(theme) else Sinema.textSecondary(theme),
-                        fontSize = 12.sp, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
+                        fontSize = SinemaType.Caption, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
@@ -422,16 +422,16 @@ private fun AiInsightCard(
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = accent, strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
-                Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = Sinema.textSecondary(theme), fontSize = 14.sp)
+                Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
             }
             insight.isBlank() -> Text(
                 theme.t(
                     "En az 2 ölçüm eklediğinde AI koçun trendi analiz edecek.",
                     "Your AI coach will analyze the trend after you add at least 2 entries."
                 ),
-                color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
             )
-            else -> Text(insight, color = Sinema.text(theme), fontSize = 14.sp, lineHeight = 21.sp)
+            else -> Text(insight, color = Sinema.text(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
         }
     }
 }
@@ -458,7 +458,7 @@ private fun WeightEntryRow(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .sinemaClickable(onClick = onEdit, scale = 0.98f)
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(start = 18.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -466,11 +466,11 @@ private fun WeightEntryRow(
             "${"%.1f".format(entry.weightKg)}", color = Sinema.text(theme),
             style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         )
-        Text(" kg", color = Sinema.textSecondary(theme), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(" kg", color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(dateStr, color = Sinema.textSecondary(theme), fontSize = 12.sp)
-            if (entry.note.isNotBlank()) Text(entry.note, color = Sinema.textSecondary(theme), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(dateStr, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+            if (entry.note.isNotBlank()) Text(entry.note, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (!entry.synced) {
             Icon(Icons.Rounded.CloudOff, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(14.dp))
@@ -513,7 +513,7 @@ private fun EmptyWeightState(theme: AppThemeState, onAdd: () -> Unit) {
         Spacer(Modifier.height(18.dp))
         Text(
             theme.t("Henüz ölçüm yok", "No entries yet"), color = Sinema.text(theme),
-            fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
+            fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -521,7 +521,7 @@ private fun EmptyWeightState(theme: AppThemeState, onAdd: () -> Unit) {
                 "İlk kilonu kaydet; AI koçun trendini analiz edebilmesi için en az 2 ölçüm gerekir.",
                 "Save your first weight; your AI coach needs at least 2 entries to analyze your trend."
             ),
-            color = Sinema.textSecondary(theme), fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp
+            color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, textAlign = TextAlign.Center, lineHeight = 20.sp
         )
         Spacer(Modifier.height(24.dp))
         SinemaGoButton(

@@ -154,13 +154,13 @@ fun LeaderboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 12.dp)
-                            .sinemaCard(theme, RoundedCornerShape(24.dp))
+                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
                             theme.t("Sıralama yüklenemedi", "Could not load leaderboard") + "\n${state.error}",
-                            color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp
+                            color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
                         )
                         SinemaGoButton(
                             label = theme.t("Tekrar dene", "Try again"), icon = Icons.Rounded.Refresh,
@@ -196,7 +196,7 @@ fun LeaderboardScreen(
                                     )
                                 },
                                 color    = Sinema.textSecondary(theme),
-                                fontSize = 14.sp, lineHeight = 20.sp,
+                                fontSize = SinemaType.Body, lineHeight = 20.sp,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -268,7 +268,7 @@ private fun Podium(rows: List<LeaderboardRow>, tab: LeaderboardTab, theme: AppTh
 private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppThemeState, modifier: Modifier = Modifier) {
     val accent = theme.effectiveAccentColor
     val first = row.position == 1L
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R28)
     val gold = theme.accent3Color   // c3: 1. podyum işareti
     val fg = Sinema.text(theme)
     val fg2 = if (first) theme.accent3TextColor else Sinema.textSecondary(theme)
@@ -288,7 +288,7 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
         RingAvatar(row, if (first) 64.dp else 52.dp, if (first) gold else if (row.isMe) accent else Sinema.line(theme), theme)
         Spacer(Modifier.height(10.dp))
         Text(
-            row.displayName, color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+            row.displayName, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold,
             maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(4.dp))
@@ -296,10 +296,10 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
             row.score.toString(), color = fg,
             style = Sinema.Metric.copy(fontSize = if (first) 32.sp else 26.sp), maxLines = 1
         )
-        Text(scoreUnit(tab, theme), color = fg2, fontSize = 11.sp, maxLines = 1)
+        Text(scoreUnit(tab, theme), color = fg2, fontSize = SinemaType.Caption, maxLines = 1)
         if (row.isMe) {
             Spacer(Modifier.height(6.dp))
-            Text(theme.t("SEN", "YOU"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            Text(theme.t("SEN", "YOU"), color = accent, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
         }
     }
 }
@@ -322,7 +322,7 @@ private fun MyPositionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(28.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -342,7 +342,7 @@ private fun MyPositionCard(
             else if (scope == LeaderboardScope.Friends)
                 theme.t("Arkadaş listen boş veya henüz yerleşmedin", "Your friends list is empty or you are not ranked yet")
             else theme.t("Henüz sıralama yok", "No ranking yet"),
-            color = Sinema.textSecondary(theme), fontSize = 13.sp
+            color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm
         )
     }
 }
@@ -358,7 +358,7 @@ private fun LeaderboardRowItem(
 ) {
     val accent = theme.effectiveAccentColor
     val me = row.isMe
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R24)
     val fg = Sinema.text(theme)
     val fg2 = Sinema.textSecondary(theme)
 
@@ -371,7 +371,7 @@ private fun LeaderboardRowItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "#${row.position}", color = fg2, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+            "#${row.position}", color = fg2, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.width(44.dp), maxLines = 1
         )
         RingAvatar(row, 44.dp, if (me) accent else Sinema.line(theme), theme)
@@ -379,15 +379,15 @@ private fun LeaderboardRowItem(
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    row.displayName, color = fg, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                    row.displayName, color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
                 )
                 if (me) {
                     Spacer(Modifier.width(8.dp))
-                    Text(theme.t("SEN", "YOU"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text(theme.t("SEN", "YOU"), color = accent, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }
             }
-            Text(scoreUnit(tab, theme), color = fg2, fontSize = 12.sp)
+            Text(scoreUnit(tab, theme), color = fg2, fontSize = SinemaType.Caption)
         }
         Text(row.score.toString(), color = fg, style = Sinema.Title.copy(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold))
     }

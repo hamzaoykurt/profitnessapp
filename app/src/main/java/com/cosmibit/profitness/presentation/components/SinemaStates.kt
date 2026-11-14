@@ -57,6 +57,8 @@ import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.supportAlert
 import com.cosmibit.profitness.core.theme.t
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 
 /**
  * ORTAK DURUM BİLEŞENLERİ (boş / hata / iskelet) — Sinema dili, tek koyu tema, cam C.
@@ -85,13 +87,13 @@ fun SinemaEmptyState(
         }
         Spacer(Modifier.height(18.dp))
         Text(
-            title, color = Sinema.text(theme), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold,
+            title, color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold,
             lineHeight = 26.sp, textAlign = TextAlign.Center
         )
         if (body != null) {
             Spacer(Modifier.height(8.dp))
             Text(
-                body, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp,
+                body, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp,
                 textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 320.dp)
             )
         }
@@ -118,7 +120,7 @@ fun SinemaErrorState(
         Icon(Icons.Rounded.ErrorOutline, null, tint = theme.supportAlert, modifier = Modifier.size(32.dp))
         Spacer(Modifier.height(14.dp))
         Text(
-            message, color = Sinema.text(theme), fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            message, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.SemiBold,
             lineHeight = 21.sp, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 320.dp)
         )
         Spacer(Modifier.height(20.dp))
@@ -126,7 +128,7 @@ fun SinemaErrorState(
             Icon(Icons.Rounded.Refresh, null, tint = fg, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                theme.t("TEKRAR DENE", "TRY AGAIN"), color = fg, fontSize = 13.sp,
+                theme.t("TEKRAR DENE", "TRY AGAIN"), color = fg, fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, maxLines = 1
             )
         }
@@ -138,7 +140,7 @@ fun SinemaErrorState(
  * hareket azaltmada (animasyon ölçeği 0) sabit düz blok. Süre: [SinemaMotion.Slow] × 2 — tek token'dan.
  */
 @Composable
-fun Modifier.sinemaShimmer(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
+fun Modifier.sinemaShimmer(shape: Shape = RoundedCornerShape(SinemaRadius.R12)): Modifier {
     val base = Color.White.copy(0.06f)
     if (!rememberSinemaMotionOn()) return this.clip(shape).background(base)
     val phase by rememberInfiniteTransition(label = "sinema_skeleton").animateFloat(
@@ -161,14 +163,14 @@ fun Modifier.sinemaShimmer(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
 
 /** Tek iskelet bloğu (metin çizgisi, görsel, rozet). */
 @Composable
-fun SinemaSkeletonBlock(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(10.dp)) {
+fun SinemaSkeletonBlock(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(SinemaRadius.R12)) {
     Box(modifier.sinemaShimmer(shape))
 }
 
 /** Kart iskeleti (fotoğraflı liste kartı / ana kart): tam genişlik, [height] yüksek, 24dp köşe. */
 @Composable
 fun SinemaSkeletonCard(modifier: Modifier = Modifier, height: Dp = 200.dp) {
-    Box(modifier.fillMaxWidth().height(height).sinemaShimmer(RoundedCornerShape(24.dp)))
+    Box(modifier.fillMaxWidth().height(height).sinemaShimmer(RoundedCornerShape(SinemaRadius.R24)))
 }
 
 /** Satır iskeleti: yuvarlak avatar + iki metin çizgisi. */
@@ -189,7 +191,7 @@ fun SinemaSkeletonRow(modifier: Modifier = Modifier) {
 @Composable
 fun SinemaSkeletonNumber(modifier: Modifier = Modifier, width: Dp = 96.dp) {
     Column(modifier) {
-        SinemaSkeletonBlock(Modifier.width(width).height(40.dp), RoundedCornerShape(12.dp))
+        SinemaSkeletonBlock(Modifier.width(width).height(40.dp), RoundedCornerShape(SinemaRadius.R12))
         Spacer(Modifier.height(8.dp))
         SinemaSkeletonBlock(Modifier.width(width * 0.6f).height(11.dp))
     }

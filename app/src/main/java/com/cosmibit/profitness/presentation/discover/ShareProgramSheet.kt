@@ -56,6 +56,8 @@ import com.cosmibit.profitness.core.theme.text0
 import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.performanceElevatedSurface
+import com.cosmibit.profitness.core.theme.SinemaType
+import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.domain.model.Program
@@ -134,7 +136,7 @@ fun ShareProgramSheet(
             ) {
                 // ── 1. Adım: Program seç ─────────────────────────────────────
                 Text(theme.t("PAYLAŞILACAK PROGRAMI SEÇ", "SELECT PROGRAM TO SHARE"),
-                    color = theme.text0, fontSize = 18.sp,
+                    color = theme.text0, fontSize = SinemaType.Title,
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -143,7 +145,7 @@ fun ShareProgramSheet(
                         "Choose one of your programs, then add a title/description and share it with the community. The share stays fixed as a snapshot, even if you edit the program later."
                     ),
                     color    = theme.text2.copy(0.7f),
-                    fontSize = 12.sp,
+                    fontSize = SinemaType.Caption,
                     lineHeight = 17.sp
                 )
                 Spacer(Modifier.height(16.dp))
@@ -175,13 +177,13 @@ fun ShareProgramSheet(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(theme.bg2.copy(0.7f))
-                            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(14.dp))
+                            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(SinemaRadius.R12))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold) }
                 }
             }
         } else {
@@ -194,14 +196,14 @@ fun ShareProgramSheet(
             ) {
                 // ── 2. Adım: Meta form ───────────────────────────────────────
                 Text(theme.t("PROGRAMI PAYLAŞ", "SHARE PROGRAM"),
-                    color = theme.text0, fontSize = 18.sp,
+                    color = theme.text0, fontSize = SinemaType.Title,
                     fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(accent.copy(0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -211,7 +213,7 @@ fun ShareProgramSheet(
                     Text(
                         text = selectedProgram.name,
                         color = accent,
-                        fontSize = 12.sp,
+                        fontSize = SinemaType.Caption,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         modifier = Modifier.weight(1f)
@@ -221,7 +223,7 @@ fun ShareProgramSheet(
                         Text(
                             text = theme.t("Değiştir", "Change"),
                             color = theme.text2.copy(0.8f),
-                            fontSize = 11.sp,
+                            fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
@@ -235,7 +237,7 @@ fun ShareProgramSheet(
                     Text(
                         text = theme.t("Bu program zaten toplulukta yayında.", "This program is already live in the community."),
                         color = accent.copy(0.82f),
-                        fontSize = 11.sp,
+                        fontSize = SinemaType.Caption,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -250,7 +252,7 @@ fun ShareProgramSheet(
                     placeholder = theme.t("güç, hipertrofi, başlangıç", "strength, hypertrophy, beginner"))
                 Spacer(Modifier.height(12.dp))
 
-                Text(theme.t("SEVİYE", "LEVEL"), color = theme.text2.copy(0.65f), fontSize = 11.sp,
+                Text(theme.t("SEVİYE", "LEVEL"), color = theme.text2.copy(0.65f), fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -279,13 +281,13 @@ fun ShareProgramSheet(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(theme.bg2)
-                            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(14.dp))
+                            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(SinemaRadius.R12))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(theme.t("VAZGEÇ", "CANCEL"), color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold) }
                     Spacer(Modifier.width(10.dp))
                     Box(
                         modifier = Modifier
@@ -294,7 +296,7 @@ fun ShareProgramSheet(
                                 scaleX = confirmScale
                                 scaleY = confirmScale
                             }
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(if (canSubmit) accent else theme.bg2.copy(0.42f))
                             .clickable(
                                 enabled = canSubmit,
@@ -317,7 +319,7 @@ fun ShareProgramSheet(
                     ) {
                         Text(theme.t("PAYLAŞ", "SHARE"),
                             color = if (canSubmit) theme.effectiveOnAccentColor else theme.text2.copy(0.4f),
-                            fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                            fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                     }
                 }
             }
@@ -338,7 +340,7 @@ private fun ProgramPickerRow(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
     val workoutDays = program.days.count { !it.isRestDay }
     val totalEx = program.days.sumOf { it.exercises.size }
 
@@ -372,7 +374,7 @@ private fun ProgramPickerRow(
                 Text(
                     text = program.name,
                     color = if (alreadyShared) theme.text2.copy(0.58f) else theme.text0,
-                    fontSize = 14.sp,
+                    fontSize = SinemaType.Body,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -394,7 +396,7 @@ private fun ProgramPickerRow(
                     "$workoutDays workout days · $totalEx exercises"
                 ),
                 color = theme.text2.copy(0.7f),
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -420,7 +422,7 @@ private fun ProgramStatusBadge(label: String, color: Color) {
         Text(
             label,
             color = color,
-            fontSize = 9.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.8.sp
         )
@@ -433,19 +435,19 @@ private fun EmptyProgramsNotice() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.bg2.copy(0.4f))
-            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(14.dp))
+            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(SinemaRadius.R12))
             .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(theme.t("Paylaşılabilir programın yok", "You have no programs to share"),
-                color = theme.text0, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                color = theme.text0, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
                 text = theme.t("Önce Plan sekmesinde bir program oluştur.", "Create a program in the Plan tab first."),
-                color = theme.text2.copy(0.7f), fontSize = 12.sp
+                color = theme.text2.copy(0.7f), fontSize = SinemaType.Caption
             )
         }
     }
@@ -462,7 +464,7 @@ private fun LabeledField(
 ) {
     val theme = LocalAppTheme.current
     Column {
-        Text(label.uppercase(), color = theme.text2.copy(0.65f), fontSize = 11.sp,
+        Text(label.uppercase(), color = theme.text2.copy(0.65f), fontSize = SinemaType.Caption,
             fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
         Spacer(Modifier.height(4.dp))
         OutlinedTextField(
@@ -473,7 +475,7 @@ private fun LabeledField(
             singleLine = !multiline,
             minLines = if (multiline) 2 else 1,
             maxLines = if (multiline) 4 else 1,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(SinemaRadius.R12),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary.copy(0.70f),
                 unfocusedBorderColor = theme.stroke.copy(0.70f),
@@ -496,7 +498,7 @@ private fun DifficultyChip(
 ) {
     val theme = LocalAppTheme.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(SinemaRadius.R12)
     Row(
         modifier = Modifier
             .clip(shape)
@@ -506,6 +508,6 @@ private fun DifficultyChip(
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(label, color = if (selected) accent else theme.text2.copy(0.75f),
-            fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
     }
 }

@@ -57,7 +57,7 @@ internal fun ActivityMetricsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(12.dp)
     ) {
         Text(
@@ -156,8 +156,8 @@ private fun MetricDisplayTile(
     Row(
         modifier = modifier
             .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .insetControlSurface(accent, theme, RoundedCornerShape(13.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
+            .insetControlSurface(accent, theme, RoundedCornerShape(SinemaRadius.R12))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -181,7 +181,7 @@ private fun MetricDisplayTile(
             Text(
                 text = label,
                 color = theme.supportRest,
-                fontSize = 10.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.7.sp
             )
@@ -189,7 +189,7 @@ private fun MetricDisplayTile(
             Text(
                 text = value,
                 color = if (isDone) accent else theme.text0,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
@@ -217,7 +217,7 @@ internal fun ActivityTimerSetupPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(12.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -276,7 +276,7 @@ private fun TimerModeChip(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
     ) { fg ->
         Text(
-            text = label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+            text = label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
         )
     }
@@ -318,7 +318,7 @@ internal fun CompleteActionButton(
         Spacer(Modifier.width(8.dp))
         Text(
             text = if (isCompleted) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE"),
-            color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1
+            color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1
         )
     }
 }
@@ -340,7 +340,7 @@ internal fun TimedSetRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(24.dp))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
             .padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -359,7 +359,7 @@ internal fun TimedSetRow(
             Column(Modifier.widthIn(min = 68.dp).weight(0.7f)) {
                 Text("SET $setNumber", color = if (isDone) accent else Sinema.text(theme), style = Sinema.Label)
                 Spacer(Modifier.height(2.dp))
-                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(theme.t("$durationDisplay sn", "$durationDisplay sec"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(8.dp))
             SetToggleButton(isDone = isDone, accent = accent, onToggle = onToggle)
@@ -434,7 +434,7 @@ internal fun SetRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .insetTrackSurface(theme, RoundedCornerShape(14.dp), fill = theme.bg0)
+            .insetTrackSurface(theme, RoundedCornerShape(SinemaRadius.R12), fill = theme.bg0)
             .then(if (isDone) Modifier.background(theme.supportSuccess.copy(0.10f)) else Modifier)
             .padding(10.dp)
     ) {
@@ -461,14 +461,14 @@ internal fun SetRow(
                 Text(
                     text = "Set $setNumber",
                     color = if (isDone) theme.supportSuccess else theme.text0,
-                    fontSize = 13.sp,
+                    fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = theme.t("$reps tekrar", "$reps reps"),
                     color = theme.text1,
-                    fontSize = 13.sp,
+                    fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -490,7 +490,7 @@ internal fun SetRow(
             Text(
                 text = lastText,
                 color = theme.text1,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 12.dp)
             )
@@ -521,7 +521,7 @@ internal fun WeightInputField(
         }
         // Cam giriş (çizgisiz): dev rakam + küçük birim
         SinemaCapsule(
-            modifier = Modifier.fillMaxWidth(), height = 60.dp, shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth(), height = 60.dp, shape = RoundedCornerShape(SinemaRadius.R20),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)
         ) { fg ->
             val digitColor = if (isDone) accent else fg
@@ -561,7 +561,7 @@ internal fun WeightInputField(
             Text(
                 text = suffix,
                 color = if (isDone) accent else fg.copy(0.6f),
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.dp)
             )
@@ -620,12 +620,12 @@ private fun RestTimerChip(
         modifier = Modifier
             .heightIn(min = 44.dp)
             .widthIn(min = 112.dp)
-            .clip(RoundedCornerShape(13.dp))
+            .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(chipBackground)
             .border(
                 1.dp,
                 chipColor.copy(if (isIdle) 0.62f else 0.74f),
-                RoundedCornerShape(13.dp)
+                RoundedCornerShape(SinemaRadius.R12)
             )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -658,7 +658,7 @@ private fun RestTimerChip(
                 else      -> idleLabel
             },
             color = if (isIdle) theme.text0 else chipColor,
-            fontSize = 12.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.Black,
             letterSpacing = if (isIdle) 0.5.sp else 0.2.sp,
             maxLines = 1,
@@ -674,7 +674,7 @@ fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSe
     val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .background(theme.bg0.copy(0.54f), RoundedCornerShape(12.dp))
+            .background(theme.bg0.copy(0.54f), RoundedCornerShape(SinemaRadius.R12))
             .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

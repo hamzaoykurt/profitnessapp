@@ -193,7 +193,7 @@ private fun AuthLoadingSplash() {
                     scaleY = iconScale
                     alpha  = iconAlpha
                 }
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R20))
         )
     }
 }
@@ -252,7 +252,7 @@ private fun LoginScreen(state: AuthState, viewModel: AuthViewModel) {
                 Text(
                     theme.t("Şifremi Unuttum", "Forgot Password"),
                     color    = Sinema.textSecondary(theme),
-                    fontSize = 13.sp,
+                    fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -455,7 +455,7 @@ private fun OtpVerifyScreen(
                 "We sent a 6-digit verification code to\n$email."
             ),
             color      = Color.White.copy(0.75f),
-            fontSize   = 14.sp,
+            fontSize   = SinemaType.Body,
             fontWeight = FontWeight.Medium,
             textAlign  = TextAlign.Center,
             lineHeight = 22.sp
@@ -495,7 +495,7 @@ private fun OtpVerifyScreen(
             Text(
                 text     = if (state.resendCooldown) theme.t("Kod gönderildi (30sn bekle)", "Code sent (wait 30s)") else theme.t("Kodu tekrar gönder", "Resend code"),
                 color    = if (state.resendCooldown) Color.White.copy(0.5f) else accent,
-                fontSize = 14.sp,
+                fontSize = SinemaType.Body,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -507,7 +507,7 @@ private fun OtpVerifyScreen(
         ) {
             Icon(Icons.Rounded.Info, null, tint = Color.White.copy(0.6f), modifier = Modifier.size(13.dp))
             Spacer(Modifier.width(6.dp))
-            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = Color.White.copy(0.6f), fontSize = 11.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = Color.White.copy(0.6f), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -521,7 +521,7 @@ private fun OtpInputRow(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard       = LocalSoftwareKeyboardController.current
-    val digitShape     = RoundedCornerShape(18.dp)
+    val digitShape     = RoundedCornerShape(SinemaRadius.R16)
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -563,7 +563,7 @@ private fun OtpInputRow(
                         Text(
                             text       = char.toString(),
                             color      = fg,
-                            fontSize   = 24.sp,
+                            fontSize   = SinemaType.Headline,
                             fontWeight = FontWeight.ExtraBold
                         )
                     } else if (isActive) {
@@ -618,7 +618,7 @@ private fun EmailSentScreen(
                 "We sent a password reset link to $email.\n\nTap the link to set your new password."
             ),
             color      = Color.White.copy(0.75f),
-            fontSize   = 15.sp,
+            fontSize   = SinemaType.BodyLg,
             fontWeight = FontWeight.Medium,
             lineHeight = 24.sp,
             textAlign  = TextAlign.Center
@@ -640,7 +640,7 @@ private fun EmailSentScreen(
         ) {
             Icon(Icons.Rounded.Info, null, tint = Color.White.copy(0.6f), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = Color.White.copy(0.6f), fontSize = 11.sp)
+            Text(theme.t("Spam/junk klasörünü de kontrol et.", "Also check your spam/junk folder."), color = Color.White.copy(0.6f), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -653,7 +653,7 @@ private fun AuthIconCapsule(icon: ImageVector, modifier: Modifier = Modifier) {
         modifier = modifier.width(88.dp),
         selected = true,
         height = 88.dp,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = PaddingValues(0.dp),
         horizontalArrangement = Arrangement.Center
     ) { fg ->
@@ -787,7 +787,7 @@ private fun AuthHero(
                 Text(
                     text     = subtitle,
                     color    = Color.White.copy(0.8f),
-                    fontSize = 13.sp,
+                    fontSize = SinemaType.BodySm,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 18.sp
                 )
@@ -807,14 +807,14 @@ private fun AuthBrandHeader(modifier: Modifier = Modifier) {
             contentDescription = "Profitness",
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(13.dp))
+                .clip(RoundedCornerShape(SinemaRadius.R12))
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 "PROFITNESS",
                 color = Color.White,
-                fontSize = 13.sp,
+                fontSize = SinemaType.BodySm,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.14.em
             )
@@ -823,7 +823,7 @@ private fun AuthBrandHeader(modifier: Modifier = Modifier) {
             Text(
                 text = "v${BuildConfig.VERSION_NAME}",
                 color = Color.White,
-                fontSize = 11.sp,
+                fontSize = SinemaType.Caption,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.08.em
             )
@@ -994,7 +994,7 @@ fun GlassInputField(
                 keyboardActions     = KeyboardActions(onAny = { onImeAction() }),
                 interactionSource   = interactionSource,
                 singleLine          = true,
-                textStyle           = TextStyle(color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                textStyle           = TextStyle(color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold),
                 cursorBrush         = SolidColor(accent),
                 modifier  = Modifier
                     .weight(1f)
@@ -1054,7 +1054,7 @@ fun ObsidianButton(
         height = 52.dp,
         horizontalArrangement = Arrangement.Center
     ) { fg ->
-        Text(text, color = fg, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(text, color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 
@@ -1115,7 +1115,7 @@ internal fun AuthFeedback(
                     ) { fg ->
                         Icon(Icons.Rounded.ErrorOutline, null, tint = CriticalRed, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(text = it, color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+                        Text(text = it, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
                     }
                 }
             }
@@ -1138,7 +1138,7 @@ internal fun AuthFeedback(
                     ) {
                         Icon(icon, null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -1180,7 +1180,7 @@ internal fun PasswordStrengthBar(password: String) {
         Text(
             label,
             color = if (strength == 4) theme.accentTextColor else Sinema.textSecondary(theme),
-            fontSize = 11.sp,
+            fontSize = SinemaType.Caption,
             fontWeight = FontWeight.SemiBold
         )
     }

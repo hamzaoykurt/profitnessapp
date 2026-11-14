@@ -25,7 +25,7 @@ import com.cosmibit.profitness.core.theme.*
 @Composable
 fun ForgeCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(20.dp),
+    shape: Shape = RoundedCornerShape(SinemaRadius.R20),
     glowColor: Color = Color.Transparent,
     elevation: Dp = 8.dp,
     glowStrength: Float = 1f,
@@ -45,7 +45,7 @@ fun ForgeCard(
 @Composable
 fun ForgeCardPro(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(24.dp),
+    shape: Shape = RoundedCornerShape(SinemaRadius.R24),
     accentColor: Color = Lime,
     content: @Composable () -> Unit
 ) = ForgeCard(modifier, shape, accentColor, 9.dp, 0.8f, content)
@@ -55,13 +55,13 @@ fun ForgeCardSmall(
     modifier: Modifier = Modifier,
     glowColor: Color = Color.Transparent,
     content: @Composable () -> Unit
-) = ForgeCard(modifier, RoundedCornerShape(16.dp), glowColor, 6.dp, 0.55f, content)
+) = ForgeCard(modifier, RoundedCornerShape(SinemaRadius.R16), glowColor, 6.dp, 0.55f, content)
 
 /** Opaque content surface. Accent is accepted for API compatibility, not decoration. */
 fun Modifier.premiumSolidSurface(
     accent: Color,
     theme: AppThemeState,
-    shape: Shape = RoundedCornerShape(20.dp),
+    shape: Shape = RoundedCornerShape(SinemaRadius.R20),
     elevation: Dp = 8.dp
 ): Modifier = composed {
     this.performanceElevatedSurface(theme, shape = shape, elevated = elevation > 0.dp, accent = accent)
@@ -71,14 +71,14 @@ fun Modifier.premiumSolidSurface(
 fun Modifier.glassCard(
     accent: Color,
     theme: AppThemeState,
-    shape: Shape = RoundedCornerShape(20.dp)
+    shape: Shape = RoundedCornerShape(SinemaRadius.R20)
 ): Modifier = premiumSolidSurface(accent, theme, shape)
 
 /** Quiet, opaque floating chrome. No backdrop blur or content bleeding through. */
 fun Modifier.floatingGlassSurface(
     accent: Color,
     theme: AppThemeState,
-    shape: Shape = RoundedCornerShape(18.dp),
+    shape: Shape = RoundedCornerShape(SinemaRadius.R16),
     elevation: Dp = 10.dp
 ): Modifier = composed {
     this
@@ -97,7 +97,7 @@ fun Modifier.floatingGlassSurface(
 fun Modifier.insetControlSurface(
     accent: Color,
     theme: AppThemeState,
-    shape: Shape = RoundedCornerShape(10.dp)
+    shape: Shape = RoundedCornerShape(SinemaRadius.R12)
 ): Modifier = composed {
     this.performanceInsetSurface(theme, shape)
 }
