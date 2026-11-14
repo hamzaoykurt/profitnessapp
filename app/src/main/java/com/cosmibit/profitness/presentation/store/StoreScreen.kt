@@ -30,6 +30,9 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaFitText
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.data.store.BillingProduct
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
@@ -280,7 +283,10 @@ fun StoreScreen(
                     (slideInHorizontally(tween(SinemaMotion.Standard)) { dir * it / 3 } + fadeIn(tween(SinemaMotion.Standard))) togetherWith
                     (slideOutHorizontally(tween(SinemaMotion.Standard)) { -dir * it / 4 } + fadeOut(tween(SinemaMotion.Quick)))
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = SinemaLayout.ContentMaxList)
+                    .fillMaxSize(),
                 label    = "store_tab"
             ) { tab ->
                 when (tab) {
@@ -563,11 +569,14 @@ private fun StoreTopBar(
 ) {
     val accent = theme.effectiveAccentColor
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
+    val coverH = SinemaLayout.cover(wc.heightDp, 0.275f, 200.dp, 280.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp + topInset)
+            .height(coverH + topInset)
     ) {
         // Salon fotoğrafı; yüklenmezse SinemaScene
         Box(Modifier.fillMaxSize().photoFadeToBackdrop(90.dp)) {
@@ -597,7 +606,7 @@ private fun StoreTopBar(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
+                .padding(start = gutter, end = gutter, top = 10.dp, bottom = 18.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -658,7 +667,7 @@ private fun SubscriptionTab(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
+        contentPadding = PaddingValues(start = SinemaLayout.gutter(LocalWindowClass.current.widthDp), end = SinemaLayout.gutter(LocalWindowClass.current.widthDp), top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (state.billingSandboxAvailable) {
@@ -827,9 +836,11 @@ private fun PlanOfferCard(
 
         Spacer(Modifier.height(if (selected) 14.dp else 10.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                price, color = textMain, fontSize = priceSize, fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.04).em, maxLines = 1,
+            SinemaFitText(
+                text = price,
+                style = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em),
+                color = textMain,
+                baseSp = priceSize.value,
                 modifier = Modifier.weight(1f, fill = false)
             )
             if (period.isNotEmpty()) {
@@ -1002,7 +1013,7 @@ private fun EnergyTab(
 ) {
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
-        contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
+        contentPadding      = PaddingValues(start = SinemaLayout.gutter(LocalWindowClass.current.widthDp), end = SinemaLayout.gutter(LocalWindowClass.current.widthDp), top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {

@@ -83,6 +83,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import androidx.compose.material3.ModalBottomSheet
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
@@ -1046,14 +1047,14 @@ private fun ChallengeCard(
                     )
                 }
                 Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
-                    Text(
+                    SinemaFitText(
                         challengeNumberFormat.format(c.targetValue),
-                        style = Sinema.Display.copy(fontSize = if (featured) 72.sp else 56.sp),
-                        color = Color.White, maxLines = 1
+                        style = Sinema.Display, baseSp = if (featured) 72f else 56f, floorSp = 32f,
+                        color = Color.White, modifier = Modifier.weight(1f, fill = false)
                     )
                     Text(
                         unit, style = Sinema.Title.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
-                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                        color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                     )
                 }
                 val info = when {

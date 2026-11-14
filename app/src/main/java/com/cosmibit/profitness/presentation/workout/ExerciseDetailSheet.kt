@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
@@ -105,9 +107,7 @@ fun ExerciseDetailSheet(
 
     val videoUrl = exercise.videoUrl?.takeIf { it.isNotBlank() }
     val photoUrl = if (exercise.image.isNotBlank()) exercise.image else categoryImageUrl(exercise.category)
-    val imageRequest = remember(context, photoUrl) {
-        ImageRequest.Builder(context).data(photoUrl).size(1080, 1920).crossfade(false).build()
-    }
+    val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
     var expanded by remember { mutableStateOf(false) }
     var muted by remember { mutableStateOf(true) }
     var soundHintKey by remember { mutableIntStateOf(0) }
@@ -155,12 +155,20 @@ fun ExerciseDetailSheet(
                 if (videoUrl != null) {
                     SinemaVideo(url = videoUrl, posterUrl = photoUrl, playing = true, muted = muted, modifier = Modifier.fillMaxSize())
                 } else {
-                    AsyncImage(
-                        model = imageRequest,
-                        contentDescription = theme.t("Hareket gösterimi", "Movement demonstration"),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        // Istek boyutu = olculen boyut (ust sinir 2048px)
+                        val reqW = if (constraints.hasBoundedWidth && constraints.maxWidth > 0) constraints.maxWidth.coerceAtMost(2048) else 1080
+                        val reqH = if (constraints.hasBoundedHeight && constraints.maxHeight > 0) constraints.maxHeight.coerceAtMost(2048) else 1920
+                        val imageRequest = remember(context, photoUrl, reqW, reqH) {
+                            ImageRequest.Builder(context).data(photoUrl).size(reqW, reqH).crossfade(false).build()
+                        }
+                        AsyncImage(
+                            model = imageRequest,
+                            contentDescription = theme.t("Hareket gösterimi", "Movement demonstration"),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
             Box(
@@ -198,7 +206,7 @@ fun ExerciseDetailSheet(
                 onClick = onDismiss,
                 selected = false,
                 size = 44.dp,
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 8.dp)
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = gutter, top = 8.dp)
             )
 
             // ── Küçük cam bilgi kartı: ad + kas/ekipman çipleri + plan; yukarı çekince / dokununca panel açılır ──
@@ -215,9 +223,10 @@ fun ExerciseDetailSheet(
                 var drag by remember { mutableFloatStateOf(0f) }
                 Column(
                     Modifier
+                        .widthIn(max = SinemaLayout.ContentMaxReading)
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .padding(horizontal = gutter, vertical = 16.dp)
                         .sinemaCapsuleGlass(RoundedCornerShape(26.dp), fillTop = 0.16f, fillBottom = 0.10f)
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
@@ -279,6 +288,7 @@ fun ExerciseDetailSheet(
             ) {
                 Column(
                     Modifier
+                        .widthIn(max = SinemaLayout.ContentMaxReading)
                         .fillMaxWidth()
                         .fillMaxHeight(0.88f)
                         .sinemaGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), fillAlpha = 0.94f)
@@ -300,7 +310,7 @@ fun ExerciseDetailSheet(
                             .verticalScroll(rememberScrollState())
                             .navigationBarsPadding()
                     ) {
-            Column(Modifier.padding(horizontal = 20.dp)) {
+            Column(Modifier.padding(horizontal = gutter)) {
                 Spacer(Modifier.height(4.dp))
 
                 // ── Başlık bloğu: [kas haritası] başlık + çipler + REKOR ──

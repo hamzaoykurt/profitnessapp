@@ -67,6 +67,7 @@ import com.cosmibit.profitness.core.theme.accent2Color
 import com.cosmibit.profitness.core.theme.accent2TextColor
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
 import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
@@ -322,10 +323,10 @@ private fun PerformanceCover(
                         SectionLabel(theme.t("Bu hafta", "This week"))
                         Spacer(Modifier.height(10.dp))
                         com.cosmibit.profitness.core.theme.SinemaCount(thisWeek) { n ->
-                            Text(
+                            SinemaFitText(
                                 n.toString(),
-                                style = Sinema.Display.copy(fontSize = 112.sp, lineHeight = 0.9.em, letterSpacing = (-0.04).em),
-                                color = Sinema.White, maxLines = 1
+                                style = Sinema.Display.copy(lineHeight = 0.9.em, letterSpacing = (-0.04).em),
+                                baseSp = 112f, floorSp = 56f, color = Sinema.White
                             )
                         }
                         Spacer(Modifier.height(12.dp))
@@ -455,14 +456,14 @@ private fun RhythmSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Column {
+            Column(Modifier.weight(1f, fill = false)) {
                 SectionLabel(if (heroAvg) theme.t("Ortalama", "Average") else theme.t("En iyi hafta", "Best week"))
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
+                    SinemaFitText(
                         if (heroAvg) avgText else best.toString(),
-                        style = Sinema.Metric.copy(fontSize = 56.sp, lineHeight = 1.0.em, letterSpacing = (-0.03).em),
-                        color = Sinema.White, maxLines = 1
+                        style = Sinema.Metric.copy(lineHeight = 1.0.em, letterSpacing = (-0.03).em),
+                        baseSp = 56f, floorSp = 32f, color = Sinema.White, modifier = Modifier.weight(1f, fill = false)
                     )
                     Spacer(Modifier.width(4.dp))
                     PText(if (heroAvg) perWeek else unitWorkouts, 16, FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
@@ -508,8 +509,10 @@ private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
                         .background(if (sel) accent else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
+                    // büyük yazıda 84dp yarıya sığsın: ≥1.3 ölçekten sonra sp küçülür
+                    val segFs = androidx.compose.ui.platform.LocalDensity.current.fontScale
                     PText(
-                        if (english) "$w wk" else "$w hf", 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
+                        if (english) "$w wk" else "$w hf", if (segFs > 1.3f) (13 * 1.3f / segFs).toInt() else 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
                         color = if (sel) theme.effectiveOnAccentColor else Sinema.White, maxLines = 1
                     )
                 }
@@ -677,10 +680,11 @@ private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVec
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
-            Text(
+            SinemaFitText(
                 value,
-                style = Sinema.Metric.copy(fontSize = if (hero) 56.sp else 40.sp, lineHeight = 1.0.em, letterSpacing = (-0.03).em),
-                color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+                style = Sinema.Metric.copy(lineHeight = 1.0.em, letterSpacing = (-0.03).em),
+                baseSp = if (hero) 56f else 40f, floorSp = 24f, color = Sinema.White,
+                modifier = Modifier.weight(1f, fill = false).alignByBaseline()
             )
             if (unit != null) {
                 Spacer(Modifier.width(5.dp))
@@ -780,10 +784,11 @@ private fun BodySection(
                 if (hasWeight) {
                     Spacer(Modifier.height(14.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
+                        SinemaFitText(
                             formatNumber(state.weightKg, 1, english),
-                            style = Sinema.Metric.copy(fontSize = 64.sp, lineHeight = 1.0.em),
-                            color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+                            style = Sinema.Metric.copy(lineHeight = 1.0.em),
+                            baseSp = 64f, floorSp = 32f, color = Sinema.White,
+                            modifier = Modifier.weight(1f, fill = false).alignByBaseline()
                         )
                         Spacer(Modifier.width(6.dp))
                         PText("kg", 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
@@ -857,10 +862,11 @@ private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Bo
     Column(modifier) {
         SectionLabel(theme.t("Aktif seri", "Current streak"))
         Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
-            Text(
+            SinemaFitText(
                 state.currentStreak.toString(),
-                style = Sinema.Metric.copy(fontSize = 72.sp, lineHeight = 1.0.em),
-                color = Sinema.White, maxLines = 1, modifier = Modifier.alignByBaseline()
+                style = Sinema.Metric.copy(lineHeight = 1.0.em),
+                baseSp = 72f, floorSp = 36f, color = Sinema.White,
+                modifier = Modifier.weight(1f, fill = false).alignByBaseline()
             )
             Spacer(Modifier.width(6.dp))
             PText(theme.t("gün", "days"), 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
@@ -1623,7 +1629,7 @@ private fun CalculationResultCard(
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
         Spacer(Modifier.height(6.dp))
-        Text(value, style = Sinema.Metric.copy(fontSize = 52.sp), color = Sinema.text(theme), maxLines = 1)
+        SinemaFitText(value, style = Sinema.Metric, baseSp = 52f, floorSp = 28f, color = Sinema.text(theme))
         if (subtitle.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
             Text(subtitle, color = theme.accent2TextColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)

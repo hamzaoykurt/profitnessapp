@@ -37,6 +37,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.presentation.components.AppBackButton
 import com.cosmibit.profitness.presentation.components.SinemaBigStat
@@ -297,12 +299,16 @@ fun EditProfileScreen(
         )
     }
 
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
+    val coverH = SinemaLayout.cover(wc.heightDp, 0.375f, 260.dp, 380.dp)
+    val formMax = SinemaLayout.ContentMaxForm
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             // ── Kapak: foto (yoksa Sinema sahnesi) + avatar halkası ─────────
             item {
-                Box(Modifier.fillMaxWidth().height(300.dp)) {
+                Box(Modifier.fillMaxWidth().height(coverH)) {
                     if (state.avatar.startsWith("http")) {
                         Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
                             AsyncImage(
@@ -315,7 +321,7 @@ fun EditProfileScreen(
                         }
                     }
                     Box(
-                        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)
+                        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = gutter, vertical = 12.dp)
                     ) {
                         AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                     }
@@ -360,7 +366,7 @@ fun EditProfileScreen(
             }
 
             item {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.widthIn(max = formMax).fillMaxWidth().padding(horizontal = gutter), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(theme.t("Profili düzenle", "Edit profile"), style = Sinema.ScreenTitle, color = Sinema.text(theme))
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -383,7 +389,7 @@ fun EditProfileScreen(
             // Form
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    modifier = Modifier.widthIn(max = formMax).fillMaxWidth().padding(horizontal = gutter),
                     verticalArrangement = Arrangement.spacedBy(22.dp)
                 ) {
                     SinemaGlassField(
@@ -499,13 +505,14 @@ fun EditProfileScreen(
             item { Spacer(Modifier.height(32.dp)) }
 
             item {
-                SinemaGoOrIdle(
-                    label = theme.t("Kaydet", "Save"),
-                    icon = Icons.Rounded.Check,
-                    enabled = !state.isSaving,
-                    onClick = ::saveAndExit,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
+                Box(Modifier.widthIn(max = formMax).fillMaxWidth().padding(horizontal = gutter)) {
+                    SinemaGoOrIdle(
+                        label = theme.t("Kaydet", "Save"),
+                        icon = Icons.Rounded.Check,
+                        enabled = !state.isSaving,
+                        onClick = ::saveAndExit
+                    )
+                }
             }
 
             item { Spacer(Modifier.height(80.dp + LocalFloatingTimerReserve.current)) }

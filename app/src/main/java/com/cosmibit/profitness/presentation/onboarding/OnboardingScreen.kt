@@ -52,6 +52,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
+import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
 import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.profile.readSafeProfilePhotoBytes
@@ -1108,12 +1109,7 @@ private fun StepHeader(
 ) {
     val number = step.substringBefore("/").trim().padStart(2, '0')
     Text((eyebrow ?: step).sinemaUpper(theme), style = Sinema.Label, color = Sinema.text(theme).copy(0.8f), maxLines = 1)
-    Text(
-        number,
-        style = Sinema.Metric.copy(fontSize = 72.sp),
-        color = Sinema.text(theme),
-        maxLines = 1
-    )
+    SinemaFitText(number, style = Sinema.Metric, baseSp = 72f, floorSp = 40f, color = Sinema.text(theme))
     Spacer(Modifier.height(4.dp))
     Text(
         title,

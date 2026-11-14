@@ -42,6 +42,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.*
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaFitText
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import androidx.compose.ui.draw.clipToBounds
@@ -436,6 +439,9 @@ private fun ProfileHeroBanner(
     val page = Sinema.page(theme)
     val textMain = Sinema.text(theme)
     val textSub = Sinema.textSecondary(theme)
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
+    val coverH = SinemaLayout.cover(wc.heightDp, 0.40f, 240.dp, 360.dp)
     val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
     val xpProgress = if (xpPerLevel > 0) xpInLevel.toFloat() / xpPerLevel else 0f
     val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
@@ -444,7 +450,7 @@ private fun ProfileHeroBanner(
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
-        Box(Modifier.fillMaxWidth().height(320.dp).clipToBounds()) {
+        Box(Modifier.fillMaxWidth().height(coverH).clipToBounds()) {
             // Foto + karartma: alt 200dp maske ile sayfa zeminine (SinemaBackdrop) söner
             Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
                 SceneImage(
@@ -452,7 +458,7 @@ private fun ProfileHeroBanner(
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         translationY = scrollOffset() * 0.5f
                     },
-                    requestWidthPx = 1080, requestHeightPx = 960,
+                    requestWidthPx = 1080, requestHeightPx = 960, // olculen boyut kullanilir (SceneImage)
                     fallbackGradient = true
                 )
                 Box(
@@ -468,7 +474,7 @@ private fun ProfileHeroBanner(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 206.dp)
+                    .padding(start = gutter, end = gutter, top = coverH - 114.dp)
             ) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -502,10 +508,10 @@ private fun ProfileHeroBanner(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(top = 300.dp)
+                .padding(top = coverH - 20.dp)
         ) {
             // Avatar (96dp, 4dp sayfa renginde halka, vurgu dolgusu) + ad (sol 128dp, üst 14dp)
-            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(62.dp)) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = gutter).height(62.dp)) {
                 Box(
                     Modifier
                         .offset(y = (-48 + (96 - 62) / 2).dp) // requiredSize 62dp satırda ortalanır; avatar üstü sheet üstünden 48dp yukarıda
@@ -538,7 +544,7 @@ private fun ProfileHeroBanner(
 
             // Çipler (sol 16dp, üstten 62dp): rütbe (metal) · seviye · plan/enerji
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = gutter),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ProfileChip(
@@ -555,7 +561,7 @@ private fun ProfileHeroBanner(
             // 3 metrik (üstten 118dp; 28dp aralık → 78dp yükseklik: 196'daki XP çizgisine kadar)
             Spacer(Modifier.height(28.dp))
             Row(
-                Modifier.fillMaxWidth().height(78.dp).padding(horizontal = 16.dp),
+                Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = gutter),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 HeroMetric(currentStreak.toString(), theme.t("Seri · gün", "Streak · days"), theme, Modifier.weight(1f), onOpenStreakRanking)
@@ -564,7 +570,7 @@ private fun ProfileHeroBanner(
             }
 
             // Toplam XP (çizim `.tot`: üst çizgi, 14dp iç boşluk, 30sp rakam); sonraki bölüm 284dp çevresinden başlar
-            Box(Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 16.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = gutter)) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(lineColor))
                 Row(
                     modifier = Modifier
@@ -595,12 +601,7 @@ private fun HeroMetric(value: String, label: String, theme: AppThemeState, modif
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
-        Text(
-            value,
-            color = Sinema.text(theme),
-            style = if (value.length >= 4) Sinema.Metric.copy(fontSize = 34.sp) else Sinema.Metric,
-            maxLines = 1, softWrap = false
-        )
+        SinemaFitText(text = value, style = Sinema.Metric, color = Sinema.text(theme))
         Spacer(Modifier.height(6.dp))
         Text(
             label.sinemaUpper(theme), color = Sinema.textSecondary(theme),
@@ -619,7 +620,7 @@ private fun SinemaSection(
 ) {
     Column(Modifier.fillMaxWidth()) {
         Spacer(Modifier.height(32.dp))
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(Sinema.line(theme)))
+        Box(Modifier.fillMaxWidth().padding(horizontal = sinemaGutter()).height(1.dp).background(Sinema.line(theme)))
         Row(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp).heightIn(min = 56.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -696,7 +697,7 @@ private fun PerformanceMetricsSection(
         trailing = { SeeAllLink(theme, strings.seeAll, onNavigateToDetail) }
     ) {
         LazyRow(
-            contentPadding        = PaddingValues(horizontal = 20.dp),
+            contentPadding        = PaddingValues(horizontal = sinemaGutter()),
             horizontalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             items(metrics) { metric -> MetricCell(metric, theme, onNavigateToDetail) }
@@ -752,7 +753,7 @@ private fun WeeklyActivitySection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = sinemaGutter())
                 .sinemaCard(theme, RoundedCornerShape(24.dp))
                 .padding(20.dp)
         ) {
@@ -851,7 +852,7 @@ private fun TrophyGallery(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .clickable(onClick = onSeeAll)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = sinemaGutter()),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -865,11 +866,11 @@ private fun TrophyGallery(
                 theme.t("Başarımlar yükleniyor...", "Loading achievements..."),
                 color    = sub,
                 fontSize = 13.sp,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = sinemaGutter())
             )
         } else {
             LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
+                contentPadding        = PaddingValues(horizontal = sinemaGutter()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(sorted) { ach -> AchievementCard(achievement = ach, theme = theme) }
@@ -920,14 +921,14 @@ private fun SettingsSection(
 
     SinemaSection(theme = theme, title = strings.accountSettings) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
+            modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onEditProfile)
                     .heightIn(min = 72.dp)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = sinemaGutter()),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -961,7 +962,7 @@ private fun SettingsSection(
         Spacer(Modifier.height(12.dp))
 
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
+            modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive else strings.notificationsOff
             SettingsRow(
@@ -975,13 +976,13 @@ private fun SettingsSection(
         }
 
         Spacer(Modifier.height(32.dp))
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(Sinema.line(theme)))
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = sinemaGutter()).height(1.dp).background(Sinema.line(theme)))
+        Box(Modifier.fillMaxWidth().padding(horizontal = sinemaGutter()).heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
             Text(theme.t("VERİLER", "DATA"), color = Sinema.textSecondary(theme), style = Sinema.Label)
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(groupShape).background(surface)
+            modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
             SettingsRow(
                 icon    = Icons.Rounded.UploadFile,
@@ -1013,13 +1014,13 @@ private fun SettingsSection(
         val coral = CardCoral
         Row(
             modifier = Modifier
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = sinemaGutter())
                 .fillMaxWidth()
                 .clip(groupShape)
                 .background(surface)
                 .clickable(onClick = onLogout)
                 .heightIn(min = 64.dp)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = sinemaGutter()),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -1052,7 +1053,7 @@ private fun SettingsRow(
             .clickable(enabled = enabled, onClick = onClick)
             .then(if (enabled) Modifier else Modifier.alpha(0.55f))
             .heightIn(min = 64.dp)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = sinemaGutter(), vertical = 8.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -1356,7 +1357,7 @@ private fun NotificationsSettingsSheet(
                 theme           = theme,
                 onCheckedChange = { workoutReminders = it }
             )
-            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(color = theme.stroke, modifier = Modifier.padding(horizontal = sinemaGutter()))
             NotifToggleRow(
                 label           = strings.progressUpdates,
                 icon            = Icons.Rounded.ShowChart,
@@ -1475,7 +1476,7 @@ private fun LanguageSettingsSheet(
                 theme      = theme,
                 onClick    = { selected = AppLanguage.TURKISH }
             )
-            HorizontalDivider(color = Sinema.line(theme), modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(color = Sinema.line(theme), modifier = Modifier.padding(horizontal = sinemaGutter()))
             LanguageOptionRow(
                 flag       = "🇬🇧",
                 name       = strings.englishLabel,
@@ -1672,7 +1673,7 @@ private fun BodyMetricsCard(
         else       -> theme.t("Obez", "Obese")
     }
 
-    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = sinemaGutter(), vertical = 16.dp)) {
         Text(
             theme.t("VÜCUT METRİKLERİ", "BODY METRICS"),
             style = MaterialTheme.typography.labelSmall,
@@ -1805,7 +1806,7 @@ private fun PerformanceShortcutCard(
         modifier = Modifier
             .fillMaxWidth()
             .profilePremiumAction(theme, accent, onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = sinemaGutter(), vertical = 18.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1868,7 +1869,7 @@ fun WeightTrackingCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .profilePremiumAction(theme, accent, onClick)
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = sinemaGutter(), vertical = 18.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -1933,7 +1934,7 @@ fun ExerciseProgressionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .profilePremiumAction(theme, accent, onClick)
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = sinemaGutter(), vertical = 18.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -1986,7 +1987,7 @@ private fun LeaderboardPreviewCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = sinemaGutter(), vertical = 8.dp)
             .profilePremiumSurface(theme, accent = accent)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -2095,3 +2096,6 @@ private fun RankModeTile(
     }
 }
 
+
+@Composable
+private fun sinemaGutter() = SinemaLayout.gutter(LocalWindowClass.current.widthDp)

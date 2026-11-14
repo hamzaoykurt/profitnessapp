@@ -96,6 +96,9 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaFitText
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.domain.challenges.ChallengeEventInfo
 import com.cosmibit.profitness.domain.challenges.ChallengeDetail
 import com.cosmibit.profitness.domain.challenges.ChallengeKind
@@ -566,10 +569,14 @@ private fun ChallengeHero(
         else -> theme.t("$daysLeft gün kaldı", "$daysLeft days left")
     }
 
+    // Kapak = ekran yüksekliği × 0.58 ∈ [340, 520] (SinemaLayout.cover); yazı ölçeği büyüdükçe içerik payı kadar uzar.
+    val wc = LocalWindowClass.current
+    val heroH = (SinemaLayout.cover(wc.heightDp, 0.58f, 340.dp, 520.dp) * (1f + 0.4f * (wc.fontScale.coerceIn(1f, 1.5f) - 1f)))
+        .coerceAtMost((wc.heightDp * 0.85f).dp)
     Box(
         Modifier
             .fillMaxWidth()
-            .height(500.dp)
+            .height(heroH)
             // Foto alt kenarı sayfa zeminine (SinemaBackdrop) söner: son 160dp alfa → 0
             .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
             .drawWithContent {
@@ -626,14 +633,14 @@ private fun ChallengeHero(
                     )
                 }
                 Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.Bottom) {
-                    Text(
+                    SinemaFitText(
                         numFmt.format(c.targetValue),
-                        style = Sinema.Display.copy(fontSize = 72.sp),
-                        color = Color.White, maxLines = 1
+                        style = Sinema.Display, baseSp = 72f, floorSp = 36f,
+                        color = Color.White, modifier = Modifier.weight(1f, fill = false)
                     )
                     Text(
                         unit, style = Sinema.Title.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
-                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp)
+                        color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp)
                     )
                 }
                 val kindLabel = if (isEvent) "${theme.strings.eventLabel} · ${c.targetType.displayLabel(theme)}" else c.targetType.displayLabel(theme)
@@ -1209,12 +1216,14 @@ private fun AddProgressDialog(
             Spacer(Modifier.height(18.dp))
             val totalSec = (swElapsedMs / 1000).coerceAtLeast(0)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(
+                SinemaFitText(
                     "%02d:%02d".format(totalSec / 60, totalSec % 60),
-                    style = Sinema.Metric.copy(fontSize = 40.sp), color = Sinema.text(theme)
+                    style = Sinema.Metric, baseSp = 40f, floorSp = 26f, color = Sinema.text(theme),
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                Spacer(Modifier.width(8.dp))
                 Spacer(Modifier.weight(1f))
-                Text(theme.t("KRONOMETRE", "STOPWATCH"), color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.padding(bottom = 4.dp))
+                Text(theme.t("KRONOMETRE", "STOPWATCH"), color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 4.dp))
             }
             Spacer(Modifier.height(10.dp))
             val elapsedMin = (swElapsedMs / 60_000L).coerceAtLeast(0L)

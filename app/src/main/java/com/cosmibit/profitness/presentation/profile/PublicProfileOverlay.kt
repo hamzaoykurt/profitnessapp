@@ -48,6 +48,8 @@ import coil.compose.AsyncImage
 import com.cosmibit.profitness.core.theme.AppLanguage
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
@@ -144,7 +146,7 @@ fun PublicProfileOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(16.dp),
+                    .padding(SinemaLayout.gutter(LocalWindowClass.current.widthDp)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AppBackButton(onClick = onBack, size = 48.dp)
@@ -165,6 +167,9 @@ private fun ProfileContent(
 ) {
     val theme = LocalAppTheme.current
     val scroll = rememberScrollState()
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
+    val coverH = SinemaLayout.cover(wc.heightDp, 0.50f, 320.dp, 480.dp)
 
     // XP hesaplama: level^2 * 100 → bir sonraki seviyeye kaç XP
     val xpForCurrentLevel = ((profile.level - 1) * (profile.level - 1) * 100)
@@ -193,7 +198,7 @@ private fun ProfileContent(
             .verticalScroll(scroll)
     ) {
         // ── Kapak: foto (yoksa Sinema sahnesi) + alt karartma + ad ─────────
-        Box(Modifier.fillMaxWidth().height(400.dp)) {
+        Box(Modifier.fillMaxWidth().height(coverH)) {
             if (profile.avatarUrl != null) {
                 Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
                     AsyncImage(
@@ -212,7 +217,8 @@ private fun ProfileContent(
                 )
             }
             Column(
-                Modifier.align(Alignment.BottomStart).padding(start = 20.dp, end = 20.dp, bottom = 44.dp)
+                Modifier.align(Alignment.BottomCenter).widthIn(max = SinemaLayout.ContentMaxReading).fillMaxWidth()
+                    .padding(start = gutter, end = gutter, bottom = 44.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
@@ -240,9 +246,11 @@ private fun ProfileContent(
         // ── Sheet ───────────────────────────────────────────────────────────
         Column(
             modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .widthIn(max = SinemaLayout.ContentMaxReading)
                 .fillMaxWidth()
                 .offset(y = (-28).dp)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = gutter)
                 .padding(top = 28.dp, bottom = 40.dp + timerExtraPad)
                 .navigationBarsPadding()
         ) {

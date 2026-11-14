@@ -41,6 +41,9 @@ import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.core.ui.SinemaFitText
+import com.cosmibit.profitness.core.ui.SinemaLayout
+import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import com.cosmibit.profitness.presentation.workout.Scrims
@@ -70,6 +73,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -410,10 +414,10 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
             )
             program.daysPerWeek?.let { d ->
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                    Text("$d", style = Sinema.Display.copy(fontSize = 96.sp), color = Color.White, maxLines = 1)
+                    SinemaFitText("$d", style = Sinema.Display, baseSp = 96f, color = Color.White)
                     Text(
                         theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 22.sp),
-                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 10.dp, bottom = 12.dp)
+                        color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 10.dp, bottom = 12.dp)
                     )
                 }
             }
@@ -792,10 +796,10 @@ private fun SinemaPhotoCard(
             )
             daysPerWeek?.let { d ->
                 Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
-                    Text("$d", style = Sinema.Display.copy(fontSize = 64.sp), color = Color.White, maxLines = 1)
+                    SinemaFitText("$d", style = Sinema.Display, baseSp = 64f, color = Color.White)
                     Text(
                         theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 18.sp),
-                        color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
+                        color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                     )
                 }
             }
@@ -1189,11 +1193,11 @@ private fun DiscoverTopControls(
         DiscoverTab.Challenges to "Challenge"
     )
     Row(
-        Modifier.fillMaxWidth().padding(top = topOffset).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().padding(top = topOffset).padding(horizontal = SinemaLayout.gutter(LocalWindowClass.current.widthDp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         BoxWithConstraints(
-            Modifier.weight(1f).height(54.dp)
+            Modifier.weight(1f).heightIn(min = 54.dp)
                 .sinemaCapsuleGlass(RoundedCornerShape(27.dp), blur = 16.dp)
                 .padding(3.dp)
         ) {
@@ -1222,7 +1226,13 @@ private fun DiscoverTopControls(
                             .clickable(role = Role.Tab) { onSelect(tab) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                        var labelSp by remember(label) { mutableFloatStateOf(13f) }
+                        Text(
+                            label, color = fg, fontSize = labelSp.sp, fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            onTextLayout = { if (it.didOverflowWidth && labelSp > 6f) labelSp = (labelSp - 0.5f).coerceAtLeast(6f) }
+                        )
                     }
                 }
             }
@@ -1421,10 +1431,10 @@ private fun ProgramPage(
                 )
                 program.daysPerWeek?.let { d ->
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                        Text("$d", style = Sinema.Display.copy(fontSize = if (compact) 80.sp else 104.sp), color = Color.White, maxLines = 1)
+                        SinemaFitText("$d", style = Sinema.Display, baseSp = if (compact) 80f else 104f, color = Color.White)
                         Text(
                             theme.t("gün / hafta", "days / week"), style = Sinema.Title.copy(fontSize = 26.sp),
-                            color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+                            color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
                         )
                     }
                 }

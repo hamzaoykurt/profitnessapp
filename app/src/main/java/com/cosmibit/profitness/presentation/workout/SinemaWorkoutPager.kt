@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -135,6 +137,8 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.components.toDurationSetSecondsLabel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -529,7 +533,10 @@ private fun ExercisePage(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val compact = maxHeight < 700.dp
+        // Yazı ölçeği ekranı küçültür (isTight): 640dp@1.3 gibi durumlarda sıkı düzen; yine taşarsa Column kaydırılır.
+        val compact = maxHeight < 700.dp || LocalWindowClass.current.isTight
+        val bottomPad = SinemaContentBottom + navInset()
+        val pageH = maxHeight
         val photo = exercise.image.ifBlank { categoryImageUrl(exercise.category) }
         val haze = remember { HazeState() }
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
@@ -539,11 +546,16 @@ private fun ExercisePage(
         }
 
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
+        // Alta yaslı; içerik yüksekliği aşarsa (kısa ekran + büyük yazı) alttan başlayıp yukarı kaydırılır (BAŞLA hep görünür).
         Column(
             Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState(), reverseScrolling = true)
                 .padding(horizontal = 16.dp)
-                .padding(bottom = SinemaContentBottom + navInset()),
+                .padding(bottom = bottomPad)
+        ) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = (pageH - bottomPad).coerceAtLeast(0.dp)),
             verticalArrangement = Arrangement.Bottom
         ) {
             // Label: kas grubu (vurgu rengi) + sıra
@@ -593,6 +605,7 @@ private fun ExercisePage(
             )
         }
         }
+        }
     }
 }
 
@@ -613,15 +626,10 @@ private fun HowToPill(onClick: () -> Unit) {
     }
 }
 
-/** "3 × 10": genişlik aşılırsa 4sp adımla `floorSp`'ye kadar küçülür. */
+/** "3 × 10": yazı ölçeğiyle ≤×1.15 büyür, genişlik aşılırsa `floorSp`'ye kadar küçülür (SinemaFitText). */
 @Composable
 private fun DisplayPrescription(text: String, compact: Boolean, floorSp: Int) {
-    var size by remember(text, compact) { mutableIntStateOf(if (compact) 80 else 104) }
-    Text(
-        text, style = Sinema.Display.copy(fontSize = size.sp), color = Color.White,
-        maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-        onTextLayout = { if (it.didOverflowWidth && size > floorSp) size = (size - 4).coerceAtLeast(floorSp) }
-    )
+    SinemaFitText(text, style = Sinema.Display, color = Color.White, baseSp = if (compact) 80f else 104f, floorSp = floorSp.toFloat())
 }
 
 @Composable

@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -96,6 +97,8 @@ fun exercisePrescription(e: Exercise, activityBased: Boolean, theme: AppThemeSta
         "${e.sets} × ${e.reps}"
     }
 
+private const val SceneMaxRequestPx = 2048
+
 /**
  * Görsel + yedek. Yedek (görsel yok / yükleniyor / hata) aynı: koyu gradyan + ikon.
  * Görsel gelince 250ms crossfade (sistem animasyonları kapalıysa anında).
@@ -134,11 +137,14 @@ fun SceneImage(
                 modifier = Modifier.align(BiasAlignment(0f, fallbackIconBias)).size(fallbackIconSize)
             )
         }
-        if (url.isNotBlank()) {
-            val request = remember(url, requestWidthPx, requestHeightPx, animate) {
+        if (url.isNotBlank()) BoxWithConstraints(Modifier.fillMaxSize()) {
+            // Istek boyutu = olculen boyut (ust sinir 2048px); olculemezse (sinirsiz) parametre degerleri.
+            val reqW = if (constraints.hasBoundedWidth && constraints.maxWidth > 0) constraints.maxWidth.coerceAtMost(SceneMaxRequestPx) else requestWidthPx
+            val reqH = if (constraints.hasBoundedHeight && constraints.maxHeight > 0) constraints.maxHeight.coerceAtMost(SceneMaxRequestPx) else requestHeightPx
+            val request = remember(url, reqW, reqH, animate) {
                 ImageRequest.Builder(context)
                     .data(url)
-                    .size(requestWidthPx, requestHeightPx)
+                    .size(reqW, reqH)
                     .crossfade(if (animate) 250 else 0)
                     .build()
             }

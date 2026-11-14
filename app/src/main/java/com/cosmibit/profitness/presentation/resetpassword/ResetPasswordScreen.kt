@@ -24,7 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.presentation.auth.AuthFeedback
 import com.cosmibit.profitness.presentation.auth.AuthAutofillHint
 import com.cosmibit.profitness.presentation.auth.AuthLiquidField
@@ -81,7 +82,8 @@ private fun ExchangingContent() {
 @Composable
 private fun InvalidLinkContent(onDone: () -> Unit) {
     val theme  = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
     Box(
         modifier         = Modifier.fillMaxSize().background(Sinema.Page),
         contentAlignment = Alignment.Center
@@ -89,9 +91,9 @@ private fun InvalidLinkContent(onDone: () -> Unit) {
         SinemaScene()
         Column(
             modifier            = Modifier
-                .widthIn(max = responsive.formMaxWidth)
+                .widthIn(max = SinemaLayout.ContentMaxForm)
                 .fillMaxWidth()
-                .padding(horizontal = responsive.horizontalPadding),
+                .padding(horizontal = gutter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             IconCapsule(Icons.Rounded.LinkOff)
@@ -137,7 +139,8 @@ private fun NewPasswordContent(
     viewModel: ResetPasswordViewModel
 ) {
     val theme    = LocalAppTheme.current
-    val responsive = rememberResponsiveLayoutInfo()
+    val wc = LocalWindowClass.current
+    val gutter = SinemaLayout.gutter(wc.widthDp)
     val keyboard = LocalSoftwareKeyboardController.current
 
     var password        by remember { mutableStateOf("") }
@@ -163,13 +166,15 @@ private fun NewPasswordContent(
                 .graphicsLayer(alpha = alphaAnim.value)
         ) {
             // Orb başlık (SinemaScene her zaman koyu → beyaz metin)
-            Box(Modifier.fillMaxWidth().height(280.dp).background(Sinema.Page)) {
+            Box(Modifier.fillMaxWidth().height(SinemaLayout.cover(wc.heightDp, 0.35f, 220.dp, 340.dp)).background(Sinema.Page)) {
                 SinemaScene()
                 Column(
                     Modifier
+                        .align(Alignment.TopCenter)
+                        .widthIn(max = SinemaLayout.ContentMaxForm)
                         .fillMaxSize()
                         .statusBarsPadding()
-                        .padding(horizontal = responsive.horizontalPadding)
+                        .padding(horizontal = gutter)
                         .padding(top = 16.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.Bottom
                 ) {
@@ -190,9 +195,9 @@ private fun NewPasswordContent(
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .widthIn(max = responsive.formMaxWidth)
+                    .widthIn(max = SinemaLayout.ContentMaxForm)
                     .fillMaxWidth()
-                    .padding(horizontal = responsive.horizontalPadding)
+                    .padding(horizontal = gutter)
                     .navigationBarsPadding()
             ) {
                 Spacer(Modifier.height(24.dp))

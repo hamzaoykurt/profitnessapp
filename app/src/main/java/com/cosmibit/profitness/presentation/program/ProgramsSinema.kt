@@ -17,6 +17,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.ui.platform.LocalDensity
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaFitText
+import com.cosmibit.profitness.core.ui.SinemaLayout
+import com.cosmibit.profitness.core.ui.cappedDisplaySp
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
@@ -141,7 +148,11 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             ?.firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
     }.ifBlank { categoryImageUrl("") }
     val haze = remember { HazeState() }
-    Box(Modifier.fillMaxWidth().height(496.dp).clipToBounds()) {
+    // Kapak = ekran yüksekliği × 0.62 ∈ [360, 560] (D3: SinemaLayout.cover); yazı ölçeği büyüdükçe içerik payı kadar uzar.
+    val wc = LocalWindowClass.current
+    val heroH = (SinemaLayout.cover(wc.heightDp, 0.62f, 360.dp, 560.dp) * (1f + 0.4f * (wc.fontScale.coerceIn(1f, 1.5f) - 1f)))
+        .coerceAtMost((wc.heightDp * 0.85f).dp)
+    Box(Modifier.fillMaxWidth().height(heroH).clipToBounds()) {
         Box(
             Modifier.fillMaxSize().hazeSource(haze)
                 // Foto alt ~%40'ta alfa → 0: kapak ortak SinemaBackdrop'a yumuşakça söner (katı sayfa rengi bandı yok)
@@ -156,7 +167,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
         ) {
             // Foto 640dp yüksekliğinde, üstten hizalı, -110dp kaydırılmış (çizim)
-            Box(Modifier.fillMaxWidth().requiredHeight(640.dp).offset(y = (-110).dp)) {
+            Box(Modifier.fillMaxWidth().requiredHeight(heroH * (640f / 496f)).offset(y = heroH * (-110f / 496f))) {
                 SceneImage(url = imageUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1080, requestHeightPx = 1600,
                     alignment = Alignment.TopCenter, fallbackGradient = true)
             }
@@ -197,7 +208,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 46.dp)) {
                     Text(
                         active.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = 3, overflow = TextOverflow.Ellipsis
+                        letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = if (wc.isTight) 2 else 3, overflow = TextOverflow.Ellipsis
                     )
                     Text(info, color = Color.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
@@ -236,14 +247,14 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                         drawArc(ring, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
                     }
                 }
-                Text("$doneCount/${info.total}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em)
+                Text("$doneCount/${info.total}", color = Color.White, fontSize = cappedDisplaySp(15f, with(LocalDensity.current) { 15.sp.toDp().value } / 15f, 1.2f).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em, maxLines = 1, softWrap = false)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("Bugün", "Today").sinemaUpper(theme), color = accent, style = Sinema.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold))
                 Text(
                     if (info.todayIsRest) theme.t("Dinlenme", "Rest") else info.todayTitle,
-                    color = Color.White, fontSize = if (info.todayTitle.length > 9) 26.sp else 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em,
+                    color = Color.White, fontSize = cappedDisplaySp(if (info.todayTitle.length > 9) 26f else 34f, with(LocalDensity.current) { 34.sp.toDp().value } / 34f, 1.3f).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em,
                     lineHeight = 1.05.em, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 if (!info.todayIsRest) {
@@ -256,14 +267,18 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                 val shape = RoundedCornerShape(14.dp)
                 val fg = if (c.isToday) onAccent else Color.White.copy(0.85f)
                 Column(
-                    Modifier.weight(1f).height(42.dp)
+                    Modifier.weight(1f).heightIn(min = 42.dp)
                         .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.45f else 1f }
                         .then(if (c.isToday) Modifier.sinemaGlow(accent.copy(0.4f), 16.dp, 8.dp, shape) else Modifier)
                         .clip(shape)
                         .background(if (c.isToday) accent else Color.White.copy(0.09f)),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                 ) {
-                    Text(c.label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    val actualScale = with(LocalDensity.current) { 11.sp.toDp().value } / 11f
+                    Text(
+                        c.label, color = fg, fontSize = cappedDisplaySp(11f, actualScale, 1.3f).sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
+                    )
                     Spacer(Modifier.height(4.dp))
                     Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else if (c.isDone) theme.accent2Color else Color.White.copy(0.4f)))
                 }
@@ -307,39 +322,43 @@ private fun raiseBrush(theme: AppThemeState): Brush =
 fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
     val theme = LocalAppTheme.current
     val shape = RoundedCornerShape(28.dp)
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
-            Modifier.weight(1f).height(148.dp)
+            Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
                 .clip(shape)
                 .background(Sinema.Surface)
                 .border(1.dp, Sinema.line(theme), shape)
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
-            Box(Modifier.padding(14.dp).size(42.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)), contentAlignment = Alignment.Center) {
+            Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)), contentAlignment = Alignment.Center) {
                 Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(22.dp))
             }
-            Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
                 Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            }
             }
         }
         // Manuel
         Box(
-            Modifier.weight(1f).height(148.dp)
+            Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
                 .clip(shape)
                 .background(raiseBrush(theme))
                 .insetLook(theme, shape)
                 .border(1.dp, Sinema.line(theme), shape)
                 .clickable(role = Role.Button, onClick = onManual)
         ) {
+            Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(
-                Modifier.padding(14.dp).size(42.dp).clip(CircleShape).background(Color.White.copy(0.10f)),
+                Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(0.10f)),
                 contentAlignment = Alignment.Center
             ) { Icon(SinemaIcons.Plus, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp)) }
-            Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
                 Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            }
             }
         }
     }

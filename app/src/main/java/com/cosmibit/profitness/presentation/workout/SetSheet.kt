@@ -3,6 +3,9 @@ package com.cosmibit.profitness.presentation.workout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import com.cosmibit.profitness.core.ui.cappedDisplaySp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -239,25 +242,32 @@ private fun StrengthSetContent(
             onClick = { nudge(-step) }, selected = false, size = 48.dp
         )
         Spacer(Modifier.width(12.dp))
-        val big = TextStyle(
-            fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
-            fontFeatureSettings = "tnum", textAlign = TextAlign.Center, color = Color.White
-        )
-        BasicTextField(
-            value = value,
-            onValueChange = { v -> actions.onSetWeightChanged(exercise, setIndex, v.filter { it.isDigit() || it == '.' || it == ',' }) },
-            textStyle = big,
-            cursorBrush = SolidColor(accent),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true,
-            modifier = Modifier.width(150.dp),
-            decorationBox = { inner ->
-                Box(contentAlignment = Alignment.Center) {
-                    if (value.isEmpty()) Text(placeholder, style = big.copy(color = Color.White.copy(0.35f)))
-                    inner()
+        BoxWithConstraints(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            // Alan genişliğe göre küçülür (rakam başına ~0.64em); yazı ölçeği ≤×1.15 (dev rakam kuralı).
+            val actual = with(LocalDensity.current) { 64.sp.toDp().value } / 64f
+            val chars = maxOf(value.length, placeholder.length, 3)
+            val fit = maxWidth.value / (chars * 0.64f * minOf(actual, 1.15f))
+            val sp = cappedDisplaySp(minOf(64f, fit).coerceAtLeast(26f), actual)
+            val big = TextStyle(
+                fontFamily = AppFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = sp.sp,
+                fontFeatureSettings = "tnum", textAlign = TextAlign.Center, color = Color.White
+            )
+            BasicTextField(
+                value = value,
+                onValueChange = { v -> actions.onSetWeightChanged(exercise, setIndex, v.filter { it.isDigit() || it == '.' || it == ',' }) },
+                textStyle = big,
+                cursorBrush = SolidColor(accent),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.Center) {
+                        if (value.isEmpty()) Text(placeholder, style = big.copy(color = Color.White.copy(0.35f)), maxLines = 1)
+                        inner()
+                    }
                 }
-            }
-        )
+            )
+        }
         Spacer(Modifier.width(12.dp))
         SinemaCapsuleIconButton(
             icon = Icons.Rounded.Add, description = theme.t("Artır", "Increase"),
