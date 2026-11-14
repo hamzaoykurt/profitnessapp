@@ -457,8 +457,8 @@ private fun WeightEntryRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
+            .sinemaClickable(onClick = onEdit, scale = 0.98f)
             .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .clickable(onClick = onEdit)
             .padding(start = 18.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -477,7 +477,7 @@ private fun WeightEntryRow(
             Spacer(Modifier.width(4.dp))
         }
         Box(
-            modifier = Modifier.size(48.dp).clip(CircleShape).clickable { showDelete = true },
+            modifier = Modifier.size(48.dp).sinemaClickable(onClick = { showDelete = true }).clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.DeleteOutline, theme.t("Sil", "Delete"), tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))

@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
 import android.content.Intent
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -682,7 +683,7 @@ private fun SinemaCardDialog(onDismiss: () -> Unit, content: @Composable ColumnS
 private fun DialogTextAction(label: String, onClick: () -> Unit, color: Color? = null, enabled: Boolean = true) {
     val theme = LocalAppTheme.current
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(enabled = enabled, onClick = onClick),
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(enabled = enabled, onClick = onClick, scale = 0.98f).clip(RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = color ?: Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -833,12 +834,12 @@ private fun EventInfoCard(ev: ChallengeEventInfo, accent: Color) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable {
+                            .sinemaClickable(onClick = {
                                 runCatching {
                                     ctx.startActivity(Intent(Intent.ACTION_VIEW, safeOnlineUrl.toUri()))
                                 }
-                            }
+                            })
+                            .clip(RoundedCornerShape(10.dp))
                             .heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Rounded.OpenInNew, null, tint = accent, modifier = Modifier.size(14.dp))
@@ -904,7 +905,7 @@ private fun LocationRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(Sinema.line(theme))
-            .then(if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier)
+            .then(if (actionLabel != null) Modifier.sinemaClickable(onClick = onAction) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .heightIn(min = 28.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -938,8 +939,8 @@ private fun SkipProgramToggle(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp)
+            .sinemaClickable(onClick = onToggle, scale = 0.98f)
             .sinemaCard(theme, RoundedCornerShape(20.dp))
-            .clickable(onClick = onToggle)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -998,8 +999,8 @@ private fun MovementRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
+            .sinemaClickable(enabled = !pending, onClick = onToggle, scale = 0.98f)
             .sinemaCard(theme, RoundedCornerShape(20.dp))
-            .clickable(enabled = !pending, onClick = onToggle)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

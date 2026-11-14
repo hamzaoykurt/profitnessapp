@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.profile
 
 import androidx.compose.foundation.background
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -426,7 +427,7 @@ private fun ChallengeActivityCard(
         modifier = Modifier
             .fillMaxWidth()
             .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .then(if (canOpen) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .then(if (canOpen) Modifier.sinemaClickable(role = Role.Button, onClick = onOpen) else Modifier)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -476,7 +477,7 @@ private fun ActivityMiniCard(
         modifier = Modifier
             .fillMaxWidth()
             .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.sinemaClickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

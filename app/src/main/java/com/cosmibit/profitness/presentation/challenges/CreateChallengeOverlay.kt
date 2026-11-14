@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
 import androidx.compose.runtime.getValue
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.runtime.setValue
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
@@ -783,7 +784,7 @@ Row(
                     { Icon(
                         Icons.Rounded.Close, null,
                         tint = Sinema.textSecondary(theme),
-                        modifier = Modifier.size(14.dp).clickable { onClearTime() }
+                        modifier = Modifier.size(14.dp).sinemaClickable(onClick = { onClearTime() })
                     ) }
                 } else null,
                 accent = accent
@@ -971,8 +972,8 @@ Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
+            .sinemaClickable(onClick = { onEnabled(!enabled) }, scale = 0.98f)
             .sinemaCard(theme, RoundedCornerShape(24.dp))
-            .clickable { onEnabled(!enabled) }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1047,8 +1048,7 @@ Column(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable { onEnabled(!enabled) },
+                .heightIn(min = 48.dp).sinemaClickable(onClick = { onEnabled(!enabled) }, scale = 0.98f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -1234,8 +1234,8 @@ Column(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = resolvingPlaceId == null) {
-                                val client = placesClient ?: return@clickable
+                            .sinemaClickable(enabled = resolvingPlaceId == null, scale = 0.98f, onClick = onClick@{
+                                val client = placesClient ?: return@onClick
                                 resolvingPlaceId = candidate.placeId
                                 message = null
                                 scope.launch {
@@ -1250,7 +1250,7 @@ Column(
                                         )
                                     }
                                 }
-                            }
+                            })
                             .padding(horizontal = 12.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {

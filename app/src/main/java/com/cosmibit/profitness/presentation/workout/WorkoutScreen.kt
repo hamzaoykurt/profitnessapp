@@ -429,12 +429,12 @@ private fun NotificationPermissionBanner(
             // İzin ver butonu
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent)
-                    .clickable {
+                    .sinemaClickable(onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onRequest()
-                    }
+                    }, haptic = SinemaTapHaptic.None)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent)
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
                 Text(
@@ -452,9 +452,9 @@ private fun NotificationPermissionBanner(
             Box(
                 modifier = Modifier
                     .size(28.dp)
+                    .sinemaClickable(onClick = { onDismiss() })
                     .clip(RoundedCornerShape(8.dp))
-                    .background(theme.bg3)
-                    .clickable { onDismiss() },
+                    .background(theme.bg3),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

@@ -360,11 +360,10 @@ private fun ExerciseProgressionCard(
         // ── Header row ────────────────────────────────────────────────────
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
+                .fillMaxWidth().sinemaClickable(onClick = {
                     isExpanded = !isExpanded
                     if (isExpanded) onExpand()
-                }
+                }, scale = 0.98f)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

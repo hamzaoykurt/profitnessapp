@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.friends
 
 import com.cosmibit.profitness.core.theme.SinemaMotion
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -225,7 +226,7 @@ private fun SearchCapsule(
         }
         if (value.isNotEmpty()) {
             Box(
-                Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button) { onChange("") },
+                Modifier.size(48.dp).sinemaClickable(onClick = { onChange("") }, role = Role.Button).clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -246,8 +247,8 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
     val shape = RoundedCornerShape(28.dp)
     Box(
         Modifier.width(184.dp).height(300.dp)
+            .sinemaClickable(role = Role.Button, onClick = onTap, scale = 0.98f)
             .sinemaCard(theme, shape)
-            .clickable(role = Role.Button, onClick = onTap)
     ) {
         if (user.avatarUrl != null) {
             AsyncImage(
@@ -310,22 +311,14 @@ private fun UserRow(
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
-        animationSpec = tween(SinemaMotion.Quick),
-        label = "friend_row_scale"
-    )
     val shape = RoundedCornerShape(24.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .sinemaClickable(onClick = onTap, scale = 0.98f)
             .sinemaCard(theme, shape)
-            .clickable(interactionSource = interaction, indication = null) { onTap() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

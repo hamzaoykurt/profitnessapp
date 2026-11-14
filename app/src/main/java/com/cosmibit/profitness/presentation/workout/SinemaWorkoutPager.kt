@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.workout
 
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaGlow
 import android.provider.Settings
@@ -125,6 +126,7 @@ import com.cosmibit.profitness.core.theme.SinemaMotion
 import com.cosmibit.profitness.core.theme.SinemaHaptics
 import com.cosmibit.profitness.core.theme.rememberSinemaCount
 import com.cosmibit.profitness.core.theme.sinemaPressScale
+import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
@@ -603,8 +605,7 @@ private fun ExercisePage(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = watch }
-                    .clickable(role = Role.Button) { actions.onShowDetail(exercise) }
+                    .semantics { contentDescription = watch }.sinemaClickable(onClick = { actions.onShowDetail(exercise) }, role = Role.Button, scale = 0.98f)
             )
             Spacer(Modifier.height(6.dp))
             // Display
@@ -769,10 +770,14 @@ private fun SetRow(
     val active = state == SetRowState.Active
     val done = state == SetRowState.Done
     val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
-    val h by androidx.compose.animation.core.animateDpAsState(
-        if (active) 60.dp else 52.dp, if (motion) tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard) else androidx.compose.animation.core.snap(),
-        label = "set_row_h"
-    )
+    // Yükseklik animasyonu yok (her karede şekil/cam önbelleği sıfırlanıyordu): boy anında oturur, geçiş ölçek ile yumuşar.
+    val h = if (active) 60.dp else 52.dp
+    val settle = remember { Animatable(1f) }
+    var firstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(active) {
+        if (firstComposition) { firstComposition = false; return@LaunchedEffect }
+        if (motion) { settle.snapTo(0.95f); settle.animateTo(1f, SinemaMotion.settle()) }
+    }
     val shape = RoundedCornerShape(h / 2)
     val onAcc = if (onAccent == Color.Black) Sinema.Ink else onAccent
     val measure = theme.accent2Color   // c2 = ölç: tamamlanan set
@@ -781,6 +786,8 @@ private fun SetRow(
     Row(
         modifier
             .height(h)
+            .graphicsLayer { scaleX = settle.value; scaleY = settle.value }
+            .sinemaClickable(role = Role.Button, scale = 0.98f, onClick = onOpen)
             .sinemaCapsuleGlass(
                 shape,
                 fillTop = when (state) { SetRowState.Pending -> 0.10f; SetRowState.Active -> 0.14f; SetRowState.Done -> 0.10f },
@@ -795,7 +802,6 @@ private fun SetRow(
                 shadow = !active
             )
             .semantics { contentDescription = setLabel }
-            .clickable(role = Role.Button, onClick = onOpen)
             .padding(start = 12.dp, end = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -865,8 +871,7 @@ private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone
         Modifier
             .size(48.dp)
             .setBurst(burst, burstColor)
-            .semantics { contentDescription = description }
-            .clickable(role = Role.Checkbox, onClick = onToggle),
+            .semantics { contentDescription = description }.sinemaClickable(role = Role.Checkbox, onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -918,11 +923,10 @@ private fun CapsuleRow(
     val measure = theme.accent2Color   // c2 = ölç: tamamlanan (SetRow ile aynı dil)
     val fg = Sinema.Text
     val shape = RoundedCornerShape(height / 2)
-    val src = remember { MutableInteractionSource() }
     Row(
         modifier
             .heightIn(min = height)
-            .sinemaPressScale(src, pressedScale = 0.98f)
+            .sinemaClickable(onClick = onOpen, scale = 0.98f, role = Role.Button)
             .sinemaCapsuleGlass(
                 shape,
                 fillTop = if (done) 0.10f else 0.14f,
@@ -930,7 +934,6 @@ private fun CapsuleRow(
                 overlay = if (done) measure.copy(0.18f) else null,
                 edgeColors = if (done) listOf(measure.copy(0.45f)) else null
             )
-            .clickable(interactionSource = src, indication = androidx.compose.foundation.LocalIndication.current, role = Role.Button, onClick = onOpen)
             .padding(start = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -971,8 +974,7 @@ private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, descripti
         Modifier
             .size(hit)
             .setBurst(burst, burstColor)
-            .semantics { contentDescription = description }
-            .clickable(role = Role.Checkbox, onClick = onToggle),
+            .semantics { contentDescription = description }.sinemaClickable(role = Role.Checkbox, onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -1206,8 +1208,7 @@ private fun SinemaTopBar(
             Row(
                 Modifier
                     .fillMaxWidth().height(12.dp)
-                    .semantics { contentDescription = programTitle }
-                    .clickable(role = Role.Button, onClick = onOpenList),
+                    .semantics { contentDescription = programTitle }.sinemaClickable(role = Role.Button, onClick = onOpenList, scale = 0.98f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Top
             ) {
                 exercises.forEach { ex ->
@@ -1224,7 +1225,7 @@ private fun SinemaTopBar(
             Text(
                 programTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).then(if (showSegments) Modifier.clickable(role = Role.Button, onClick = onOpenList) else Modifier)
+                modifier = Modifier.weight(1f).then(if (showSegments) Modifier.sinemaClickable(role = Role.Button, onClick = onOpenList) else Modifier)
             )
             Spacer(Modifier.width(8.dp))
             DayPill(days, liveDayIdx, onSelectDay, theme)
@@ -1300,9 +1301,9 @@ private fun DayPill(
                             Modifier
                                 .fillMaxWidth().height(48.dp)
                                 .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, RoundedCornerShape(14.dp)) else Modifier)
+                                .sinemaClickable(onClick = { open = false; onSelect(i) }, role = Role.Button, scale = 0.98f)
                                 .clip(RoundedCornerShape(14.dp))
                                 .then(if (sel) Modifier.background(accent) else Modifier)
-                                .clickable(role = Role.Button) { open = false; onSelect(i) }
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
@@ -1340,10 +1341,10 @@ private fun ExerciseListSheet(
                 Row(
                     Modifier
                         .fillMaxWidth().height(72.dp)
-                        .clickable(role = Role.Button) {
+                        .sinemaClickable(role = Role.Button, scale = 0.98f, onClick = {
                             onDismiss()
                             scope.launch { pagerState.animateScrollToPage(idx, animationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard)) }
-                        }
+                        })
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

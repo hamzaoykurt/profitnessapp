@@ -295,8 +295,7 @@ fun ExerciseDetailSheet(
                 ) {
                     Box(
                         Modifier
-                            .fillMaxWidth()
-                            .clickable(role = Role.Button, onClickLabel = theme.t("Paneli kapat", "Close panel")) { expanded = false }
+                            .fillMaxWidth().sinemaClickable(onClick = { expanded = false }, role = Role.Button, onClickLabel = theme.t("Paneli kapat", "Close panel"), scale = 0.98f)
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {

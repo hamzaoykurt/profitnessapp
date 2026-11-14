@@ -6,7 +6,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -71,6 +75,37 @@ fun Modifier.sinemaPressScale(source: InteractionSource, pressedScale: Float = 0
     val pressed by source.collectIsPressedAsState()
     val scale = animateFloatAsState(if (pressed) pressedScale else 1f, SinemaMotion.press(), label = "sinema_press")
     return this.graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+}
+
+/** [sinemaClickable] dokunuş titreşimi. */
+enum class SinemaTapHaptic { Light, None }
+
+/**
+ * TEK BASILMA HİSSİ: ripple YOK; yaylı basılma ölçeği ([scale], kartta 0.98, varsayılan 0.96) + hafif titreşim.
+ * Hareket azaltmada (animasyon ölçeği 0) ölçek uygulanmaz. Erişilebilirlik: [role] ve [onClickLabel] clickable'a geçer.
+ * Zincirde yüzeyden (clip/background/border) ÖNCE konur; böylece yüzey de ölçeklenir.
+ * Kapsül/GoButton gibi kendi basılma ölçeği olan bileşenlerde KULLANMA (çift ölçek).
+ */
+@Composable
+fun Modifier.sinemaClickable(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    scale: Float = 0.96f,
+    haptic: SinemaTapHaptic = SinemaTapHaptic.Light,
+    role: Role? = null,
+    onClickLabel: String? = null
+): Modifier {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val motion = rememberSinemaMotionOn()
+    val feedback = LocalHapticFeedback.current
+    val s = animateFloatAsState(if (pressed && enabled && motion) scale else 1f, SinemaMotion.press(), label = "sinema_tap")
+    return this
+        .graphicsLayer { scaleX = s.value; scaleY = s.value }
+        .clickable(interactionSource = source, indication = null, enabled = enabled, onClickLabel = onClickLabel, role = role) {
+            if (haptic == SinemaTapHaptic.Light) feedback.performHapticFeedback(SinemaHaptics.Light)
+            onClick()
+        }
 }
 
 /**

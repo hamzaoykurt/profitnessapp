@@ -404,7 +404,7 @@ private fun ProfileChip(
             .height(28.dp)
             .clip(shape)
             .then(if (brush != null) Modifier.background(brush) else Modifier.background(fill))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.sinemaClickable(onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -575,8 +575,7 @@ private fun ProfileHeroBanner(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 1.dp)
-                        .clickable(onClick = onOpenXpRanking)
+                        .padding(top = 1.dp).sinemaClickable(onClick = onOpenXpRanking, scale = 0.98f)
                         .padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -599,7 +598,7 @@ private fun ProfileHeroBanner(
 private fun HeroMetric(value: String, label: String, theme: AppThemeState, modifier: Modifier, onClick: (() -> Unit)? = null) {
     Column(
         modifier = modifier
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.sinemaClickable(onClick = onClick) else Modifier)
     ) {
         SinemaFitText(text = value, style = Sinema.Metric, color = Sinema.text(theme))
         Spacer(Modifier.height(6.dp))
@@ -637,8 +636,8 @@ private fun SeeAllLink(theme: AppThemeState, text: String, onClick: () -> Unit) 
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
+            .sinemaClickable(onClick = onClick)
             .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -710,8 +709,8 @@ private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick:
     Column(
         modifier = Modifier
             .width(132.dp)
+            .sinemaClickable(onClick = onClick)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
             .padding(vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -850,8 +849,7 @@ private fun TrophyGallery(
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
-                .clickable(onClick = onSeeAll)
+                .heightIn(min = 44.dp).sinemaClickable(onClick = onSeeAll, scale = 0.98f)
                 .padding(horizontal = sinemaGutter()),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -925,8 +923,7 @@ private fun SettingsSection(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onEditProfile)
+                    .fillMaxWidth().sinemaClickable(onClick = onEditProfile, scale = 0.98f)
                     .heightIn(min = 72.dp)
                     .padding(horizontal = sinemaGutter()),
                 verticalAlignment     = Alignment.CenterVertically,
@@ -1016,9 +1013,9 @@ private fun SettingsSection(
             modifier = Modifier
                 .padding(horizontal = sinemaGutter())
                 .fillMaxWidth()
+                .sinemaClickable(onClick = onLogout, scale = 0.98f)
                 .clip(groupShape)
                 .background(surface)
-                .clickable(onClick = onLogout)
                 .heightIn(min = 64.dp)
                 .padding(horizontal = sinemaGutter()),
             verticalAlignment     = Alignment.CenterVertically,
@@ -1049,8 +1046,7 @@ private fun SettingsRow(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
+            .fillMaxWidth().sinemaClickable(enabled = enabled, onClick = onClick, scale = 0.98f)
             .then(if (enabled) Modifier else Modifier.alpha(0.55f))
             .heightIn(min = 64.dp)
             .padding(horizontal = sinemaGutter(), vertical = 8.dp),
@@ -1297,9 +1293,9 @@ private fun <T> SegmentedSelector(
                 modifier = Modifier
                     .weight(1f)
                     .then(if (isSel) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, segShape) else Modifier)
+                    .sinemaClickable(onClick = { onSelect(value) })
                     .clip(segShape)
                     .then(if (isSel) Modifier.background(accent) else Modifier)
-                    .clickable { onSelect(value) }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1517,8 +1513,7 @@ private fun LanguageOptionRow(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .fillMaxWidth().sinemaClickable(onClick = onClick, scale = 0.98f)
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1580,9 +1575,9 @@ private fun ModeOption(
 ) {
     Box(
         modifier = modifier
+            .sinemaClickable(onClick = onClick)
             .clip(RoundedCornerShape(12.dp))
             .background(if (isSelected) accent.copy(0.15f) else Color.Transparent)
-            .clickable(onClick = onClick)
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1616,14 +1611,14 @@ private fun ColorSwatch(
     Box(
         modifier = Modifier
             .size(48.dp)
+            .sinemaClickable(onClick = onClick)
             .clip(CircleShape)
             .background(if (isSelected) preset.color.copy(0.15f) else Color.Transparent)
             .border(
                 width = if (isSelected) 2.dp else 0.dp,
                 color = if (isSelected) preset.color else Color.Transparent,
                 shape = CircleShape
-            )
-            .clickable(onClick = onClick),
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(

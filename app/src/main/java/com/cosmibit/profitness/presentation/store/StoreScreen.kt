@@ -799,22 +799,13 @@ private fun PlanOfferCard(
         tier.plan == UserPlan.FREE -> theme.t("Ücretsiz mod", "Free mode")
         else -> theme.t("${tier.localizedLabel(theme)} modunu aç", "Unlock ${tier.localizedLabel(theme)} mode")
     }
-    val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "plan_offer_press")
     val priceSize = if (selected) 56.sp else 28.sp
 
     Column(
         modifier = Modifier
-            .scale(cardScale)
             .fillMaxWidth()
+            .sinemaClickable(onClick = onSelect, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
             .storeCard(theme, accent, selected, if (selected) 28.dp else 24.dp)
-            .clickable(
-                indication = null,
-                interactionSource = interaction,
-                role = androidx.compose.ui.semantics.Role.Button,
-                onClick = onSelect
-            )
             .padding(if (selected) 20.dp else 16.dp)
     ) {
         Text(
@@ -1096,23 +1087,13 @@ private fun SimpleEnergyPackageRow(
 ) {
     val accent = theme.effectiveAccentColor
     val featured = pkg.localizedBadge(theme) != null
-    val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val rowScale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "energy_pack_press")
 
     Row(
         modifier = Modifier
-            .scale(rowScale)
             .fillMaxWidth()
             .alpha(if (isLoading) 0.5f else 1f)
+            .sinemaClickable(onClick = onPurchase, enabled = !isLoading, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
             .storeCard(theme, accent, featured, 24.dp)
-            .clickable(
-                enabled = !isLoading,
-                indication = null,
-                interactionSource = interaction,
-                role = androidx.compose.ui.semantics.Role.Button,
-                onClick = onPurchase
-            )
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

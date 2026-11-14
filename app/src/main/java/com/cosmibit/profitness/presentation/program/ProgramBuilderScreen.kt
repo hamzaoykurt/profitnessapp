@@ -829,9 +829,9 @@ private fun BuilderChooseScreen(
                 Spacer(Modifier.height(16.dp))
                 ProgramCategory.values().forEach { category ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                        Modifier.fillMaxWidth().sinemaClickable(onClick = {
                             activeCategory = category; showFilterSheet = false
-                        }.padding(vertical = 14.dp),
+                        }, scale = 0.98f).clip(RoundedCornerShape(14.dp)).padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(category.icon, null, tint = if (category == activeCategory) MaterialTheme.colorScheme.primary else theme.text1)
@@ -1063,7 +1063,7 @@ private fun ProgramDetailDialog(
                                     )
                                 }
                                 Row(
-                                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = open).padding(vertical = 4.dp),
+                                    Modifier.fillMaxWidth().heightIn(min = 56.dp).sinemaClickable(role = Role.Button, onClick = open, scale = 0.98f).padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
@@ -2227,11 +2227,11 @@ private fun UnsavedChangesDialog(onSave: () -> Unit, onDiscard: () -> Unit, onKe
             Spacer(Modifier.height(24.dp))
             SinemaGoButton(label = theme.t("KAYDET", "SAVE"), icon = Icons.Rounded.Check, onClick = onSave)
             Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onKeepEditing),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onKeepEditing, scale = 0.98f).clip(RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) { Text(theme.t("Düzenlemeye devam", "Keep editing"), color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
             Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDiscard),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onDiscard, scale = 0.98f).clip(RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) { Text(theme.t("Vazgeç, sil", "Discard"), color = theme.supportAlert, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
         }
@@ -2330,8 +2330,8 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick, scale = 0.98f)
             .sinemaCard(theme, RoundedCornerShape(28.dp))
-            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -2466,10 +2466,10 @@ private fun ManualDayCard(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                        .sinemaClickable(onClick = {
                             if (day.exercises.isEmpty()) onRemoveDay() else confirmRemove = true
-                        },
+                        }, role = androidx.compose.ui.semantics.Role.Button)
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Close, theme.t("Günü sil", "Remove day"), tint = textSec, modifier = Modifier.size(18.dp))
@@ -2545,10 +2545,10 @@ private fun ManualDayCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .sinemaClickable(onClick = { onEditExercise(i) }, scale = 0.98f)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Sinema.page(theme))
                                 .border(1.dp, line, RoundedCornerShape(20.dp))
-                                .clickable { onEditExercise(i) }
                                 .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -2592,8 +2592,8 @@ private fun ManualDayCard(
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .clip(CircleShape)
-                                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onEditExercise(i) },
+                                    .sinemaClickable(onClick = { onEditExercise(i) }, role = androidx.compose.ui.semantics.Role.Button)
+                                    .clip(CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Rounded.Edit, theme.t("Düzenle", "Edit"), tint = textPrimary, modifier = Modifier.size(18.dp))
@@ -2601,8 +2601,8 @@ private fun ManualDayCard(
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .clip(CircleShape)
-                                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onRemoveExercise(i) },
+                                    .sinemaClickable(onClick = { onRemoveExercise(i) }, role = androidx.compose.ui.semantics.Role.Button)
+                                    .clip(CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Rounded.Close, theme.t("Kaldır", "Remove"), tint = textSec, modifier = Modifier.size(18.dp))
@@ -2894,9 +2894,9 @@ private fun EditCounterField(
         Box(
             modifier = Modifier
                 .size(44.dp)
+                .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onDecrement)
                 .clip(CircleShape)
-                .background(Sinema.line(theme))
-                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onDecrement),
+                .background(Sinema.line(theme)),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Remove, null, tint = Sinema.text(theme), modifier = Modifier.size(18.dp))
@@ -2913,10 +2913,10 @@ private fun EditCounterField(
         Box(
             modifier = Modifier
                 .size(44.dp)
+                .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement)
                 .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                 .clip(CircleShape)
-                .background(accent)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement),
+                .background(accent),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Add, null, tint = onAccent, modifier = Modifier.size(18.dp))

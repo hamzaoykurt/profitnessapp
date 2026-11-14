@@ -56,7 +56,6 @@ internal fun Modifier.profilePremiumAction(
         animationSpec = tween(SinemaMotion.Quick),
         label = "profileActionScale"
     )
-    val indication = LocalIndication.current
 
     this
         .graphicsLayer {
@@ -73,7 +72,7 @@ internal fun Modifier.profilePremiumAction(
             enabled = enabled,
             role = Role.Button,
             interactionSource = interactions,
-            indication = indication,
+            indication = null,
             onClick = onClick
         )
 }

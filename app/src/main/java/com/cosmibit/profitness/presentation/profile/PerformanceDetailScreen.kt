@@ -258,8 +258,7 @@ private fun PerformanceCover(
         ) {
             // Görsel 44dp; dokunma hedefi 48dp (tıklama dış 48dp kutuda)
             Box(
-                Modifier.align(Alignment.CenterStart).requiredSize(48.dp).clip(CircleShape)
-                    .clickable(role = Role.Button, onClick = onBack),
+                Modifier.align(Alignment.CenterStart).requiredSize(48.dp).sinemaClickable(role = Role.Button, onClick = onBack).clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 SinemaCapsule(
@@ -274,8 +273,7 @@ private fun PerformanceCover(
                 modifier = Modifier.align(Alignment.Center), maxLines = 1
             )
             Box(
-                Modifier.align(Alignment.CenterEnd).requiredHeight(48.dp).clip(CircleShape)
-                    .clickable(role = Role.Button, onClick = onCalculate),
+                Modifier.align(Alignment.CenterEnd).requiredHeight(48.dp).sinemaClickable(role = Role.Button, onClick = onCalculate).clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 SinemaCapsule(height = 44.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
@@ -525,8 +523,7 @@ private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .semantics { this.selected = sel }
-                        .clickable(role = Role.RadioButton) { if (!sel) onWeeks(w) }
+                        .semantics { this.selected = sel }.sinemaClickable(onClick = { if (!sel) onWeeks(w) }, role = Role.RadioButton)
                 )
             }
         }
@@ -708,9 +705,9 @@ private fun ExercisePoster(theme: AppThemeState, onClick: () -> Unit, modifier: 
         modifier
             .fillMaxWidth()
             .height(168.dp)
+            .sinemaClickable(role = Role.Button, onClickLabel = title, onClick = onClick, scale = 0.98f)
             .clip(shape)
             .border(1.dp, Sinema.White.copy(0.09f), shape)
-            .clickable(role = Role.Button, onClickLabel = title, onClick = onClick)
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current).data(categoryImageUrl("Bacak")).crossfade(true).build(),
@@ -770,8 +767,7 @@ private fun BodySection(
                 PText(
                     theme.t("Kilo takibi ›", "Weight tracking ›"), 13, FontWeight.SemiBold, color = accent,
                     modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .clickable(role = Role.Button, onClick = onWeightTracking)
+                        .minimumInteractiveComponentSize().sinemaClickable(role = Role.Button, onClick = onWeightTracking)
                 )
             }
             if (none) {

@@ -335,9 +335,9 @@ fun EditProfileScreen(
                                 .clip(CircleShape)
                                 .background(accent)
                                 .padding(4.dp)
+                                .sinemaClickable(onClick = { showAvatarPicker = true }, role = androidx.compose.ui.semantics.Role.Button)
                                 .clip(CircleShape)
-                                .background(Sinema.surface(theme))
-                                .clickable(role = androidx.compose.ui.semantics.Role.Button) { showAvatarPicker = true },
+                                .background(Sinema.surface(theme)),
                             contentAlignment = Alignment.Center
                         ) {
                             val currentAvatar = state.avatar

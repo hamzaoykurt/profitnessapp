@@ -59,8 +59,8 @@ fun LeaderboardScreen(
                         Box(
                             Modifier
                                 .size(48.dp)
-                                .sinemaCard(theme, CircleShape)
-                                .clickable(role = Role.Button) { viewModel.refresh() },
+                                .sinemaClickable(onClick = { viewModel.refresh() }, role = Role.Button, scale = 0.98f)
+                                .sinemaCard(theme, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Rounded.Refresh, theme.t("Yenile", "Refresh"), tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
