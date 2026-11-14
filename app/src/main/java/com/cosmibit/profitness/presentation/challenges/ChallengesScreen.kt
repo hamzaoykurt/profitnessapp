@@ -36,6 +36,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.cosmibit.profitness.presentation.components.SinemaEmptyState
+import com.cosmibit.profitness.presentation.components.SinemaErrorState
+import com.cosmibit.profitness.presentation.components.SinemaSkeletonList
+import com.cosmibit.profitness.presentation.components.SinemaSkeletonRow
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -176,7 +180,7 @@ fun ChallengesTab(
             }
 
             // ── Hata banner ───────────────────────────────────────────────
-            state.error?.let { err ->
+            state.error?.takeIf { state.browseList.isNotEmpty() || state.myList.isNotEmpty() }?.let { err ->
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -210,11 +214,9 @@ fun ChallengesTab(
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
-                    state.isLoading -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = accent)
-                        }
-                    }
+                    state.isLoading -> SinemaSkeletonList(cardHeight = 200.dp)
+                    state.error != null && state.browseList.isEmpty() && state.myList.isEmpty() ->
+                        SinemaErrorState(message = state.error!!, onRetry = { vm.refresh() })
                     else -> {
                         val list = remember(
                             state.scope,
@@ -241,14 +243,14 @@ fun ChallengesTab(
                                 targetFilterRaw != null || mineStatusFilter != MyChallengeStatusFilter.All
                             val browse = state.scope == ChallengesScope.Browse
                             // CTA yok: oluşturma eylemi ekranda yalnız FAB'da (tek birincil eylem).
-                            EmptyBlock(
-                                text = when {
+                            SinemaEmptyState(
+                                icon = Icons.Rounded.EmojiEvents,
+                                title = when {
                                     browse && filtered -> theme.t("Bu filtrelere uygun aktif challenge yok.", "No active challenges match these filters.")
                                     browse -> theme.t("Şu an aktif challenge yok. İlkini sen başlat.", "No active challenges right now. Start the first one.")
                                     filtered -> theme.t("Bu filtrelere uygun katıldığın challenge yok.", "No joined challenges match these filters.")
                                     else -> theme.t("Henüz katıldığın bir challenge yok.", "You haven't joined any challenges yet.")
-                                },
-                                theme = theme
+                                }
                             )
                         } else {
                             // Katıldığın ve süren challenge varsa üstte büyük öne çıkan kart
@@ -439,8 +441,8 @@ private fun InviteFriendsDialog(
                 Spacer(Modifier.height(14.dp))
 
                 when {
-                    loading -> Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = accent, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    loading -> Column(Modifier.fillMaxWidth().height(150.dp)) {
+                        repeat(3) { SinemaSkeletonRow() }
                     }
                     friends.isEmpty() -> Box(
                         modifier = Modifier
@@ -1176,47 +1178,6 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
                     .clip(shape)
                     .background(accent)
             )
-        }
-    }
-}
-
-@Composable
-private fun EmptyBlock(
-    text: String,
-    theme: com.cosmibit.profitness.core.theme.AppThemeState,
-    actionLabel: String? = null,
-    onAction: (() -> Unit)? = null
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(Modifier.size(72.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.EmojiEvents, null, tint = theme.accent3Color, modifier = Modifier.size(28.dp))
-        }
-        Spacer(Modifier.height(18.dp))
-        Text(
-            text, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
-            lineHeight = 24.sp, textAlign = TextAlign.Center
-        )
-        if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(24.dp))
-            // c1 ekranda tek dolgu (FAB) → CTA nötr cam + c1 metin
-            Row(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(0.14f))
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAction)
-                    .padding(horizontal = 22.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Rounded.Add, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(actionLabel, color = theme.effectiveAccentColor, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
-            }
         }
     }
 }

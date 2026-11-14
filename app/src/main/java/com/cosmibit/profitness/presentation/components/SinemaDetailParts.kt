@@ -233,7 +233,11 @@ fun SinemaDialog(
     confirmLabel: String,
     confirmIcon: androidx.compose.ui.graphics.vector.ImageVector,
     onConfirm: () -> Unit,
-    dismissLabel: String
+    dismissLabel: String,
+    /** Metnin altına ek içerik (alan, ilerleme). */
+    content: (@Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit)? = null,
+    /** false iken eylem düğmeleri gizlenir (işlem sürerken). */
+    showActions: Boolean = true
 ) {
     val theme = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
@@ -243,14 +247,17 @@ fun SinemaDialog(
         ) {
             Text(title, style = Sinema.Title, color = Sinema.text(theme))
             Spacer(Modifier.height(8.dp))
-            Text(body, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(24.dp))
-            SinemaGoButton(label = confirmLabel, icon = confirmIcon, onClick = onConfirm)
-            Box(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDismiss),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(dismissLabel, color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            if (body.isNotEmpty()) Text(body, color = Sinema.textSecondary(theme), fontSize = 14.sp, lineHeight = 20.sp)
+            content?.invoke(this)
+            if (showActions) {
+                Spacer(Modifier.height(24.dp))
+                SinemaGoButton(label = confirmLabel, icon = confirmIcon, onClick = onConfirm)
+                Box(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(dismissLabel, color = Sinema.textSecondary(theme), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

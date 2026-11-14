@@ -316,72 +316,47 @@ fun AICoachScreen(
         // ── Program Oluşturma Dialog ──────────────────────────────────────────
         val pMsg = programDialogMsg
         if (pMsg != null) {
-            AlertDialog(
-                onDismissRequest = {
-                    if (state.programStatus !is ProgramStatus.Loading) {
+            val loadingProgram = state.programStatus is ProgramStatus.Loading
+            com.cosmibit.profitness.presentation.components.SinemaDialog(
+                onDismiss = {
+                    if (!loadingProgram) {
                         programDialogMsg = null
                         viewModel.resetProgramStatus()
                     }
                 },
-                containerColor = theme.bg1,
-                title = {
-                    Text(theme.t("Programı Planlarıma Ekle", "Add Program to My Plans"), color = theme.text1, fontWeight = FontWeight.SemiBold)
+                title = theme.t("Programı Planlarıma Ekle", "Add Program to My Plans"),
+                body = when (state.programStatus) {
+                    is ProgramStatus.Loading, is ProgramStatus.Error -> ""
+                    else -> theme.t(
+                        "AI Koç'un oluşturduğu program planlarına eklenecek.",
+                        "The program created by AI Coach will be added to your plans."
+                    )
                 },
-                text = {
-                    Column {
-                        when (val ps = state.programStatus) {
-                            is ProgramStatus.Loading -> {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(theme.t("Program oluşturuluyor...", "Creating program..."), color = theme.text2, fontSize = 13.sp)
-                                }
-                            }
-                            is ProgramStatus.Error -> {
-                                Text(theme.ui(ps.msg), color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
-                                Spacer(Modifier.height(12.dp))
-                                ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
-                            }
-                            else -> {
-                                Text(
-                                    theme.t(
-                                        "AI Koç'un oluşturduğu program planlarına eklenecek.",
-                                        "The program created by AI Coach will be added to your plans."
-                                    ),
-                                    color = theme.text2,
-                                    fontSize = 13.sp
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
-                            }
+                confirmLabel = theme.t("Oluştur", "Create"),
+                confirmIcon = Icons.Rounded.Add,
+                onConfirm = {
+                    val name = programNameInput.trim().ifEmpty { theme.t("AI Koç Programı", "AI Coach Program") }
+                    viewModel.applyProgram(pMsg.text, name)
+                },
+                dismissLabel = theme.t("İptal", "Cancel"),
+                showActions = !loadingProgram,
+                content = {
+                    when (val ps = state.programStatus) {
+                        is ProgramStatus.Loading -> {
+                            Text(theme.t("Program oluşturuluyor...", "Creating program..."), color = Sinema.textSecondary(theme), fontSize = 13.sp)
+                            Spacer(Modifier.height(12.dp))
+                            com.cosmibit.profitness.presentation.components.SinemaSkeletonBlock(Modifier.fillMaxWidth().height(14.dp))
+                            Spacer(Modifier.height(8.dp))
+                            com.cosmibit.profitness.presentation.components.SinemaSkeletonBlock(Modifier.fillMaxWidth(0.6f).height(14.dp))
                         }
-                    }
-                },
-                confirmButton = {
-                    if (state.programStatus !is ProgramStatus.Loading) {
-                        TextButton(
-                            onClick = {
-                                val name = programNameInput.trim().ifEmpty { theme.t("AI Koç Programı", "AI Coach Program") }
-                                viewModel.applyProgram(pMsg.text, name)
-                            }
-                        ) {
-                            Text(theme.t("Oluştur", "Create"), color = MaterialTheme.colorScheme.primary)
+                        is ProgramStatus.Error -> {
+                            Text(theme.ui(ps.msg), color = theme.supportAlert, fontSize = 13.sp)
+                            Spacer(Modifier.height(12.dp))
+                            ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
                         }
-                    }
-                },
-                dismissButton = {
-                    if (state.programStatus !is ProgramStatus.Loading) {
-                        TextButton(onClick = {
-                            programDialogMsg = null
-                            viewModel.resetProgramStatus()
-                        }) {
-                            Text(theme.t("İptal", "Cancel"), color = theme.text2)
+                        else -> {
+                            Spacer(Modifier.height(12.dp))
+                            ProgramNameField(value = programNameInput, onValueChange = { programNameInput = it }, theme = theme)
                         }
                     }
                 }
@@ -823,28 +798,11 @@ private fun SessionHistorySheet(
         Spacer(Modifier.height(4.dp))
 
         if (sessions.isEmpty()) {
-            // Boş durum
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Rounded.History,
-                        contentDescription = null,
-                        tint     = Sinema.textSecondary(theme).copy(0.5f),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        theme.t("Henüz kaydedilmiş sohbet yok", "No saved chats yet"),
-                        color    = Sinema.textSecondary(theme),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            Box(Modifier.fillMaxWidth().height(260.dp)) {
+                com.cosmibit.profitness.presentation.components.SinemaEmptyState(
+                    icon = Icons.Rounded.History,
+                    title = theme.t("Henüz kaydedilmiş sohbet yok", "No saved chats yet")
+                )
             }
         } else {
             LazyColumn(

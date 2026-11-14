@@ -61,9 +61,12 @@ import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
+import com.cosmibit.profitness.presentation.components.SinemaEmptyState
+import com.cosmibit.profitness.presentation.components.SinemaErrorState
+import com.cosmibit.profitness.presentation.components.SinemaSkeletonCard
+import com.cosmibit.profitness.presentation.components.SinemaSkeletonList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -684,87 +687,13 @@ private fun formatDistanceBadge(meters: Float): String =
 private fun trimMetric(value: Float): String =
     String.format(Locale.US, "%.1f", value).removeSuffix(".0")
 
-@Composable
-private fun ApplyButton(
-    onClick: () -> Unit,
-    text: String,
-    enabled: Boolean = true,
-    isLoading: Boolean = false,
-    applied: Boolean = false
-) {
-    SinemaChip(
-        active = !applied,
-        onClick = onClick,
-        enabled = enabled,
-        height = 44.dp
-    ) { fg ->
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = fg)
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(
-            text = text,
-            color = fg,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.8.sp,
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 //  STATES + PLACEHOLDERS
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun LoadingState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
-    }
-}
-
-@Composable
-private fun ErrorState(msg: String, onRetry: () -> Unit) {
-    val theme = LocalAppTheme.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(theme.t("Yüklenemedi", "Could not load"), color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        Text(msg, color = theme.text2.copy(0.7f), fontSize = 13.sp, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(14.dp))
-        ApplyButton(
-            onClick = onRetry,
-            text = theme.t("TEKRAR DENE", "TRY AGAIN")
-        )
-    }
-}
-
-@Composable
-private fun EmptyFeedState() {
-    val theme = LocalAppTheme.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(theme.t("Henüz paylaşılan program yok", "No shared programs yet"),
-            color = theme.text0, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = theme.t(
-                "İlk paylaşan sen ol. Sağ alttaki + butonuna dokun.",
-                "Be the first to share. Tap the + button at the bottom right."
-            ),
-            color = theme.text2.copy(0.7f),
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center
-        )
-    }
+    SinemaSkeletonList(count = 3, cardHeight = 240.dp)
 }
 
 
@@ -920,35 +849,6 @@ private fun SubListHeader(
     }
 }
 
-/** Davetkar boş durum (Sinema dili): nötr ikon diski, başlık, açıklama, tek ana eylem. */
-@Composable
-private fun SinemaEmptyState(
-    icon: ImageVector,
-    title: String,
-    body: String,
-    actionLabel: String,
-    actionIcon: ImageVector,
-    onAction: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            Modifier.size(72.dp).sinemaCard(theme, CircleShape),
-            contentAlignment = Alignment.Center
-        ) { Icon(icon, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp)) }
-        Spacer(Modifier.height(18.dp))
-        Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(body, color = Color.White.copy(0.65f), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
-        SinemaGoButton(label = actionLabel, icon = actionIcon, onClick = onAction, modifier = Modifier.widthIn(max = 280.dp))
-    }
-}
-
 @Composable
 private fun SavedProgramsList(
     state           : DiscoverProgramsState,
@@ -987,7 +887,7 @@ private fun SavedProgramsList(
         ) {
             when {
                 state.savedItems.isEmpty() && state.savedLoading -> LoadingState()
-                state.savedItems.isEmpty() && state.savedError != null -> ErrorState(state.savedError, onRefresh)
+                state.savedItems.isEmpty() && state.savedError != null -> SinemaErrorState(state.savedError, onRefresh)
                 state.savedItems.isEmpty() -> SinemaEmptyState(
                     icon = SinemaIcons.Bookmark,
                     title = theme.t("Henüz kaydettiğin program yok", "No saved programs yet"),
@@ -1023,9 +923,7 @@ private fun SavedProgramsList(
                     }
                     if (state.savedLoading && state.savedItems.isNotEmpty()) {
                         item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                            }
+                            SinemaSkeletonCard(Modifier.padding(vertical = 4.dp), height = 120.dp)
                         }
                     }
                 }
@@ -1106,29 +1004,17 @@ private fun MySharedCard(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            containerColor   = theme.bg1,
-            title = { Text(theme.t("Yayından kaldır?", "Unpublish?"), color = theme.text0, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    theme.t(
-                        "\"${item.title}\" topluluk akışından kaldırılacak. Daha önce kaydedenler program snapshot'ına erişmeye devam eder.",
-                        "\"${item.title}\" will be removed from the community feed. People who saved it earlier can still access the program snapshot."
-                    ),
-                    color = theme.text2, fontSize = 13.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showDeleteDialog = false; onDelete() }) {
-                    Text(theme.t("Yayından kaldır", "Unpublish"), color = danger, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(theme.t("İptal", "Cancel"), color = theme.text2)
-                }
-            }
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { showDeleteDialog = false },
+            title = theme.t("Yayından kaldır?", "Unpublish?"),
+            body = theme.t(
+                "\"${item.title}\" topluluk akışından kaldırılacak. Daha önce kaydedenler program snapshot'ına erişmeye devam eder.",
+                "\"${item.title}\" will be removed from the community feed. People who saved it earlier can still access the program snapshot."
+            ),
+            confirmLabel = theme.t("Yayından kaldır", "Unpublish"),
+            confirmIcon = Icons.Rounded.DeleteOutline,
+            onConfirm = { showDeleteDialog = false; onDelete() },
+            dismissLabel = theme.t("İptal", "Cancel")
         )
     }
 
@@ -1331,11 +1217,21 @@ private fun SinemaProgramsPager(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit
 ) {
+    val theme = LocalAppTheme.current
     val items = state.items
     when {
         items.isEmpty() && state.isLoading -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { LoadingState() }
-        items.isEmpty() && state.error != null -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { ErrorState(state.error, onRefresh) }
-        items.isEmpty() -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { EmptyFeedState() }
+        items.isEmpty() && state.error != null -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) { SinemaErrorState(state.error, onRefresh) }
+        items.isEmpty() -> Box(Modifier.fillMaxSize().padding(top = topOffset + 110.dp)) {
+            SinemaEmptyState(
+                icon = SinemaIcons.Compass,
+                title = theme.t("Henüz paylaşılan program yok", "No shared programs yet"),
+                body = theme.t(
+                    "İlk paylaşan sen ol. Sağ alttaki + butonuna dokun.",
+                    "Be the first to share. Tap the + button at the bottom right."
+                )
+            )
+        }
         else -> {
             val pagerState = androidx.compose.foundation.pager.rememberPagerState { items.size }
             val settled = pagerState.settledPage

@@ -40,7 +40,6 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -403,18 +402,14 @@ fun SavedProgramCard(
     val coral = theme.supportAlert
 
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            containerColor = Sinema.surface(theme),
-            title = { Text(theme.t("Programı Sil", "Delete Program"), color = Sinema.text(theme), fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-            text = {
-                Text(
-                    theme.t("\"${program.name}\" silinecek. Bu işlem geri alınamaz.", "\"${program.name}\" will be deleted. This action cannot be undone."),
-                    color = Sinema.textSecondary(theme), fontSize = 14.sp
-                )
-            },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text(theme.t("Sil", "Delete"), color = coral, fontWeight = FontWeight.Bold) } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(theme.t("İptal", "Cancel"), color = Sinema.textSecondary(theme)) } }
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { confirmDelete = false },
+            title = theme.t("Programı Sil", "Delete Program"),
+            body = theme.t("\"${program.name}\" silinecek. Bu işlem geri alınamaz.", "\"${program.name}\" will be deleted. This action cannot be undone."),
+            confirmLabel = theme.t("Sil", "Delete"),
+            confirmIcon = Icons.Rounded.DeleteOutline,
+            onConfirm = { confirmDelete = false; onDelete() },
+            dismissLabel = theme.t("İptal", "Cancel")
         )
     }
 
