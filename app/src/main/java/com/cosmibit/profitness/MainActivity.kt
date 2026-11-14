@@ -18,6 +18,7 @@ import com.cosmibit.profitness.core.theme.AppThemeState
 import com.cosmibit.profitness.core.theme.AppThemeStateSaver
 import com.cosmibit.profitness.core.theme.ProfitnessTheme
 import com.cosmibit.profitness.core.theme.ThemeRepository
+import com.cosmibit.profitness.core.ui.ProvideWindowClass
 import com.cosmibit.profitness.presentation.navigation.AppNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
             val effectiveThemeState = themeState.copy(isDark = true)
 
             ProfitnessTheme(themeState = effectiveThemeState) {
+              ProvideWindowClass {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color    = Color.Transparent
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+              }
             }
         }
     }

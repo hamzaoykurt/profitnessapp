@@ -9,7 +9,15 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import com.cosmibit.profitness.core.ui.LocalWindowClass
+import com.cosmibit.profitness.core.ui.SinemaLayout
+import com.cosmibit.profitness.core.ui.navLabelsFit
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.spring
@@ -347,7 +355,12 @@ fun SinemaNavBar(
                     } else Modifier.background(bg.copy(alpha = if (onPhoto) 0.62f else 0.72f))
                 )
         )
-        Row(Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = inset)) {
+        val win = LocalWindowClass.current
+        val showLabels = navLabelsFit(
+            columnWidthDp = minOf(win.widthDp, SinemaLayout.NavMax.value) / items.size.coerceAtLeast(1),
+            fontScale = win.fontScale, maxChars = items.maxOfOrNull { it.label.length } ?: 0
+        )
+        Row(Modifier.align(Alignment.BottomCenter).widthIn(max = SinemaLayout.NavMax).fillMaxWidth().fillMaxHeight().padding(bottom = inset)) {
         val navHaptic = LocalHapticFeedback.current
         val navMotion = rememberSinemaMotionOn()
         items.forEachIndexed { i, item ->
@@ -374,23 +387,78 @@ fun SinemaNavBar(
                             if (!selected) navHaptic.performHapticFeedback(SinemaHaptics.Light)
                             onSelect(i)
                         })
-                    .padding(top = 9.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(top = if (showLabels) 9.dp else 0.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = if (showLabels) Arrangement.Top else Arrangement.Center
             ) {
+                // Sekme adı simgede (TalkBack "Programlar, sekme"); etiket gizlenince de okunur.
                 Icon(
-                    item.icon, contentDescription = null,
+                    item.icon, contentDescription = item.label,
                     tint = iconTint,
-                    modifier = Modifier.size(20.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+                    modifier = Modifier.size(if (showLabels) 20.dp else 24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    item.label, style = Sinema.Nav.copy(fontSize = 10.sp, lineHeight = 12.sp),
-                    color = labelTint,
-                    maxLines = 1, softWrap = false,
-                    modifier = Modifier.clearAndSetSemantics { }
-                )
+                if (showLabels) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        item.label, style = Sinema.Nav.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                        color = labelTint,
+                        maxLines = 1, softWrap = false,
+                        modifier = Modifier.clearAndSetSemantics { }
+                    )
+                }
             }
         }
+        }
+    }
+}
+
+/**
+ * Geniş ekran (>=840dp) yan menüsü: Sinema cam kapsül, dikey; aynı simge/etiket/semantik kuralları (`navLabelsFit`).
+ * Haze kaynağı yok, cam düz dolgu (blur yok). Dashboard `RailWidth` kadar içeriği sağa alır.
+ */
+@Composable
+fun SinemaNavRail(
+    items: List<SinemaNavItem>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = LocalAppTheme.current.effectiveAccentColor
+    val win = LocalWindowClass.current
+    val shape = RoundedCornerShape(32.dp)
+    val railW = 72.dp
+    val showLabels = navLabelsFit(railW.value - 8f, win.fontScale, items.maxOfOrNull { it.label.length } ?: 0)
+    val haptic = LocalHapticFeedback.current
+    Box(modifier.fillMaxHeight().systemBarsPadding().padding(start = 12.dp, top = 12.dp, bottom = 12.dp), contentAlignment = Alignment.CenterStart) {
+        Column(
+            Modifier.width(railW).sinemaCapsuleGlass(shape).padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items.forEachIndexed { i, item ->
+                val selected = i == selectedIndex
+                val tint by animateColorAsState(if (selected) accent else Color.White.copy(0.7f), tween(SinemaMotion.Quick), label = "rail_icon")
+                val labelTint by animateColorAsState(if (selected) Color.White else Color.White.copy(0.7f), tween(SinemaMotion.Quick), label = "rail_label")
+                Column(
+                    Modifier
+                        .fillMaxWidth().heightIn(min = 56.dp)
+                        .selectable(selected = selected, indication = null, interactionSource = remember { MutableInteractionSource() },
+                            role = Role.Tab, onClick = {
+                                if (!selected) haptic.performHapticFeedback(SinemaHaptics.Light)
+                                onSelect(i)
+                            }),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(item.icon, contentDescription = item.label, tint = tint, modifier = Modifier.size(24.dp))
+                    if (showLabels) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            item.label, style = Sinema.Nav.copy(fontSize = 10.sp, lineHeight = 12.sp), color = labelTint,
+                            maxLines = 1, softWrap = false, modifier = Modifier.clearAndSetSemantics { }
+                        )
+                    }
+                }
+            }
         }
     }
 }

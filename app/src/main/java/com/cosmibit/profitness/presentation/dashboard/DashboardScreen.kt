@@ -162,7 +162,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val navBarHeight = responsive.bottomNavHeight
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // SİNEMA: alt menü (60dp) içeriğin üstünde durur; listelerin alt boşluğu = menü 60 + 16 + sistem çubuğu.
-    val contentPad   = if (useNavRail) navBarHeight + navBarBottom + if (responsive.isLargeFont) 12.dp else 8.dp
+    val contentPad   = if (useNavRail) 16.dp + navBarBottom   // rail: alt menü yok
                        else SinemaNavHeight + 16.dp + navBarBottom
     val sinemaNav = remember { SinemaNavState() }
     val navHaze = remember { dev.chrisbanes.haze.HazeState() }
@@ -266,9 +266,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 fadeIn(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) togetherWith fadeOut(tween(SinemaMotion.Instant, easing = SinemaMotion.EaseStandard))
             },
             modifier = Modifier
-                .widthIn(max = responsive.contentMaxWidth)
                 .fillMaxSize()
                 .then(swipeModifier),
+            contentAlignment = Alignment.TopCenter,
             label = "tab_slide"
         ) { tab ->
             LaunchedEffect(tab) {
@@ -279,6 +279,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 }
             }
 
+            // contentMax yalnız liste sekmelerinde (Programlar, Profil); foto sayfaları (Antrenman, AI Koç, Keşfet) tam genişlik.
+            val listTab = tab == DashboardTab.Program || tab == DashboardTab.Profile
+            Box(
+                if (listTab) Modifier.widthIn(max = responsive.contentMaxWidth).fillMaxSize()
+                else Modifier.fillMaxSize()
+            ) {
             if (tab !in readyTabs) {
                 TabWarmupSurface()
             } else when (tab) {
@@ -351,20 +357,21 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                     timerExtraPad                   = timerReserve
                 )
             }
+            }
         }
         }
         }
         }
 
+        val navItems = remember(theme) { ALL_TABS.map { SinemaNavItem(it.sinemaIcon, it.label(theme)) } }
         if (useNavRail) {
-            AppNavRail(
-                tabs     = ALL_TABS,
-                selected = { selectedTab },
-                onSelect = { tab -> if (tab != selectedTab) selectedTabRoute = tab.route },
-                modifier = Modifier.align(Alignment.CenterStart).zIndex(100f)
+            SinemaNavRail(
+                items         = navItems,
+                selectedIndex = ALL_TABS.indexOf(selectedTab),
+                onSelect      = { i -> ALL_TABS[i].let { tab -> if (tab != selectedTab) selectedTabRoute = tab.route } },
+                modifier      = Modifier.align(Alignment.CenterStart).zIndex(100f)
             )
         } else {
-            val navItems = remember(theme) { ALL_TABS.map { SinemaNavItem(it.sinemaIcon, it.label(theme)) } }
             // Foto sayfaları (Antrenman, AI Koç, Keşfet): şeffaf menü; düz zemin sayfaları (Programlar, Profil): sayfa renginde menü.
             val navOnPhoto = selectedTab != DashboardTab.Program && selectedTab != DashboardTab.Profile && !sinemaNav.lightPage
             SinemaNavBar(
@@ -537,91 +544,3 @@ private fun DashboardViewModelWarmup(stage: Int) {
 /** Kronometre kapsülü (48dp) + menüyle arası; görünürken içerik alt boşluğuna eklenir. */
 private val FloatingTimerReserve = 56.dp
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  APP NAV BAR — floating capsule, icon only, accent fill on selected
-// ═══════════════════════════════════════════════════════════════════════════
-@Composable
-private fun AppNavRail(
-    tabs    : ImmutableList<DashboardTab>,
-    selected: () -> DashboardTab,
-    onSelect: (DashboardTab) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val responsive = rememberResponsiveLayoutInfo()
-    val theme  = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    val haptic = LocalHapticFeedback.current
-    val shape  = RoundedCornerShape(32.dp)
-    val selectedTab = selected()
-
-    Box(
-        modifier = modifier
-            .width(responsive.navRailWidth)
-            .fillMaxHeight()
-            .systemBarsPadding()
-            .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(68.dp)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = shape,
-                    spotColor = Color.Black.copy(0.46f),
-                    ambientColor = Color.Transparent
-                )
-                .clip(shape)
-                .background(theme.bg1)
-                .padding(vertical = 14.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
-        ) {
-            tabs.forEach { tab ->
-                val isSelected = tab == selectedTab
-                val itemShape = RoundedCornerShape(24.dp)
-                val tabLabel = tab.label(theme)
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-                val pressScale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.90f else 1f,
-                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
-                    label = "rail_press"
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            scaleX = pressScale
-                            scaleY = pressScale
-                            translationY = if (isPressed) 1.5.dp.toPx() else 0f
-                        }
-                        .clip(itemShape)
-                        .then(
-                            if (isSelected)
-                                Modifier.background(theme.bg3)
-                            else Modifier
-                        )
-                        .then(
-                            Modifier
-                        )
-                        .clickable(indication = null, interactionSource = interactionSource) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onSelect(tab)
-                        }
-                        .padding(vertical = 11.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector        = tab.icon,
-                        contentDescription = tabLabel,
-                        tint               = if (isSelected) accent else theme.text2.copy(0.72f),
-                        modifier           = Modifier.size(23.dp)
-                    )
-                }
-            }
-        }
-    }
-}

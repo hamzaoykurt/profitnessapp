@@ -83,7 +83,7 @@ fun SinemaBackdrop(modifier: Modifier = Modifier) {
         modifier
             .fillMaxSize()
             .drawWithCache {
-                val k = size.width / 360.dp.toPx()          // çizim çerçevesi 360dp → ekran
+                val k = (size.width / 360.dp.toPx()).coerceIn(com.cosmibit.profitness.core.ui.SinemaLayout.BackdropScaleMin, com.cosmibit.profitness.core.ui.SinemaLayout.BackdropScaleMax)   // çizim çerçevesi 360dp → ekran; geniş ekranda ışık ekranı kaplamaz
                 fun d(v: Float) = v.dp.toPx() * k
                 val c1 = Offset(d(120f), d(130f))
                 val r1 = d(360f)
