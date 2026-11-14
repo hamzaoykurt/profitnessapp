@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Remove
@@ -220,7 +221,9 @@ private fun StrengthSetContent(
         else -> 0f
     }
     val value = data.setWeights[setIndex] ?: ""
-    val placeholder = if (defaultWeightKg > 0f) "%.0f".format(defaultWeightKg) else "0"
+    val loc = if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+        else java.util.Locale.forLanguageTag("tr-TR")
+    val placeholder = if (defaultWeightKg > 0f) formatWeightNumber(defaultWeightKg, loc) else "0"
 
     Text(
         theme.t("Set ${setIndex + 1} · ${exercise.reps} tekrar", "Set ${setIndex + 1} · ${exercise.reps} reps")
@@ -256,12 +259,10 @@ private fun StrengthSetContent(
     val last = data.lastSessionData[setIndex]
     if (last != null && (last.first != null || last.second != null)) {
         Spacer(Modifier.height(8.dp))
-        val lastText = buildString {
-            append(theme.t("Son: ", "Last: "))
-            if (last.first != null) append("${"%.1f".format(last.first)}kg")
-            if (last.first != null && last.second != null) append(" x ")
-            if (last.second != null) append("${last.second}rep")
-        }
+        val kgText = last.first?.let { formatWeightNumber(it, loc) + " kg" }
+        val lastText = theme.t("Son: ", "Last: ") + listOfNotNull(
+            kgText, last.second?.let { it.toString() + theme.t(" tekrar", " reps") }
+        ).joinToString(" × ")
         Text(
             lastText, color = Color.White.copy(0.70f), fontSize = 13.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
@@ -270,7 +271,7 @@ private fun StrengthSetContent(
     Spacer(Modifier.height(20.dp))
     val label = if (done) theme.t("GERİ AL", "UNDO") else theme.t("TAMAMLA", "COMPLETE")
     SinemaGoButton(
-        label = label, icon = Icons.Rounded.Check, dim = done,
+        label = label, icon = if (done) Icons.AutoMirrored.Rounded.Undo else Icons.Rounded.Check, dim = done,
         onClick = { actions.onToggleSet(exercise, setIndex); onDismiss() }
     )
 }
