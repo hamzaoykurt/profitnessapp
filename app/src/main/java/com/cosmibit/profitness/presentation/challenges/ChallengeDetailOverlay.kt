@@ -392,7 +392,7 @@ fun ChallengeDetailOverlay(
                 ) {
                     if (canAddProgress) {
                         SinemaGoButton(
-                            label = theme.t("İLERLEME EKLE", "ADD PROGRESS"),
+                            label = theme.t("İlerleme ekle", "Add progress"),
                             icon = Icons.Rounded.Add,
                             onClick = { if (!state.submittingProgress) showProgressDialog = true },
                             dim = state.submittingProgress
@@ -407,11 +407,11 @@ horizontalArrangement = Arrangement.Center
                                 CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(8.dp))
                             }
-                            Text(strings.leaveLabel.sinemaUpper(theme), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em, maxLines = 1)
+                            Text(strings.leaveLabel, color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold, letterSpacing = 0.sp, maxLines = 1)
                         }
                     } else {
                         SinemaGoButton(
-                            label = strings.joinLabel.sinemaUpper(theme),
+                            label = strings.joinLabel,
                             icon = Icons.Rounded.Bolt,
                             onClick = { if (!state.inFlight) action() },
                             dim = state.inFlight
@@ -432,7 +432,7 @@ horizontalArrangement = Arrangement.Center
                         "Ayrılırsan ilerlemen listende görünmez.",
                         "If you leave, it will no longer appear in your joined list."
                     ),
-                    confirmLabel = strings.leaveLabel.sinemaUpper(theme),
+                    confirmLabel = strings.leaveLabel,
                     confirmIcon = Icons.Rounded.Check,
                     onConfirm = { showLeaveConfirm = false; vm.leave(); onChanged() },
                     dismissLabel = theme.t("Vazgeç", "Cancel")
@@ -703,7 +703,7 @@ private fun PrivateJoinPasswordDialog(
         )
         Spacer(Modifier.height(20.dp))
         SinemaGoOrIdle(
-            label = strings.joinLabel.sinemaUpper(theme), icon = Icons.Rounded.Bolt,
+            label = strings.joinLabel, icon = Icons.Rounded.Bolt,
             enabled = password.isNotBlank(), onClick = { onSubmit(password) }
         )
         DialogTextAction(strings.privateJoinCancel, onCancel)

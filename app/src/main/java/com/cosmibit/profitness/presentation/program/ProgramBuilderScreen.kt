@@ -2255,7 +2255,7 @@ private fun UnsavedChangesDialog(onSave: () -> Unit, onDiscard: () -> Unit, onKe
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
             )
             Spacer(Modifier.height(24.dp))
-            SinemaGoButton(label = theme.t("KAYDET", "SAVE"), icon = Icons.Rounded.Check, onClick = onSave)
+            SinemaGoButton(label = theme.t("Kaydet", "Save"), icon = Icons.Rounded.Check, onClick = onSave)
             Box(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).sinemaClickable(onClick = onKeepEditing, scale = 0.98f).clip(RoundedCornerShape(SinemaRadius.R24)),
                 contentAlignment = Alignment.Center

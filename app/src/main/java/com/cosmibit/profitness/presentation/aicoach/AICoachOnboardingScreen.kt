@@ -156,7 +156,7 @@ fun AICoachOnboardingScreen(
 
             // ── Next / Finish button ───────────────────────────────────────────
             SinemaGoButton(
-                label = (if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("AI Koç'u Başlat", "Start AI Coach")).sinemaUpper(theme),
+                label = (if (step < TOTAL_STEPS - 1) theme.t("Devam Et", "Continue") else theme.t("AI Koç'u Başlat", "Start AI Coach")),
                 icon = Icons.Rounded.Check,
                 modifier = Modifier
                     .padding(horizontal = responsive.horizontalPadding)

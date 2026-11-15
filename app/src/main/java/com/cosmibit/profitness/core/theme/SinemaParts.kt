@@ -264,7 +264,7 @@ fun SinemaGoButton(
             Spacer(Modifier.width(10.dp))
             Text(
                 label, color = theme.effectiveOnAccentColor, fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em, maxLines = 1
+                fontWeight = FontWeight.Bold, letterSpacing = 0.sp, maxLines = 1
             )
         }
     }

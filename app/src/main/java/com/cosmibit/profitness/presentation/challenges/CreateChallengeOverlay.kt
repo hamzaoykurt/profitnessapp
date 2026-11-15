@@ -490,7 +490,7 @@ error?.let {
 
             // ── Submit ──
             SinemaGoOrIdle(
-                label = if (inFlight) theme.t("OLUŞTURULUYOR…", "CREATING…") else strings.challengeCreateBtn.sinemaUpper(theme),
+                label = if (inFlight) theme.t("Oluşturuluyor…", "Creating…") else strings.challengeCreateBtn,
                 icon = Icons.Rounded.Check,
                 enabled = !inFlight,
                 modifier = Modifier.padding(16.dp),

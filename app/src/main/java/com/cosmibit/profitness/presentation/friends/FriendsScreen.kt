@@ -156,7 +156,7 @@ fun FriendsTab(
                         )
                         Spacer(Modifier.height(24.dp))
                         SinemaGoButton(
-                            label = theme.t("KİŞİ ARA", "FIND PEOPLE"), icon = Icons.Rounded.Search,
+                            label = theme.t("Kişi ara", "Find people"), icon = Icons.Rounded.Search,
                             onClick = { runCatching { focus.requestFocus() } },
                             modifier = Modifier.widthIn(max = 280.dp)
                         )

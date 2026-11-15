@@ -202,7 +202,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
                     if (today != null) TodayPanel(today)
                     SinemaGoButton(
-                        label = theme.t("BAŞLA", "START"), icon = SinemaIcons.Play, onClick = onStart
+                        label = theme.t("Başla", "Start"), icon = SinemaIcons.Play, onClick = onStart
                     )
                 }
             }

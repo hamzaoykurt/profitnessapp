@@ -593,10 +593,10 @@ private fun ExercisePage(
             Modifier.fillMaxWidth().heightIn(min = (pageH - bottomPad).coerceAtLeast(0.dp)),
             verticalArrangement = Arrangement.Bottom
         ) {
-            // Label: kas grubu (vurgu rengi) + sıra
+            // Label: kas grubu (ikincil gri) + sıra
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    exercise.target.sinemaUpper(theme), style = Sinema.Label, color = accent,
+                    exercise.target.sinemaUpper(theme), style = Sinema.Label, color = Sinema.textSecondary(theme),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
                 // Görünür "Hareketi gör" hapı: detay sheet'ini (görsel/animasyon + nasıl yapılır) açar.
@@ -1194,7 +1194,7 @@ private fun CelebrationPage(
             Spacer(Modifier.height(18.dp))
             // BİTİR: sayaç/bildirim kapanır, bitiş sayfası kalkar, Antrenman "bugün tamamlandı" durumuna geçer (VM.finishWorkout).
             com.cosmibit.profitness.core.theme.SinemaGoButton(
-                label = theme.t("BİTİR", "FINISH"), icon = Icons.Rounded.Check, onClick = onFinish
+                label = theme.t("Bitir", "Finish"), icon = Icons.Rounded.Check, onClick = onFinish
             )
         }
     }

@@ -82,7 +82,7 @@ fun SavedProgramDetail(
                 }
                 Box(Modifier.weight(1.4f)) {
                     if (program.isActive) {
-                        SinemaGoButton(label = theme.t("BAŞLA", "START"), icon = SinemaIcons.Play, onClick = onStart)
+                        SinemaGoButton(label = theme.t("Başla", "Start"), icon = SinemaIcons.Play, onClick = onStart)
                     } else {
                         SinemaGoButton(label = theme.t("Aktif yap", "Set active"), icon = SinemaIcons.Check, onClick = onSetActive)
                     }

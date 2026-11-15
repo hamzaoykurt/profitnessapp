@@ -132,6 +132,9 @@ private val PLANS = listOf(
     )
 )
 
+private val MAX_YEARLY_DISCOUNT_PCT: Int =
+    PLANS.mapNotNull { it.discountBadge.filter(Char::isDigit).toIntOrNull() }.maxOrNull() ?: 0
+
 private val ENERGY_PACKAGES = listOf(
     EnergyPackage(10,  "₺29",  "Kısa AI hamleleri", null,         TextSecondary),
     EnergyPackage(25,  "₺59",  "Hafif kullanım",     null,         TextSecondary),
@@ -721,7 +724,7 @@ private fun BillingCycleSelector(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            if (isYearly) theme.t("%40'a varan avantaj", "Up to 40% value") else theme.t("Esnek", "Flexible"),
+            if (isYearly) theme.t("%${MAX_YEARLY_DISCOUNT_PCT}'e varan avantaj", "Up to $MAX_YEARLY_DISCOUNT_PCT% value") else theme.t("Esnek", "Flexible"),
             color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
             modifier = Modifier.padding(horizontal = 4.dp)
         )

@@ -161,7 +161,7 @@ fun DiscoverScreen(
                 "Aktif programın «$title» olacak. Mevcut aktif programın yerine geçer.",
                 "Your active program will become “$title”. It replaces your current active program."
             ),
-            confirmLabel = dlgTheme.t("UYGULA", "APPLY"),
+            confirmLabel = dlgTheme.t("Uygula", "Apply"),
             confirmIcon = SinemaIcons.Bolt,
             onConfirm = { pendingApplyId = null; viewModel.applyProgram(id) },
             dismissLabel = dlgTheme.t("Vazgeç", "Cancel")
@@ -405,9 +405,9 @@ private fun SharedProgramDetailScreen(
             )
             SinemaGoButton(
                 label = when {
-                    isApplied -> theme.t("UYGULANDI", "APPLIED")
-                    isApplying -> theme.t("UYGULANIYOR", "APPLYING")
-                    else -> theme.t("UYGULA", "APPLY")
+                    isApplied -> theme.t("Uygulandı", "Applied")
+                    isApplying -> theme.t("Uygulanıyor", "Applying")
+                    else -> theme.t("Uygula", "Apply")
                 },
                 icon = if (isApplied) SinemaIcons.Check else SinemaIcons.Bolt,
                 onClick = { if (!isApplying && !isApplied) onApply() },
@@ -1351,11 +1351,11 @@ private fun ProgramPosterCard(
                     SinemaCapsule(Modifier.fillMaxWidth(), height = 56.dp, horizontalArrangement = Arrangement.Center) { fg ->
                         Icon(SinemaIcons.Check, null, tint = fg, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(theme.t("UYGULANDI", "APPLIED"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
+                        Text(theme.t("Uygulandı", "Applied"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em)
                     }
                 } else {
                     SinemaGoButton(
-                        label = if (isApplying) theme.t("UYGULANIYOR", "APPLYING") else theme.t("UYGULA", "APPLY"),
+                        label = if (isApplying) theme.t("Uygulanıyor", "Applying") else theme.t("Uygula", "Apply"),
                         icon = SinemaIcons.Bolt,
                         onClick = { if (!isApplying) onApply() },
                         dim = isApplying

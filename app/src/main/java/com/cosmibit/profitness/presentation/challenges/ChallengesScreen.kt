@@ -827,7 +827,7 @@ private fun ChallengeFiltersDialog(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            SinemaGoButton(label = theme.t("SONUÇLARI GÖSTER", "SHOW RESULTS"), icon = Icons.Rounded.Check, onClick = onDismiss)
+            SinemaGoButton(label = theme.t("Sonuçları göster", "Show results"), icon = Icons.Rounded.Check, onClick = onDismiss)
         }
     }
 }

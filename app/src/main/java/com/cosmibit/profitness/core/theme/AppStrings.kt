@@ -286,7 +286,7 @@ val TurkishStrings = AppStrings(
     challengeVisibility    = "GÖRÜNÜRLÜK",
     challengeVisPublic     = "PUBLIC",
     challengeVisPrivate    = "ÖZEL",
-    challengeCreateBtn     = "OLUŞTUR",
+    challengeCreateBtn     = "Oluştur",
 
     // Challenge 2.0 — detail overlay
     challengeLabel         = "CHALLENGE",
@@ -295,8 +295,8 @@ val TurkishStrings = AppStrings(
     openLinkLabel          = "BAĞLANTIYI AÇ",
     completeAllLabel       = "TÜMÜNÜ TAMAMLA",
     skipProgramTodayLabel  = "Bugün programı atla",
-    joinLabel              = "KATIL",
-    leaveLabel             = "AYRIL",
+    joinLabel              = "Katıl",
+    leaveLabel             = "Ayrıl",
 
     // Challenge 2.0 — dashboard
     todayEventsTitle       = "BUGÜNKÜ ETKİNLİKLERİN",
@@ -430,7 +430,7 @@ val EnglishStrings = AppStrings(
     challengeVisibility    = "VISIBILITY",
     challengeVisPublic     = "PUBLIC",
     challengeVisPrivate    = "PRIVATE",
-    challengeCreateBtn     = "CREATE",
+    challengeCreateBtn     = "Create",
 
     // Challenge 2.0 — detail overlay
     challengeLabel         = "CHALLENGE",
@@ -439,8 +439,8 @@ val EnglishStrings = AppStrings(
     openLinkLabel          = "OPEN LINK",
     completeAllLabel       = "COMPLETE ALL",
     skipProgramTodayLabel  = "Skip today's program",
-    joinLabel              = "JOIN",
-    leaveLabel             = "LEAVE",
+    joinLabel              = "Join",
+    leaveLabel             = "Leave",
 
     // Challenge 2.0 — dashboard
     todayEventsTitle       = "YOUR EVENTS TODAY",
