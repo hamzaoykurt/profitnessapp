@@ -3,26 +3,17 @@ package com.cosmibit.profitness.presentation.workout
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -31,16 +22,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.AppThemeState
@@ -50,14 +36,11 @@ import com.cosmibit.profitness.core.theme.Surface3
 import com.cosmibit.profitness.core.theme.TextPrimary
 import com.cosmibit.profitness.core.theme.TextSecondary
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.insetTrackSurface
 import com.cosmibit.profitness.core.theme.raisedPillSurface
 import com.cosmibit.profitness.core.theme.supportSuccess
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text1
-import kotlinx.collections.immutable.ImmutableList
 
 // "Sahne" yönü (.ekip/yon-ui-gorsel.md): görsel üstü renkler iki temada da aynıdır
 // çünkü karartma katmanı her zaman vardır. Tek yerde tutulur.
@@ -177,55 +160,4 @@ fun SceneStatusMark(completed: Boolean, isNext: Boolean, modifier: Modifier = Mo
         else -> Box(modifier = base.insetTrackSurface(theme).border(1.5.dp, theme.text0.copy(alpha = 0.2f), CircleShape)) {}
     }
 }
-
-/** B. Gün şeridi: 48dp kapsül, seçili gün 40dp hap. */
-@Composable
-fun SceneDayStrip(
-    days: ImmutableList<WorkoutDayState>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
-    val haptic = LocalHapticFeedback.current
-    Row(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(48.dp)
-            .insetTrackSurface(theme, CircleShape)
-            .padding(horizontal = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        days.forEachIndexed { idx, state ->
-            val selected = idx == selectedIndex
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxSize()
-                    .clickable(role = Role.Tab) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onSelect(idx)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(40.dp)
-                        .then(if (selected) Modifier.raisedPillSurface(theme) else Modifier),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = localizedWorkoutDayLabel(state.day.day, theme),
-                        color = if (selected) theme.effectiveOnAccentColor else theme.text1,
-                        fontSize = 13.sp,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
+

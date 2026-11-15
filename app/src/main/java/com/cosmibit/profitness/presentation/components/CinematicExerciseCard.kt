@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import kotlinx.coroutines.isActive
 
 @Composable
@@ -664,31 +663,6 @@ private fun RestTimerChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-fun StatBadge(sets: Int, reps: String, isActivity: Boolean = false, isDurationSet: Boolean = false) {
-    val responsive = rememberResponsiveLayoutInfo()
-    val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
-    Box(
-        modifier = Modifier
-            .background(theme.bg0.copy(0.54f), RoundedCornerShape(SinemaRadius.R12))
-            .padding(horizontal = if (responsive.isLargeFont) 7.dp else 9.dp, vertical = 5.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (isActivity) {
-                Icon(Icons.Rounded.Timer, null, tint = accent, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(text = reps, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
-            } else {
-                Text(text = "${sets}x", color = accent, fontWeight = FontWeight.Black, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
-                Spacer(Modifier.width(3.dp))
-                val displayReps = if (isDurationSet) reps.toDurationSetDisplayLabel(LocalAppTheme.current) else reps
-                Text(text = displayReps, color = theme.text0, fontWeight = FontWeight.Bold, fontSize = if (responsive.isLargeFont) 11.sp else 12.sp, maxLines = 1)
-            }
-        }
     }
 }
 

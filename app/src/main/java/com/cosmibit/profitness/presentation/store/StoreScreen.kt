@@ -4,7 +4,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -64,30 +63,6 @@ private data class EnergyPackage(
     val accentColor: Color
 )
 
-/** Hangi plandan itibaren bu özellik açık? */
-private data class MasterFeature(
-    val icon   : ImageVector,
-    val text   : String,
-    val minPlan: UserPlan   // bu plan ve üstünde açık
-)
-
-private val ALL_FEATURES = listOf(
-    MasterFeature(Icons.Rounded.FitnessCenter,    "Program antrenman takibi",            UserPlan.FREE),
-    MasterFeature(Icons.Rounded.BarChart,          "Temel gelişim metrikleri",            UserPlan.FREE),
-    MasterFeature(Icons.Rounded.SelfImprovement,   "Manuel program oluşturma",            UserPlan.FREE),
-    MasterFeature(Icons.Rounded.ChatBubbleOutline, "AI Koç sohbet paketi",                UserPlan.PRO),
-    MasterFeature(Icons.Rounded.AllInclusive,      "Yüksek limitli AI Koç sohbeti",       UserPlan.PRO),
-    MasterFeature(Icons.Rounded.AutoAwesome,       "AI ile program üretimi",              UserPlan.PRO),
-    MasterFeature(Icons.AutoMirrored.Rounded.TrendingUp, "Antrenman performans analizi",  UserPlan.PRO),
-    MasterFeature(Icons.AutoMirrored.Rounded.ShowChart,  "Egzersiz ilerleme grafikleri",  UserPlan.PRO),
-    MasterFeature(Icons.Rounded.MonitorWeight,     "Kilo ve trend AI yorumu",             UserPlan.PRO),
-    MasterFeature(Icons.Rounded.Person,            "Kişisel AI antrenör profili",         UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Psychology,        "Elite koç hafızası",                  UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Support,           "Öncelikli destek",                    UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.NewReleases,       "Erken erişim özellikleri",            UserPlan.ELITE),
-    MasterFeature(Icons.Rounded.Diamond,           "Tüm program özellikleri dahil",       UserPlan.ELITE)
-)
-
 // Plan sıralaması: FREE < PRO < ELITE
 private fun UserPlan.ordinal() = when (this) {
     UserPlan.FREE  -> 0
@@ -123,24 +98,6 @@ private fun EnergyPackage.localizedPerEnergy(theme: AppThemeState): String =
 
 private fun energyLabel(amount: Int, theme: AppThemeState): String =
     theme.t("$amount Enerji", "$amount Energy")
-
-private fun MasterFeature.localizedText(theme: AppThemeState): String = when (text) {
-    "Program antrenman takibi" -> theme.t(text, "Program workout tracking")
-    "Temel gelişim metrikleri" -> theme.t(text, "Basic progress metrics")
-    "Manuel program oluşturma" -> theme.t(text, "Manual program creation")
-    "AI Koç sohbet paketi" -> theme.t(text, "AI Coach chat pack")
-    "Yüksek limitli AI Koç sohbeti" -> theme.t(text, "High-limit AI Coach chat")
-    "AI ile program üretimi" -> theme.t(text, "AI program generation")
-    "Antrenman performans analizi" -> theme.t(text, "Workout performance analysis")
-    "Egzersiz ilerleme grafikleri" -> theme.t(text, "Exercise progress charts")
-    "Kilo ve trend AI yorumu" -> theme.t(text, "Weight and trend AI insight")
-    "Kişisel AI antrenör profili" -> theme.t(text, "Personal AI coach profile")
-    "Elite koç hafızası" -> theme.t(text, "Elite coach memory")
-    "Öncelikli destek" -> theme.t(text, "Priority support")
-    "Erken erişim özellikleri" -> theme.t(text, "Early access features")
-    "Tüm program özellikleri dahil" -> theme.t(text, "All program features included")
-    else -> text
-}
 
 private val PLANS = listOf(
     PlanTier(
@@ -961,12 +918,6 @@ private fun planOneLiner(plan: UserPlan, theme: AppThemeState): String = when (p
     UserPlan.ELITE -> theme.t("Pro'nun üstüne kişisel koç, öncelik ve üst limitler.", "Pro plus personal coaching, priority, and higher limits.")
 }
 
-private fun periodLabel(period: String, theme: AppThemeState): String = when (period) {
-    theme.t("aylık", "monthly") -> theme.t("/ay", "/mo")
-    theme.t("yıllık", "yearly") -> theme.t("/yıl", "/yr")
-    else -> ""
-}
-
 @Composable
 private fun StoreSectionHeader(
     title: String,
@@ -1125,12 +1076,6 @@ private fun SimpleEnergyPackageRow(
     }
 }
 
-private fun energyPackageIntensity(amount: Int): Int = when {
-    amount >= 200 -> 3
-    amount >= 50 -> 2
-    else -> 1
-}
-
 private fun planHighlights(plan: UserPlan, theme: AppThemeState): List<Pair<ImageVector, String>> = when (plan) {
     UserPlan.FREE -> listOf(
         Icons.Rounded.FitnessCenter to theme.t("Manuel antrenman takibi.", "Manual workout tracking."),
@@ -1149,12 +1094,6 @@ private fun planHighlights(plan: UserPlan, theme: AppThemeState): List<Pair<Imag
         Icons.Rounded.Diamond to theme.t("Pro limitlerinin üstünde Elite akış.", "Elite flow above Pro limits."),
         Icons.Rounded.Support to theme.t("Öncelikli destek ve erken erişim.", "Priority support and early access."),
     )
-}
-
-private fun energyPackageSubtitle(amount: Int, theme: AppThemeState): String = when {
-    amount >= 200 -> theme.t("Yoğun AI kullanımına hazır büyük depo.", "A large reserve for heavy AI usage.")
-    amount >= 50 -> theme.t("Haftalık ritim için dengeli ve avantajlı seçim.", "A balanced pick for your weekly rhythm.")
-    else -> theme.t("Hızlı denemeler ve kısa analizler için ideal.", "Ideal for quick tries and short analyses.")
 }
 
 // ── Cancel Plan Dialog ────────────────────────────────────────────────────────
