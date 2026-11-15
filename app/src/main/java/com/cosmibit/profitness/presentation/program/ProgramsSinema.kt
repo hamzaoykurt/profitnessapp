@@ -384,6 +384,7 @@ fun SavedProgramCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onShare: () -> Unit,
+    onOpen: () -> Unit = onEdit,
     showTypeBadge: Boolean = true
 ) {
     val theme = LocalAppTheme.current
@@ -422,7 +423,7 @@ fun SavedProgramCard(
             .clip(shape)
             .background(Sinema.scrim(1f))
             .border(1.dp, Color.White.copy(0.2f), shape)
-            .clickable(role = Role.Button, onClick = onEdit)
+            .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             SceneImage(url = photo, modifier = Modifier.fillMaxSize(), requestWidthPx = 452, requestHeightPx = 576, fallbackGradient = true)
@@ -573,7 +574,7 @@ fun ReadyProgramCard(
 }
 
 @Composable
-fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, onDelete: (Program) -> Unit, onEdit: (Program) -> Unit, onShare: (Program) -> Unit) {
+fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, onDelete: (Program) -> Unit, onEdit: (Program) -> Unit, onShare: (Program) -> Unit, onOpen: (Program) -> Unit = onEdit) {
     LazyRow(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 22.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -581,7 +582,7 @@ fun SavedProgramsRow(programs: List<Program>, onSetActive: (Program) -> Unit, on
     ) {
         itemsIndexed(programs, key = { _, p -> p.id }) { i, p ->
             Box(Modifier.animateItem().sinemaListEnter(i)) {
-                SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) }, showTypeBadge = i == 0)
+                SavedProgramCard(p, { onSetActive(p) }, { onDelete(p) }, { onEdit(p) }, { onShare(p) }, { onOpen(p) }, showTypeBadge = i == 0)
             }
         }
     }

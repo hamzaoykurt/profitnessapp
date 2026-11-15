@@ -9,6 +9,10 @@ import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
+import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accent3Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
@@ -943,8 +947,8 @@ private fun LazySportTypeRow(
     ) {
 items(SportType.challengeChoices.size) { idx ->
             val sport = SportType.challengeChoices[idx]
-            SinemaCapsule(
-                selected = sport == selected, onClick = { onSelect(sport) }, height = 40.dp,
+            ChoiceCapsule(
+                active = sport == selected, onClick = { onSelect(sport) }, height = 40.dp,
 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.Center
             ) { fg ->
@@ -1186,7 +1190,7 @@ SinemaCapsule(
                 Spacer(Modifier.width(10.dp))
                 when {
                     loading || resolvingPlaceId != null -> CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary,
+                        color = LocalAppTheme.current.accent2Color,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1283,7 +1287,7 @@ Icon(
                         if (isResolving) {
                             Spacer(Modifier.width(8.dp))
                             CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
+                                color = LocalAppTheme.current.accent2Color,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -1587,8 +1591,8 @@ private fun TargetTypeOption(
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp), selected = isActive, onClick = onClick,
+    ChoiceCapsule(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp), active = isActive, onClick = onClick,
         height = 52.dp
     ) { fg ->
         Icon(iconForTargetType(type), null, tint = fg, modifier = Modifier.size(18.dp))
@@ -1617,6 +1621,30 @@ private fun movementSpecLabel(movement: MovementInput, theme: com.cosmibit.profi
 private fun formatChallengeDuration(seconds: Int): String =
     if (seconds >= 60) "${(seconds / 60).coerceAtLeast(1)} dk" else "${seconds}s"
 
+/**
+ * Seçim hapı (tür/mod/görünürlük/spor): rol haritası — seçili = nötr cam + c1 kenar ve metin (DOLU DEĞİL);
+ * ekranda tek c1 dolgu OLUŞTUR düğmesidir.
+ */
+@Composable
+private fun ChoiceCapsule(
+    modifier: Modifier = Modifier,
+    active: Boolean,
+    onClick: () -> Unit,
+    height: androidx.compose.ui.unit.Dp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp),
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    content: @Composable RowScope.(Color) -> Unit
+) {
+    val theme = LocalAppTheme.current
+    val c1 = theme.effectiveAccentColor
+    SinemaCapsule(
+        modifier.semantics { this.selected = active },
+        selected = false, onClick = onClick, height = height,
+        edge = if (active) c1 else null,
+        contentPadding = contentPadding, horizontalArrangement = horizontalArrangement
+    ) { content(if (active) c1 else Sinema.Text) }
+}
+
 @Composable
 private fun KindChip(
     label: String,
@@ -1626,8 +1654,8 @@ private fun KindChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp,
+    ChoiceCapsule(
+        modifier, active = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
     ) { fg ->
         Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
@@ -1644,11 +1672,11 @@ private fun EventModeChip(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp,
+    ChoiceCapsule(
+        modifier, active = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
     ) { fg ->
-        Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
+        Icon(icon, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))   // c3 = tür işareti (3 mod)
         Spacer(Modifier.width(5.dp))
         Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }
@@ -1664,8 +1692,8 @@ private fun VisibilityChip(
     icon: ImageVector? = null
 ) {
     val theme = LocalAppTheme.current
-    SinemaCapsule(
-        modifier, selected = isActive, onClick = onClick, height = 48.dp,
+    ChoiceCapsule(
+        modifier, active = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 10.dp)
     ) { fg ->
         if (icon != null) {

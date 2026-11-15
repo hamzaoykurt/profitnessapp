@@ -41,3 +41,39 @@ internal fun computeWorkoutSummary(inputs: List<SummaryExerciseInput>): WorkoutS
     }
     return WorkoutSummary(completedSets = sets, volumeKg = volume)
 }
+
+/** Bitiş özetinin DB'den gelen kısmı: süre (dk, hesaplanamıyorsa null) + kırılan rekor hareket adları. */
+data class WorkoutFinishExtras(val minutes: Int?, val recordNames: List<String>)
+
+private const val MIN_SESSION_MS = 60_000L
+private const val MAX_SESSION_MS = 6 * 60 * 60_000L
+
+/**
+ * Süre = günün ilk ile son tamamlanmış set kaydı arasındaki fark (dk).
+ * shortcut: ayrı "oturum başlangıcı" alanı yok; updated_at_ms kullanılır (set sonradan düzenlenirse son sınır kayabilir).
+ * 1 dk'dan kısa (tek set) veya 6 saatten uzun (eşitleme/anormal) ise null → ekranda gösterilmez.
+ */
+internal fun computeSessionMinutes(firstMs: Long?, lastMs: Long?): Int? {
+    if (firstMs == null || lastMs == null) return null
+    val diff = lastMs - firstMs
+    if (diff < MIN_SESSION_MS || diff > MAX_SESSION_MS) return null
+    return ((diff + 30_000L) / 60_000L).toInt()
+}
+
+/**
+ * Kırılan rekor: bugünkü en yüksek kg, önceki günlerin en yükseğinden büyük (önceki kayıt yoksa rekor sayılmaz).
+ * [exercises] = (dbId, ad) sırayla; aynı hareket tekrarlanırsa bir kez döner.
+ */
+internal fun computeBrokenRecords(
+    exercises: List<Pair<String, String>>,
+    todayMaxKg: Map<String, Float>,
+    previousMaxKg: Map<String, Float>
+): List<String> = exercises.distinctBy { it.first }.mapNotNull { (id, name) ->
+    val today = todayMaxKg[id] ?: return@mapNotNull null
+    val prev = previousMaxKg[id]?.takeIf { it > 0f } ?: return@mapNotNull null
+    name.takeIf { today > prev + 0.001f }
+}
+
+/** En fazla [max] ad + kalan sayısı ("+N" için). */
+internal fun splitRecordBadges(names: List<String>, max: Int = 3): Pair<List<String>, Int> =
+    names.take(max) to (names.size - max).coerceAtLeast(0)

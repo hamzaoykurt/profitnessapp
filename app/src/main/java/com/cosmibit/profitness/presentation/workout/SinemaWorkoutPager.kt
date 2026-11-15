@@ -220,6 +220,8 @@ fun SinemaWorkoutPager(
     bottomExtra: Dp = 0.dp,
     focusExerciseId: String? = null,
     onFocusConsumed: () -> Unit = {},
+    closedToday: Boolean = false,
+    finishExtras: WorkoutFinishExtras? = null,
     onFinish: () -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
@@ -230,7 +232,7 @@ fun SinemaWorkoutPager(
     }
     val n = exercises.size
     val single = isRestDay || isSkipped || n == 0
-    val pageCount = if (single) 1 else n + if (allDone) 1 else 0
+    val pageCount = if (single) 1 else n + if (allDone && !closedToday) 1 else 0
     val animEnabled = rememberSinemaMotionOn()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -382,6 +384,7 @@ fun SinemaWorkoutPager(
                                 }
                             )
                         }),
+                        extras = finishExtras,
                         onFinish = {
                             onFinish()
                             scope.launch { pagerState.scrollToPage(0) }
@@ -400,7 +403,7 @@ fun SinemaWorkoutPager(
             SinemaTopBar(
                 programTitle = programTitle, exercises = exercises, completedIds = completedIds,
                 days = days, selectedDayIdx = selectedDayIdx, liveDayIdx = hState.currentPage, onSelectDay = onSelectDay,
-                streak = streak, showSegments = !single, dataFor = dataFor,
+                streak = streak, showSegments = !single, dataFor = dataFor, closedToday = closedToday,
                 topExtra = topExtra, onOpenList = { showList = true },
                 modifier = Modifier.align(Alignment.TopStart)
             )
@@ -1129,6 +1132,7 @@ private fun CelebrationPage(
     programTitle: String,
     total: Int,
     summary: WorkoutSummary,
+    extras: WorkoutFinishExtras?,
     onFinish: () -> Unit,
     photoUrl: String,
     isSettled: Boolean,
@@ -1163,9 +1167,29 @@ private fun CelebrationPage(
                 if (summary.volumeKg > 0f) {
                     SummaryStat(formatWeightNumber(summary.volumeKg, locale) + " kg", theme.t("HACİM", "VOLUME").sinemaUpper(theme))
                 }
+                extras?.minutes?.let { SummaryStat("$it " + theme.t("dk", "min"), theme.t("SÜRE", "TIME").sinemaUpper(theme)) }
+            }
+            val records = extras?.recordNames.orEmpty()
+            if (records.isNotEmpty()) {
+                val (shown, more) = splitRecordBadges(records)
+                Spacer(Modifier.height(14.dp))
+                Text(theme.t("YENİ REKOR", "NEW RECORD").sinemaUpper(theme), style = Sinema.Label, color = theme.accent3Color)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    shown.forEach { name ->
+                        Text(
+                            name, style = Sinema.Label, color = theme.accent3Color, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                                .clip(CircleShape).background(theme.accent3Color.copy(0.18f))
+                                .border(1.dp, theme.accent3Color.copy(0.55f), CircleShape)
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                    if (more > 0) Text("+$more", style = Sinema.Label, color = theme.accent3Color)
+                }
             }
             Spacer(Modifier.height(18.dp))
-            // shortcut: "Bitir" yeni bir bitiş akışı değil; çalışan sayacı/bildirimi kapatır ve ilk harekete döner.
+            // BİTİR: sayaç/bildirim kapanır, bitiş sayfası kalkar, Antrenman "bugün tamamlandı" durumuna geçer (VM.finishWorkout).
             com.cosmibit.profitness.core.theme.SinemaGoButton(
                 label = theme.t("BİTİR", "FINISH"), icon = Icons.Rounded.Check, onClick = onFinish
             )
@@ -1195,6 +1219,7 @@ private fun SinemaTopBar(
     streak: Int,
     showSegments: Boolean,
     dataFor: (Exercise) -> SinemaExerciseData,
+    closedToday: Boolean = false,
     topExtra: Dp,
     onOpenList: () -> Unit,
     modifier: Modifier = Modifier
@@ -1218,12 +1243,19 @@ private fun SinemaTopBar(
                     else (dataFor(ex).doneSetIndices.size.toFloat() / ex.sets.coerceAtLeast(1)).coerceIn(0f, 1f)
                     val f by animateFloatAsState(frac, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "seg")
                     Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
-                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(theme.accent2Color))
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(if (closedToday) theme.accent3Color else theme.accent2Color))
                     }
                 }
             }
         }
         Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (closedToday) {
+                Icon(
+                    Icons.Rounded.Check, theme.t("Bugün tamamlandı", "Completed today"),
+                    tint = theme.accent3Color, modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+            }
             Text(
                 programTitle, color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,

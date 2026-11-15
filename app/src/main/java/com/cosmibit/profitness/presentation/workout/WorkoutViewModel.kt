@@ -235,6 +235,34 @@ class WorkoutViewModel @Inject constructor(
         notificationManager.stopWorkoutSession()
     }
 
+    // Bitiş akışı: oturum içi state (kalıcı değil); veri silinmez/değişmez.
+    private val _finishExtras = MutableStateFlow<WorkoutFinishExtras?>(null)
+    val finishExtras: StateFlow<WorkoutFinishExtras?> = _finishExtras.asStateFlow()
+    private val _closedDate = MutableStateFlow<String?>(null)
+    /** Kullanıcı bugünkü antrenmanı "BİTİR" ile kapattıysa o günün ISO tarihi. */
+    val closedDate: StateFlow<String?> = _closedDate.asStateFlow()
+
+    /** "BİTİR": sayaç/kronometre + bildirim kapanır, Antrenman sayfası "bugün tamamlandı" durumuna geçer. */
+    fun finishWorkout() {
+        dismissRestTimer()
+        _closedDate.value = LocalDate.now().toString()
+    }
+
+    /** Bitiş sayfası için süre + kırılan rekorları salt-okuma hesaplar. */
+    fun loadFinishExtras(exercises: List<Exercise>) {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+        val named = exercises.filter { it.challengeId == null }
+            .map { it.exerciseTableId.ifBlank { it.id } to it.name }
+        viewModelScope.launch {
+            workoutRepository.getWorkoutFinishFacts(userId, named.map { it.first }).onSuccess { f ->
+                _finishExtras.value = WorkoutFinishExtras(
+                    minutes = computeSessionMinutes(f.firstMs, f.lastMs),
+                    recordNames = computeBrokenRecords(named, f.todayMaxKg, f.previousMaxKg)
+                )
+            }
+        }
+    }
+
     fun startActivityCountdownTimer(exerciseId: String, exerciseName: String, seconds: Int) {
         val total = seconds.coerceAtLeast(1)
         timerJob?.cancel()

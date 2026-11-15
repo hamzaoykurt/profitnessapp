@@ -167,4 +167,18 @@ class DiscoverRepositoryImpl @Inject constructor(
                 Unit
             }
         }
+
+    override suspend fun getMySharedDetail(userId: String, sharedId: String): Result<SharedProgram> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                supabase.postgrest.rpc(
+                    "list_user_shared_programs",
+                    buildJsonObject {
+                        put("p_user_id", userId)
+                        put("p_limit", 100)
+                    }
+                ).decodeList<DiscoverFeedRowDto>().map { it.toDomain() }
+                    .first { it.id == sharedId }
+            }
+        }
 }

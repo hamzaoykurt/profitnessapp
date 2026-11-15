@@ -14,25 +14,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.cosmibit.profitness.presentation.program.toViewerExercise
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected as semSelected
 import androidx.compose.ui.unit.em
-import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.accent2Color
 import com.cosmibit.profitness.core.theme.accent3Color
 import com.cosmibit.profitness.core.theme.sinemaClickable
-import com.cosmibit.profitness.core.theme.accent3TextColor
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.SinemaMotion
-import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
@@ -49,7 +44,6 @@ import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.domain.discover.Difficulty
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import com.cosmibit.profitness.presentation.workout.Scrims
-import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -63,7 +57,6 @@ import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Whatshot
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import com.cosmibit.profitness.presentation.components.SinemaEmptyState
 import com.cosmibit.profitness.presentation.components.SinemaErrorState
@@ -76,11 +69,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -100,12 +93,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.LocalAppTheme
-import com.cosmibit.profitness.core.theme.bg1
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseDisplayName
 import com.cosmibit.profitness.core.theme.t
-import com.cosmibit.profitness.core.theme.text0
-import com.cosmibit.profitness.core.theme.text2
 import com.cosmibit.profitness.domain.discover.DiscoverSort
 import com.cosmibit.profitness.domain.discover.MySharedProgram
 import com.cosmibit.profitness.domain.discover.SharedProgram
@@ -146,15 +136,17 @@ fun DiscoverScreen(
 
     var showMenu by rememberSaveable { mutableStateOf(false) }
 
-    BackHandler(enabled = selectedProgram != null) {
+    val viewModel: DiscoverViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val detailProgram = selectedProgram ?: state.myDetail
+    BackHandler(enabled = detailProgram != null) {
         selectedProgram = null
+        viewModel.closeMyDetail()
     }
-    BackHandler(enabled = selectedProgram == null && selected == DiscoverTab.Programs && programsSub != ProgramsSubTab.Community) {
+    BackHandler(enabled = detailProgram == null && selected == DiscoverTab.Programs && programsSub != ProgramsSubTab.Community) {
         programsSub = ProgramsSubTab.Community
     }
 
-    val viewModel: DiscoverViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsStateWithLifecycle()
     // Uygula aktif programı değiştirir → önce onay (geri al güvenle yapılamadığı için yalnız onay).
     var pendingApplyId by remember { mutableStateOf<String?>(null) }
     val requestApply: (String) -> Unit = { id -> pendingApplyId = id }
@@ -222,11 +214,11 @@ fun DiscoverScreen(
         state.applyResult?.let { result ->
             currentToast = AppToastData(
                 message = when (result) {
-                    is ApplyResult.Success -> toastTheme.t("Program planına uygulandı", "Program applied to your plan")
+                    is ApplyResult.Success -> ""
                     is ApplyResult.Error   -> toastTheme.t("Uygulanamadı: ${result.msg}", "Could not apply: ${result.msg}")
                 },
-                type = if (result is ApplyResult.Success) AppToastType.Success else AppToastType.Error
-            )
+                type = AppToastType.Error
+            ).takeIf { result is ApplyResult.Error }
             viewModel.consumeApplyResult()
         }
     }
@@ -234,6 +226,9 @@ fun DiscoverScreen(
         state.myActionMsg?.let { msg ->
             val localized = when {
                 msg == "Paylaşım yayından kaldırıldı" -> toastTheme.t(msg, "Share unpublished")
+                msg == "Uygulama geri alındı" -> toastTheme.t(msg, "Apply undone")
+                msg == "Program içeriği yüklenemedi" -> toastTheme.t(msg, "Could not load program")
+                msg.startsWith("Geri alınamadı: ") -> toastTheme.t(msg, "Undo failed: " + msg.removePrefix("Geri alınamadı: "))
                 msg.startsWith("Silme başarısız: ") ->
                     toastTheme.t(msg, "Delete failed: " + msg.removePrefix("Silme başarısız: "))
                 else -> msg
@@ -248,7 +243,7 @@ fun DiscoverScreen(
     val controlsTop = statusTop + 20.dp + timerExtraPad
     Box(modifier = Modifier.fillMaxSize()) {
         // Zemin: DashboardScreen kökündeki tek SinemaBackdrop; burada ikinci backdrop çizilmez
-        selectedProgram?.let { program ->
+        detailProgram?.let { program ->
             val live = state.items.firstOrNull { it.id == program.id }
                 ?: state.savedItems.firstOrNull { it.id == program.id } ?: program
             val appliedByHash = live.contentHash != null && live.contentHash in myProgramHashes
@@ -263,7 +258,7 @@ fun DiscoverScreen(
                 onLike = { viewModel.toggleLike(live.id) },
                 onSave = { viewModel.toggleSave(live.id) },
                 onApply = { requestApply(live.id) },
-                onBack = { selectedProgram = null }
+                onBack = { selectedProgram = null; viewModel.closeMyDetail() }
             )
         } ?: Box(Modifier.fillMaxSize()) {
             val listTop = controlsTop + 54.dp + 12.dp
@@ -290,7 +285,7 @@ fun DiscoverScreen(
                             items = state.myShared, isLoading = state.myLoading, isRefreshing = state.isRefreshing,
                             deleteInFlight = state.myDeleteInFlight, bottomPadding = bottomPadding,
                             onBack = { programsSub = ProgramsSubTab.Community },
-                            onDelete = viewModel::deleteShared, onRefresh = viewModel::refresh,
+                            onDelete = viewModel::deleteShared, onOpen = viewModel::openMyShared, onRefresh = viewModel::refresh,
                             onStartShare = { showShareSheet = true }
                         )
                     }
@@ -306,6 +301,13 @@ fun DiscoverScreen(
                 selected = selected, onSelect = { selected = it },
                 programsSub = programsSub, onOpenMenu = { showMenu = true },
                 topOffset = controlsTop
+            )
+        }
+
+        state.undoApply?.let { undo ->
+            UndoApplyBar(
+                title = undo.title, onUndo = viewModel::undoApply, onDismiss = viewModel::consumeUndoApply,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp).padding(bottom = bottomPadding + 8.dp)
             )
         }
 
@@ -421,12 +423,25 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     Box(Modifier.fillMaxWidth()) {
-        SceneImage(
-            url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
-            modifier = Modifier.matchParentSize(),
-            requestWidthPx = 1080, requestHeightPx = 1080, fallbackGradient = true
-        )
-        Scrims(Modifier.matchParentSize())
+        // Foto alta doğru şeffaflaşır: bant yok, alttaki tek SinemaBackdrop görünür.
+        Box(
+            Modifier.matchParentSize()
+                .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        Brush.verticalGradient(0.72f to Color.Black, 1f to Color.Transparent),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                    )
+                }
+        ) {
+            SceneImage(
+                url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
+                modifier = Modifier.matchParentSize(),
+                requestWidthPx = 1080, requestHeightPx = 1080, fallbackGradient = true
+            )
+            Scrims(Modifier.matchParentSize())
+        }
         Column(
             Modifier.fillMaxWidth().heightIn(min = 500.dp).padding(horizontal = 16.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.Bottom
@@ -480,10 +495,6 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 }
             }
         }
-        Box(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Sinema.Page)))
-        )
     }
 }
 
@@ -792,41 +803,6 @@ private fun PhotoCount(icon: ImageVector, iconOn: ImageVector?, n: Int, on: Bool
     }
 }
 
-@Composable
-private fun SavedProgramPhotoCard(
-    program: SharedProgram,
-    isApplying: Boolean,
-    isApplied: Boolean,
-    onLike: () -> Unit,
-    onSave: () -> Unit,
-    onApply: () -> Unit,
-    onOpen: () -> Unit
-) {
-    val theme = LocalAppTheme.current
-    SinemaPhotoCard(
-        title = program.title, tag = program.tags.firstOrNull(), rightLabel = program.creatorName,
-        daysPerWeek = program.daysPerWeek, durationWeeks = program.durationWeeks, difficulty = program.difficulty,
-        onClick = onOpen
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            PhotoCount(SinemaIcons.Heart, Icons.Rounded.Favorite, program.likesCount, program.isLikedByMe, theme.t("Beğen", "Like"), onLike)
-            PhotoCount(SinemaIcons.Bookmark, Icons.Rounded.Bookmark, program.savesCount, program.isSavedByMe, theme.t("Kaydet / kaldır", "Save / remove"), onSave)
-            PhotoCount(SinemaIcons.Download, null, program.downloadsCount, false, theme.t("Uygulanma sayısı", "Applied count"), null)
-        }
-        Spacer(Modifier.height(6.dp))
-        SinemaGoButton(
-            label = when {
-                isApplied -> theme.t("UYGULANDI", "APPLIED")
-                isApplying -> theme.t("UYGULANIYOR", "APPLYING")
-                else -> theme.t("UYGULA", "APPLY")
-            },
-            icon = if (isApplied) SinemaIcons.Check else SinemaIcons.Bolt,
-            onClick = { if (!isApplying && !isApplied) onApply() },
-            dim = isApplying
-        )
-    }
-}
-
 /** Alt liste başlığı: geri (akışa dön) + başlık + isteğe bağlı sağ düğme. */
 @Composable
 private fun SubListHeader(
@@ -917,7 +893,7 @@ private fun SavedProgramsList(
                         val isAppliedFallback = appliedLocalProgramId != null &&
                             appliedLocalProgramId !in state.localDeletingProgramIds &&
                             myProgramIds.contains(appliedLocalProgramId)
-                        SavedProgramPhotoCard(
+                        ProgramPosterCard(
                             program = program,
                             isApplying = program.id in state.applyingProgramIds,
                             isApplied = program.isAppliedByMe || isAppliedByHash || isAppliedFallback,
@@ -947,6 +923,7 @@ private fun MySharedProgramsList(
     bottomPadding  : Dp,
     onBack         : () -> Unit,
     onDelete       : (String) -> Unit,
+    onOpen         : (String) -> Unit,
     onRefresh      : () -> Unit,
     onStartShare   : () -> Unit
 ) {
@@ -989,7 +966,8 @@ private fun MySharedProgramsList(
                             MySharedCard(
                                 item = item,
                                 isDeleting = item.id in deleteInFlight,
-                                onDelete = { onDelete(item.id) }
+                                onDelete = { onDelete(item.id) },
+                                onOpen = { onOpen(item.id) }
                             )
                         }
                     }
@@ -1003,7 +981,8 @@ private fun MySharedProgramsList(
 private fun MySharedCard(
     item       : MySharedProgram,
     isDeleting : Boolean,
-    onDelete   : () -> Unit
+    onDelete   : () -> Unit,
+    onOpen     : () -> Unit
 ) {
     val theme = LocalAppTheme.current
     val danger = theme.supportAlert
@@ -1027,7 +1006,7 @@ private fun MySharedCard(
     SinemaPhotoCard(
         title = item.title, tag = item.tags.firstOrNull(), rightLabel = null,
         daysPerWeek = item.daysPerWeek, durationWeeks = item.durationWeeks, difficulty = item.difficulty,
-        onClick = null
+        onClick = onOpen
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             PhotoCount(SinemaIcons.Heart, null, item.likesCount, false, theme.t("Beğeni", "Likes"), null)
@@ -1396,6 +1375,36 @@ private fun ProgramPosterCard(
                     )
                 }
             }
+        }
+    }
+}
+
+/** UYGULA sonrası 6 sn'lik cam bildirim + Geri al. */
+@Composable
+private fun UndoApplyBar(title: String, onUndo: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    val theme = LocalAppTheme.current
+    LaunchedEffect(title) {
+        delay(6_000)
+        onDismiss()
+    }
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), blur = 16.dp)
+            .padding(start = 18.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            if (title.isBlank()) theme.t("Program planına uygulandı", "Program applied to your plan")
+            else theme.t("«$title» uygulandı", "“$title” applied"),
+            color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+        )
+        Box(
+            Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(SinemaRadius.R24))
+                .clickable(role = Role.Button, onClick = onUndo).padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(theme.t("GERİ AL", "UNDO"), color = theme.effectiveAccentColor, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
         }
     }
 }

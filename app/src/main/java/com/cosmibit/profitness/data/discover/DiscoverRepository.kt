@@ -52,4 +52,7 @@ interface DiscoverRepository {
 
     /** Kullanıcının paylaşımını topluluk akışından yayından kaldırır. */
     suspend fun deleteShared(sharedId: String): Result<Unit>
+
+    /** Kullanıcının kendi paylaşımının tam içeriğini (program_data dahil) salt okunur getirir. */
+    suspend fun getMySharedDetail(userId: String, sharedId: String): Result<SharedProgram>
 }

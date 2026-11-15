@@ -384,6 +384,24 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getWorkoutFinishFacts(
+        userId: String, exerciseIds: List<String>
+    ): Result<WorkoutFinishFacts> = withContext(Dispatchers.IO) {
+        runCatching {
+            val ids = exerciseIds.distinct()
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val bounds = setCompletionDao.getDayCompletionBounds(userId, today)
+            if (ids.isEmpty()) return@runCatching WorkoutFinishFacts(bounds.firstMs, bounds.lastMs, emptyMap(), emptyMap())
+            val todayMax = setCompletionDao.getForDate(userId, ids, today)
+                .filter { it.repsActual != null && it.weightKg != null }
+                .groupBy { it.exerciseId }
+                .mapValues { (_, sets) -> sets.maxOf { it.weightKg!! } }
+            val prevMax = setCompletionDao.getMaxWeightsBefore(userId, ids, today)
+                .associate { it.exerciseId to it.maxWeight }
+            WorkoutFinishFacts(bounds.firstMs, bounds.lastMs, todayMax, prevMax)
+        }
+    }
+
     override suspend fun getExerciseWeightHistory(
         userId: String, exerciseId: String, weeks: Int
     ): Result<List<SetCompletionEntity>> = withContext(Dispatchers.IO) {

@@ -51,8 +51,15 @@ data class DiscoverProgramsState(
     val myShared         : ImmutableList<MySharedProgram> = persistentListOf(),
     val myLoading        : Boolean               = false,
     val myDeleteInFlight : ImmutableSet<String>  = persistentSetOf(),
-    val myActionMsg      : String?               = null
+    val myActionMsg      : String?               = null,
+    /** Son UYGULA'nın geri alınabilir izi (yeni kopya + önceki aktif program). */
+    val undoApply        : UndoApply?            = null,
+    val myDetail         : SharedProgram?        = null,
+    val myDetailLoadingId: String?               = null
 )
+
+/** [previousActiveId] null ise uygulama öncesi aktif program yoktu. */
+data class UndoApply(val sharedId: String, val newProgramId: String, val previousActiveId: String?, val title: String)
 
 sealed class ShareResult { object Success : ShareResult(); data class Error(val msg: String) : ShareResult() }
 sealed class ApplyResult { object Success : ApplyResult(); data class Error(val msg: String) : ApplyResult() }
@@ -342,6 +349,8 @@ class DiscoverViewModel @Inject constructor(
         if (sharedProgramId in currentState.applyingProgramIds) {
             return
         }
+        val prevActiveId = myPrograms.value.firstOrNull { it.isActive }?.id
+        val sharedTitle = (currentState.items + currentState.savedItems).firstOrNull { it.id == sharedProgramId }?.title.orEmpty()
         _state.update {
             it.copy(
                 applyingProgramIds = (it.applyingProgramIds + sharedProgramId).toImmutableSet(),
@@ -359,6 +368,7 @@ class DiscoverViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             applyResult = ApplyResult.Success,
+                            undoApply = UndoApply(sharedProgramId, localProgramId, prevActiveId, sharedTitle),
                             applyingProgramIds = (it.applyingProgramIds - sharedProgramId).toImmutableSet(),
                             appliedProgramMap = it.appliedProgramMap + (sharedProgramId to localProgramId)
                         )
@@ -375,6 +385,47 @@ class DiscoverViewModel @Inject constructor(
                 }
         }
     }
+
+    /**
+     * UYGULA geri al: önce önceki aktif programı yeniden aktif yap, sonra yalnız bu uygulamanın
+     * oluşturduğu kopyayı sil (apply_shared_program her zaman yeni program ekler).
+     */
+    fun undoApply() {
+        val undo = _state.value.undoApply ?: return
+        _state.update { it.copy(undoApply = null) }
+        viewModelScope.launch {
+            val uid = supabase.auth.currentUserOrNull()?.id
+            var failure: Throwable? = null
+            if (uid != null && undo.previousActiveId != null) {
+                programRepo.setActive(undo.previousActiveId, uid).onFailure { failure = it }
+            }
+            if (failure == null) programRepo.deleteProgram(undo.newProgramId).onFailure { failure = it }
+            if (uid != null) runCatching { programRepo.syncFromRemote(uid) }
+            _state.update {
+                it.copy(
+                    appliedProgramMap = it.appliedProgramMap - undo.sharedId,
+                    myActionMsg = if (failure == null) "Uygulama geri alındı" else "Geri alınamadı: ${failure?.message ?: "bilinmeyen hata"}"
+                )
+            }
+            mutateLocal(undo.sharedId) { p -> p.copy(isAppliedByMe = false) }
+        }
+    }
+
+    fun consumeUndoApply() { _state.update { it.copy(undoApply = null) } }
+
+    /** Paylaşımlarım kartı: paylaşımın içeriğini salt okunur çekip detay ekranında göstermek için. */
+    fun openMyShared(sharedId: String) {
+        if (_state.value.myDetailLoadingId != null) return
+        val uid = supabase.auth.currentUserOrNull()?.id ?: return
+        _state.update { it.copy(myDetailLoadingId = sharedId) }
+        viewModelScope.launch {
+            discoverRepo.getMySharedDetail(uid, sharedId)
+                .onSuccess { sp -> _state.update { it.copy(myDetail = sp, myDetailLoadingId = null) } }
+                .onFailure { _state.update { it.copy(myDetailLoadingId = null, myActionMsg = "Program içeriği yüklenemedi") } }
+        }
+    }
+
+    fun closeMyDetail() { _state.update { it.copy(myDetail = null) } }
 
     // ═══════════════════════════════════════════════════════════════════════
     //  Paylaşımlarım (My Shared Programs)

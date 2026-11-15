@@ -4,6 +4,14 @@ import com.cosmibit.profitness.data.local.dao.ExerciseProgressSummary
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Bitiş özeti ham verisi: günün ilk/son set kaydı (ms) + hareket başına bugünkü ve önceki en yüksek kg. */
+data class WorkoutFinishFacts(
+    val firstMs: Long?,
+    val lastMs: Long?,
+    val todayMaxKg: Map<String, Float>,
+    val previousMaxKg: Map<String, Float>
+)
+
 data class ExerciseSessionSets(
     val today: Map<String, List<SetCompletionEntity>>,
     val previous: Map<String, List<SetCompletionEntity>>
@@ -141,6 +149,9 @@ interface WorkoutRepository {
 
     /** Önceki antrenmanın set verilerini getirir (ön-doldurma için). */
     suspend fun getLastSessionSets(userId: String, exerciseId: String): Result<List<SetCompletionEntity>>
+
+    /** Salt-okuma: antrenman bitiş özeti (süre + rekor) ham verisi. */
+    suspend fun getWorkoutFinishFacts(userId: String, exerciseIds: List<String>): Result<WorkoutFinishFacts>
 
     /** Bugünkü ve önceki set verilerini egzersiz listesi için batch getirir. */
     suspend fun getSessionSetsForExercises(userId: String, exerciseIds: List<String>): Result<ExerciseSessionSets>

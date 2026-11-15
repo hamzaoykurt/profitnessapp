@@ -98,8 +98,13 @@ class ProgramViewModel @Inject constructor(
     private val programRepository : ProgramRepository,
     private val geminiRepository  : GeminiRepository,
     private val planRepository    : UserPlanRepository,
-    private val supabase          : SupabaseClient
+    private val supabase          : SupabaseClient,
+    private val themeRepository   : com.cosmibit.profitness.core.theme.ThemeRepository
 ) : BaseViewModel<ProgramUiState, ProgramEvent>(ProgramUiState()) {
+
+    /** Kullanıcı dili (ThemeRepository); kullanıcıya görünen mesajlar [tt] ile TR/EN seçilir. */
+    @Volatile private var english = false
+    private fun tt(tr: String, en: String): String = if (english) en else tr
 
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -115,6 +120,9 @@ class ProgramViewModel @Inject constructor(
             .toList()
 
     init {
+        viewModelScope.launch {
+            themeRepository.themeFlow.collect { english = it.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH }
+        }
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 planRepository.planFlow,
@@ -414,7 +422,7 @@ class ProgramViewModel @Inject constructor(
 
     fun requestExercise(name: String, targetMuscle: String, notes: String) {
         val uid = currentUserId() ?: run {
-            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Giriş yapmanız gerekiyor.", "You need to sign in.")))
             return
         }
         viewModelScope.launch {
@@ -436,12 +444,12 @@ class ProgramViewModel @Inject constructor(
                                 .sortedWith(compareBy<ExerciseItem> { it.category }.thenBy { it.name })
                         )
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hareket özel listene eklendi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Hareket özel listene eklendi.", "Exercise added to your custom list.")))
                 }
                 .onFailure {
                     updateState { it.copy(requestLoading = false) }
                     programRepository.requestExercise(uid, name, targetMuscle, notes)
-                    sendEvent(ProgramEvent.ShowSnackbar("Hareket eklenemedi; talep olarak kaydedildi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Hareket eklenemedi; talep olarak kaydedildi.", "Could not add the exercise; saved as a request.")))
                 }
         }
     }
@@ -458,12 +466,12 @@ class ProgramViewModel @Inject constructor(
         mimeType: String? = null
     ) {
         val uid = currentUserId() ?: run {
-            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Giriş yapmanız gerekiyor.", "You need to sign in.")))
             return
         }
         val hasMedia = imageBase64 != null && mimeType != null
         if (userPrompt.isBlank() && !hasMedia) {
-            sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir açıklama girin veya dosya yükleyin."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Lütfen bir açıklama girin veya dosya yükleyin.", "Please enter a description or upload a file.")))
             return
         }
         if (uiState.value.aiLoading) return
@@ -569,8 +577,8 @@ FORMAT:
                     return@launch
                 }
                 val message = result.exceptionOrNull()?.message.orEmpty()
-                    .ifBlank { "AI hizmeti şu anda yanıt vermiyor." }
-                updateState { it.copy(aiLoading = false, aiError = "Program oluşturulamadı: $message") }
+                    .ifBlank { tt("AI hizmeti şu anda yanıt vermiyor.", "The AI service is not responding right now.") }
+                updateState { it.copy(aiLoading = false, aiError = tt("Program oluşturulamadı: $message", "Could not create the program: $message")) }
                 return@launch
             }
             planRepository.refresh()
@@ -582,20 +590,20 @@ FORMAT:
                 .trim()
             val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value
             if (jsonCandidate == null) {
-                updateState { it.copy(aiLoading = false, aiError = "Geçersiz yanıt, tekrar dene.") }
+                updateState { it.copy(aiLoading = false, aiError = tt("Geçersiz yanıt, tekrar dene.", "Invalid response, please try again.")) }
                 return@launch
             }
 
             val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull()
             if (rootObj == null) {
-                updateState { it.copy(aiLoading = false, aiError = "Program ayrıştırılamadı, tekrar dene.") }
+                updateState { it.copy(aiLoading = false, aiError = tt("Program ayrıştırılamadı, tekrar dene.", "Could not parse the program, please try again.")) }
                 return@launch
             }
 
-            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: "AI Koç Programı"
+            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: tt("AI Koç Programı", "AI Coach Program")
             val daysArray   = rootObj["days"] as? JsonArray
             if (daysArray == null) {
-                updateState { it.copy(aiLoading = false, aiError = "Program günleri bulunamadı.") }
+                updateState { it.copy(aiLoading = false, aiError = tt("Program günleri bulunamadı.", "No program days found.")) }
                 return@launch
             }
 
@@ -690,13 +698,13 @@ FORMAT:
                     }
                     val addedMessage = addedExercises.takeIf { it.isNotEmpty() }
                         ?.joinToString(limit = 3, truncated = "...")
-                        ?.let { " Yeni hareketler özel listene eklendi: $it" }
+                        ?.let { tt(" Yeni hareketler özel listene eklendi: $it", " New exercises added to your custom list: $it") }
                         .orEmpty()
                     val skippedMessage = skippedExercises.takeIf { it.isNotEmpty() }
                         ?.joinToString(limit = 3, truncated = "...")
-                        ?.let { " Listede olmayan hareketler eklenmedi: $it" }
+                        ?.let { tt(" Listede olmayan hareketler eklenmedi: $it", " Exercises not in the list were skipped: $it") }
                         .orEmpty()
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$programName\" oluşturuldu ve aktif edildi!$addedMessage$skippedMessage"))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("\"$programName\" oluşturuldu ve aktif edildi!$addedMessage$skippedMessage", "\"$programName\" created and set active!$addedMessage$skippedMessage")))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
@@ -720,7 +728,7 @@ FORMAT:
         userInstruction : String
     ) {
         if (userInstruction.isBlank()) {
-            sendEvent(ProgramEvent.ShowSnackbar("Lütfen bir talimat girin."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Lütfen bir talimat girin.", "Please enter an instruction.")))
             return
         }
         if (uiState.value.aiEditLoading) return
@@ -816,8 +824,8 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                     return@launch
                 }
                 val message = result.exceptionOrNull()?.message.orEmpty()
-                    .ifBlank { "AI hizmeti şu anda yanıt vermiyor." }
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Program düzenlenemedi: $message") }
+                    .ifBlank { tt("AI hizmeti şu anda yanıt vermiyor.", "The AI service is not responding right now.") }
+                updateState { it.copy(aiEditLoading = false, aiEditError = tt("Program düzenlenemedi: $message", "Could not edit the program: $message")) }
                 return@launch
             }
             planRepository.refresh()
@@ -828,20 +836,20 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                 .trim()
             val jsonCandidate = Regex("\\{[\\s\\S]*\\}").find(cleaned)?.value
             if (jsonCandidate == null) {
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Geçersiz yanıt, tekrar dene.") }
+                updateState { it.copy(aiEditLoading = false, aiEditError = tt("Geçersiz yanıt, tekrar dene.", "Invalid response, please try again.")) }
                 return@launch
             }
 
             val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull()
             if (rootObj == null) {
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Program ayrıştırılamadı, tekrar dene.") }
+                updateState { it.copy(aiEditLoading = false, aiEditError = tt("Program ayrıştırılamadı, tekrar dene.", "Could not parse the program, please try again.")) }
                 return@launch
             }
 
             val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: currentName
             val daysArray = rootObj["days"] as? JsonArray
             if (daysArray == null) {
-                updateState { it.copy(aiEditLoading = false, aiEditError = "Program günleri bulunamadı.") }
+                updateState { it.copy(aiEditLoading = false, aiEditError = tt("Program günleri bulunamadı.", "No program days found.")) }
                 return@launch
             }
 
@@ -937,10 +945,10 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             updateState { it.copy(aiEditLoading = false, aiEditResult = Pair(newName, editedDays)) }
             addedEditExercises.takeIf { it.isNotEmpty() }
                 ?.joinToString(limit = 3, truncated = "...")
-                ?.let { sendEvent(ProgramEvent.ShowSnackbar("Yeni hareketler özel listene eklendi: $it")) }
+                ?.let { sendEvent(ProgramEvent.ShowSnackbar(tt("Yeni hareketler özel listene eklendi: $it", "New exercises added to your custom list: $it"))) }
             skippedEditExercises.takeIf { it.isNotEmpty() }
                 ?.joinToString(limit = 3, truncated = "...")
-                ?.let { sendEvent(ProgramEvent.ShowSnackbar("Listede olmayan hareketler eklenmedi: $it")) }
+                ?.let { sendEvent(ProgramEvent.ShowSnackbar(tt("Listede olmayan hareketler eklenmedi: $it", "Exercises not in the list were skipped: $it"))) }
         }
     }
 
@@ -954,12 +962,12 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             message.contains("permission denied", ignoreCase = true) ||
             message.contains("JWT", ignoreCase = true) ||
             message.contains("not authenticated", ignoreCase = true) ->
-                "Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın."
+                tt("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.", "Session could not be verified. Please sign out and sign in again.")
             message.contains("network", ignoreCase = true) ||
             message.contains("timeout", ignoreCase = true) ||
             message.contains("Unable to resolve", ignoreCase = true) ->
-                "İnternet bağlantısını kontrol edin."
-            else -> "Program kaydedilemedi. Tekrar deneyin."
+                tt("İnternet bağlantısını kontrol edin.", "Check your internet connection.")
+            else -> tt("Program kaydedilemedi. Tekrar deneyin.", "Could not save the program. Please try again.")
         }
     }
 
@@ -996,7 +1004,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
     fun selectTemplate(templateKey: String) {
         if (templateApplyInFlight || uiState.value.applyingTemplateKey != null) return
         val uid = currentUserId() ?: run {
-            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Giriş yapmanız gerekiyor.", "You need to sign in.")))
             return
         }
         templateApplyInFlight = true
@@ -1009,12 +1017,12 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                         val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(isLoading = false, applyingTemplateKey = null, userPrograms = updated)
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" programı oluşturuldu ve aktif edildi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("\"${program.name}\" programı oluşturuldu ve aktif edildi.", "\"${program.name}\" program created and set active.")))
                 }
                 .onFailure { err ->
                     templateApplyInFlight = false
                     updateState { it.copy(isLoading = false, applyingTemplateKey = null, error = programSaveErrorMessage(err)) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: Program oluşturulamadı."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Hata: Program oluşturulamadı.", "Error: Could not create the program.")))
                 }
         }
     }
@@ -1023,11 +1031,11 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
 
     fun createManualProgram(name: String, days: List<ManualDayDraft>) {
         val uid = currentUserId() ?: run {
-            sendEvent(ProgramEvent.ShowSnackbar("Giriş yapmanız gerekiyor."))
+            sendEvent(ProgramEvent.ShowSnackbar(tt("Giriş yapmanız gerekiyor.", "You need to sign in.")))
             return
         }
-        if (name.isBlank()) { sendEvent(ProgramEvent.ShowSnackbar("Program adı boş olamaz.")); return }
-        if (days.isEmpty()) { sendEvent(ProgramEvent.ShowSnackbar("En az 1 gün eklemelisiniz.")); return }
+        if (name.isBlank()) { sendEvent(ProgramEvent.ShowSnackbar(tt("Program adı boş olamaz.", "Program name cannot be empty."))); return }
+        if (days.isEmpty()) { sendEvent(ProgramEvent.ShowSnackbar(tt("En az 1 gün eklemelisiniz.", "You need to add at least 1 day."))); return }
 
         val inputs = days.mapIndexed { i, d ->
             ManualDayInput(
@@ -1045,12 +1053,12 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                         val updated = mergeCreatedProgram(state.userPrograms, program)
                         state.copy(isLoading = false, userPrograms = updated)
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"${program.name}\" oluşturuldu."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("\"${program.name}\" oluşturuldu.", "\"${program.name}\" created.")))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
                     updateState { it.copy(isLoading = false, error = programSaveErrorMessage(err)) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: Program kaydedilemedi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Hata: Program kaydedilemedi.", "Error: Could not save the program.")))
                 }
         }
     }
@@ -1076,8 +1084,8 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
     // ── Update (Edit) ─────────────────────────────────────────────────────────
 
     fun updateManualProgram(programId: String, name: String, days: List<ManualDayDraft>) {
-        if (name.isBlank()) { sendEvent(ProgramEvent.ShowSnackbar("Program adı boş olamaz.")); return }
-        if (days.isEmpty()) { sendEvent(ProgramEvent.ShowSnackbar("En az 1 gün eklemelisiniz.")); return }
+        if (name.isBlank()) { sendEvent(ProgramEvent.ShowSnackbar(tt("Program adı boş olamaz.", "Program name cannot be empty."))); return }
+        if (days.isEmpty()) { sendEvent(ProgramEvent.ShowSnackbar(tt("En az 1 gün eklemelisiniz.", "You need to add at least 1 day."))); return }
 
         val inputs = days.mapIndexed { i, d ->
             ManualDayInput(
@@ -1101,13 +1109,13 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                             }
                         )
                     }
-                    sendEvent(ProgramEvent.ShowSnackbar("\"$name\" güncellendi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("\"$name\" güncellendi.", "\"$name\" updated.")))
                     sendEvent(ProgramEvent.NavigateBack)
                 }
                 .onFailure { err ->
                     val message = programSaveErrorMessage(err)
                     updateState { it.copy(isLoading = false, error = message) }
-                    sendEvent(ProgramEvent.ShowSnackbar("Hata: $message"))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Hata: $message", "Error: $message")))
                 }
         }
     }
@@ -1126,7 +1134,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             programRepository.deleteProgram(programId)
                 .onSuccess {
                     onSuccess?.invoke()
-                    sendEvent(ProgramEvent.ShowSnackbar("Program silindi."))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Program silindi.", "Program deleted.")))
                 }
                 .onFailure { e ->
                     updateState { state ->
@@ -1134,7 +1142,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                     }
                     onFailure?.invoke()
                     loadUserPrograms()
-                    sendEvent(ProgramEvent.ShowSnackbar("Silme başarısız: ${programSaveErrorMessage(e)}"))
+                    sendEvent(ProgramEvent.ShowSnackbar(tt("Silme başarısız: ${programSaveErrorMessage(e)}", "Delete failed: ${programSaveErrorMessage(e)}")))
                 }
         }
     }

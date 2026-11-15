@@ -608,6 +608,12 @@ private fun WorkoutContent(
     BackHandler(enabled = detailChallengeId != null) { detailChallengeId = null }
 
     val allDone = currentState.totalCount > 0 && currentState.completedCount >= currentState.totalCount
+    val closedDate by viewModel.closedDate.collectAsState()
+    val closedToday = allDone && closedDate == java.time.LocalDate.now().toString()
+    val finishExtras by viewModel.finishExtras.collectAsState()
+    LaunchedEffect(allDone, currentState.completedCount, closedToday) {
+        if (allDone && !closedToday) viewModel.loadFinishExtras(visibleExercises)
+    }
     val isRestHero = currentDay.isRestDay && visibleExercises.isEmpty()
     var detailExercise by remember { mutableStateOf<Exercise?>(null) }
 
@@ -716,7 +722,9 @@ private fun WorkoutContent(
         bottomExtra = floatingTimerPad,
         focusExerciseId = focusExerciseId,
         onFocusConsumed = { viewModel.consumeFocusExercise() },
-        onFinish = { viewModel.dismissRestTimer() },
+        closedToday = closedToday,
+        finishExtras = finishExtras,
+        onFinish = { viewModel.finishWorkout() },
         listExtras = { dismiss ->
             if (hasUpcomingSection) {
                 UpcomingEventsSection(events = upcomingEvents, onOpen = { dismiss(); detailChallengeId = it.id })

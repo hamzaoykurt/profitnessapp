@@ -29,6 +29,18 @@ data class ExerciseProgressSummary(
     @ColumnInfo(name = "total_elevation_meters") val totalElevationMeters: Float
 )
 
+/** Bir günün tamamlanmış setlerinin ilk/son kayıt zaman damgası (ms). */
+data class DayCompletionBounds(
+    @ColumnInfo(name = "first_ms") val firstMs: Long?,
+    @ColumnInfo(name = "last_ms")  val lastMs : Long?
+)
+
+/** Hareket başına en yüksek ağırlık (kg). */
+data class ExerciseMaxWeight(
+    @ColumnInfo(name = "exercise_id") val exerciseId: String,
+    @ColumnInfo(name = "max_weight")  val maxWeight : Float
+)
+
 @Dao
 interface SetCompletionDao {
 
@@ -389,5 +401,21 @@ interface SetCompletionDao {
         ORDER BY last_date DESC, max_weight DESC
     """)
     suspend fun getTrackedExerciseSummaries(userId: String): List<ExerciseProgressSummary>
+
+    /** Salt-okuma: günün tamamlanmış setlerinin ilk/son updated_at_ms değeri (bitiş özeti süresi için). */
+    @Query("""
+        SELECT MIN(updated_at_ms) AS first_ms, MAX(updated_at_ms) AS last_ms FROM set_completions
+        WHERE user_id = :userId AND date = :date AND reps_actual IS NOT NULL AND deleted = 0
+    """)
+    suspend fun getDayCompletionBounds(userId: String, date: String): DayCompletionBounds
+
+    /** Salt-okuma: [today] öncesi günlerin hareket başına en yüksek kg'ı (rekor karşılaştırması için). */
+    @Query("""
+        SELECT exercise_id, MAX(weight_kg) AS max_weight FROM set_completions
+        WHERE user_id = :userId AND exercise_id IN (:exerciseIds) AND date < :today
+          AND deleted = 0 AND weight_kg IS NOT NULL
+        GROUP BY exercise_id
+    """)
+    suspend fun getMaxWeightsBefore(userId: String, exerciseIds: List<String>, today: String): List<ExerciseMaxWeight>
 
 }
