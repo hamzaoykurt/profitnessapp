@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.runtime.getValue
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.runtime.setValue
@@ -16,7 +18,8 @@ import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import androidx.compose.runtime.SideEffect
@@ -275,7 +278,7 @@ fun CreateChallengeOverlay(
                 .imePadding()
                 .verticalScroll(rememberScrollState())
         ) {
-// ── Sahne: seçilen türün fotoğrafı + karartma + başlık ──
+// ── Sahne: seçilen türün tipografik kapağı + başlık ──
             val isMetric = kind == CreateFormKind.Metric
             val headerTitle = if (isMetric) strings.newChallengeTitle else strings.newEventTitle
             val headerSubtitle = if (isMetric)
@@ -291,19 +294,9 @@ fun CreateChallengeOverlay(
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(Sinema.scrim(1f))
             ) {
-                SceneImage(
-                    url = categoryImageUrl(sceneCategory),
-                    modifier = Modifier.matchParentSize(),
-                    requestWidthPx = 1080, requestHeightPx = 720, fallbackGradient = true
-                )
-                Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
-                Box(
-                    Modifier.fillMaxWidth().height(130.dp).background(
-                        Brush.verticalGradient(0f to Sinema.scrim(0.55f), 1f to Color.Transparent)
-                    )
-                )
+                SinemaTypeCover(icon = coverIconFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
                 Column(
-                    Modifier.matchParentSize().statusBarsPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
+                    Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     SinemaCapsuleIconButton(
@@ -1727,17 +1720,4 @@ private fun createPhotoCategory(
 }
 
 @Composable
-private fun CreateSceneBars() {
-    val theme = LocalAppTheme.current
-    val view = LocalView.current
-    SideEffect {
-        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
-        window.statusBarColor = Color.Transparent.toArgb()
-        window.navigationBarColor = Color.Transparent.toArgb()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, view).run {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
-    }
-}
+private fun CreateSceneBars() = FullScreenDialogWindow()

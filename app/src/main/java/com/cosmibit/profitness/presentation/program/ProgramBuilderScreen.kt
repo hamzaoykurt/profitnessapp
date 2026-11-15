@@ -2,6 +2,10 @@
 
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
 import android.util.Base64
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -906,7 +910,7 @@ private fun BuilderChooseScreen(
                                 "${prog.weeks} ${sectionStrings.weekLabel}",
                                 prog.localizedLevel(theme)
                             ),
-                            photoUrl = com.cosmibit.profitness.core.ui.categoryImageUrl(prog.muscleLabels.firstOrNull().orEmpty()),
+                            iconKey = prog.muscleLabels.firstOrNull().orEmpty(),
                             onClick = { selectedProgram = prog }
                         )
                     }
@@ -920,10 +924,10 @@ private fun BuilderChooseScreen(
 
 // ── Program Detail Dialog ─────────────────────────────────────────────────────
 
-/** Tam ekran program detayı kabuğu: foto kapak + kaydırılır içerik + sabit alt çubuk (hazır ve kayıtlı program ortak). */
+/** Tam ekran program detayı kabuğu: tipografik kapak + kaydırılır içerik + sabit alt çubuk (hazır ve kayıtlı program ortak). */
 @Composable
 internal fun ProgramDetailShell(
-    coverUrl: String,
+    coverIconKey: String,
     eyebrow: String,
     title: String,
     blocking: Boolean,
@@ -942,18 +946,7 @@ internal fun ProgramDetailShell(
             dismissOnClickOutside = false
         )
     ) {
-        com.cosmibit.profitness.presentation.challenges.EdgeToEdgeDialogBars()
-        // Dialog penceresi durum çubuğunun altından başlayıp ekran dışına taşıyordu: tam ekrana zorla.
-        val dialogView = androidx.compose.ui.platform.LocalView.current
-        androidx.compose.runtime.SideEffect {
-            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.apply {
-                setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
-                addFlags(
-                    android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-                )
-            }
-        }
+        FullScreenDialogWindow()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -966,24 +959,14 @@ internal fun ProgramDetailShell(
                 // Kapak: ekran yüksekliğinin ~%45'i, durum çubuğunun altına uzanır
                 val coverHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp.coerceAtLeast(300.dp)
                 Box(Modifier.fillMaxWidth().height(coverHeight).clipToBounds()) {
-                    SinemaScene(Modifier.fillMaxSize())
-                    SceneImage(
-                        url = coverUrl,
-                        modifier = Modifier.fillMaxSize(),
-                        requestWidthPx = 1080, requestHeightPx = 840
-                    )
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(0f to Color.Black.copy(0.45f), 0.40f to Color.Black.copy(0.10f), 1f to Color.Black.copy(0.88f))
-                        )
-                    )
+                    SinemaTypeCover(icon = coverIconFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
                     SinemaCapsuleIconButton(
                         icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         description = theme.t("Kapat", "Close"),
                         onClick = { if (!blocking) onDismiss() },
                         selected = false,
                         size = 48.dp,
-                        modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 8.dp)
+                        modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = 16.dp, top = 8.dp)
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
                         Text(
@@ -1031,7 +1014,7 @@ private fun ProgramDetailDialog(
     }
     val accentSolid = accent
     ProgramDetailShell(
-        coverUrl = com.cosmibit.profitness.core.ui.categoryImageUrl(program.muscleLabels.firstOrNull().orEmpty()),
+        coverIconKey = program.muscleLabels.firstOrNull().orEmpty(),
         eyebrow = "${program.category.localizedLabel()} · ${program.localizedLevel(theme)}",
         title = program.localizedTitle(theme),
         blocking = isApplying,
@@ -1346,7 +1329,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 .fillMaxSize()
                 .hazeSource(haze)
                 .verticalScroll(scrollState)
-                .statusBarsPadding()
+                .safeTopPadding()
                 .padding(top = 14.dp, bottom = contentPad + 150.dp + timerExtraPad)
         ) {
             Row(
@@ -2301,7 +2284,7 @@ private fun BuilderSceneHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .safeTopPadding()
                 .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 22.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

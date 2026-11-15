@@ -36,7 +36,8 @@ import androidx.compose.material3.ModalBottomSheet
 import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
-import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.core.ui.LocalWindowClass
@@ -434,12 +435,10 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                     )
                 }
         ) {
-            SceneImage(
-                url = categoryImageUrl(program.tags.firstOrNull().orEmpty()),
-                modifier = Modifier.matchParentSize(),
-                requestWidthPx = 1080, requestHeightPx = 1080, fallbackGradient = true
+            SinemaTypeCover(
+                icon = coverIconFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
+                ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp)
             )
-            Scrims(Modifier.matchParentSize())
         }
         Column(
             Modifier.fillMaxWidth().heightIn(min = 500.dp).padding(horizontal = 16.dp).padding(bottom = 24.dp),
@@ -737,12 +736,7 @@ private fun SinemaPhotoCard(
             .sinemaCard(theme, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
     ) {
-        SceneImage(
-            url = categoryImageUrl(tag.orEmpty()),
-            modifier = Modifier.matchParentSize(),
-            requestWidthPx = 960, requestHeightPx = 960, fallbackGradient = true
-        )
-        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        SinemaTypeCover(icon = coverIconFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 340.dp).padding(16.dp),
             verticalArrangement = Arrangement.Bottom
@@ -1274,12 +1268,7 @@ private fun ProgramPosterCard(
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
     ) {
-        SceneImage(
-            url = categoryImageUrl(tag.orEmpty()),
-            modifier = Modifier.matchParentSize(),
-            requestWidthPx = 960, requestHeightPx = 960, fallbackGradient = true
-        )
-        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        SinemaTypeCover(icon = coverIconFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

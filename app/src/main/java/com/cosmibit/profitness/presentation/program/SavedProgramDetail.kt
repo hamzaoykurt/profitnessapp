@@ -32,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.cosmibit.profitness.core.theme.*
-import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.domain.model.ProgramType
 import com.cosmibit.profitness.presentation.workout.Exercise
@@ -54,10 +53,6 @@ fun SavedProgramDetail(
     var viewerExercise by remember { mutableStateOf<Exercise?>(null) }
     ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
 
-    val cover = remember(program) {
-        program.days.asSequence().flatMap { it.exercises.asSequence() }
-            .firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
-    }.ifBlank { categoryImageUrl("") }
     val workoutDays = program.days.count { !it.isRestDay }
     val totalExercises = program.days.sumOf { it.exercises.size }
     val typeLabel = when (program.type) {
@@ -67,7 +62,7 @@ fun SavedProgramDetail(
     }
 
     ProgramDetailShell(
-        coverUrl = cover,
+        coverIconKey = program.name,
         eyebrow = if (program.isActive) theme.t("Aktif program · $typeLabel", "Active program · $typeLabel") else typeLabel,
         title = program.name,
         blocking = false,

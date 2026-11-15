@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -142,6 +144,7 @@ fun ExerciseDetailSheet(
         onDismissRequest = { if (expanded) expanded = false else onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
+        FullScreenDialogWindow()
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             // ── Tam ekran medya: dikey video (yoksa foto). Dokununca ses aç/kapat; panel açıkken dokunma paneli kapatır ──
             Box(
@@ -206,7 +209,7 @@ fun ExerciseDetailSheet(
                 onClick = onDismiss,
                 selected = false,
                 size = 44.dp,
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = gutter, top = 8.dp)
+                modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = gutter, top = 8.dp)
             )
 
             // ── Küçük cam bilgi kartı: ad + kas/ekipman çipleri + plan; yukarı çekince / dokununca panel açılır ──

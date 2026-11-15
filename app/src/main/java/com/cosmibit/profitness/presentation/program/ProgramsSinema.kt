@@ -90,7 +90,9 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.SinemaType
 import com.cosmibit.profitness.core.theme.SinemaRadius
-import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
+import androidx.compose.ui.unit.DpOffset
 import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.domain.model.ProgramType
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -144,10 +146,6 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val imageUrl = remember(active) {
-        active?.days?.asSequence()?.flatMap { it.exercises.asSequence() }
-            ?.firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
-    }.ifBlank { categoryImageUrl("") }
     val haze = remember { HazeState() }
     // Kapak = ekran yüksekliği × 0.62 ∈ [360, 560] (D3: SinemaLayout.cover); yazı ölçeği büyüdükçe içerik payı kadar uzar.
     val wc = LocalWindowClass.current
@@ -167,22 +165,11 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 }
                 .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
         ) {
-            // Foto 640dp yüksekliğinde, üstten hizalı, -110dp kaydırılmış (çizim)
-            Box(Modifier.fillMaxWidth().requiredHeight(heroH * (640f / 496f)).offset(y = heroH * (-110f / 496f))) {
-                SceneImage(url = imageUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1080, requestHeightPx = 1600,
-                    alignment = Alignment.TopCenter, fallbackGradient = true)
-            }
-            // karartma: .5 → 0 @%24 → .12 @%42 → .88 @%86
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0f to Sinema.scrim(0.5f), 0.24f to Color.Transparent,
-                        0.42f to Sinema.scrim(0.12f), 0.80f to Sinema.scrim(0.88f), 1f to Sinema.scrim(0.88f)
-                    )
-                )
+            // Tipografik kapak (foto yok): yüzey + köşe ışığı + hayalet ikon; hero alt sönümü yukarıdaki maske ile
+            SinemaTypeCover(
+                icon = coverIconFor(active?.name), modifier = Modifier.fillMaxSize(),
+                ghostSize = 220.dp, ghostAlignment = Alignment.TopEnd, ghostOffset = DpOffset(56.dp, statusTop + 72.dp)
             )
-            // çizimdeki foto karanlık (dk filtre); gerçek fotoğraf daha parlak olduğundan genel hafif karartma
-            Box(Modifier.fillMaxSize().background(Sinema.scrim(0.22f)))
         }
         if (active != null) {
             // AKTİF PROGRAM çipi
@@ -390,9 +377,6 @@ fun SavedProgramCard(
     val shape = RoundedCornerShape(SinemaRadius.R28)
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val photo = remember(program) {
-        program.days.asSequence().flatMap { it.exercises.asSequence() }.firstOrNull { it.imageUrl.isNotBlank() }?.imageUrl.orEmpty()
-    }.ifBlank { categoryImageUrl("") }
     val (typeIcon, typeLabel) = when (program.type) {
         ProgramType.TEMPLATE -> SinemaIcons.List to theme.t("Şablon", "Template")
         ProgramType.AI -> SinemaIcons.Spark to "AI"
@@ -424,8 +408,7 @@ fun SavedProgramCard(
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SceneImage(url = photo, modifier = Modifier.fillMaxSize(), requestWidthPx = 452, requestHeightPx = 576, fallbackGradient = true)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Sinema.scrim(0.3f), 0.35f to Color.Transparent, 0.82f to Sinema.scrim(0.9f), 1f to Sinema.scrim(0.9f))))
+            SinemaTypeCover(icon = coverIconFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -537,7 +520,7 @@ fun ReadyProgramCard(
     title: String,
     tag: String,
     chips: List<String>,
-    photoUrl: String,
+    iconKey: String,
     onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
@@ -551,9 +534,7 @@ fun ReadyProgramCard(
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SceneImage(url = photoUrl, modifier = Modifier.fillMaxSize(), requestWidthPx = 1000, requestHeightPx = 480, fallbackGradient = true)
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Sinema.scrim(0.7f), Sinema.scrim(0.1f)), Offset(0f, 0f), Offset(900f, 300f))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 1f to Sinema.scrim(0.85f))))
+            SinemaTypeCover(icon = coverIconFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,

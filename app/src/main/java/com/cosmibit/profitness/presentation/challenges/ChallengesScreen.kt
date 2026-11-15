@@ -90,7 +90,8 @@ import com.cosmibit.profitness.core.theme.sinemaPrimaryGlow
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
-import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import androidx.compose.material3.ModalBottomSheet
@@ -966,7 +967,7 @@ private fun daysBetween(fromIso: String, toIso: String): Long? {
 private val challengeNumberFormat: java.text.NumberFormat
     get() = java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr"))
 
-/** Tür -> mevcut kategori foto kaynağı (categoryImageUrl anahtar kelimeleri). */
+/** Tür -> kapak hayalet ikon anahtarı (coverIconFor). */
 private fun challengePhotoCategory(c: ChallengeSummary): String {
     val sport = c.event?.sportType
     return when {
@@ -982,7 +983,7 @@ private fun challengePhotoCategory(c: ChallengeSummary): String {
     }
 }
 
-/** Fotoğraflı poster kart: foto + alt karartma, tek durum etiketi, büyük hedef rakamı, ilerleme, KATIL/KAPALI. */
+/** Tipografik kapaklı poster kart: tek durum etiketi, büyük hedef rakamı, ilerleme, KATIL/KAPALI. */
 @Composable
 private fun ChallengeCard(
     c: ChallengeSummary,
@@ -1018,12 +1019,7 @@ private fun ChallengeCard(
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        SceneImage(
-            url = categoryImageUrl(challengePhotoCategory(c)),
-            modifier = Modifier.matchParentSize(),
-            requestWidthPx = 960, requestHeightPx = 960, fallbackGradient = true
-        )
-        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
+        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = if (featured) 440.dp else 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

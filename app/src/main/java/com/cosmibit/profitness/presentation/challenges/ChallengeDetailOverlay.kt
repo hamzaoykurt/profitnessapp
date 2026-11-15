@@ -1,5 +1,10 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import android.content.Intent
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import android.net.Uri
@@ -98,7 +103,8 @@ import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
 import com.cosmibit.profitness.core.theme.t
-import com.cosmibit.profitness.core.ui.categoryImageUrl
+import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.core.ui.SinemaLayout
@@ -171,7 +177,7 @@ fun ChallengeDetailOverlay(
         SinemaBackdrop(Modifier.fillMaxSize())
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 170.dp)
+                contentPadding = PaddingValues(bottom = 170.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
             ) {
                 val detailNow = state.detail
                 when {
@@ -501,21 +507,7 @@ horizontalArrangement = Arrangement.Center
 }
 
 @Composable
-internal fun EdgeToEdgeDialogBars() {
-    val theme = LocalAppTheme.current
-    val view = LocalView.current
-
-    SideEffect {
-        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
-        window.statusBarColor = Color.Transparent.toArgb()
-        window.navigationBarColor = Color.Transparent.toArgb()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, view).run {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
-    }
-}
+internal fun EdgeToEdgeDialogBars() = FullScreenDialogWindow()
 
 /** Tür -> kategori foto kaynağı (liste ekranındaki poster ile aynı eşleme). */
 private fun heroPhotoCategory(c: ChallengeSummary): String {
@@ -580,7 +572,7 @@ private fun ChallengeHero(
         Modifier
             .fillMaxWidth()
             .height(heroH)
-            // Foto alt kenarı sayfa zeminine (SinemaBackdrop) söner: son 160dp alfa → 0
+            // Kapak alt kenarı sayfa zeminine (SinemaBackdrop) söner: son 160dp alfa → 0
             .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
@@ -596,19 +588,9 @@ private fun ChallengeHero(
                 )
             }
     ) {
-        SceneImage(
-            url = categoryImageUrl(heroPhotoCategory(c)),
-            modifier = Modifier.matchParentSize(),
-            requestWidthPx = 1080, requestHeightPx = 1080, fallbackGradient = true
-        )
-        Box(Modifier.matchParentSize().background(Sinema.BottomScrim))
-        Box(
-            Modifier.fillMaxWidth().height(150.dp).background(
-                Brush.verticalGradient(0f to Color.Black.copy(0.55f), 1f to Color.Transparent)
-            )
-        )
+        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp))
         Column(
-            Modifier.matchParentSize().statusBarsPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
+            Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

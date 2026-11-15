@@ -80,7 +80,7 @@ fun SinemaDetailHeader(
     Column(
         modifier
             .fillMaxWidth()
-            .statusBarsPadding()
+            .safeTopPadding()
             .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

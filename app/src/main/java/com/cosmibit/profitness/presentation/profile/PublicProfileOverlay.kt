@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.profile
 
+import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.foundation.background
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.foundation.clickable
@@ -101,6 +103,7 @@ fun PublicProfileOverlay(
             dismissOnClickOutside = false
         )
     ) {
+        FullScreenDialogWindow()
         Box(Modifier.fillMaxSize().background(Sinema.page(theme))) {
             SinemaBackdrop()
             when {
@@ -148,7 +151,7 @@ fun PublicProfileOverlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
+                    .safeTopPadding()
                     .padding(SinemaLayout.gutter(LocalWindowClass.current.widthDp)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
