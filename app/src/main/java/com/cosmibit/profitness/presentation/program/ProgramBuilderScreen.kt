@@ -942,6 +942,18 @@ internal fun ProgramDetailShell(
             dismissOnClickOutside = false
         )
     ) {
+        com.cosmibit.profitness.presentation.challenges.EdgeToEdgeDialogBars()
+        // Dialog penceresi durum çubuğunun altından başlayıp ekran dışına taşıyordu: tam ekrana zorla.
+        val dialogView = androidx.compose.ui.platform.LocalView.current
+        androidx.compose.runtime.SideEffect {
+            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.apply {
+                setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+                addFlags(
+                    android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                )
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

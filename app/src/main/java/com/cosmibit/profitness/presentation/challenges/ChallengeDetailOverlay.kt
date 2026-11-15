@@ -501,7 +501,7 @@ horizontalArrangement = Arrangement.Center
 }
 
 @Composable
-private fun EdgeToEdgeDialogBars() {
+internal fun EdgeToEdgeDialogBars() {
     val theme = LocalAppTheme.current
     val view = LocalView.current
 

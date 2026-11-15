@@ -347,6 +347,7 @@ fun SinemaWorkoutPager(
                 beyondViewportPageCount = 1,
                 flingBehavior = PagerDefaults.flingBehavior(
                     state = pagerState,
+                    snapPositionalThreshold = 0.22f,   // varsayılan 0.5: yavaş bırakmada yarım ekran sürüklemek gerekiyordu
                     snapAnimationSpec = tween(Sinema.PagerSettleMs, easing = SinemaMotion.EaseStandard)
                 ),
                 key = { if (single) "single" else exercises.getOrNull(it)?.id ?: "done" }
@@ -579,10 +580,12 @@ private fun ExercisePage(
         val videoPlaying = isSettled && !exercise.videoUrl.isNullOrBlank()
         CompositionLocalProvider(LocalSinemaHaze provides if (videoPlaying) null else haze) {
         // Alta yaslı; içerik yüksekliği aşarsa (kısa ekran + büyük yazı) alttan başlayıp yukarı kaydırılır (BAŞLA hep görünür).
+        // İçerik sığıyorsa kaydırma kapalı: aksi halde iç scrollable dikey sürüklemeyi yakalar, hareket pager'ı zor döner.
+        val contentScroll = rememberScrollState()
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState(), reverseScrolling = true)
+                .verticalScroll(contentScroll, enabled = contentScroll.maxValue > 0, reverseScrolling = true)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = bottomPad)
         ) {

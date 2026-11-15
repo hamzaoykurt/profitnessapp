@@ -1089,7 +1089,7 @@ private fun DiscoverTopControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BoxWithConstraints(
-            Modifier.weight(1f).heightIn(min = 54.dp)
+            Modifier.weight(1f).height(54.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceIn(1f, 1.3f))
                 .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), blur = 16.dp)
                 .padding(3.dp)
         ) {
