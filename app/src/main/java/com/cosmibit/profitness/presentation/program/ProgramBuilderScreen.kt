@@ -932,6 +932,7 @@ internal fun ProgramDetailShell(
     title: String,
     blocking: Boolean,
     onDismiss: () -> Unit,
+    subtitle: String = "",
     bottomBar: @Composable () -> Unit,
     overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
@@ -975,10 +976,19 @@ internal fun ProgramDetailShell(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(title, color = Sinema.White, style = Sinema.ScreenTitle, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        if (subtitle.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(subtitle, color = Sinema.White.copy(0.80f), fontSize = SinemaType.Body, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 128.dp).navigationBarsPadding()) {
-                    content()
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    Column(
+                        Modifier.widthIn(max = com.cosmibit.profitness.core.ui.SinemaLayout.ContentMaxReading)
+                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 160.dp).navigationBarsPadding()
+                    ) {
+                        content()
+                    }
                 }
             }
 
@@ -1012,11 +1022,12 @@ private fun ProgramDetailDialog(
     val templateDays = remember(program.title) {
         com.cosmibit.profitness.data.program.PROGRAM_TEMPLATES.firstOrNull { it.key == program.title }?.days.orEmpty()
     }
-    val accentSolid = accent
+    ProgramExerciseSheet(viewerExercise) { viewerExercise = null }
     ProgramDetailShell(
         coverIconKey = program.muscleLabels.firstOrNull().orEmpty(),
         eyebrow = "${program.category.localizedLabel()} · ${program.localizedLevel(theme)}",
         title = program.localizedTitle(theme),
+        subtitle = program.localizedSubtitle(theme),
         blocking = isApplying,
         onDismiss = onDismiss,
         bottomBar = {
@@ -1062,107 +1073,40 @@ private fun ProgramDetailDialog(
             }
         }
     ) {
-            Text(program.localizedSubtitle(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
-
-            Spacer(Modifier.height(20.dp))
-
-            // Stats row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DialogStat(Icons.Rounded.CalendarMonth, "${program.days}", strings.dayLabel, accentSolid, Modifier.weight(1f))
-                Box(Modifier.width(1.dp).height(56.dp).background(Sinema.line(theme)))
-                DialogStat(Icons.Rounded.Schedule, "${program.weeks}", strings.weekLabel, accentSolid, Modifier.weight(1f))
-                Box(Modifier.width(1.dp).height(56.dp).background(Sinema.line(theme)))
-                // Seviye rakam değil kelime: daha küçük stil, tam metin (kesilmez)
-                DialogStat(Icons.Rounded.TrackChanges, program.localizedLevel(theme).uppercase(), strings.levelLabel, accentSolid, Modifier.weight(1f), valueSize = 15.sp)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // Description
-            Text(program.localizedDescription(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
-
-            Spacer(Modifier.height(24.dp))
-
-            // Muscle distribution
-            Text(strings.muscleDistLabel.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-            Spacer(Modifier.height(12.dp))
-            program.muscleLabels.forEachIndexed { i, label ->
-                Column(Modifier.padding(bottom = 12.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(program.localizedText(label, theme), color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium)
-                        Text(program.musclePct[i], color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(Sinema.line(theme))
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(program.muscleFractions[i])
-                                .fillMaxHeight()
-                                .clip(CircleShape)
-                                .background(accentSolid)
-                        )
-                    }
+            val planDays = remember(templateDays, theme) {
+                templateDays.filter { !it.isRestDay && it.exercises.isNotEmpty() }.map { d ->
+                    DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) })
                 }
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Schedule
-            Text(strings.scheduleLabel.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-            Spacer(Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
-                    .padding(16.dp)
-            ) {
+            ProgramBigStats(
+                listOf(
+                    "${program.days}" to theme.t("Gün / hafta", "Days / week"),
+                    "${program.weeks}" to strings.weekLabel,
+                    "${program.days * program.weeks}" to theme.t("Antrenman", "Workouts")
+                )
+            )
+            Spacer(Modifier.height(24.dp))
+            ProgramSectionLabel("Plan")
+            Spacer(Modifier.height(8.dp))
+            if (planDays.isNotEmpty()) {
+                ProgramPlanDays(planDays) { ex ->
+                    viewerExercise = catalog.toViewerExercise(ex.name, ex.sets, ex.reps, ex.restSeconds, ex.durationSeconds)
+                }
+            } else if (program.schedule.isNotBlank()) {
                 Text(program.localizedSchedule(theme), color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 22.sp)
             }
-
-            templateDays.filter { !it.isRestDay && it.exercises.isNotEmpty() }.forEachIndexed { dayIdx, day ->
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "${dayIdx + 1} · ${day.title}".sinemaUpper(theme),
-                    color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 2, overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(8.dp))
-                Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(horizontal = 16.dp, vertical = 4.dp)) {
-                    day.exercises.forEachIndexed { i, ex ->
-                        if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
-                        val open = {
-                            viewerExercise = catalog.toViewerExercise(
-                                ex.exerciseName, ex.sets, ex.reps, ex.restSeconds, ex.targetDurationSeconds
-                            )
-                        }
-                        Row(
-                            Modifier.fillMaxWidth().heightIn(min = 56.dp).sinemaClickable(role = Role.Button, onClick = open, scale = 0.98f).padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                theme.exerciseDisplayName(ex.exerciseName), color = Sinema.text(theme), fontSize = SinemaType.Body,
-                                fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                if (ex.targetDurationSeconds != null) "${ex.targetDurationSeconds} ${theme.t("SN", "SEC")}" else "${ex.sets}×${ex.reps}",
-                                color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1,
-                                modifier = Modifier.padding(start = 10.dp)
-                            )
-                            ExercisePlayButton(onClick = open, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
+            if (program.muscleLabels.isNotEmpty() && program.muscleLabels.size == program.musclePct.size && program.muscleLabels.size == program.muscleFractions.size) {
+                Spacer(Modifier.height(24.dp))
+                ProgramSectionLabel(strings.muscleDistLabel)
+                Spacer(Modifier.height(12.dp))
+                ProgramMuscleLoad(program.muscleLabels.indices.map { i ->
+                    DetailMuscle(program.localizedText(program.muscleLabels[i], theme), program.musclePct[i], program.muscleFractions[i])
+                })
+            }
+            val desc = program.localizedDescription(theme)
+            if (desc.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                ProgramDescription(desc)
             }
     }
 }

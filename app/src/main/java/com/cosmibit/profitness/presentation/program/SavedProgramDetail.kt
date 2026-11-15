@@ -90,58 +90,21 @@ fun SavedProgramDetail(
             }
         }
     ) {
-        Text(
-            theme.t(
-                "$workoutDays antrenman günü" + if (totalExercises > 0) " · $totalExercises egzersiz" else "",
-                "$workoutDays training days" + if (totalExercises > 0) " · $totalExercises exercises" else ""
-            ),
-            color = Sinema.textSecondary(theme), fontSize = SinemaType.Body
-        )
-        if (program.isActive) {
-            Spacer(Modifier.height(12.dp))
-            // c3 = işaretle (rozet)
-            Row(
-                Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
-            }
+        val planDays = program.days.filter { !it.isRestDay && it.exercises.isNotEmpty() }.map { d ->
+            DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) })
         }
-        program.days.filter { !it.isRestDay && it.exercises.isNotEmpty() }.forEachIndexed { dayIdx, day ->
-            Spacer(Modifier.height(20.dp))
-            Text(
-                "${dayIdx + 1} · ${day.title}".sinemaUpper(theme),
-                color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-            if (day.notes.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(day.notes, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+        ProgramBigStats(
+            buildList {
+                add("$workoutDays" to theme.t("Antrenman günü", "Training days"))
+                if (totalExercises > 0) add("$totalExercises" to theme.t("Hareket", "Exercises"))
             }
+        )
+        if (planDays.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            ProgramSectionLabel("Plan")
             Spacer(Modifier.height(8.dp))
-            Column(Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(horizontal = 16.dp, vertical = 4.dp)) {
-                day.exercises.forEachIndexed { i, ex ->
-                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Sinema.line(theme)))
-                    val open = {
-                        viewerExercise = catalog.toViewerExercise(ex.exerciseName, ex.sets, ex.reps, ex.restSeconds, ex.targetDurationSeconds)
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 56.dp).sinemaClickable(role = Role.Button, onClick = open, scale = 0.98f).padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            theme.exerciseDisplayName(ex.exerciseName), color = Sinema.text(theme), fontSize = SinemaType.Body,
-                            fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            if (ex.targetDurationSeconds != null) "${ex.targetDurationSeconds} ${theme.t("SN", "SEC")}" else "${ex.sets}×${ex.reps}",
-                            color = Sinema.textSecondary(theme), style = Sinema.Label, maxLines = 1,
-                            modifier = Modifier.padding(start = 10.dp)
-                        )
-                        ExercisePlayButton(onClick = open, modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
+            ProgramPlanDays(planDays) { ex ->
+                viewerExercise = catalog.toViewerExercise(ex.name, ex.sets, ex.reps, ex.restSeconds, ex.durationSeconds)
             }
         }
     }
