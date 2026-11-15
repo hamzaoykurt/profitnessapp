@@ -4,40 +4,47 @@ import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Kontrast (WCAG): c1 üstü koyu yazı, c1/hi/altın metin ≥4.5 — Page/Surface/Elevated ve soft üstünde. */
 class AccentTextContrastTest {
     private fun lin(v: Float): Double =
-        if (v <= 0.03928f) v / 12.92 else Math.pow(((v + 0.055) / 1.055).toDouble(), 2.4)
+        if (v <= 0.04045f) v / 12.92 else Math.pow(((v + 0.055) / 1.055).toDouble(), 2.4)
     private fun lum(c: Color) = 0.2126 * lin(c.red) + 0.7152 * lin(c.green) + 0.0722 * lin(c.blue)
     private fun ratio(a: Color, b: Color): Double {
         val x = lum(a); val y = lum(b)
         return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
     }
 
-    private val surfaces = listOf(Sinema.Page, Sinema.Surface, Color(0xFF1C1D22), Sinema.Elevated)
+    private val theme = AppThemeState()
+    private val surfaces = listOf(Sinema.Page, Sinema.Surface, Sinema.Elevated, theme.accentSoft)
 
-    @Test
-    fun darkAccentTextMeets4_5OnPageAndSurfaces() {
-        var min = 99.0
-        for (preset in AccentPreset.entries) for (intensity in AccentIntensity.entries) {
-            val theme = AppThemeState(isDark = true, accent = preset, intensity = intensity)
-            for (bg in surfaces) {
-                val r = ratio(theme.accentTextColor, bg)
-                min = minOf(min, r)
-                assertTrue("$preset/$intensity on $bg = $r", r >= 4.5)
-            }
+    private fun assertAll(name: String, fg: Color, min: Double = 4.5) {
+        for (bg in surfaces) {
+            val r = ratio(fg, bg)
+            assertTrue("$name on $bg = $r", r >= min)
         }
-        println("MIN_ACCENT_TEXT_RATIO=$min")
     }
 
-    @Test
-    fun customAccentIsDarkenedUntilReadable() {
-        val theme = AppThemeState(isDark = true, customAccentArgb = 0xFFFACC15.toInt())
-        assertTrue(surfaces.all { ratio(theme.accentTextColor, it) >= 4.5 })
+    @Test fun inkOnAccentFill() {
+        val r = ratio(theme.effectiveOnAccentColor, theme.accentColor)
+        assertTrue("ink/c1 = $r", r >= 7.0)
+        assertTrue(ratio(theme.effectiveOnAccentColor, theme.accentPress) >= 4.5)
+        assertTrue(ratio(theme.effectiveOnAccentColor, theme.accentHi) >= 4.5)  // tamamlanan set onay diski
     }
 
-    @Test
-    fun darkThemeKeepsAccent() {
-        val theme = AppThemeState(isDark = true)
-        assertTrue(ratio(theme.accentTextColor, Sinema.Elevated) >= 4.5)
+    @Test fun accentTextOnSurfaces() = assertAll("accentText", theme.accentTextColor)
+    @Test fun accentFillAsTextOnSurfaces() = assertAll("c1", theme.accentColor)
+    @Test fun accentHiTextOnSurfaces() {
+        assertAll("hi", theme.accentHi)
+        assertAll("hiText", theme.accentHiTextColor)
+    }
+    @Test fun rewardGoldTextOnSurfaces() {
+        assertAll("gold", theme.rewardGold)
+        assertAll("goldText", theme.rewardGoldTextColor)
+    }
+    @Test fun neutralRampOnSurfaces() {
+        assertAll("text", Sinema.Text)
+        assertAll("text2", Sinema.TextSecondary)
+        for (bg in listOf(Sinema.Page, Sinema.Surface, Sinema.Elevated)) assertTrue(ratio(Sinema.TextTertiary, bg) >= 4.5)
+        assertAll("alert", Sinema.Alert)
     }
 }

@@ -205,7 +205,7 @@ fun Modifier.performanceControlSurface(
         else -> Color.White.copy(0.14f)
     }
     return this
-        .then(if (primary && !pressed) Modifier.sinemaGlow(color.copy(0.40f * color.alpha), 18.dp, 8.dp, shape) else Modifier.shadow(shadowDp, shape, ambientColor = ambient, spotColor = spot))
+        .then(if (primary && !pressed) Modifier.sinemaGlow(color.copy(Sinema.GlowAlpha * color.alpha), shape = shape) else Modifier.shadow(shadowDp, shape, ambientColor = ambient, spotColor = spot))
         .layeredMaterial(shape, color, light, line, edge = null)
 }
 
@@ -356,7 +356,7 @@ fun Modifier.raisedButtonSurface(
         0.72f to Color.Black.copy(0f), 1f to Color.Black.copy(0.18f)
     )
     return this
-        .then(if (pressed) Modifier else Modifier.sinemaGlow(c.copy(0.40f), (lift * 3).coerceAtLeast(10.dp), lift, shape))
+        .then(if (pressed) Modifier else Modifier.sinemaShade(shape))   // yon-renk-v2: renkli glow yok, renksiz gölge
         .layeredMaterial(shape, c, light, if (pressed) Color.Transparent else Color.White.copy(0.30f), edge = null)
 }
 

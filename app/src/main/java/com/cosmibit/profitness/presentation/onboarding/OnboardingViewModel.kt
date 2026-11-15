@@ -28,6 +28,9 @@ import java.time.Period
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+/** Adım sayısı (tema adımı kaldırıldı: tek sabit tema). İlerleme çubuğu ve sayaç bunu kullanır. */
+const val OnboardingStepCount = 6
+
 data class OnboardingState(
     val step        : Int     = 0,
     val name        : String  = "",
@@ -68,7 +71,7 @@ class OnboardingViewModel @Inject constructor(
             updateState { it.copy(nameError = "İsim alanı boş bırakılamaz.") }
             return
         }
-        updateState { it.copy(step = (it.step + 1).coerceAtMost(6), nameError = null) }
+        updateState { it.copy(step = (it.step + 1).coerceAtMost(OnboardingStepCount - 1), nameError = null) }
     }
 
     fun prevStep() {

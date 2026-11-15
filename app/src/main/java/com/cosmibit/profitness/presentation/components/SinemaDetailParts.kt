@@ -53,7 +53,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCard
-import com.cosmibit.profitness.core.theme.sinemaGlow
+import com.cosmibit.profitness.core.theme.accentHi
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.SinemaType
@@ -144,11 +144,11 @@ fun SinemaBigStat(
     }
 }
 
-/** Vurgu dolgulu, glow'lu ilerleme çubuğu (iz: nötr). */
+/** İlerleme çubuğu (yon-renk-v2): dolgu = ölç rengi `accentHi`, glow YOK; iz nötr. Ad geriye uyum için durur. */
 @Composable
 fun SinemaGlowBar(progress: Float, modifier: Modifier = Modifier, height: Dp = 8.dp, color: Color? = null) {
     val theme = LocalAppTheme.current
-    val c = color ?: theme.effectiveAccentColor
+    val c = color ?: theme.accentHi
     val p = progress.coerceIn(0f, 1f)
     Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(Sinema.line(theme))) {
         if (p > 0f) {
@@ -156,7 +156,6 @@ fun SinemaGlowBar(progress: Float, modifier: Modifier = Modifier, height: Dp = 8
                 Modifier
                     .fillMaxWidth(p)
                     .fillMaxHeight()
-                    .sinemaGlow(c.copy(0.4f), 10.dp, 0.dp, CircleShape)
                     .clip(CircleShape)
                     .background(c)
             )

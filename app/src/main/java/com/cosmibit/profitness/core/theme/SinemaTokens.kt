@@ -25,7 +25,24 @@ object Sinema {
     val Elevated = Color(0xFF1D2027)
     val Text = Color(0xFFF4F5F7)
     val TextSecondary = Color(0xFFA6A9B2)
+    /** Üçüncül / pasif metin-ikon. */
+    val TextTertiary = Color(0xFF8A8E98)
     val Line = Color.White.copy(0.09f)
+
+    // ── Temadan bağımsız sabitler (.ekip/yon-renk-v2.md) ──────────────────
+    /** İşaretle (ödül) kum-altın: kupa, rekor, seri, XP, rütbe. */
+    val Gold = Color(0xFFEBCD90)
+    /** Hata / silme / atlandı (her zaman ikon + metinle). */
+    val Alert = Color(0xFFF4748A)
+
+    // ── Glow disiplini: yalnız ekranın tek birincil düğmesi (+ birincil yoksa FAB) ──
+    const val GlowAlpha = 0.22f
+    val GlowBlur = 24.dp
+    val GlowDy = 10.dp
+    /** Renksiz yükseklik gölgesi (glow yerine): 0 4dp 12dp siyah α.35. */
+    const val ShadeAlpha = 0.35f
+    val ShadeBlur = 12.dp
+    val ShadeDy = 4.dp
 
     fun page(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Page
     fun surface(@Suppress("UNUSED_PARAMETER") t: AppThemeState) = Surface

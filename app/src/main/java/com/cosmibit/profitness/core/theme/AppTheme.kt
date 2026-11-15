@@ -6,34 +6,8 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 
-enum class AccentPreset(
-    val color      : Color,   // dark mode accent (neon)
-    val label      : String,
-    val onColor    : Color
-) {
-    LIME  (Color(0xFFCBFF4D), "LIME",   Color.Black),
-    PURPLE(Color(0xFFA855F7), "PURPLE", Color.White),
-    CYAN  (Color(0xFF00E5D3), "CYAN",   Color.Black),
-    ORANGE(Color(0xFFF36A21), "ORANGE", Color.Black),
-    PINK  (Color(0xFFEC4899), "PINK",   Color.White),
-    BLUE  (Color(0xFF3B82F6), "BLUE",   Color.White),
-    RED   (Color(0xFFEF4444), "RED",    Color.White),
-    YELLOW(Color(0xFFFACC15), "YELLOW", Color.Black),
-    GREEN (Color(0xFF22C55E), "GREEN",  Color.Black),
-    TEAL  (Color(0xFF14B8A6), "TEAL",   Color.Black),
-    INDIGO(Color(0xFF6366F1), "INDIGO", Color.White),
-    ROSE  (Color(0xFFFB7185), "ROSE",   Color.Black),
-    MINT  (Color(0xFF34D399), "MINT",   Color.Black),
-    SKY   (Color(0xFF38BDF8), "SKY",    Color.Black),
-    VIOLET(Color(0xFF8B5CF6), "VIOLET", Color.White),
-    AMBER (Color(0xFFF59E0B), "AMBER",  Color.Black),
-}
-
 /** Karanlık tema arka plan tonu. */
 enum class SurfaceStyle { CLASSIC, OLED, GRAPHITE }
-
-/** Accent renginin doygunluk/parlaklık tercihi. */
-enum class AccentIntensity { NEON, PASTEL, VIVID, SOFT }
 
 enum class AppLanguage { TURKISH, ENGLISH }
 
@@ -43,12 +17,9 @@ enum class ThemeMode { DARK, LIGHT, SYSTEM }
 data class AppThemeState(
     val isDark              : Boolean         = true,
     val themeMode           : ThemeMode       = ThemeMode.DARK,
-    val accent              : AccentPreset    = AccentPreset.ORANGE,
     val surfaceStyle        : SurfaceStyle    = SurfaceStyle.GRAPHITE,
-    val intensity           : AccentIntensity = AccentIntensity.SOFT,
     val language            : AppLanguage     = AppLanguage.TURKISH,
-    val notificationsEnabled: Boolean         = true,
-    val customAccentArgb    : Int?            = null
+    val notificationsEnabled: Boolean         = true
 )
 
 // Surface helpers — dark forged depth.
@@ -78,40 +49,8 @@ val AppThemeState.stroke: Color get() = when {
 }
 val AppThemeState.text0: Color get() = Sinema.Text
 val AppThemeState.text1: Color get() = Sinema.TextSecondary
-val AppThemeState.text2: Color get() = Color(0xFF9A9DA6)
-
-/** Pastel varyant: doygunluğu azaltır, koyu zeminde gözü yormaz. */
-private fun Color.toPastel(): Color {
-    // Beyaza %35 harmanla → daha soft, daha az doygun
-    val blend = 0.35f
-    return Color(
-        red   = red   + (1f - red)   * blend,
-        green = green + (1f - green) * blend,
-        blue  = blue  + (1f - blue)  * blend,
-        alpha = alpha
-    )
-}
-
-// Effective accent — vurgu yoğunluğu stilleri
-private fun Color.toVivid(): Color {
-    val boost = 0.18f
-    return Color(
-        red   = red   + (if (red > 0.5f) 1f - red else -red) * boost,
-        green = green + (if (green > 0.5f) 1f - green else -green) * boost,
-        blue  = blue  + (if (blue > 0.5f) 1f - blue else -blue) * boost,
-        alpha = alpha
-    )
-}
-
-private fun Color.toSoft(): Color {
-    val blend = 0.22f
-    return Color(
-        red   = red   + (0.86f - red)   * blend,
-        green = green + (0.86f - green) * blend,
-        blue  = blue  + (0.86f - blue)  * blend,
-        alpha = alpha
-    )
-}
+/** Tek ikincil gri (yon-renk-v2: #9A9DA6 → #A6A9B2). */
+val AppThemeState.text2: Color get() = Sinema.TextSecondary
 
 private fun Color.blendToward(target: Color, amount: Float): Color =
     Color(
@@ -162,16 +101,8 @@ fun Color.darkenForContrast(background: Color, minRatio: Double = 4.5): Color {
 
 fun Int.toSafeAccentArgb(): Int = Color(this).toSafeAccentColor().toArgb()
 
-val AppThemeState.effectiveAccentColor: Color get() {
-    val base = customAccentArgb?.let { Color(it) } ?: accent.color
-    val styled = when (intensity) {
-        AccentIntensity.NEON   -> base
-        AccentIntensity.PASTEL -> base.toPastel()
-        AccentIntensity.VIVID  -> base.toVivid()
-        AccentIntensity.SOFT   -> base.toSoft()
-    }
-    return styled.toSafeAccentColor()
-}
+/** c1 (dokun): tek sabit tema; kayıtlı eski preset/yoğunluk/özel renk yok sayılır. Yeni kodda [accentColor]. */
+val AppThemeState.effectiveAccentColor: Color get() = palette.c1
 /** Vurgu rengiyle yazılan etiket/link metni: tek koyu temada vurgu rengi. */
 val AppThemeState.accentTextColor: Color get() =
     effectiveAccentColor.lightenForTextContrast(Sinema.Elevated)
@@ -186,31 +117,22 @@ fun Color.lightenForTextContrast(background: Color, minRatio: Double = 4.5): Col
     return adjusted
 }
 
-val AppThemeState.effectiveOnAccentColor: Color get() =
-    effectiveAccentColor.readableOnAccentColor()
-
-val AppThemeState.accentDisplayLabel: String get() =
-    if (customAccentArgb != null) t("OZEL", "CUSTOM") else accent.label
+/** c1 dolgu üstü yazı: her zaman koyu mürekkep #0E0F11 (beyaz-üstü-vurgu yok). */
+@Suppress("UnusedReceiverParameter")
+val AppThemeState.effectiveOnAccentColor: Color get() = Sinema.Ink
 
 val LocalAppTheme = compositionLocalOf { AppThemeState() }
 
-// Pack all settings into a Long to ensure Bundle compatibility.
-// Layout (LSB → MSB):
-//   bit 0      : isDark
-//   bits 1–4   : accent ordinal (4 bit → 16 preset)
-//   bits 5–7   : language ordinal (3 bit)
-//   bit 8      : notificationsEnabled
-//   bits 9–10  : surfaceStyle ordinal (2 bit → 4 stil)
-//   bit 11     : intensity ordinal (1 bit)
+// rememberSaveable için liste. Konumlar eski düzenle aynı tutulur (1, 4, 5 = kalkan vurgu alanları; boş).
 val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
     save = { s ->
         listOf(
             s.isDark,
-            s.accent.ordinal,
+            0,
             s.language.ordinal,
             s.notificationsEnabled,
-            s.intensity.ordinal,
-            s.customAccentArgb,
+            0,
+            null,
             s.themeMode.ordinal
         )
     },
@@ -221,27 +143,26 @@ val AppThemeStateSaver = Saver<AppThemeState, List<Any?>>(
                 values.getOrNull(6) as? Int
                     ?: if (values.getOrNull(0) as? Boolean ?: true) ThemeMode.DARK.ordinal else ThemeMode.LIGHT.ordinal
             ) { ThemeMode.DARK },
-            accent               = AccentPreset.entries.getOrElse(values.getOrNull(1) as? Int ?: AccentPreset.ORANGE.ordinal) { AccentPreset.ORANGE },
             language             = AppLanguage.entries.getOrElse(values.getOrNull(2) as? Int ?: 0) { AppLanguage.TURKISH },
             notificationsEnabled = values.getOrNull(3) as? Boolean ?: true,
-            surfaceStyle         = SurfaceStyle.GRAPHITE,
-            intensity            = AccentIntensity.entries.getOrElse(values.getOrNull(4) as? Int ?: AccentIntensity.SOFT.ordinal) { AccentIntensity.SOFT },
-            customAccentArgb     = (values.getOrNull(5) as? Int)?.toSafeAccentArgb()
+            surfaceStyle         = SurfaceStyle.GRAPHITE
         )
     }
 )
 
-// ── Destek renkleri: 3 renk sistemine katlandı (Success/Rest/Strength→c2, Reward→c3); yalnız Alert sabit ──────────
-/** Başarı / tamamlandı. */
-val AppThemeState.supportSuccess: Color get() = accent2Color
+// ── Destek renkleri (yon-renk-v2): Success/Rest/Strength → accentHi (ölç), Reward → rewardGold; Alert sabit ──────────
+/** Başarı / tamamlandı (ayrı yeşil yok: hi + onay ikonu). */
+val AppThemeState.supportSuccess: Color get() = accentHi
 /** Dinlenme / kardiyo / su. */
-val AppThemeState.supportRest: Color get() = accent2Color
+val AppThemeState.supportRest: Color get() = accentHi
 /** Kuvvet / hacim / kas. */
-val AppThemeState.supportStrength: Color get() = accent2Color
+val AppThemeState.supportStrength: Color get() = accentHi
 /** Ödül: XP / rütbe / seri değeri. */
-val AppThemeState.supportReward: Color get() = accent3Color
+val AppThemeState.supportReward: Color get() = rewardGold
 /** Uyarı / hata / atlandı. */
-val AppThemeState.supportAlert: Color get() = Color(0xFFF4748A)
-/** Dolgu (çip/satır) için yumuşak ton: koyu α.16, açık α.12. */
+@Suppress("UnusedReceiverParameter")
+val AppThemeState.supportAlert: Color get() = Sinema.Alert
+/** Dolgu (çip/satır) için yumuşak ton α.16. */
+@Suppress("UnusedReceiverParameter")
 val AppThemeState.supportSoftAlpha: Float get() = 0.16f
 fun AppThemeState.soft(support: Color): Color = support.copy(alpha = supportSoftAlpha)

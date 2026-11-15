@@ -25,12 +25,11 @@ class ThemeRepository @Inject constructor(
     private object Keys {
         val IS_DARK       = booleanPreferencesKey("is_dark")
         val THEME_MODE    = intPreferencesKey("theme_mode")
-        val ACCENT_ORD    = intPreferencesKey("accent_ordinal")
         val SURFACE_ORD   = intPreferencesKey("surface_style_ordinal")
-        val INTENSITY_ORD = intPreferencesKey("intensity_ordinal")
         val LANGUAGE_ORD  = intPreferencesKey("language_ordinal")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
-        val CUSTOM_ACCENT = intPreferencesKey("custom_accent_argb")
+        // Renk v2 (tek sabit tema): eski "accent_ordinal", "intensity_ordinal", "custom_accent_argb"
+        // anahtarları depoda olduğu gibi KALIR (silinmez, yazılmaz), okunmaz → yok sayılır.
     }
 
     /** Emits the persisted [AppThemeState]. */
@@ -47,23 +46,15 @@ class ThemeRepository @Inject constructor(
             val themeMode     = prefs[Keys.THEME_MODE]?.let { ordinal ->
                 ThemeMode.entries.getOrElse(ordinal) { ThemeMode.DARK }
             } ?: if (isDark) ThemeMode.DARK else ThemeMode.LIGHT
-            val accentOrd     = prefs[Keys.ACCENT_ORD]    ?: AccentPreset.ORANGE.ordinal
-            val intensityOrd  = prefs[Keys.INTENSITY_ORD] ?: AccentIntensity.SOFT.ordinal
             val languageOrd   = prefs[Keys.LANGUAGE_ORD]  ?: 0
             val notifications = prefs[Keys.NOTIFICATIONS] ?: true
-            val customAccent  = prefs[Keys.CUSTOM_ACCENT]?.toSafeAccentArgb()
-            val accent        = AccentPreset.entries.getOrElse(accentOrd)    { AccentPreset.ORANGE }
-            val intensity     = AccentIntensity.entries.getOrElse(intensityOrd) { AccentIntensity.SOFT }
             val language      = AppLanguage.entries.getOrElse(languageOrd) { AppLanguage.TURKISH }
             AppThemeState(
                 isDark               = isDark,
                 themeMode            = themeMode,
-                accent               = accent,
                 surfaceStyle         = SurfaceStyle.GRAPHITE,
-                intensity            = intensity,
                 language             = language,
-                notificationsEnabled = notifications,
-                customAccentArgb     = customAccent
+                notificationsEnabled = notifications
             )
         }
 
@@ -71,17 +62,9 @@ class ThemeRepository @Inject constructor(
         context.themeDataStore.edit { prefs ->
             prefs[Keys.IS_DARK]       = state.isDark
             prefs[Keys.THEME_MODE]    = state.themeMode.ordinal
-            prefs[Keys.ACCENT_ORD]    = state.accent.ordinal
             prefs[Keys.SURFACE_ORD]   = SurfaceStyle.GRAPHITE.ordinal
-            prefs[Keys.INTENSITY_ORD] = state.intensity.ordinal
             prefs[Keys.LANGUAGE_ORD]  = state.language.ordinal
             prefs[Keys.NOTIFICATIONS] = state.notificationsEnabled
-            val customAccent = state.customAccentArgb
-            if (customAccent == null) {
-                prefs.remove(Keys.CUSTOM_ACCENT)
-            } else {
-                prefs[Keys.CUSTOM_ACCENT] = customAccent.toSafeAccentArgb()
-            }
         }
     }
 }

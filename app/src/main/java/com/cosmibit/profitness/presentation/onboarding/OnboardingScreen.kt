@@ -53,8 +53,6 @@ import coil.request.ImageRequest
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.rememberResponsiveLayoutInfo
 import com.cosmibit.profitness.core.ui.SinemaFitText
-import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
-import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.profile.readSafeProfilePhotoBytes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -184,7 +182,7 @@ fun OnboardingScreen(
         ) {
             OnboardingProgressBar(
                 currentStep = state.step,
-                totalSteps  = 7,
+                totalSteps  = OnboardingStepCount,
                 theme       = theme,
                 modifier    = Modifier.statusBarsPadding().padding(top = 14.dp, bottom = 4.dp)
             )
@@ -209,12 +207,11 @@ fun OnboardingScreen(
             ) { step ->
                 when (step) {
                     0 -> StepName(state, viewModel, theme)
-                    1 -> StepTheme(current = theme, onThemeChange = onThemeChange, vm = viewModel)
-                    2 -> StepSportExperience(state, viewModel, theme)
-                    3 -> StepGenderBirth(state, viewModel, theme)
-                    4 -> StepBodyMetrics(state, viewModel, theme)
-                    5 -> StepGoal(state, viewModel, theme)
-                    6 -> StepPersonalProgram(state, viewModel, theme)
+                    1 -> StepSportExperience(state, viewModel, theme)
+                    2 -> StepGenderBirth(state, viewModel, theme)
+                    3 -> StepBodyMetrics(state, viewModel, theme)
+                    4 -> StepGoal(state, viewModel, theme)
+                    5 -> StepPersonalProgram(state, viewModel, theme)
                 }
             }
         }
@@ -319,128 +316,6 @@ private fun StepScaffold(
     }
 }
 
-// ── Adım 1: Tema ──────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun StepTheme(
-    current      : AppThemeState,
-    onThemeChange: (AppThemeState) -> Unit,
-    vm           : OnboardingViewModel
-) {
-    var accent       by remember { mutableStateOf(current.accent) }
-    var intensity    by remember { mutableStateOf(current.intensity) }
-    var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
-    var showColorPicker by remember { mutableStateOf(false) }
-    val presetRows = remember {
-        listOf(
-            AccentPreset.LIME,
-            AccentPreset.PURPLE,
-            AccentPreset.CYAN,
-            AccentPreset.ORANGE,
-            AccentPreset.PINK,
-            AccentPreset.BLUE,
-            AccentPreset.RED,
-            AccentPreset.YELLOW,
-            AccentPreset.GREEN,
-            AccentPreset.TEAL,
-            AccentPreset.AMBER
-        )
-    }
-    val preview = current.copy(
-        accent           = accent,
-        surfaceStyle     = SurfaceStyle.GRAPHITE,
-        intensity        = intensity,
-        customAccentArgb = customAccentArgb
-    )
-    val previewAccent = preview.effectiveAccentColor
-    // Sayfa zemini gerçek temada kalır; Sinema parçaları seçilen vurguyu (önizleme) kullanır.
-    val accentTheme = preview
-
-    CompositionLocalProvider(LocalAppTheme provides accentTheme) {
-        StepScaffold(
-            nav = {
-                StepNavButtons(
-                    onBack    = { vm.prevStep() },
-                    onNext    = {
-                        onThemeChange(preview)
-                        vm.nextStep()
-                    },
-                    nextLabel = current.t("Temayı Uygula", "Apply Theme"),
-                    nextIcon  = Icons.Rounded.Check,
-                    theme     = accentTheme
-                )
-            }
-        ) {
-            StepHeader(
-                step     = "2 / 7",
-                title    = current.t("Temanı seç", "Choose your theme"),
-                subtitle = current.t("Uygulamanın sana nasıl görüneceğini ayarla", "Adjust how the app looks for you"),
-                theme    = accentTheme
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            ThemePreviewCard(preview)
-            Spacer(Modifier.height(22.dp))
-
-            SectionLabel(current.t("VURGU RENGİ", "ACCENT COLOR"), accentTheme)
-            Spacer(Modifier.height(10.dp))
-            FlowRow(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement   = Arrangement.spacedBy(12.dp)
-            ) {
-                presetRows.forEach { preset ->
-                    ThemeColorSwatch(
-                        preset     = preset,
-                        isSelected = customAccentArgb == null && accent == preset,
-                        ringColor  = Sinema.text(current),
-                        onClick    = {
-                            accent = preset
-                            customAccentArgb = null
-                        }
-                    )
-                }
-                CustomAccentSwatch(
-                    color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
-                    isSelected = customAccentArgb != null,
-                    onClick    = { showColorPicker = true }
-                )
-            }
-
-            Spacer(Modifier.height(18.dp))
-
-            SectionLabel(current.t("YOĞUNLUK", "INTENSITY"), accentTheme)
-            Spacer(Modifier.height(8.dp))
-            SinemaSegmentRow(
-                options  = listOf(AccentIntensity.NEON, AccentIntensity.PASTEL, AccentIntensity.VIVID, AccentIntensity.SOFT),
-                selected = intensity,
-                label    = {
-                    when (it) {
-                        AccentIntensity.NEON -> "NEON"
-                        AccentIntensity.PASTEL -> "PASTEL"
-                        AccentIntensity.VIVID -> current.t("CANLI", "VIVID")
-                        AccentIntensity.SOFT -> current.t("SOFT", "SOFT")
-                    }
-                },
-                onSelect = { intensity = it }
-            )
-        }
-    }
-
-    if (showColorPicker) {
-        CustomAccentColorDialog(
-            initialColor = customAccentArgb?.let { Color(it) } ?: previewAccent,
-            theme = preview,
-            onDismiss = { showColorPicker = false },
-            onColorSelected = { selected ->
-                customAccentArgb = selected
-            }
-        )
-    }
-}
-
 // ── Adım 0: İsim + Avatar ─────────────────────────────────────────────────────
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -481,7 +356,7 @@ private fun StepName(
         }
     ) {
         StepHeader(
-            step     = "1 / 7",
+            step     = "1 / 6",
             eyebrow  = theme.t("Merhaba!", "Hello!"),
             title    = theme.t("Seni tanıyalım", "Let's get to know you"),
             subtitle = theme.t("Adını ve avatarını seç", "Choose your name and avatar"),
@@ -645,7 +520,7 @@ private fun StepSportExperience(
         }
     ) {
         StepHeader(
-            step     = "3 / 7",
+            step     = "2 / 6",
             title    = theme.t("Spor profilin", "Your sport profile"),
             subtitle = theme.t("Programın spor dalına ve seviyene göre şekillensin", "Shape the plan around your sport and level"),
             theme    = theme
@@ -779,7 +654,7 @@ private fun StepGenderBirth(
         }
     ) {
         StepHeader(
-            step    = "4 / 7",
+            step    = "3 / 6",
             title   = theme.t("Biraz daha bilgi", "A little more info"),
             subtitle = theme.t("Cinsiyet ve doğum tarihin", "Gender and birth date"),
             theme   = theme
@@ -835,7 +710,7 @@ private fun StepBodyMetrics(
         }
     ) {
         StepHeader(
-            step     = "5 / 7",
+            step     = "4 / 6",
             title    = theme.t("Vücut ölçülerin", "Body metrics"),
             subtitle = theme.t("Boy ve kilonu gir", "Enter your height and weight"),
             theme    = theme
@@ -938,7 +813,7 @@ private fun StepGoal(
         }
     ) {
         StepHeader(
-            step     = "6 / 7",
+            step     = "5 / 6",
             title    = theme.t("Hedefin ne?", "What's your goal?"),
             subtitle = theme.t("Seni motive edecek hedefi seç", "Choose the goal that motivates you"),
             theme    = theme
@@ -1005,7 +880,7 @@ private fun StepPersonalProgram(
         }
     ) {
         StepHeader(
-            step     = "7 / 7",
+            step     = "6 / 6",
             title    = theme.t("Programın hazır olsun mu?", "Ready for your program?"),
             subtitle = theme.t("Bilgilerine göre AI ile kişiye özel plan çıkaralım", "Let AI build a personal plan from your info"),
             theme    = theme
@@ -1206,80 +1081,6 @@ contentPadding = PaddingValues(horizontal = 16.dp)
             onClick = { if (!locked) onNext() },
             dim     = locked
         )
-    }
-}
-
-/** Mini önizleme: gerçek tema renkleriyle sinemaCard r28. */
-@Composable
-private fun ThemePreviewCard(preview: AppThemeState) {
-    val accent = preview.effectiveAccentColor
-    val btnShape = RoundedCornerShape(SinemaRadius.R16)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaCard(preview, RoundedCornerShape(SinemaRadius.R28))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(accent)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                preview.accentDisplayLabel,
-                color         = preview.accentTextColor,
-                fontSize      = SinemaType.Caption,
-                fontWeight    = FontWeight.ExtraBold,
-                letterSpacing = 0.1.em
-            )
-        }
-        Text("Profitness", color = Sinema.text(preview), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold)
-        Text("Merhaba, Atlet 👋", color = Sinema.textSecondary(preview), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium)
-        Box(
-            Modifier
-                .padding(top = 4.dp)
-                .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, btnShape)
-                .clip(btnShape)
-                .background(accent)
-                .padding(horizontal = 16.dp, vertical = 9.dp)
-        ) {
-            Text(
-                "UYGULA",
-                color         = preview.effectiveOnAccentColor,
-                fontSize      = SinemaType.Caption,
-                fontWeight    = FontWeight.ExtraBold,
-                letterSpacing = 0.1.em
-            )
-        }
-    }
-}
-
-/** 44dp daire; seçili = 3dp halka + glow. */
-@Composable
-private fun ThemeColorSwatch(
-    preset    : AccentPreset,
-    isSelected: Boolean,
-    ringColor : Color,
-    onClick   : () -> Unit
-) {
-    val color = preset.color.toSafeAccentColor()
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .then(if (isSelected) Modifier.sinemaGlow(color.copy(0.4f), 14.dp, 4.dp, CircleShape) else Modifier)
-            .clip(CircleShape)
-            .background(color)
-            .then(if (isSelected) Modifier.border(3.dp, ringColor, CircleShape) else Modifier)
-            .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isSelected) {
-            Icon(Icons.Rounded.Check, null, tint = color.readableOnAccentColor(), modifier = Modifier.size(16.dp))
-        }
     }
 }
 

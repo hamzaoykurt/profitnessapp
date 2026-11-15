@@ -5,26 +5,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
-/** 3 renk sistemi: Success/Rest/Strength -> c2, Reward -> c3; yalnız Alert sabit (.ekip/yon-renk-hareket.md). */
+/** Renk v2: Success/Rest/Strength → accentHi (ölç), Reward → rewardGold; Alert sabit #F4748A. */
 class SupportColorTest {
+    private val t = AppThemeState()
+
     @Test
-    fun supportColorsFoldIntoTriad() {
-        val dark = AppThemeState(isDark = true)
-        assertEquals(dark.accent2Color, dark.supportSuccess)
-        assertEquals(dark.accent2Color, dark.supportRest)
-        assertEquals(dark.accent2Color, dark.supportStrength)
-        assertEquals(dark.accent3Color, dark.supportReward)
-        assertEquals(Color(0xFFF4748A), dark.supportAlert)
-        assertEquals(0.16f, dark.supportSoftAlpha)
+    fun supportColorsFoldIntoTonalSystem() {
+        assertEquals(t.accentHi, t.supportSuccess)
+        assertEquals(t.accentHi, t.supportRest)
+        assertEquals(t.accentHi, t.supportStrength)
+        assertEquals(t.rewardGold, t.supportReward)
+        assertEquals(Color(0xFFF4748A), t.supportAlert)
+        assertEquals(0.16f, t.supportSoftAlpha)
+        assertEquals(t.accentHi.copy(alpha = 0.16f), t.soft(t.supportSuccess))
     }
 
     @Test
-    fun alertStaysFixedAndDistinctFromTriad() {
-        for (p in AccentPreset.entries) {
-            val t = AppThemeState(isDark = true, accent = p)
-            assertEquals(Color(0xFFF4748A), t.supportAlert)
-            assertNotEquals(t.accent2Color, t.supportAlert)
-            assertNotEquals(t.accent3Color, t.supportAlert)
-        }
+    fun alertStaysDistinctFromThemeTones() {
+        for (c in listOf(t.accentColor, t.accentHi, t.rewardGold, t.accentPress)) assertNotEquals(t.supportAlert, c)
     }
 }

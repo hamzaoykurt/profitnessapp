@@ -136,7 +136,7 @@ private val SinemaHazeScale: HazeInputScale = HazeInputScale.Fixed(0.5f)
  * - Dolgu: beyaz dikey degrade [fillTop → fillBottom] (varsayılan .14 → .08); `overlay` varsa üstüne düz örtü (ör. vurgu %18).
  * - Kenar 1.5dp: varsayılan 165° beyaz .50/.14 (%38)/.06 (%72)/.22; `edgeColors` verilirse dikey degrade (tek renk = düz).
  * - İç üst ışık (1dp beyaz .34 + üstten 14dp sönen .22), iç alt gölge (sayfa rengi .22), dış gölge 0 6 14 sayfa .45.
- * - `fill` (seçili taş `.stone`): düz dolgu + iç ışık .35 + iç alt gölge .18; dış gölge yerine `glow` (ör. vurgu .35).
+ * - `fill` (seçili taş `.stone`): düz dolgu + iç ışık .18 + iç alt gölge .18; glow YOK (yon-renk-v2). `glow` yalnız geriye uyum.
  * - Haze kaynağı varsa (foto üstü) + API≥31 arkayı bulanıklaştırır; yoksa aynı dolgu, yalnız blur yok.
  * Tüm çizim drawWithCache içinde (boyut/şekil değişene kadar Path/Brush önbellekte).
  */
@@ -194,7 +194,7 @@ fun Modifier.sinemaCapsuleGlass(
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
             val fillBrush: Brush = if (fill != null) androidx.compose.ui.graphics.SolidColor(fill)
                 else Brush.verticalGradient(0f to Color.White.copy(fillTop), 1f to Color.White.copy(fillBottom), startY = 0f, endY = h)
-            val topLineColor = Color.White.copy(if (fill != null) 0.35f else 0.34f)
+            val topLineColor = Color.White.copy(if (fill != null) 0.18f else 0.34f)
             val sheen = if (fill == null) Brush.verticalGradient(
                 0f to Color.White.copy(0.22f), 1f to Color.Transparent, startY = 0f, endY = 14.dp.toPx().coerceAtMost(h)
             ) else null
@@ -467,7 +467,7 @@ fun SinemaNavRail(
  * Gerçek yumuşak renkli parlama (çizimdeki `box-shadow: 0 dy blur color`): şeklin arkasına bulanık gölge katmanı çizer.
  * `Modifier.shadow` renk/spot'u cihazda zayıf kaldığı için glow bununla yapılır. Eleman içeriği üstüne çizer, şeklin içi görünmez.
  */
-fun Modifier.sinemaGlow(color: Color, blur: Dp, dy: Dp = 0.dp, shape: Shape): Modifier = this.drawWithCache {
+fun Modifier.sinemaGlow(color: Color, blur: Dp = Sinema.GlowBlur, dy: Dp = Sinema.GlowDy, shape: Shape): Modifier = this.drawWithCache {
     val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
     val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
         isAntiAlias = true
@@ -476,3 +476,14 @@ fun Modifier.sinemaGlow(color: Color, blur: Dp, dy: Dp = 0.dp, shape: Shape): Mo
     }
     onDrawBehind { drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(androidPath, paint) } }
 }
+
+/**
+ * GLOW DİSİPLİNİ (yon-renk-v2): renkli parlama YALNIZ ekranın tek birincil düğmesinde ve (ekranda birincil düğme yoksa) FAB'da.
+ * Değer tek yerden: c1 α.22, blur 24dp, dy 10dp. [color] alfası yok sayılır.
+ */
+fun Modifier.sinemaPrimaryGlow(color: Color, shape: Shape): Modifier =
+    sinemaGlow(color.copy(alpha = Sinema.GlowAlpha), Sinema.GlowBlur, Sinema.GlowDy, shape)
+
+/** Renksiz yükseklik gölgesi (glow yerine): 0 4dp 12dp siyah α.35. */
+fun Modifier.sinemaShade(shape: Shape): Modifier =
+    sinemaGlow(Color.Black.copy(alpha = Sinema.ShadeAlpha), Sinema.ShadeBlur, Sinema.ShadeDy, shape)

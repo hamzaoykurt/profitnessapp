@@ -55,9 +55,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.cosmibit.profitness.presentation.components.AccentColorSwatch
-import com.cosmibit.profitness.presentation.components.CustomAccentColorDialog
-import com.cosmibit.profitness.presentation.components.CustomAccentSwatch
 import com.cosmibit.profitness.presentation.components.insetControlSurface
 import com.cosmibit.profitness.data.store.UserPlan
 import kotlinx.coroutines.delay
@@ -80,7 +77,6 @@ fun ProfileScreen(
     val accent  = MaterialTheme.colorScheme.primary
     val strings = theme.strings
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAppearance       by remember { mutableStateOf(false) }
     var showNotifications    by remember { mutableStateOf(false) }
     var showLanguagePicker   by remember { mutableStateOf(false) }
     var achievementPopup     by remember { mutableStateOf<Triple<String, String, String>?>(null) } // icon, name, description
@@ -189,7 +185,6 @@ fun ProfileScreen(
                     accent               = accent,
                     strings              = strings,
                     onLogout             = onLogout,
-                    onAppearanceClick    = { showAppearance = true },
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
@@ -308,24 +303,6 @@ fun ProfileScreen(
                     }
                 }
             }
-        }
-    }
-
-    // ── Appearance bottom sheet ───────────────────────────────────────────────
-    if (showAppearance) {
-        ModalBottomSheet(
-            onDismissRequest = { showAppearance = false },
-            containerColor   = Sinema.surface(theme),
-            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ) {
-            ThemeSettingsSheet(
-                current = theme,
-                strings = strings,
-                onApply = { newTheme ->
-                    onThemeChange(newTheme)
-                    showAppearance = false
-                }
-            )
         }
     }
 
@@ -901,7 +878,6 @@ private fun SettingsSection(
     accent              : Color,
     strings             : AppStrings,
     onLogout            : () -> Unit = {},
-    onAppearanceClick   : () -> Unit = {},
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
@@ -962,11 +938,6 @@ private fun SettingsSection(
             modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive else strings.notificationsOff
-            SettingsRow(
-                Icons.Rounded.Tune, theme.t("Görünüm", "Appearance"),
-                theme.t("Tema ve vurgu rengi", "Theme and accent color"), theme, accent, onClick = onAppearanceClick
-            )
-            divider()
             SettingsRow(Icons.Rounded.Notifications, strings.notificationsLabel, notifStatus, theme, accent, onClick = onNotificationsClick)
             divider()
             SettingsRow(Icons.Rounded.Language, strings.languageLabel, strings.currentLanguageName, theme, accent, onClick = onLanguageClick)
@@ -1064,252 +1035,6 @@ private fun SettingsRow(
     }
 }
 
-// ── Appearance / Theme Settings Sheet ────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ThemeSettingsSheet(
-    current: AppThemeState,
-    strings: AppStrings,
-    onApply: (AppThemeState) -> Unit
-) {
-    var accent          by remember { mutableStateOf(current.accent) }
-    var intensity       by remember { mutableStateOf(current.intensity) }
-    var customAccentArgb by remember { mutableStateOf(current.customAccentArgb) }
-    var showColorPicker by remember { mutableStateOf(false) }
-    val theme           = LocalAppTheme.current
-    val presetRows = remember {
-        listOf(
-            AccentPreset.LIME,
-            AccentPreset.PURPLE,
-            AccentPreset.CYAN,
-            AccentPreset.ORANGE,
-            AccentPreset.PINK,
-            AccentPreset.BLUE,
-            AccentPreset.RED,
-            AccentPreset.YELLOW,
-            AccentPreset.GREEN,
-            AccentPreset.TEAL,
-            AccentPreset.AMBER
-        )
-    }
-
-    // Live preview state — her değişimde anında güncellenir
-    val preview = current.copy(
-        isDark          = true,   // tek koyu tema (açık tema kaldırıldı)
-        accent           = accent,
-        surfaceStyle     = SurfaceStyle.GRAPHITE,
-        intensity        = intensity,
-        customAccentArgb = customAccentArgb
-    )
-    val previewAccent    = preview.effectiveAccentColor
-    val previewOnAccent  = preview.effectiveOnAccentColor
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp, 8.dp, 24.dp, 32.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp)
-    ) {
-        Text(
-            strings.appearanceTitle,
-            style         = MaterialTheme.typography.titleLarge,
-            color         = theme.text0,
-            fontWeight    = FontWeight.SemiBold
-        )
-
-        // ── Live Preview Card ─────────────────────────────────────────────────
-        SectionLabel(strings.previewLabel, theme)
-        PreviewCard(preview = preview)
-
-        // ── Accent Color ──────────────────────────────────────────────────────
-        SectionLabel(strings.accentColorLabel, theme)
-        FlowRow(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(10.dp)
-        ) {
-            presetRows.forEach { preset ->
-                AccentColorSwatch(
-                    color      = preset.color,
-                    isSelected = customAccentArgb == null && accent == preset,
-                    onClick    = {
-                        accent = preset
-                        customAccentArgb = null
-                    }
-                )
-            }
-            CustomAccentSwatch(
-                color      = customAccentArgb?.let { Color(it) } ?: previewAccent,
-                isSelected = customAccentArgb != null,
-                onClick    = { showColorPicker = true }
-            )
-        }
-
-        // ── Background Tone (sadece dark) ────────────────────────────────────
-        // ── Accent Intensity ──────────────────────────────────────────────────
-        SectionLabel(strings.intensityLabel, theme)
-        SegmentedSelector(
-            options = listOf(
-                AccentIntensity.NEON   to strings.intensityNeonLabel,
-                AccentIntensity.PASTEL to strings.intensityPastelLabel,
-                AccentIntensity.VIVID  to current.t("CANLI", "VIVID"),
-                AccentIntensity.SOFT   to current.t("SOFT", "SOFT")
-            ),
-            selected  = intensity,
-            accent    = previewAccent,
-            onAccent  = previewOnAccent,
-            theme     = theme,
-            onSelect  = { intensity = it }
-        )
-
-        Button(
-            onClick  = {
-                onApply(
-                    current.copy(
-                        isDark       = true,
-                        accent       = accent,
-                        surfaceStyle = SurfaceStyle.GRAPHITE,
-                        intensity    = intensity,
-                        customAccentArgb = customAccentArgb
-                    )
-                )
-            },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(SinemaRadius.R12),
-            colors   = ButtonDefaults.buttonColors(
-                containerColor = previewAccent,
-                contentColor   = previewOnAccent
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 0.dp,
-                pressedElevation = 0.dp
-            )
-        ) {
-            Text(strings.applyLabel, fontWeight = FontWeight.SemiBold, fontSize = SinemaType.Body)
-        }
-    }
-
-    if (showColorPicker) {
-        CustomAccentColorDialog(
-            initialColor = customAccentArgb?.let { Color(it) } ?: previewAccent,
-            theme = preview,
-            onDismiss = { showColorPicker = false },
-            onColorSelected = { selected ->
-                customAccentArgb = selected
-            }
-        )
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String, theme: AppThemeState) {
-    Text(
-        text,
-        color         = theme.text1,
-        fontSize      = SinemaType.Caption,
-        fontWeight    = FontWeight.Bold,
-        letterSpacing = 1.2.sp
-    )
-}
-
-/** Ayarların canlı önizlemesi: kart yüzeyi + başlık + mini buton. */
-@Composable
-private fun PreviewCard(preview: AppThemeState) {
-    val acc = preview.effectiveAccentColor
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaCard(preview, RoundedCornerShape(SinemaRadius.R24))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(acc)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                preview.accentDisplayLabel,
-                color         = preview.accentTextColor,
-                fontSize      = SinemaType.Caption,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 1.2.sp
-            )
-        }
-        Text(
-            "Profitness",
-            color      = preview.text0,
-            fontSize   = SinemaType.Title,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            preview.strings.helloAthlete,
-            color    = preview.text1,
-            fontSize = SinemaType.Caption
-        )
-        Box(
-            Modifier
-                .padding(top = 4.dp)
-                .clip(RoundedCornerShape(SinemaRadius.R12))
-                .background(acc)
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-        ) {
-            Text(
-                preview.strings.applyLabel,
-                color         = preview.effectiveOnAccentColor,
-                fontSize      = SinemaType.Caption,
-                fontWeight    = FontWeight.Black,
-                letterSpacing = 1.2.sp
-            )
-        }
-    }
-}
-
-/** Genel amaçlı segmented selector — 2+ seçenek için. */
-@Composable
-private fun <T> SegmentedSelector(
-    options : List<Pair<T, String>>,
-    selected: T,
-    accent  : Color,
-    onAccent: Color,
-    theme   : AppThemeState,
-    onSelect: (T) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R16))
-            .padding(4.dp)
-    ) {
-        options.forEach { (value, label) ->
-            val isSel = value == selected
-            val segShape = RoundedCornerShape(SinemaRadius.R12)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .then(if (isSel) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, segShape) else Modifier)
-                    .sinemaClickable(onClick = { onSelect(value) })
-                    .clip(segShape)
-                    .then(if (isSel) Modifier.background(accent) else Modifier)
-                    .padding(vertical = 11.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    label,
-                    color         = if (isSel) onAccent else theme.text1,
-                    fontSize      = SinemaType.Caption,
-                    fontWeight    = FontWeight.SemiBold,
-                    letterSpacing = 0.2.sp
-                )
-            }
-        }
-    }
-}
 
 // ── Notifications Settings Sheet ──────────────────────────────────────────────
 
@@ -1598,44 +1323,6 @@ private fun ModeOption(
                 fontWeight    = if (isSelected) FontWeight.Black else FontWeight.Normal,
                 letterSpacing = 1.sp
             )
-        }
-    }
-}
-
-@Composable
-private fun ColorSwatch(
-    preset    : AccentPreset,
-    isSelected: Boolean,
-    onClick   : () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .sinemaClickable(onClick = onClick)
-            .clip(CircleShape)
-            .background(if (isSelected) preset.color.copy(0.15f) else Color.Transparent)
-            .border(
-                width = if (isSelected) 2.dp else 0.dp,
-                color = if (isSelected) preset.color else Color.Transparent,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(preset.color),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isSelected) {
-                Icon(
-                    Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint     = preset.onColor,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
         }
     }
 }
