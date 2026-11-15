@@ -274,7 +274,7 @@ fun AICoachScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
+                    Icon(SinemaIcons.Spark, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
                     Text("AI Koç", color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
@@ -291,7 +291,7 @@ fun AICoachScreen(
                     Icon(Icons.Rounded.Settings, theme.t("Ayarlar", "Settings"), tint = Color.White, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = onNavigateToStore) {
-                    Icon(SinemaIcons.Bolt, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))
+                    Icon(SinemaIcons.Bolt, null, tint = Sinema.TextSecondary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (hasPlan) state.userPlan.displayName
@@ -459,7 +459,7 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
             Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
                 Box(
                     Modifier.fillMaxWidth(fill).fillMaxHeight()
-                        .clip(CircleShape).background(theme.accent2Color)
+                        .clip(CircleShape).background(theme.accentHi)
                 )
             }
             Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
@@ -536,7 +536,6 @@ private fun SanctuaryMessage(
                 val userShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 6.dp)
                 Box(
                     modifier = Modifier
-                        .sinemaGlow(accent.copy(0.25f), 14.dp, 5.dp, userShape)
                         .clip(userShape)
                         .background(accent)
                         .padding(horizontal = 16.dp, vertical = 11.dp)
@@ -819,7 +818,6 @@ private fun SessionHistorySheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (isActive) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, rowShape) else Modifier)
                             .then(if (isActive) Modifier.clip(rowShape).background(accent) else Modifier.sinemaCard(theme, rowShape))
                             .clickable(role = Role.Button) { onSelectSession(session) }
                             .heightIn(min = 56.dp)

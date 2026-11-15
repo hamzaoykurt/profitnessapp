@@ -259,7 +259,6 @@ private fun OnboardingProgressBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(4.dp)
-                        .then(if (active) Modifier.sinemaGlow(accent.copy(0.4f), 8.dp, 0.dp, CircleShape) else Modifier)
                         .clip(CircleShape)
                         .background(Sinema.line(theme))
                 ) {
@@ -370,7 +369,6 @@ private fun StepName(
             Box(
                 modifier         = Modifier
                     .size(100.dp)
-                    .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                     .clip(CircleShape)
                     .background(Sinema.surface(theme))
                     .border(2.dp, accent, CircleShape),
@@ -430,7 +428,7 @@ private fun StepName(
                             .weight(1f)
                             .aspectRatio(1f)
                             .then(
-                                if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, avatarShape).clip(avatarShape).background(accent)
+                                if (selected) Modifier.clip(avatarShape).background(accent)
                                 else Modifier.sinemaCard(theme, avatarShape)
                             )
                             .selectable(selected = selected, role = Role.RadioButton, onClick = { vm.setAvatar(emoji) }),
@@ -598,7 +596,7 @@ private fun OnboardingChoiceGrid(
                         .weight(1f)
                         .heightIn(min = 88.dp)
                         .then(
-                            if (isSelected) Modifier.sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape).clip(shape).background(accent)
+                            if (isSelected) Modifier.clip(shape).background(accent)
                             else Modifier.sinemaCard(theme, shape)
                         )
                         .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })
@@ -899,7 +897,6 @@ private fun StepPersonalProgram(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                         .clip(CircleShape)
                         .background(accent),
                     contentAlignment = Alignment.Center

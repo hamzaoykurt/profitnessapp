@@ -1,7 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
 import com.cosmibit.profitness.core.theme.sinemaListEnter
-import com.cosmibit.profitness.core.theme.sinemaGlow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,8 +81,8 @@ import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.supportAlert
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
@@ -189,14 +188,14 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             // AKTİF PROGRAM çipi
             Row(
                 Modifier.padding(start = 16.dp, top = statusTop + 16.dp).height(28.dp)
-                    .clip(RoundedCornerShape(SinemaRadius.R12)).background(theme.accent3Color).padding(horizontal = 12.dp),
+                    .clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // c3 = işaretle (rozet); hale yok (hale yalnız c1)
-                Icon(SinemaIcons.Bolt, null, tint = Sinema.Ink, modifier = Modifier.size(14.dp))
+                Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink,
+                    theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text,
                     fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
                 )
             }
@@ -237,7 +236,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill((info.completed.toFloat() / info.total).coerceIn(0f, 1f))
             val doneCount = com.cosmibit.profitness.core.theme.rememberSinemaCount(info.completed, fromZero = true)
-            val ring = theme.accent2Color   // c2 = ölç
+            val ring = theme.accentHi   // c2 = ölç
             Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw = 6.dp.toPx()
@@ -271,7 +270,6 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                 Column(
                     Modifier.weight(1f).heightIn(min = 42.dp)
                         .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.45f else 1f }
-                        .then(if (c.isToday) Modifier.sinemaGlow(accent.copy(0.4f), 16.dp, 8.dp, shape) else Modifier)
                         .clip(shape)
                         .background(if (c.isToday) accent else Color.White.copy(0.09f)),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
@@ -282,7 +280,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                         maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
                     )
                     Spacer(Modifier.height(4.dp))
-                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else if (c.isDone) theme.accent2Color else Color.White.copy(0.4f)))
+                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else if (c.isDone) theme.accentHi else Color.White.copy(0.4f)))
                 }
             }
         }
@@ -334,8 +332,8 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)), contentAlignment = Alignment.Center) {
-                Icon(SinemaIcons.Spark, null, tint = theme.accent3Color, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(CircleShape).background(Sinema.TextSecondary.copy(0.16f)), contentAlignment = Alignment.Center) {
+                Icon(SinemaIcons.Spark, null, tint = Sinema.TextSecondary, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
@@ -388,7 +386,7 @@ fun SavedProgramCard(
     showTypeBadge: Boolean = true
 ) {
     val theme = LocalAppTheme.current
-    val badge = theme.accent3Color   // c3 = işaretle; ekranda ≤3 öğe → yalnız ilk kartta
+    val badge = Sinema.TextSecondary   // c3 = işaretle; ekranda ≤3 öğe → yalnız ilk kartta
     val shape = RoundedCornerShape(SinemaRadius.R28)
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -520,7 +518,6 @@ fun ProgramFilterPill(label: String, icon: ImageVector?, selected: Boolean, onCl
     Box(Modifier.heightIn48().clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Row(
             Modifier.height(36.dp)
-                .then(if (selected) Modifier.sinemaGlow(accent.copy(0.4f), 16.dp, 8.dp, shape) else Modifier)
                 .clip(shape)
                 .then(if (selected) Modifier.background(accent) else Modifier.background(raiseBrush(theme)).insetLook(theme, shape).border(1.dp, Sinema.line(theme), shape))
                 .padding(horizontal = 15.dp),

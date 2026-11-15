@@ -551,8 +551,7 @@ private fun OtpInputRow(
                 val isActive = code.length == idx
                 SinemaCapsule(
                     modifier = Modifier
-                        .weight(1f)
-                        .then(if (isActive) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 0.dp, digitShape) else Modifier),
+                        .weight(1f),
                     height = 56.dp,
                     shape = digitShape,
                     edge = if (char != null || isActive) accent else Color.White.copy(0.18f),

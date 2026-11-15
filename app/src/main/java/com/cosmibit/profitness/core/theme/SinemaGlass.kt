@@ -376,7 +376,7 @@ fun SinemaNavBar(
                 wasSelected = selected
             }
             val iconTint by animateColorAsState(if (selected) accent else passive, tween(SinemaMotion.Quick), label = "nav_icon")
-            val labelTint by animateColorAsState(if (selected) active else passive, tween(SinemaMotion.Quick), label = "nav_label")
+            val labelTint by animateColorAsState(if (selected) accent else passive, tween(SinemaMotion.Quick), label = "nav_label")
             Column(
                 Modifier
                     .weight(1f)
@@ -438,7 +438,7 @@ fun SinemaNavRail(
             items.forEachIndexed { i, item ->
                 val selected = i == selectedIndex
                 val tint by animateColorAsState(if (selected) accent else Color.White.copy(0.7f), tween(SinemaMotion.Quick), label = "rail_icon")
-                val labelTint by animateColorAsState(if (selected) Color.White else Color.White.copy(0.7f), tween(SinemaMotion.Quick), label = "rail_label")
+                val labelTint by animateColorAsState(if (selected) accent else Color.White.copy(0.7f), tween(SinemaMotion.Quick), label = "rail_label")
                 Column(
                     Modifier
                         .fillMaxWidth().heightIn(min = 56.dp)

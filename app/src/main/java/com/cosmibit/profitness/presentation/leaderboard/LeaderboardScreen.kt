@@ -269,9 +269,9 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
     val accent = theme.effectiveAccentColor
     val first = row.position == 1L
     val shape = RoundedCornerShape(SinemaRadius.R28)
-    val gold = theme.accent3Color   // c3: 1. podyum işareti
+    val gold = theme.rewardGold   // c3: 1. podyum işareti
     val fg = Sinema.text(theme)
-    val fg2 = if (first) theme.accent3TextColor else Sinema.textSecondary(theme)
+    val fg2 = if (first) theme.rewardGoldTextColor else Sinema.textSecondary(theme)
     Column(
         modifier = modifier
             .sinemaCard(theme, shape)
@@ -329,7 +329,7 @@ private fun MyPositionCard(
             SinemaBigStat(
                 value = "#${if (summary.position == 0L) "-" else summary.position}",
                 label = theme.t("Senin pozisyonun", "Your position"),
-                size = 52, color = theme.accent2TextColor, modifier = Modifier.weight(1f)
+                size = 52, color = theme.accentHiTextColor, modifier = Modifier.weight(1f)
             )
             SinemaBigStat(
                 value = summary.score.toString(), label = scoreUnit(tab, theme), size = 32

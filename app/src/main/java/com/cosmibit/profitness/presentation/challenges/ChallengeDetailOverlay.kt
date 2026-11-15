@@ -88,10 +88,10 @@ import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.CardCoral
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent2TextColor
-import com.cosmibit.profitness.core.theme.accent3Color
-import com.cosmibit.profitness.core.theme.accent3TextColor
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.accentHiTextColor
+import com.cosmibit.profitness.core.theme.rewardGold
+import com.cosmibit.profitness.core.theme.rewardGoldTextColor
 import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.exerciseDisplayName
 import com.cosmibit.profitness.core.theme.sinemaCard
@@ -619,7 +619,7 @@ private fun ChallengeHero(
             Column {
                 // TEK durum etiketi
                 SinemaCapsule(height = 30.dp, shape = CircleShape, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(if (c.isCompleted) theme.accent3Color else if (live) theme.accent2Color else fg.copy(0.5f)))
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(if (c.isCompleted) theme.rewardGold else if (live) theme.accentHi else fg.copy(0.5f)))
                     Spacer(Modifier.width(6.dp))
                     Text(statusLabel, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1)
                 }
@@ -658,10 +658,10 @@ private fun ChallengeHero(
                         color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.weight(1f))
-                    Text("%${(c.progressPct * 100).toInt()}", color = theme.accent2TextColor, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
+                    Text("%${(c.progressPct * 100).toInt()}", color = theme.accentHiTextColor, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
                 Spacer(Modifier.height(8.dp))
-                SinemaGlowBar(progress = c.progressPct, color = theme.accent2Color)
+                SinemaGlowBar(progress = c.progressPct, color = theme.accentHi)
             }
         }
     }
@@ -972,8 +972,8 @@ private fun CheckDot(done: Boolean, accent: Color, size: androidx.compose.ui.uni
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (done) theme.accent2Color else Color.Transparent)
-            .border(1.5.dp, if (done) theme.accent2Color else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
+            .background(if (done) theme.accentHi else Color.Transparent)
+            .border(1.5.dp, if (done) theme.accentHi else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         when {
@@ -1047,7 +1047,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
             Text(
                 "$rank",
                 style = Sinema.Title.copy(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold),
-                color = if (rank == 1) theme.accent3TextColor else Sinema.textSecondary(theme),
+                color = if (rank == 1) theme.rewardGoldTextColor else Sinema.textSecondary(theme),
                 modifier = Modifier.width(26.dp)
             )
         }
@@ -1077,7 +1077,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             if (entry.isCompleted) {
-                Text(theme.t("Tamamladı ✓", "Completed ✓"), color = theme.accent2TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+                Text(theme.t("Tamamladı ✓", "Completed ✓"), color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
         }
         Text(

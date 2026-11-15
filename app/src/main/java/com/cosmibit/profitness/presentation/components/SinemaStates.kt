@@ -52,7 +52,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.SinemaMotion
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.supportAlert
@@ -83,7 +83,7 @@ fun SinemaEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(Modifier.size(72.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = theme.accent3Color, modifier = Modifier.size(28.dp))
+            Icon(icon, null, tint = Sinema.TextSecondary, modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))
         Text(

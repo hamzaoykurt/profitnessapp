@@ -40,7 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.core.ui.SinemaFitText
@@ -472,7 +472,6 @@ private fun ProfileHeroBanner(
                         Modifier
                             .fillMaxWidth(fill.value)
                             .fillMaxHeight()
-                            .sinemaGlow(accent, 12.dp, 0.dp, CircleShape)
                             .clip(CircleShape)
                             .background(accent)
                     )
@@ -656,7 +655,7 @@ private fun PerformanceMetricsSection(
     onNavigateToDetail: () -> Unit
 ) {
     val metrics = buildList {
-        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.accent3Color))
+        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.rewardGold))
         add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
         add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.supportStrength))
         if (totalDurationSeconds > 0) {
@@ -786,7 +785,7 @@ private fun WeeklyActivitySection(
                                     .fillMaxWidth()
                                     .fillMaxHeight(level.coerceAtLeast(0.15f))
                                 Box(
-                                    (if (isToday) fill.sinemaGlow(accent.copy(0.55f), 10.dp, 2.dp, barShape) else fill)
+                                    fill
                                         .clip(barShape)
                                         .background(if (isToday) accent else accent.copy(0.4f))
                                 )

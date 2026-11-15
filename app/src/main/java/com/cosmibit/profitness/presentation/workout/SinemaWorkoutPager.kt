@@ -3,7 +3,7 @@ package com.cosmibit.profitness.presentation.workout
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.sinemaCard
-import com.cosmibit.profitness.core.theme.sinemaGlow
+import com.cosmibit.profitness.core.theme.sinemaPrimaryGlow
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -108,8 +108,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.cosmibit.profitness.core.theme.AppThemeState
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.LocalSinemaHaze
 import com.cosmibit.profitness.presentation.components.SinemaVideo
@@ -788,7 +788,7 @@ private fun SetRow(
     }
     val shape = RoundedCornerShape(h / 2)
     val onAcc = if (onAccent == Color.Black) Sinema.Ink else onAccent
-    val measure = theme.accent2Color   // c2 = ölç: tamamlanan set
+    val measure = theme.accentHi   // c2 = ölç: tamamlanan set
     val numSize = if (active) 24.sp else 20.sp
     val setLabel = theme.t("Set ${index + 1}", "Set ${index + 1}")
     Row(
@@ -806,7 +806,7 @@ private fun SetRow(
                     SetRowState.Active -> listOf(accent.copy(0.75f), accent.copy(0.25f))
                     SetRowState.Done -> listOf(measure.copy(0.45f))
                 },
-                glow = if (active) accent.copy(0.22f) else null,
+                glow = null,
                 shadow = !active
             )
             .semantics { contentDescription = setLabel }
@@ -860,7 +860,7 @@ private fun SetCheck(state: SetRowState, accent: Color, doneColor: Color, onDone
     val done = state == SetRowState.Done
     val pop = remember { Animatable(1f) }
     val burst = remember { Animatable(1f) }
-    val burstColor = LocalAppTheme.current.accent3Color
+    val burstColor = LocalAppTheme.current.rewardGold
     var first by remember { mutableStateOf(true) }
     val motion = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
     LaunchedEffect(done) {
@@ -928,7 +928,7 @@ private fun CapsuleRow(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val measure = theme.accent2Color   // c2 = ölç: tamamlanan (SetRow ile aynı dil)
+    val measure = theme.accentHi   // c2 = ölç: tamamlanan (SetRow ile aynı dil)
     val fg = Sinema.Text
     val shape = RoundedCornerShape(height / 2)
     Row(
@@ -963,7 +963,7 @@ private fun CapsuleRow(
 private fun CheckCircle(done: Boolean, accent: Color, onAccent: Color, description: String, onToggle: () -> Unit, hit: Dp) {
     val pop = remember { Animatable(1f) }
     val burst = remember { Animatable(1f) }
-    val burstColor = LocalAppTheme.current.accent3Color
+    val burstColor = LocalAppTheme.current.rewardGold
     var first by remember { mutableStateOf(true) }
     val motion = rememberSinemaMotionOn()
     LaunchedEffect(done) {
@@ -1048,7 +1048,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(56.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (dim) 0.5f else 1f }
-            .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape)
+            .sinemaPrimaryGlow(accent, shape)
             .clip(shape)
             .background(accent)
             .drawWithContent {
@@ -1176,19 +1176,19 @@ private fun CelebrationPage(
             if (records.isNotEmpty()) {
                 val (shown, more) = splitRecordBadges(records)
                 Spacer(Modifier.height(14.dp))
-                Text(theme.t("YENİ REKOR", "NEW RECORD").sinemaUpper(theme), style = Sinema.Label, color = theme.accent3Color)
+                Text(theme.t("YENİ REKOR", "NEW RECORD").sinemaUpper(theme), style = Sinema.Label, color = theme.rewardGold)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     shown.forEach { name ->
                         Text(
-                            name, style = Sinema.Label, color = theme.accent3Color, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            name, style = Sinema.Label, color = theme.rewardGold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
-                                .clip(CircleShape).background(theme.accent3Color.copy(0.18f))
-                                .border(1.dp, theme.accent3Color.copy(0.55f), CircleShape)
+                                .clip(CircleShape).background(theme.rewardGold.copy(0.18f))
+                                .border(1.dp, theme.rewardGold.copy(0.55f), CircleShape)
                                 .padding(horizontal = 10.dp, vertical = 5.dp)
                         )
                     }
-                    if (more > 0) Text("+$more", style = Sinema.Label, color = theme.accent3Color)
+                    if (more > 0) Text("+$more", style = Sinema.Label, color = theme.rewardGold)
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -1246,7 +1246,7 @@ private fun SinemaTopBar(
                     else (dataFor(ex).doneSetIndices.size.toFloat() / ex.sets.coerceAtLeast(1)).coerceIn(0f, 1f)
                     val f by animateFloatAsState(frac, tween(SinemaMotion.Slow, easing = SinemaMotion.EaseStandard), label = "seg")
                     Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(Color.White.copy(0.30f))) {
-                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(if (closedToday) theme.accent3Color else theme.accent2Color))
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(if (closedToday) theme.rewardGold else theme.accentHi))
                     }
                 }
             }
@@ -1255,7 +1255,7 @@ private fun SinemaTopBar(
             if (closedToday) {
                 Icon(
                     Icons.Rounded.Check, theme.t("Bugün tamamlandı", "Completed today"),
-                    tint = theme.accent3Color, modifier = Modifier.size(16.dp)
+                    tint = theme.rewardGold, modifier = Modifier.size(16.dp)
                 )
                 Spacer(Modifier.width(6.dp))
             }
@@ -1277,7 +1277,7 @@ private fun SinemaTopBar(
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(SinemaIcons.Flame, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))
+                Icon(SinemaIcons.Flame, null, tint = theme.rewardGold, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(
                     streak.coerceAtLeast(0).toString(), color = Color.White, fontSize = SinemaType.BodySm,
@@ -1337,7 +1337,6 @@ private fun DayPill(
                         Box(
                             Modifier
                                 .fillMaxWidth().height(48.dp)
-                                .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, RoundedCornerShape(SinemaRadius.R12)) else Modifier)
                                 .sinemaClickable(onClick = { open = false; onSelect(i) }, role = Role.Button, scale = 0.98f)
                                 .clip(RoundedCornerShape(SinemaRadius.R12))
                                 .then(if (sel) Modifier.background(accent) else Modifier)

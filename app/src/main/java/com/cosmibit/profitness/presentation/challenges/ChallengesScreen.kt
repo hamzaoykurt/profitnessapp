@@ -81,12 +81,12 @@ import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent3Color
-import com.cosmibit.profitness.core.theme.accent3TextColor
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.rewardGold
+import com.cosmibit.profitness.core.theme.rewardGoldTextColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaCard
-import com.cosmibit.profitness.core.theme.sinemaGlow
+import com.cosmibit.profitness.core.theme.sinemaPrimaryGlow
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
@@ -323,7 +323,7 @@ fun ChallengesTab(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = bottomPadding + 16.dp)
                 .size(56.dp)
-                .sinemaGlow(fabAccent.copy(0.4f), 20.dp, 8.dp, CircleShape)
+                .sinemaPrimaryGlow(fabAccent, CircleShape)
                 .clip(CircleShape)
                 .background(fabAccent)
                 .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = { vm.openCreate() }),
@@ -596,11 +596,11 @@ private fun ChallengeInvitesSection(
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Rounded.PersonAdd, null, tint = theme.accent3TextColor, modifier = Modifier.size(13.dp))
+                Icon(Icons.Rounded.PersonAdd, null, tint = Sinema.TextSecondary, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     theme.t("DAVETLER", "INVITES"),
-                    color = theme.accent3TextColor,
+                    color = Sinema.TextSecondary,
                     fontSize = SinemaType.Caption,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.1.sp
@@ -654,8 +654,8 @@ private fun ChallengeInviteRow(
     val statusColor = challengeStatusAccent(
         status = status,
         completed = challenge.isCompleted,
-        accent = theme.accent2Color,
-        trophy = theme.accent3Color
+        accent = theme.accentHi,
+        trophy = theme.rewardGold
     )
     Row(
         modifier = Modifier
@@ -1037,7 +1037,7 @@ private fun ChallengeCard(
                         status == CardStatus.Live -> theme.t("DEVAM EDİYOR", "LIVE")
                         else -> theme.t("SONA ERDİ", "ENDED")
                     },
-                    dot = if (c.isCompleted) theme.accent3Color else if (status == CardStatus.Live) theme.accent2Color else Color.White.copy(0.5f)
+                    dot = if (c.isCompleted) theme.rewardGold else if (status == CardStatus.Live) theme.accentHi else Color.White.copy(0.5f)
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Rounded.People, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
@@ -1097,10 +1097,10 @@ private fun ChallengeCard(
                             color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.weight(1f))
-                        Text("%${(c.progressPct * 100).toInt()}", color = theme.accent2Color, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
+                        Text("%${(c.progressPct * 100).toInt()}", color = theme.accentHi, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
                     }
                     Spacer(Modifier.height(6.dp))
-                    ProgressBar(pct = c.progressPct, accent = theme.accent2Color, strokeColor = Color.Transparent)
+                    ProgressBar(pct = c.progressPct, accent = theme.accentHi, strokeColor = Color.Transparent)
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -1176,7 +1176,6 @@ private fun ProgressBar(pct: Float, accent: Color, strokeColor: Color) {
                 Modifier
                     .fillMaxWidth(frac)
                     .fillMaxHeight()
-                    .sinemaGlow(accent.copy(0.4f), 10.dp, 3.dp, shape)
                     .clip(shape)
                     .background(accent)
             )

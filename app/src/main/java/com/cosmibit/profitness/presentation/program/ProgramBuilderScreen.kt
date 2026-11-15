@@ -1127,7 +1127,6 @@ private fun ProgramDetailDialog(
                             Modifier
                                 .fillMaxWidth(program.muscleFractions[i])
                                 .fillMaxHeight()
-                                .sinemaGlow(accentSolid.copy(0.4f), 8.dp, 2.dp, CircleShape)
                                 .clip(CircleShape)
                                 .background(accentSolid)
                         )
@@ -1800,7 +1799,6 @@ private fun EditProgramScreen(
                     Box(
                         modifier = Modifier
                             .size(46.dp)
-                            .sinemaGlow(editAccent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                             .clip(CircleShape)
                             .background(editAccent),
                         contentAlignment = Alignment.Center
@@ -2387,7 +2385,6 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .sinemaGlow(accent.copy(0.4f), 16.dp, 6.dp, CircleShape)
                 .clip(CircleShape)
                 .background(accent),
             contentAlignment = Alignment.Center
@@ -2458,7 +2455,6 @@ private fun ManualDayCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .then(if (!rest) Modifier.sinemaGlow(accent.copy(0.4f), 16.dp, 6.dp, CircleShape) else Modifier)
                     .clip(CircleShape)
                     .background(if (rest) line else accent),
                 contentAlignment = Alignment.Center
@@ -2777,7 +2773,6 @@ private fun ExerciseEditDialog(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                         .clip(CircleShape)
                         .background(accent),
                     contentAlignment = Alignment.Center
@@ -2963,7 +2958,6 @@ private fun EditCounterField(
             modifier = Modifier
                 .size(44.dp)
                 .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement)
-                .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, CircleShape)
                 .clip(CircleShape)
                 .background(accent),
             contentAlignment = Alignment.Center

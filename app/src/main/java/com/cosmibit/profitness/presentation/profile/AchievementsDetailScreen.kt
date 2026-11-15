@@ -89,7 +89,7 @@ fun AchievementsDetailScreen(
                         unit  = "/ $totalCount",
                         label = theme.t("Açılan başarım", "Unlocked"),
                         size  = 72,
-                        color = theme.accent3TextColor
+                        color = theme.rewardGoldTextColor
                     )
                 }
             }
@@ -217,7 +217,7 @@ private fun XpProgressCard(
                 Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(progress, color = theme.accent2Color)
+            SinemaGlowBar(progress, color = theme.accentHi)
         }
 
         Column {
@@ -226,7 +226,7 @@ private fun XpProgressCard(
                 Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(rankProgress, color = theme.accent2Color)
+            SinemaGlowBar(rankProgress, color = theme.accentHi)
         }
     }
 }
@@ -239,7 +239,7 @@ private fun AchievementRow(
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    val accent = theme.accent3Color   // c3: açılan başarım işareti
+    val accent = theme.rewardGold   // c3: açılan başarım işareti
     val isUnlocked = achievement.isUnlocked
 
     Row(

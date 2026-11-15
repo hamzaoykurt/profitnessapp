@@ -285,7 +285,7 @@ private fun ProgressionSummaryHero(
             value = "$trackedCount",
             label = theme.t("Takip edilen hareket", "Tracked exercises"),
             size = 72,
-            color = theme.accent2TextColor
+            color = theme.accentHiTextColor
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SinemaBigStat("$weightCount", theme.t("Ağırlık", "Weight"), Modifier.weight(1f), size = 28)
@@ -520,7 +520,7 @@ private fun LastSessionBreakdown(
     history : List<SetCompletionEntity>,
     theme   : AppThemeState
 ) {
-    val accent = theme.accent2Color
+    val accent = theme.accentHi
     val lastDate = history.mapNotNull { it.date }.maxOrNull() ?: return
     val lastSets = history
         .filter { it.date == lastDate }
@@ -614,8 +614,8 @@ private fun ProgressionChartSection(
     chartData : List<ProgressPoint>,
     theme     : AppThemeState
 ) {
-    val accent = theme.accent2Color
-    val record = theme.accent3Color
+    val accent = theme.accentHi
+    val record = theme.rewardGold
     val gridColor = Sinema.line(theme)
     val firstKg = chartData.first().maxKg
     val lastKg  = chartData.last().maxKg
@@ -707,7 +707,7 @@ private fun AiInsightCard(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)

@@ -256,10 +256,10 @@ fun ExerciseDetailSheet(
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             chips.forEach { (text, muscle) ->
-                                val c = if (muscle) theme.accent2Color else theme.accent3Color
+                                val c = if (muscle) theme.accentHi else Sinema.TextSecondary
                                 Text(
                                     text,
-                                    color = if (muscle) theme.accent2TextColor else theme.accent3TextColor,
+                                    color = if (muscle) theme.accentHiTextColor else Sinema.TextSecondary,
                                     fontSize = SinemaType.Caption,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
@@ -353,14 +353,14 @@ fun ExerciseDetailSheet(
                             }
                             Text(
                                 recordText,
-                                color = theme.accent3TextColor,
+                                color = theme.rewardGoldTextColor,
                                 fontSize = SinemaType.Caption,
                                 fontWeight = FontWeight.SemiBold,
                                 letterSpacing = 0.06.sp,
                                 maxLines = 1,
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(theme.accent3Color.copy(alpha = 0.16f))
+                                    .background(theme.rewardGold.copy(alpha = 0.16f))
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -491,7 +491,7 @@ fun ExerciseDetailSheet(
                             }
                             Text(
                                 deltaText,
-                                color = if (delta >= -0.001f) theme.accent2TextColor else Sinema.textSecondary(theme),
+                                color = if (delta >= -0.001f) theme.accentHiTextColor else Sinema.textSecondary(theme),
                                 fontSize = SinemaType.BodySm,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(start = 28.dp, bottom = 6.dp)
@@ -701,7 +701,7 @@ private fun MuscleMap(regions: Set<MuscleRegion>, description: String) {
             MuscleParts.forEach { p ->
                 if (p.side == Side.BOTH || p.side == side) {
                     drawRoundRect(
-                        color = if (p.region in regions) theme.accent2Color else off,
+                        color = if (p.region in regions) theme.accentHi else off,
                         topLeft = Offset((ox + p.x) * u, p.y * u),
                         size = Size(p.w * u, p.h * u),
                         cornerRadius = CornerRadius(p.r * u)
@@ -743,7 +743,7 @@ private fun ProgressionCard(
             .padding(18.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(valueText, style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold), color = theme.accent2TextColor)
+            Text(valueText, style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold), color = theme.accentHiTextColor)
             Spacer(Modifier.width(6.dp))
             Text(
                 if (isStrength) theme.t("kg · son seansın en yüksek seti", "kg · last session's top set") else theme.t("dk toplam, son seans", "min total, last session"),
@@ -795,10 +795,10 @@ private fun ProgressionCard(
             fillPath.lineTo(xOf(series.lastIndex), h)
             fillPath.close()
 
-            drawPath(fillPath, Brush.verticalGradient(listOf(theme.accent2Color.copy(0.12f), Color.Transparent), padV, h))
-            drawGlowLine(linePath, theme.accent2Color, 2.5.dp.toPx())
+            drawPath(fillPath, Brush.verticalGradient(listOf(theme.accentHi.copy(0.12f), Color.Transparent), padV, h))
+            drawGlowLine(linePath, theme.accentHi, 2.5.dp.toPx())
             if (recordIndex >= 0) {
-                drawCircle(theme.accent3Color, radius = 5.dp.toPx(), center = Offset(xOf(recordIndex), yOf(series[recordIndex].value)))
+                drawCircle(theme.rewardGold, radius = 5.dp.toPx(), center = Offset(xOf(recordIndex), yOf(series[recordIndex].value)))
             }
         }
         Spacer(Modifier.height(8.dp))

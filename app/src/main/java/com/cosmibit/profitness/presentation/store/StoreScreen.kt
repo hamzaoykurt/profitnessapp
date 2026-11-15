@@ -597,7 +597,7 @@ private fun StoreTopBar(
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) { fg ->
-                    Icon(Icons.Rounded.Bolt, null, tint = theme.accent3Color, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Bolt, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
                     Text("$credits", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 }
             }
@@ -846,7 +846,6 @@ private fun Modifier.storeCard(theme: AppThemeState, accent: Color, featured: Bo
     val shape = RoundedCornerShape(radius)
     return if (featured) {
         this
-            .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, shape)
             .clip(shape)
             .background(Sinema.surface(theme))
             .border(1.5.dp, accent, shape)
@@ -861,10 +860,10 @@ private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
     if (filled) {
         // c3 = işaretle: öne çıkan rozet (dolgu düğme/taş değil, %16 örtü)
         Box(
-            Modifier.height(24.dp).clip(CircleShape).background(theme.accent3Color.copy(0.16f)).padding(horizontal = 10.dp),
+            Modifier.height(24.dp).clip(CircleShape).background(Sinema.TextSecondary.copy(0.16f)).padding(horizontal = 10.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(text, color = theme.accent3TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(text, color = Sinema.TextSecondary, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
         return
     }
@@ -1018,7 +1017,7 @@ private fun SimpleEnergyBalanceCard(
             size = if (creditsText.length >= 5) 64 else 88
         )
         Spacer(Modifier.height(18.dp))
-        SinemaGlowBar(progress = fill, height = 10.dp, color = theme.accent2Color)
+        SinemaGlowBar(progress = fill, height = 10.dp, color = theme.accentHi)
     }
 }
 

@@ -9,8 +9,8 @@ import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.rewardGold
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
@@ -1190,7 +1190,7 @@ SinemaCapsule(
                 Spacer(Modifier.width(10.dp))
                 when {
                     loading || resolvingPlaceId != null -> CircularProgressIndicator(
-                        color = LocalAppTheme.current.accent2Color,
+                        color = LocalAppTheme.current.accentHi,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1287,7 +1287,7 @@ Icon(
                         if (isResolving) {
                             Spacer(Modifier.width(8.dp))
                             CircularProgressIndicator(
-                                color = LocalAppTheme.current.accent2Color,
+                                color = LocalAppTheme.current.accentHi,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -1676,7 +1676,7 @@ private fun EventModeChip(
         modifier, active = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
     ) { fg ->
-        Icon(icon, null, tint = theme.accent3Color, modifier = Modifier.size(14.dp))   // c3 = tür işareti (3 mod)
+        Icon(icon, null, tint = Sinema.TextSecondary, modifier = Modifier.size(14.dp))   // c3 = tür işareti (3 mod)
         Spacer(Modifier.width(5.dp))
         Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }

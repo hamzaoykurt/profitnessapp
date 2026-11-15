@@ -106,12 +106,12 @@ fun SavedProgramDetail(
             Spacer(Modifier.height(12.dp))
             // c3 = işaretle (rozet)
             Row(
-                Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(theme.accent3Color).padding(horizontal = 12.dp),
+                Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(SinemaIcons.Bolt, null, tint = Sinema.Ink, modifier = Modifier.size(14.dp))
+                Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
         program.days.filter { !it.isRestDay && it.exercises.isNotEmpty() }.forEachIndexed { dayIdx, day ->

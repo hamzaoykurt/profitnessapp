@@ -63,8 +63,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.cosmibit.profitness.core.theme.accent2Color
-import com.cosmibit.profitness.core.theme.accent2TextColor
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.accentHiTextColor
 import com.cosmibit.profitness.core.theme.*
 import com.cosmibit.profitness.core.ui.categoryImageUrl
 import com.cosmibit.profitness.core.ui.SinemaFitText
@@ -352,7 +352,7 @@ private fun PerformanceCover(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     ringSel = if (ringSel == i) null else i
                 },
-                accent = theme.accent2Color,   // c2 = ölç
+                accent = theme.accentHi,   // c2 = ölç
                 description = theme.t("Bu haftanın günlük aktivitesi", "This week's daily activity"),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -502,7 +502,6 @@ private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .then(if (sel) Modifier.sinemaGlow(accent.copy(0.4f), 12.dp, 4.dp, CircleShape) else Modifier)
                         .clip(CircleShape)
                         .background(if (sel) accent else Color.Transparent),
                     contentAlignment = Alignment.Center
@@ -539,7 +538,7 @@ private fun RhythmChart(
     theme: AppThemeState,
     english: Boolean
 ) {
-    val accent = theme.accent2Color   // c2 = ölç (çubuklar)
+    val accent = theme.accentHi   // c2 = ölç (çubuklar)
     val motion = rememberSinemaMotionOn()
     val haptic = LocalHapticFeedback.current
     val grow = remember { Animatable(1f) }
@@ -794,7 +793,7 @@ private fun BodySection(
                     Spacer(Modifier.height(18.dp))
                     PText("BMI ${formatNumber(state.bmi, 1, english)} · ${zoneNames[bmiZone(state.bmi)]}", 13, FontWeight.Bold)
                     Spacer(Modifier.height(10.dp))
-                    BmiScale(state.bmi, theme.accent2Color)
+                    BmiScale(state.bmi, theme.accentHi)
                 }
                 if (hasHeight || hasFat) {
                     Spacer(Modifier.height(22.dp))
@@ -854,7 +853,7 @@ private fun BmiScale(bmi: Double, accent: Color, modifier: Modifier = Modifier) 
 
 @Composable
 private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Boolean, modifier: Modifier = Modifier) {
-    val accent = theme.accent2Color   // c2 = ölç (en uzun seriye oran çubuğu)
+    val accent = theme.accentHi   // c2 = ölç (en uzun seriye oran çubuğu)
     Column(modifier) {
         SectionLabel(theme.t("Aktif seri", "Current streak"))
         Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
@@ -1628,7 +1627,7 @@ private fun CalculationResultCard(
         SinemaFitText(value, style = Sinema.Metric, baseSp = 52f, floorSp = 28f, color = Sinema.text(theme))
         if (subtitle.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(subtitle, color = theme.accent2TextColor, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
+            Text(subtitle, color = theme.accentHiTextColor, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
         }
     }
 }

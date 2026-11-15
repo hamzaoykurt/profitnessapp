@@ -57,10 +57,9 @@ import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaScene
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.accent2TextColor
-import com.cosmibit.profitness.core.theme.accent2Color
+import com.cosmibit.profitness.core.theme.accentHiTextColor
+import com.cosmibit.profitness.core.theme.accentHi
 import com.cosmibit.profitness.core.theme.sinemaCard
-import com.cosmibit.profitness.core.theme.sinemaGlow
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.domain.social.UserSummary
@@ -269,7 +268,7 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
                 Modifier.size(92.dp)
                     .clip(CircleShape)
                     .background(Sinema.surface(theme))
-                    .border(3.dp, theme.accent2Color, CircleShape),
+                    .border(3.dp, theme.accentHi, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (user.avatarUrl != null) {
@@ -295,7 +294,7 @@ private fun FollowingCard(user: UserSummary, onTap: () -> Unit, onFollow: () -> 
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(xpFormat.format(user.totalXp), style = Sinema.Metric.copy(fontSize = 34.sp), color = Color.White, maxLines = 1)
                 Text(
-                    "XP", color = theme.accent2TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
+                    "XP", color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(start = 6.dp, bottom = 5.dp)
                 )
             }
@@ -343,7 +342,7 @@ private fun UserRow(
                     Text("@$it", color = Color.White.copy(0.65f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium, maxLines = 1)
                     Text("·", color = Color.White.copy(0.4f), fontSize = SinemaType.Caption)
                 }
-                Text("${xpFormat.format(user.totalXp)} XP", color = theme.accent2TextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+                Text("${xpFormat.format(user.totalXp)} XP", color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                 if (user.isMutual) {
                     Text("·", color = Color.White.copy(0.4f), fontSize = SinemaType.Caption)
                     Text(theme.t("ARKADAŞ", "FRIEND"), color = Color.White.copy(0.65f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Black, letterSpacing = 1.sp)

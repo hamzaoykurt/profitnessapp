@@ -331,7 +331,6 @@ fun EditProfileScreen(
                             Modifier
                                 .size(124.dp)
                                 .align(Alignment.Center)
-                                .sinemaGlow(accent.copy(0.4f), 20.dp, 8.dp, CircleShape)
                                 .clip(CircleShape)
                                 .background(accent)
                                 .padding(4.dp)

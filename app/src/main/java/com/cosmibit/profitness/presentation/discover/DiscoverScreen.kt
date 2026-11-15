@@ -21,7 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected as semSelected
 import androidx.compose.ui.unit.em
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
-import com.cosmibit.profitness.core.theme.accent3Color
+import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
@@ -31,7 +31,6 @@ import com.cosmibit.profitness.core.theme.SinemaMotion
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
-import com.cosmibit.profitness.core.theme.sinemaGlow
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ModalBottomSheet
 import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
@@ -1103,7 +1102,6 @@ private fun DiscoverTopControls(
             val stoneShape = RoundedCornerShape(SinemaRadius.R24)
             Box(
                 Modifier.offset(x = x).width(tabW).fillMaxHeight()
-                    .sinemaGlow(accent.copy(0.4f), 14.dp, 5.dp, stoneShape)
                     .clip(stoneShape)
                     .background(accent)
             )
@@ -1293,7 +1291,7 @@ private fun ProgramPosterCard(
                             .sinemaCapsuleGlass(CircleShape, blur = 16.dp).padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(theme.accent3Color))
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Sinema.TextSecondary))
                         Spacer(Modifier.width(6.dp))
                         Text(
                             tag.sinemaUpper(theme), color = Color.White, fontSize = SinemaType.Caption,
