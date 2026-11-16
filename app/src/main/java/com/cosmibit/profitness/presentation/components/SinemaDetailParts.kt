@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.core.theme.accentColor
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.sinemaCardAccent
@@ -151,7 +152,7 @@ fun SinemaBigStat(
 
 /** İlerleme çubuğu (yon-renk-v2): dolgu = ölç rengi `accentHi`, glow YOK; iz nötr. Ad geriye uyum için durur. */
 @Composable
-fun SinemaGlowBar(progress: Float, modifier: Modifier = Modifier, height: Dp = 8.dp, color: Color? = null) {
+fun SinemaGlowBar(progress: Float, modifier: Modifier = Modifier, height: Dp = 8.dp, color: Color? = null, color2: Color? = null) {
     val theme = LocalAppTheme.current
     val c = color ?: theme.accentHi
     val p = progress.coerceIn(0f, 1f)
@@ -162,7 +163,8 @@ fun SinemaGlowBar(progress: Float, modifier: Modifier = Modifier, height: Dp = 8
                     .fillMaxWidth(p)
                     .fillMaxHeight()
                     .clip(CircleShape)
-                    .background(c)
+                    // yatay gradyan: mercan -> amber (veya verilen iki renk)
+                    .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(c, color2 ?: androidx.compose.ui.graphics.lerp(c, theme.accentColor, 0.6f))))
             )
         }
     }

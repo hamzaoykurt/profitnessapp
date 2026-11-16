@@ -320,8 +320,8 @@ private fun Modifier.sinemaRaisedImpl(
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
             val baseTop = surfaceTop ?: lerp(Sinema.Page, Color.White, if (mini) 0.14f else 0.16f)
             val baseBottom = surfaceBottom ?: lerp(Sinema.Page, Color.White, 0.07f)   // zeminden ayrışır (kontrast >= 1.15)
-            val top = if (tint != null) lerp(baseTop, tint, 0.17f) else baseTop
-            val bottom = if (tint != null) lerp(baseBottom, tint, 0.07f) else baseBottom
+            val top = if (tint != null) lerp(baseTop, tint, 0.14f) else baseTop
+            val bottom = if (tint != null) lerp(baseBottom, tint, 0.05f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(

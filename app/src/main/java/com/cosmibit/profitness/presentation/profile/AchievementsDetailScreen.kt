@@ -30,10 +30,10 @@ import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
 
 private val RANKS = listOf(
     Triple("Bronze",   0,     Color(0xFFCD7F32)),
-    Triple("Silver",   1000,  Color(0xFFB0BEC5)),
+    Triple("Silver",   1000,  Color(0xFFC9CDD4)),
     Triple("Gold",     5000,  Color(0xFFF2C23F)),
-    Triple("Platinum", 15000, Color(0xFF3DB5E8)),
-    Triple("Diamond",  50000, Color(0xFF64B5F6))
+    Triple("Platinum", 15000, Color(0xFF7DD3FC)),
+    Triple("Diamond",  50000, Color(0xFF67E8F9))
 )
 
 private val CATEGORY_ORDER = listOf("streak", "volume", "xp", "milestone", "total_exercises", "level")
@@ -133,25 +133,25 @@ private fun RankRoadmapSection(
     theme      : AppThemeState,
     modifier   : Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         RANKS.forEach { (rankName, threshold, color) ->
             val isReached = xp >= threshold
             val isCurrent = rankName == currentRank
             Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = if (isReached) color else null)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // rank kendi rengi: ulaşılan dolu disk, kilitli soluk renkli disk (tamamen gri değil)
                 Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(if (isReached) color else Sinema.line(theme)),
+                    Modifier.size(40.dp).clip(CircleShape)
+                        .background(if (isReached) color else androidx.compose.ui.graphics.lerp(Sinema.Surface, color, 0.22f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isReached) Icon(Icons.Rounded.Star, null, tint = Color.Black.copy(0.75f), modifier = Modifier.size(20.dp))
+                    else Icon(Icons.Rounded.Lock, null, tint = color.copy(0.7f), modifier = Modifier.size(18.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -202,31 +202,35 @@ private fun XpProgressCard(
     }
     val rankProgress = if (nextRankXp > 0) (xp.toFloat() / nextRankXp).coerceIn(0f, 1f) else 1f
 
-    Column(
-        modifier = modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SinemaBigStat("$level", theme.t("Seviye", "Level"), Modifier.weight(1f), size = 44)
-            SinemaBigStat("$xp", theme.t("Toplam XP", "Total XP"), Modifier.weight(1.4f), size = 44)
-        }
-
-        Column {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(theme.t("SEVİYE $level", "LEVEL $level").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-                Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f).sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentColor).padding(16.dp)) {
+                SinemaBigStat("$level", theme.t("Seviye", "Level"), Modifier, size = 40)
             }
-            Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(progress, color = theme.accentHi)
-        }
-
-        Column {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(theme.t("SONRAKİ RANK", "NEXT RANK").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-                Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+            Column(Modifier.weight(1.3f).sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi).padding(16.dp)) {
+                SinemaBigStat("$xp", theme.t("Toplam XP", "Total XP"), Modifier, size = 40)
             }
-            Spacer(Modifier.height(10.dp))
-            SinemaGlowBar(rankProgress, color = theme.accentHi)
+        }
+        Column(
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(theme.t("SEVİYE $level", "LEVEL $level").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                    Text("$xpInLevel / $xpPerLevel XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(10.dp))
+                SinemaGlowBar(progress, color = theme.accentColor, color2 = theme.accentHi)   // seviye: amber -> mercan
+            }
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(theme.t("SONRAKİ RANK", "NEXT RANK").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                    Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(10.dp))
+                SinemaGlowBar(rankProgress, color = theme.accentHi, color2 = Color(0xFFFF4D8D))   // rank: mercan -> pembe
+            }
         }
     }
 }
@@ -241,11 +245,19 @@ private fun AchievementRow(
 ) {
     val accent = theme.rewardGold   // c3: açılan başarım işareti
     val isUnlocked = achievement.isUnlocked
+    val catTint = when (achievement.category) {
+        "streak" -> theme.accentHi
+        "volume" -> theme.accentColor
+        "xp" -> Color(0xFF818CF8)
+        "milestone" -> Sinema.Gold
+        "total_exercises" -> Color(0xFF2DD4BF)
+        else -> Color(0xFFC084FC)
+    }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = if (isUnlocked) catTint else null)
             .padding(16.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -254,7 +266,7 @@ private fun AchievementRow(
             Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (isUnlocked) Color.White.copy(0.10f) else Sinema.line(theme))
+                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, catTint, if (isUnlocked) 0.26f else 0.10f))
                 .then(if (isUnlocked) Modifier.border(1.5.dp, accent, CircleShape) else Modifier),
             contentAlignment = Alignment.Center
         ) {

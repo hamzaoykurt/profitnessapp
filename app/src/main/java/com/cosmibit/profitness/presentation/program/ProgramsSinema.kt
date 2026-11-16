@@ -188,7 +188,6 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
         if (active != null) {
             val workoutDays = active.days.count { !it.isRestDay }
             val totalExercises = active.days.sumOf { it.exercises.size }
-            val progress = if (today != null && today.total > 0) (today.completed.toFloat() / today.total).coerceIn(0f, 1f) else 0f
             CompositionLocalProvider(LocalSinemaHaze provides null) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = statusTop + 16.dp, bottom = 46.dp)) {
                     // AKTİF PROGRAM çipi
@@ -214,19 +213,6 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, theme.t("$workoutDays gün", "$workoutDays days"))
                         if (totalExercises > 0) HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, theme.t("$totalExercises egzersiz", "$totalExercises exercises"))
-                    }
-                    if (today != null) {
-                        Spacer(Modifier.height(12.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(Color.White.copy(0.18f))) {
-                                Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(theme.accentHi))
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                theme.t("Program %${(progress * 100).toInt()}", "Program ${(progress * 100).toInt()}%"),
-                                color = Color.White.copy(0.8f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1
-                            )
-                        }
                     }
                     Spacer(Modifier.height(16.dp))
                     if (today != null) TodayPanel(today)
@@ -258,7 +244,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
     val accent = theme.effectiveAccentColor
     Column(
         Modifier.fillMaxWidth().padding(bottom = 14.dp)
-            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), edge = Color.White.copy(0.2f), fillAlpha = 0.38f, blur = 22.dp)
+            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.20f, fillBottom = 0.07f, blur = 22.dp)
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -266,9 +252,9 @@ private fun TodayPanel(info: ProgramTodayInfo) {
             val dayFrac = if (info.todayExercises > 0) (info.todayCompleted.toFloat() / info.todayExercises).coerceIn(0f, 1f) else 0f
             val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill(dayFrac)
             val ring = theme.accentHi
-            Box(Modifier.size(84.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val sw = 7.dp.toPx()
+                    val sw = 6.dp.toPx()
                     val d = size.minDimension - sw
                     val tl = Offset(sw / 2, sw / 2)
                     drawArc(Color.White.copy(0.22f), -90f, 360f, false, tl, Size(d, d), style = Stroke(sw))
@@ -279,8 +265,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                     if (info.todayIsRest) {
                         Icon(androidx.compose.material.icons.Icons.Rounded.Bedtime, null, tint = Color.White.copy(0.9f), modifier = Modifier.size(28.dp))
                     } else {
-                        Text("${info.todayCompleted}/${info.todayExercises}", color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
-                        Text(theme.t("bugün", "today"), color = Color.White.copy(0.75f), fontSize = SinemaType.Caption, maxLines = 1)
+                        Text("${info.todayCompleted}/${info.todayExercises}", color = Color.White, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -300,19 +285,10 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                 if (!info.todayIsRest) {
                     val minutes = if (info.todayMinutes > 0) " · ~${info.todayMinutes} ${theme.t("dk", "min")}" else ""
                     Text(
-                        theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises") + minutes + " · " + theme.t("Program ${info.completed}/${info.total}", "Program ${info.completed}/${info.total}"),
+                        theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises") + minutes,
                         color = Color.White.copy(0.78f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
                     )
-                    if (info.todayMuscles.isNotEmpty()) {
-                        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            info.todayMuscles.take(3).forEach { m ->
-                                Box(Modifier.weight(1f, fill = false).clip(CircleShape).background(Color.White.copy(0.14f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                                    Text(m, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -328,15 +304,14 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                 }
                 Column(
                     Modifier.weight(1f).heightIn(min = 52.dp)
-                        .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.5f else 1f }
-                        .clip(shape)
-                        .background(if (c.isToday) accent.copy(0.22f) else Color.White.copy(0.09f))
+                        .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.55f else 1f }
+                        .then(if (c.isToday) Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = accent) else Modifier.sinemaRaised(shape, SinemaRaise.Mini, top = Color.White.copy(0.22f), bottom = Color.White.copy(0.07f)))
                         .semantics(mergeDescendants = true) { contentDescription = "${c.label}, $stateDesc" },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                 ) {
                     val actualScale = with(LocalDensity.current) { 12.sp.toDp().value } / 12f
                     Text(
-                        c.label, color = if (c.isToday) accent else Color.White.copy(0.88f),
+                        c.label, color = if (c.isToday) theme.effectiveOnAccentColor else Color.White.copy(0.88f),
                         fontSize = cappedDisplaySp(12f, actualScale, 1.3f).sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
                     )
@@ -344,7 +319,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                     when {
                         c.isDone -> Icon(androidx.compose.material.icons.Icons.Rounded.Check, null, tint = theme.accentHi, modifier = Modifier.size(14.dp))
                         c.isRest -> Icon(androidx.compose.material.icons.Icons.Rounded.Bedtime, null, tint = Color.White.copy(0.7f), modifier = Modifier.size(14.dp))
-                        else -> Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) accent else Color.White.copy(0.45f)))
+                        else -> Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) theme.effectiveOnAccentColor else Color.White.copy(0.45f)))
                     }
                 }
             }

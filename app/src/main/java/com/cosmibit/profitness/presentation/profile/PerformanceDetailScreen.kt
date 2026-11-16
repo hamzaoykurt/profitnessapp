@@ -798,8 +798,8 @@ private fun BodySection(
                 if (hasHeight || hasFat) {
                     Spacer(Modifier.height(22.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (hasHeight) BodyStat(theme.t("Boy", "Height"), formatNumber(state.heightCm, 0, english), "cm", Modifier.weight(1f))
-                        if (hasFat) BodyStat(theme.t("Yağ", "Body fat"), "%" + formatNumber(state.bodyFatPct, 1, english), null, Modifier.weight(1f))
+                        if (hasHeight) BodyStat(theme.t("Boy", "Height"), formatNumber(state.heightCm, 0, english), "cm", Modifier.weight(1f), tint = theme.accentHi)
+                        if (hasFat) BodyStat(theme.t("Yağ", "Body fat"), "%" + formatNumber(state.bodyFatPct, 1, english), null, Modifier.weight(1f), tint = theme.accentColor)
                         if (!(hasHeight && hasFat)) Spacer(Modifier.weight(1f))
                     }
                 }
@@ -809,8 +809,8 @@ private fun BodySection(
 }
 
 @Composable
-private fun BodyStat(label: String, value: String, unit: String?, modifier: Modifier = Modifier) {
-    Column(modifier) {
+private fun BodyStat(label: String, value: String, unit: String?, modifier: Modifier = Modifier, tint: Color? = null) {
+    Column(modifier.sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = tint).padding(horizontal = 14.dp, vertical = 12.dp)) {
         PText(label, 12, FontWeight.SemiBold, color = Dim)
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.Bottom) {
@@ -831,20 +831,22 @@ private fun BmiScale(bmi: Double, accent: Color, modifier: Modifier = Modifier) 
         val top = 4.dp.toPx()
         val h = 8.dp.toPx()
         val widths = listOf(49f, 91f, 70f, 70f).map { it / 280f * w }
-        val alphas = listOf(0.10f, 0.22f, 0.10f, 0.10f)
+        // tema uyumlu bölgeler: düşük = buz mavisi, normal = amber, yüksek = mercan, obez = koyu mercan
+        val zoneColors = listOf(Color(0xFF7DD3FC), Color(0xFFFFB938), Color(0xFFFF7A6E), Color(0xFFE5584B))
+        val alphas = listOf(0.45f, 0.55f, 0.45f, 0.45f)
         val clip = Path().apply {
             addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, top, w, top + h, CornerRadius(h / 2f)))
         }
         clipPath(clip) {
             var x = 0f
             widths.forEachIndexed { i, zw ->
-                drawRect(Sinema.White.copy(alphas[i]), Offset(x, top), Size(zw, h))
+                drawRect(zoneColors[i].copy(alphas[i]), Offset(x, top), Size(zw, h))
                 if (i > 0) drawLine(Sinema.White.copy(0.30f), Offset(x, top), Offset(x, top + h), 1.dp.toPx())
                 x += zw
             }
         }
         val cx = bmiScaleFraction(bmi) * w
-        drawCircle(accent, 8.dp.toPx(), Offset(cx, top + h / 2f))
+        drawCircle(Color.Black.copy(0.35f), 8.dp.toPx(), Offset(cx, top + h / 2f))
         drawCircle(Sinema.White, 6.dp.toPx(), Offset(cx, top + h / 2f))
     }
 }
@@ -856,22 +858,29 @@ private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Bo
     val accent = theme.accentHi   // c2 = ölç (en uzun seriye oran çubuğu)
     Column(modifier) {
         SectionLabel(theme.t("Aktif seri", "Current streak"))
-        Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
-            SinemaFitText(
-                state.currentStreak.toString(),
-                style = Sinema.Metric.copy(lineHeight = 1.0.em),
-                baseSp = 72f, floorSp = 36f, color = Sinema.White,
-                modifier = Modifier.weight(1f, fill = false).alignByBaseline()
-            )
-            Spacer(Modifier.width(6.dp))
-            PText(theme.t("gün", "days"), 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+        Row(
+            Modifier.padding(top = 14.dp).fillMaxWidth().sinemaRaised(RoundedCornerShape(SinemaRadius.R24), SinemaRaise.Card, tint = theme.accentHi).padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(SinemaIcons.Flame, null, tint = androidx.compose.ui.graphics.lerp(theme.accentHi, Color.White, 0.35f), modifier = Modifier.size(30.dp))
+            Spacer(Modifier.width(12.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                SinemaFitText(
+                    state.currentStreak.toString(),
+                    style = Sinema.Metric.copy(lineHeight = 1.0.em),
+                    baseSp = 64f, floorSp = 36f, color = Sinema.White,
+                    modifier = Modifier.weight(1f, fill = false).alignByBaseline()
+                )
+                Spacer(Modifier.width(6.dp))
+                PText(theme.t("gün", "days"), 18, FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+            }
         }
         if (state.longestStreak > 0) {
             val ratio = streakRatio(state.currentStreak, state.longestStreak)
             Box(
                 Modifier.padding(top = 14.dp).fillMaxWidth().height(10.dp).clip(CircleShape).background(Sinema.White.copy(0.12f))
             ) {
-                if (ratio > 0f) Box(Modifier.fillMaxWidth(ratio).fillMaxHeight().clip(CircleShape).background(accent))
+                if (ratio > 0f) Box(Modifier.fillMaxWidth(ratio).fillMaxHeight().clip(CircleShape).background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(theme.accentHi, theme.accentColor))))
             }
             PText(
                 theme.t("En uzun ${state.longestStreak} gün", "Longest ${state.longestStreak} days"), 12, FontWeight.Medium,
@@ -879,8 +888,8 @@ private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Bo
             )
         }
         Row(Modifier.fillMaxWidth().padding(top = 26.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StreakStat(state.level.toString(), theme.t("Seviye", "Level"), Modifier.weight(1f))
-            StreakStat(formatNumber(state.xp.toDouble(), 0, english), "XP", Modifier.weight(1f))
+            StreakStat(state.level.toString(), theme.t("Seviye", "Level"), Modifier.weight(1f), tint = theme.accentColor)
+            StreakStat(formatNumber(state.xp.toDouble(), 0, english), "XP", Modifier.weight(1f), tint = theme.accentHi)
             if (state.streakRankPosition > 0L) {
                 StreakStat("#${state.streakRankPosition}", theme.t("Sıralama", "Rank"), Modifier.weight(1f))
             }
@@ -889,8 +898,8 @@ private fun StreakSection(state: ProfileState, theme: AppThemeState, english: Bo
 }
 
 @Composable
-private fun StreakStat(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier) {
+private fun StreakStat(value: String, label: String, modifier: Modifier = Modifier, tint: Color? = null) {
+    Column(modifier.sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = tint).padding(horizontal = 14.dp, vertical = 12.dp)) {
         PText(value, 28, FontWeight.ExtraBold, maxLines = 1)
         Spacer(Modifier.height(6.dp))
         PText(label, 12, FontWeight.SemiBold, color = Dim, maxLines = 1)
