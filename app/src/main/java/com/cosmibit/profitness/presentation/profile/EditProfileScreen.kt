@@ -449,7 +449,7 @@ fun EditProfileScreen(
                             else       -> theme.t("Obez", "Obese")
                         }
                         Row(
-                            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24)).padding(20.dp),
+                            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentColor).padding(20.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
                             SinemaBigStat("%.1f".format(bmi), "BMI", Modifier.weight(1f), size = 44, color = accent)

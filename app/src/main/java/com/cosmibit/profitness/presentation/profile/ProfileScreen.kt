@@ -1031,8 +1031,10 @@ private fun SettingsRow(
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp))
+        // anlamlı renkli ikon diski (ikon adından sabit ton: amber / mercan / teal / mor)
+        val tone = remember(icon) { listOf(theme.accentColor, theme.accentHi, Color(0xFF2DD4BF), Color(0xFFC084FC))[Math.floorMod(icon.name.hashCode(), 4)] }
+        Box(Modifier.size(40.dp).clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Sinema.Surface, tone, 0.24f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = androidx.compose.ui.graphics.lerp(tone, Color.White, 0.35f), modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(label, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.SemiBold)

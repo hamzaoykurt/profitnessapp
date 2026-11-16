@@ -154,7 +154,7 @@ fun LeaderboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 12.dp)
-                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+                            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -322,7 +322,7 @@ private fun MyPositionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentColor)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {

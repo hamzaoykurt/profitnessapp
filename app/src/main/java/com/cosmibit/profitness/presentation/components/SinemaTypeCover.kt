@@ -46,6 +46,8 @@ fun SinemaTypeCover(
     hue: Color = LocalAppTheme.current.accentColor,
     /** true: kapak durum çubuğunun altına uzanır (hero); ikon durum çubuğu kadar aşağı alınır. */
     underStatusBar: Boolean = false,
+    /** CenterEnd hizada ikonu yukarı kaldırır (alt-sol başlıkla çakışmasın). */
+    ghostLift: androidx.compose.ui.unit.Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val base = lerp(Sinema.Surface, hue, 0.30f)
@@ -73,7 +75,7 @@ fun SinemaTypeCover(
         val top = (if (underStatusBar) 0.dp else 14.dp) + if (underStatusBar) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp
         Icon(
             icon, contentDescription = null, tint = ghost,
-            modifier = Modifier.align(ghostAlignment).padding(top = if (ghostAlignment == Alignment.TopEnd) top else 0.dp, end = if (underStatusBar) 10.dp else 14.dp).requiredSize(sz)
+            modifier = Modifier.align(ghostAlignment).padding(top = if (ghostAlignment == Alignment.TopEnd) top else 0.dp, bottom = ghostLift * 2, end = if (underStatusBar) 10.dp else 14.dp).requiredSize(sz)
         )
         content()
     }

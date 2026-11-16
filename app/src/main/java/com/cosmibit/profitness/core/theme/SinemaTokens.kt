@@ -21,20 +21,20 @@ object Sinema {
 
     // ── Tek koyu tema değerleri ────────────────────────────────────────────
     /** Zemin: nötr koyu (kart katmanları bundan türer; deneme: .ekip/kanit/zemin-*). */
-    val Page = Color(0xFF181716)
-    val Surface = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.04f)
-    val Elevated = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.065f)
+    val Page = Color(0xFF262523)
+    val Surface = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.02f)
+    val Elevated = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.03f)
     val Text = Color(0xFFF4F5F7)
     val TextSecondary = Color(0xFFA6A9B2)
     /** Üçüncül / pasif metin-ikon. */
-    val TextTertiary = Color(0xFF8A8E98)
+    val TextTertiary = Color(0xFFA0A3AC)
     val Line = Color.White.copy(0.09f)
 
     // ── Temadan bağımsız sabitler (.ekip/yon-renk-v2.md) ──────────────────
     /** Ödül = c1 açık ton (ayrı altın yok): kupa, rekor, seri, XP, rütbe. */
     val Gold = Color(0xFFFFD98A)
     /** Hata / silme / atlandı (her zaman ikon + metinle). */
-    val Alert = Color(0xFFF0524F)
+    val Alert = Color(0xFFFF5A5A)
 
     // ── Glow disiplini: yalnız ekranın tek birincil düğmesi (+ birincil yoksa FAB) ──
     const val GlowAlpha = 0.22f

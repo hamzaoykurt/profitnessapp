@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.friends
 
+import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.SinemaMotion
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import androidx.compose.animation.core.animateFloatAsState
@@ -141,7 +142,7 @@ fun FriendsTab(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape, tint = theme.accentHi), contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.PersonAdd, null, tint = theme.accentHi, modifier = Modifier.size(28.dp))
                         }
                         Spacer(Modifier.height(18.dp))

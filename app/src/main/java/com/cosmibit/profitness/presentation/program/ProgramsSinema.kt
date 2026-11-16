@@ -454,7 +454,7 @@ fun SavedProgramCard(
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize()) {
-            SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
+            SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd, ghostLift = 36.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides null) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -580,7 +580,7 @@ fun ReadyProgramCard(
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize()) {
-            SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
+            SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd, ghostLift = 36.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides null) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,

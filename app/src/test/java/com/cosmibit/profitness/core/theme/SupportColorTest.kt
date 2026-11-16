@@ -16,7 +16,7 @@ class SupportColorTest {
         assertEquals(t.accentHi, t.supportRest)
         assertEquals(t.accentHi, t.supportStrength)
         assertEquals(t.rewardGold, t.supportReward)
-        assertEquals(Color(0xFFF0524F), t.supportAlert)
+        assertEquals(Color(0xFFFF5A5A), t.supportAlert)
         assertEquals(0.16f, t.supportSoftAlpha)
         assertEquals(t.accentHi.copy(alpha = 0.16f), t.soft(t.supportSuccess))
     }

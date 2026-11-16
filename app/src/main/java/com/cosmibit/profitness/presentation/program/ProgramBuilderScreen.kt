@@ -1299,6 +1299,8 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                         color = Color.White.copy(0.72f), style = Sinema.Label, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                     Text(aiTheme.t("AI Koç", "AI Coach"), color = Color.White, style = Sinema.ScreenTitle, maxLines = 1)
+                    // AI imzası: mercan -> amber gradyan çizgi
+                    Box(Modifier.padding(top = 6.dp).width(56.dp).height(3.dp).clip(CircleShape).background(Brush.horizontalGradient(listOf(aiTheme.accentHi, aiTheme.accentColor))))
                 }
             }
             Spacer(Modifier.height(28.dp))
@@ -1319,7 +1321,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
 
             // Büyük cam giriş kartı (çizgisiz)
             SinemaCapsule(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), tint = aiTheme.accentHi,
                 onClick = { if (!uiState.aiLoading) promptFocus.requestFocus() },
                 height = 220.dp,
                 shape = RoundedCornerShape(SinemaRadius.R28),
@@ -1371,8 +1373,13 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     aiTheme.t("İleri seviye", "Advanced")
                 )
             )
-            suggestionGroups.forEach { (groupLabel, options) ->
-                Text(groupLabel, color = glassSub, style = Sinema.Label, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
+            suggestionGroups.forEachIndexed { gi, (groupLabel, options) ->
+                val groupTone = when (gi % 3) { 0 -> aiTheme.accentHi; 1 -> aiTheme.accentColor; else -> androidx.compose.ui.graphics.lerp(aiTheme.accentHi, aiTheme.accentColor, 0.5f) }
+                Row(Modifier.padding(start = 24.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(groupTone))
+                    Spacer(Modifier.width(8.dp))
+                    Text(groupLabel, color = glassSub, style = Sinema.Label)
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1382,7 +1389,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                 ) {
                     options.forEach { option ->
                         SinemaCapsule(
-                            selected = aiSuggestionSelected(prompt, option),
+                            selected = aiSuggestionSelected(prompt, option), neutralSelected = true,
                             onClick = { prompt = toggleAiSuggestion(prompt, option) },
                             enabled = !uiState.aiLoading,
                             height = 40.dp,
@@ -1524,14 +1531,13 @@ private fun SinemaGoOrIdle(
             modifier = modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(SinemaRadius.R28))
-                .background(Color.White.copy(0.10f)),
+                .sinemaRaised(RoundedCornerShape(SinemaRadius.R28), SinemaRaise.Mini),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(icon, null, tint = Color.White.copy(0.40f), modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = Color.White.copy(0.50f), modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
-            Text(label, color = Color.White.copy(0.40f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(label, color = Color.White.copy(0.50f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }

@@ -646,9 +646,9 @@ private fun TotalsSection(state: ProfileState, theme: AppThemeState, english: Bo
     val km = state.totalDistanceMeters >= 1000f
     Column(modifier) {
         SectionLabel(theme.t("Toplamlar", "Totals"))
-        TotalRow(formatNumber(state.totalWorkouts.toDouble(), 0, english), null, theme.t("Antrenman", "Workouts"), Icons.Rounded.FitnessCenter, hero = true)
+        TotalRow(formatNumber(state.totalWorkouts.toDouble(), 0, english), null, theme.t("Antrenman", "Workouts"), Icons.Rounded.FitnessCenter, hero = true, tint = theme.accentColor)
         if (minutes > 0) {
-            TotalRow(formatNumber(minutes.toDouble(), 0, english), theme.t("dk", "min"), theme.t("Süre", "Duration"), Icons.Rounded.Schedule)
+            TotalRow(formatNumber(minutes.toDouble(), 0, english), theme.t("dk", "min"), theme.t("Süre", "Duration"), Icons.Rounded.Schedule, tint = theme.accentHi)
         }
         if (state.totalDistanceMeters > 0f) {
             TotalRow(
@@ -663,15 +663,14 @@ private fun TotalsSection(state: ProfileState, theme: AppThemeState, english: Bo
 }
 
 @Composable
-private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVector, hero: Boolean = false) {
+private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVector, hero: Boolean = false, tint: Color? = null) {
     Row(
         Modifier
+            .padding(top = 10.dp)
             .fillMaxWidth()
             .height(72.dp)
-            .drawBehind {
-                val w = 1.dp.toPx()
-                drawLine(Sinema.White.copy(0.10f), Offset(0f, size.height - w / 2f), Offset(size.width, size.height - w / 2f), w)
-            },
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = tint)
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -689,7 +688,7 @@ private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVec
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PText(label, 13, FontWeight.SemiBold, color = Dim, maxLines = 1)
-            Icon(icon, null, tint = LocalAppTheme.current.accentHi, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = (tint ?: LocalAppTheme.current.accentHi).let { androidx.compose.ui.graphics.lerp(it, Color.White, 0.3f) }, modifier = Modifier.size(20.dp))
         }
     }
 }
