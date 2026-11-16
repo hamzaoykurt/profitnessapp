@@ -1,5 +1,8 @@
 package com.cosmibit.profitness.core.theme
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.animation.animateContentSize
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.Crossfade
@@ -254,13 +257,16 @@ fun Modifier.sinemaRaised(
     accent: Color? = null,
     fill: Color? = null,
     /** Renkli blok: dolgu gradyanı tint ile karışır (üst ~α.26, alt ~α.10), kenar/üst parlama tint tonlu. Düz siyah üstündeki anlamlı yüzeyler için. */
-    tint: Color? = null
+    tint: Color? = null,
+    /** Yüzey gradyanı üst/alt rengi override (ör. alt menü: ince fark #1B1D23 -> #14161B). */
+    top: Color? = null,
+    bottom: Color? = null
 ): Modifier = composed {
     // basılma durumu: üstteki sinemaClickable / sinemaPressScale ModifierLocal ile yayınlar; dış gölge ~%40 azalır, üst parlama söner
     val holder = remember { mutableStateOf<State<Boolean>?>(null) }
     Modifier
         .modifierLocalConsumer { holder.value = SinemaPressedLocal.current }
-        .sinemaRaisedImpl(shape, level, accent, fill, tint) { holder.value?.value == true }
+        .sinemaRaisedImpl(shape, level, accent, fill, tint, top, bottom) { holder.value?.value == true }
 }
 
 /** Basılma durumu yayını (sinemaClickable / sinemaPressScale -> sinemaRaised). */
@@ -272,6 +278,8 @@ private fun Modifier.sinemaRaisedImpl(
     accent: Color?,
     fill: Color?,
     tint: Color?,
+    surfaceTop: Color?,
+    surfaceBottom: Color?,
     pressed: () -> Boolean
 ): Modifier {
     val mini = level == SinemaRaise.Mini
@@ -311,8 +319,8 @@ private fun Modifier.sinemaRaisedImpl(
             val h = size.height
             val path = shapePath(shape, size, layoutDirection, this)
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
-            val baseTop = if (mini) Color(0xFF292D36) else Color(0xFF2C3039)
-            val baseBottom = if (mini) Color(0xFF14161B) else Color(0xFF111317)
+            val baseTop = surfaceTop ?: if (mini) Color(0xFF292D36) else Color(0xFF2C3039)
+            val baseBottom = surfaceBottom ?: if (mini) Color(0xFF14161B) else Color(0xFF111317)
             val top = if (tint != null) lerp(baseTop, tint, 0.26f) else baseTop
             val bottom = if (tint != null) lerp(baseBottom, tint, 0.10f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
@@ -388,7 +396,7 @@ val LocalSinemaNav = staticCompositionLocalOf { SinemaNavState() }
 data class SinemaNavItem(val icon: ImageVector, val label: String)
 
 /** Çizimdeki menü yüksekliği (sistem çubuğu hariç). */
-val SinemaNavHeight = 80.dp   // yüzen bar 62dp + alt boşluk 12dp + üst nefes; içerik alt boşlukları bunu kullanır
+val SinemaNavHeight = 72.dp   // yüzen bar 62dp + alt boşluk 12dp + üst nefes; içerik alt boşlukları bunu kullanır
 
 /** Menü camının yukarı doğru yumuşakça söndüğü yükseklik. */
 val NavFadeHeight = 56.dp
@@ -419,17 +427,15 @@ fun SinemaNavBar(
     )
     if (hideProgress >= 1f) return
 
-    // Yüzen 3D blok: opak koyu yüzey (blur yok, arkadaki içerik sızmaz), 30dp köşe, yumuşak derin gölge.
+    // İnce yüzen 3D blok: opak koyu yüzey (blur yok), tam kapsül; seçili sekme = ikon + etiket yan yana amber hap,
+    // diğerleri yalnız ikon -> 5 sekme her ekranda sığar, etiket kesilmez. Altında içerikle çakışmayı kesen sayfa rengi geçişi.
     val passive = Sinema.textSecondary(theme)
     val onAccent = theme.effectiveOnAccentColor
-    val barShape = RoundedCornerShape(30.dp)
-    val pillShape = RoundedCornerShape(24.dp)
-    val win = LocalWindowClass.current
-    val barSidePad = 14.dp
-    val showLabels = navLabelsFit(
-        columnWidthDp = (minOf(win.widthDp, SinemaLayout.NavMax.value) - barSidePad.value * 2 - 12f) / items.size.coerceAtLeast(1),
-        fontScale = win.fontScale, maxChars = items.maxOfOrNull { it.label.length } ?: 0
-    )
+    val barH = 64.dp
+    val barShape = RoundedCornerShape(32.dp)
+    val pillShape = RoundedCornerShape(28.dp)
+    val page = Sinema.page(theme)
+    val scrimH = 28.dp + barH + 8.dp + inset
     Box(
         modifier
             .fillMaxWidth()
@@ -439,15 +445,25 @@ fun SinemaNavBar(
                 alpha = 1f - hideProgress
             }
     ) {
+        Box(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().requiredHeight(scrimH)
+                .background(
+                    Brush.verticalGradient(
+                        0f to page.copy(alpha = 0f),
+                        0.30f to page.copy(alpha = 0.92f),
+                        1f to page
+                    )
+                )
+        )
         Row(
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = inset + 12.dp, start = barSidePad, end = barSidePad)
+                .padding(bottom = inset + 8.dp, start = 16.dp, end = 16.dp)
                 .widthIn(max = SinemaLayout.NavMax)
                 .fillMaxWidth()
-                .height(62.dp)
-                .sinemaRaised(barShape, SinemaRaise.Card)
-                .padding(horizontal = 6.dp, vertical = 5.dp),
+                .height(barH)
+                .sinemaRaised(barShape, SinemaRaise.Card, top = Color(0xFF1B1D23), bottom = Color(0xFF14161B))
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val navHaptic = LocalHapticFeedback.current
@@ -464,13 +480,15 @@ fun SinemaNavBar(
                     wasSelected = selected
                 }
                 val pillA by animateFloatAsState(if (selected) 1f else 0f, tween(SinemaMotion.Quick), label = "nav_pill")
+                val weightAnim by animateFloatAsState(if (selected) 2.7f else 1f, tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard), label = "nav_w")
                 val fg by animateColorAsState(if (selected) onAccent else passive, tween(SinemaMotion.Quick), label = "nav_fg")
                 val src = remember { MutableInteractionSource() }
                 Box(
                     Modifier
-                        .weight(1f)
+                        .weight(weightAnim)
                         .fillMaxHeight()
-                        .sinemaPressScale(src, 0.92f)
+                        .sinemaPressScale(src, 0.94f)
+                        .semantics { contentDescription = item.label }
                         .selectable(selected = selected, indication = null, interactionSource = src,
                             role = Role.Tab, onClick = {
                                 if (!selected) navHaptic.performHapticFeedback(SinemaHaptics.Light)
@@ -478,24 +496,25 @@ fun SinemaNavBar(
                             }),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Seçili: amber 3D yumuşak hap (gradyan dolgu); alfa ile kısa geçiş
                     Box(
-                        Modifier.matchParentSize().padding(horizontal = 3.dp)
-                            .graphicsLayer { alpha = pillA; scaleX = 0.92f + 0.08f * pillA; scaleY = 0.92f + 0.08f * pillA }
+                        Modifier.matchParentSize()
+                            .graphicsLayer { alpha = pillA }
                             .sinemaRaised(pillShape, SinemaRaise.Mini, fill = accent)
                     )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        // Sekme adı simgede (TalkBack "Programlar, sekme"); etiket gizlenince de okunur.
+                    Row(
+                        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp).clearAndSetSemantics { }
+                    ) {
                         Icon(
-                            item.icon, contentDescription = item.label, tint = fg,
-                            modifier = Modifier.size(if (showLabels) 24.dp else 26.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+                            item.icon, contentDescription = null, tint = fg,
+                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
                         )
-                        if (showLabels) {
-                            Spacer(Modifier.height(2.dp))
+                        if (selected) {
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                item.label, style = Sinema.Nav.copy(fontSize = 12.sp, lineHeight = 14.sp),
-                                color = fg, maxLines = 1, softWrap = false,
-                                modifier = Modifier.clearAndSetSemantics { }
+                                item.label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.graphicsLayer { alpha = pillA }
                             )
                         }
                     }
@@ -539,7 +558,8 @@ fun SinemaNavRail(
                     Modifier
                         .padding(horizontal = 6.dp)
                         .fillMaxWidth().heightIn(min = 56.dp)
-                        .then(if (selected) Modifier.sinemaRaised(RoundedCornerShape(20.dp), SinemaRaise.Mini, fill = accent) else Modifier)
+                        .then(if (selected) Modifier.sinemaRaised(RoundedCornerShape(24.dp), SinemaRaise.Mini, fill = accent) else Modifier)
+                        .animateContentSize()
                         .selectable(selected = selected, indication = null, interactionSource = remember { MutableInteractionSource() },
                             role = Role.Tab, onClick = {
                                 if (!selected) haptic.performHapticFeedback(SinemaHaptics.Light)
@@ -548,10 +568,10 @@ fun SinemaNavRail(
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                 ) {
                     Icon(item.icon, contentDescription = item.label, tint = tint, modifier = Modifier.size(24.dp))
-                    if (showLabels) {
+                    if (showLabels && selected) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            item.label, style = Sinema.Nav.copy(fontSize = 10.sp, lineHeight = 12.sp), color = labelTint,
+                            item.label, style = Sinema.Nav.copy(fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold), color = labelTint,
                             maxLines = 1, softWrap = false, modifier = Modifier.clearAndSetSemantics { }
                         )
                     }

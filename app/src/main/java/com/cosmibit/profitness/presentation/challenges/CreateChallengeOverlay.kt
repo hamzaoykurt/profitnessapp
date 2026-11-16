@@ -1718,7 +1718,7 @@ private fun createPhotoCategory(
     mode == EventMode.MovementList -> "Göğüs"
     sport == SportType.Strength -> "Göğüs"
     sport == SportType.YogaPilates -> "Core"
-    else -> "Kardiyo"
+    else -> "${sport.raw.replace('_', ' ')} ${sport.label}"
 }
 
 @Composable

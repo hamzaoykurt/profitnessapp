@@ -38,7 +38,12 @@ class CoverTypeTest {
         "Kayak Hazırlık" to CoverType.Ski,
         "Golf Mobilite" to CoverType.Golf,
         "Rowing Machine Intro" to CoverType.Rowing,
-        "KUVVET Tenis" to CoverType.Tennis   // spor adı kategoriyi ezer
+        "KUVVET Tenis" to CoverType.Tennis,  // spor adı kategoriyi ezer
+        "Herkese Açık Koşu Etkinliği running Koşu kardiyo" to CoverType.Run,
+        "Hafta Sonu Challenge cycling Bisiklet kardiyo" to CoverType.Bike,
+        "30 Gün Şınav strength Kuvvet kuvvet" to CoverType.Strength,
+        "Havuz Günü swimming Yüzme kardiyo" to CoverType.Swim,
+        "Mesafe Yarışı kardiyo" to CoverType.Cardio
     )
 
     @Test fun titleToType() {

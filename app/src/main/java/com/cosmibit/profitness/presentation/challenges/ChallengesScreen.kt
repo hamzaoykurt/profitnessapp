@@ -971,19 +971,17 @@ private val challengeNumberFormat: java.text.NumberFormat
     get() = java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr"))
 
 /** Tür -> kapak hayalet ikon anahtarı (coverIconFor). */
-private fun challengePhotoCategory(c: ChallengeSummary): String {
-    val sport = c.event?.sportType
-    return when {
-        sport == SportType.Strength -> "Göğüs"
-        sport == SportType.YogaPilates -> "Core"
-        sport != null -> "Kardiyo"
-        c.targetType == ChallengeTargetType.TotalDistanceM ||
-            c.targetType == ChallengeTargetType.TotalDistanceKm ||
-            c.targetType == ChallengeTargetType.TotalDurationMinutes -> "Kardiyo"
-        c.targetType == ChallengeTargetType.TotalWorkouts ||
-            c.targetType == ChallengeTargetType.MovementsCompleted -> "Göğüs"
+private fun challengePhotoCategory(c: ChallengeSummary): String = challengeCoverKey(c)
+
+/** Etkinlik kapak anahtarı: başlık + spor türü (adı/etiketi) + metrik (mesafe/süre -> kardiyo, antrenman/hareket -> kuvvet). Spor tablosu coverTypeFor'da. */
+internal fun challengeCoverKey(c: ChallengeSummary): String {
+    val metric = when (c.targetType) {
+        ChallengeTargetType.TotalDistanceM, ChallengeTargetType.TotalDistanceKm, ChallengeTargetType.TotalDurationMinutes -> "kardiyo"
+        ChallengeTargetType.TotalWorkouts, ChallengeTargetType.MovementsCompleted -> "kuvvet"
         else -> ""
     }
+    val sport = c.event?.sportType
+    return "${c.title} ${sport?.raw.orEmpty().replace('_', ' ')} ${sport?.label.orEmpty()} $metric"
 }
 
 /** Tipografik kapaklı poster kart: tek durum etiketi, büyük hedef rakamı, ilerleme, KATIL/KAPALI. */

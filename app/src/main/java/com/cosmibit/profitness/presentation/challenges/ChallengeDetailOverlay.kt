@@ -503,20 +503,7 @@ fun ChallengeDetailOverlay(
 internal fun EdgeToEdgeDialogBars() = FullScreenDialogWindow()
 
 /** Tür -> kategori foto kaynağı (liste ekranındaki poster ile aynı eşleme). */
-private fun heroPhotoCategory(c: ChallengeSummary): String {
-    val sport = c.event?.sportType
-    return when {
-        sport == SportType.Strength -> "Göğüs"
-        sport == SportType.YogaPilates -> "Core"
-        sport != null -> "Kardiyo"
-        c.targetType == ChallengeTargetType.TotalDistanceM ||
-            c.targetType == ChallengeTargetType.TotalDistanceKm ||
-            c.targetType == ChallengeTargetType.TotalDurationMinutes -> "Kardiyo"
-        c.targetType == ChallengeTargetType.TotalWorkouts ||
-            c.targetType == ChallengeTargetType.MovementsCompleted -> "Göğüs"
-        else -> ""
-    }
-}
+private fun heroPhotoCategory(c: ChallengeSummary): String = challengeCoverKey(c)
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  HERO (foto kapak)
