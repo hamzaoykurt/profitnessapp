@@ -450,7 +450,7 @@ fun SinemaNavBar(
                 .background(
                     Brush.verticalGradient(
                         0f to page.copy(alpha = 0f),
-                        0.30f to page.copy(alpha = 0.92f),
+                        (28.dp / scrimH).coerceIn(0.05f, 0.9f) to page,   // ~28dp fade; bar + altı (inset dahil) TAM opak
                         1f to page
                     )
                 )

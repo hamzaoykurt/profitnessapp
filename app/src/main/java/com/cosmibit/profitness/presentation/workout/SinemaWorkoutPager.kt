@@ -193,7 +193,7 @@ internal fun sinemaTrackingSpec(e: Exercise) = activityTrackingSpec(
 )
 
 /** Çizimdeki `.ct{bottom:64px}`: içerik, menü (60dp) üstünde 4dp boşlukla biter. */
-internal val SinemaContentBottom = 64.dp
+internal val SinemaContentBottom = com.cosmibit.profitness.core.theme.SinemaNavHeight + 16.dp   // menü (72dp + inset ayrıca) üstünde 16dp boşluk
 
 private const val PARALLAX = 0.25f   // foto sayfa hızının %75'iyle kayar (plan 0.5x; aşırı kırpmayı önlemek için)
 
