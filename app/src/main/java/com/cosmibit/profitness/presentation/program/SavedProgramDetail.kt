@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -71,8 +72,7 @@ fun SavedProgramDetail(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val shape = RoundedCornerShape(28.dp)
                 Row(
-                    Modifier.weight(1f).height(56.dp).clip(shape)
-                        .background(Color.White.copy(0.18f)).border(1.dp, Color.White.copy(0.2f), shape)
+                    Modifier.weight(1f).height(56.dp).sinemaRaised(shape, SinemaRaise.Mini)
                         .sinemaClickable(role = Role.Button, onClick = onEdit, scale = 0.97f),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -97,13 +97,15 @@ fun SavedProgramDetail(
             buildList {
                 add("$workoutDays" to theme.t("Antrenman günü", "Training days"))
                 if (totalExercises > 0) add("$totalExercises" to theme.t("Hareket", "Exercises"))
+                val totalSets = program.days.sumOf { d -> d.exercises.sumOf { it.sets } }
+                if (totalSets > 0) add("$totalSets" to theme.t("Set", "Sets"))
             }
         )
         if (planDays.isNotEmpty()) {
             Spacer(Modifier.height(24.dp))
-            ProgramSectionLabel("Plan")
+            ProgramSectionLabel(theme.t("Plan", "Plan"))
             Spacer(Modifier.height(8.dp))
-            ProgramPlanDays(planDays) { ex ->
+            ProgramPlanDays(planDays, hue = coverHueFor(program.name)) { ex ->
                 viewerExercise = catalog.toViewerExercise(ex.name, ex.sets, ex.reps, ex.restSeconds, ex.durationSeconds)
             }
         }

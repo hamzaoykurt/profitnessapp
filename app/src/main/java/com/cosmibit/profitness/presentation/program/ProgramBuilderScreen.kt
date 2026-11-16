@@ -1091,7 +1091,7 @@ private fun ProgramDetailDialog(
             ProgramSectionLabel("Plan")
             Spacer(Modifier.height(8.dp))
             if (planDays.isNotEmpty()) {
-                ProgramPlanDays(planDays) { ex ->
+                ProgramPlanDays(planDays, hue = coverHueFor(program.muscleLabels.firstOrNull().orEmpty())) { ex ->
                     viewerExercise = catalog.toViewerExercise(ex.name, ex.sets, ex.reps, ex.restSeconds, ex.durationSeconds)
                 }
             } else if (program.schedule.isNotBlank()) {
@@ -1107,7 +1107,7 @@ private fun ProgramDetailDialog(
             }
             val desc = program.localizedDescription(theme)
             if (desc.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 ProgramDescription(desc)
             }
     }
