@@ -320,12 +320,13 @@ private fun Modifier.sinemaRaisedImpl(
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
             val baseTop = surfaceTop ?: lerp(Sinema.Page, Color.White, if (mini) 0.14f else 0.16f)
             val baseBottom = surfaceBottom ?: lerp(Sinema.Page, Color.White, 0.07f)   // zeminden ayrışır (kontrast >= 1.15)
-            val top = if (tint != null) lerp(baseTop, tint, if (mini) 0.14f else 0.07f) else baseTop
-            val bottom = if (tint != null) lerp(baseBottom, tint, if (mini) 0.05f else 0.02f) else baseBottom
+            val tintL = tint?.let { lerp(it, Color.White, 0.22f) }   // açık ton: kahve/bordo üretmesin
+            val top = if (tintL != null) lerp(baseTop, tintL, if (mini) 0.12f else 0.06f) else baseTop
+            val bottom = if (tintL != null) lerp(baseBottom, tintL, if (mini) 0.04f else 0.015f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
-                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(0.10f), 0.4f to Color.White.copy(0.025f), 1f to Color.Transparent,
+                0f to (tint?.let { lerp(it, Color.White, 0.55f) } ?: Color.White).copy(if (tint != null) 0.16f else 0.10f), 0.4f to Color.White.copy(0.025f), 1f to Color.Transparent,
                 start = Offset.Zero, end = Offset(w, h)
             )
             val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.30f else if (tint != null) 0.20f else 0.12f).let { if (fill != null) it.copy(0.30f) else it }
@@ -603,3 +604,14 @@ fun Modifier.sinemaPrimaryGlow(color: Color, shape: Shape): Modifier =
 /** Renksiz yükseklik gölgesi (glow yerine): 0 4dp 12dp siyah α.35. */
 fun Modifier.sinemaShade(shape: Shape): Modifier =
     sinemaGlow(Color.Black.copy(alpha = Sinema.ShadeAlpha), Sinema.ShadeBlur, Sinema.ShadeDy, shape)
+
+/** Sabit başlık altı yumuşak geçiş: içeriğin üst kenarı [height] boyunca solar (sert kesik yok). */
+fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(
+            Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = 0f, endY = height.toPx()),
+            size = Size(size.width, height.toPx()), blendMode = BlendMode.DstIn
+        )
+    }

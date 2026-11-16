@@ -57,7 +57,7 @@ internal data class DetailDay(val title: String, val exercises: List<DetailEx>, 
 /** Gün içi hareketlerin kas grubu alanından en çok geçen 2-3 grup (UI katmanı; veri yoksa boş -> çip gösterilmez). */
 internal fun topMuscles(raw: List<String>, theme: AppThemeState): List<String> =
     raw.map { it.trim() }.filter { it.isNotEmpty() }
-        .groupingBy { theme.fitnessTermDisplayName(it) }.eachCount()
+        .groupingBy { theme.fitnessTermDisplayName(it).substringBefore(" (") }.eachCount()
         .entries.sortedByDescending { it.value }.take(3).map { it.key }
 internal data class DetailMuscle(val label: String, val pct: String, val fraction: Float)
 

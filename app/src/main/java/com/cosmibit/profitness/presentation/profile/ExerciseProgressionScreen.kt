@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.profile
 
+import com.cosmibit.profitness.presentation.components.CoverType
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -268,8 +269,8 @@ fun ExerciseProgressionScreen(
                         }
                     }
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = SinemaNavHeight + 24.dp + navBarBottom),
+                        modifier = Modifier.fillMaxSize().sinemaTopFade(),
+                        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = SinemaNavHeight + 24.dp + navBarBottom),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item(key = "summary_hero") {
@@ -439,7 +440,7 @@ private fun muscleStyle(target: String, name: String, theme: AppThemeState): Pai
     val k = (target + " " + name).lowercase()
     fun has(vararg w: String) = w.any { it in k }
     return when {
-        has("kardiyo", "cardio", "kosu", "koşu", "running", "bisiklet", "cycling", "rowing", "kürek", "swim", "yüz") -> SinemaIcons.Flame to Color(0xFFFF4D8D)
+        has("kardiyo", "cardio", "kosu", "koşu", "running", "bisiklet", "cycling", "rowing", "kürek", "swim", "yüz") -> SinemaIcons.Flame to CoverType.Cardio.hue
         has("karın", "karin", "core", "abs") -> SinemaIcons.Bolt to Color(0xFF818CF8)
         has("bacak", "leg", "quad", "ham", "calf", "baldır", "glute", "kalça") -> Icons.Rounded.DirectionsRun to Color(0xFF2DD4BF)
         has("omuz", "shoulder", "delt") -> Icons.Rounded.SelfImprovement to Color(0xFFC084FC)

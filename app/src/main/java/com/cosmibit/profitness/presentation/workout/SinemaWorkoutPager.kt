@@ -477,9 +477,9 @@ internal fun Scrims(modifier: Modifier = Modifier, bottomAlpha: Float = 0.88f, s
     Box(
         modifier.fillMaxSize().drawWithCache {
             val h = size.height
-            val topH = 320.dp.toPx().coerceAtMost(h)
+            val topH = 380.dp.toPx().coerceAtMost(h)
             val botH = 470.dp.toPx().coerceAtMost(h)
-            val top = Brush.verticalGradient(0f to Sinema.scrim(0.66f), 0.6f to Sinema.scrim(0.46f), 1f to Color.Transparent, startY = 0f, endY = topH)
+            val top = Brush.verticalGradient(0f to Sinema.scrim(0.82f), 0.55f to Sinema.scrim(0.62f), 1f to Color.Transparent, startY = 0f, endY = topH)
             val bottom = Brush.verticalGradient(
                 0f to Color.Transparent, solidAt to Sinema.scrim(bottomAlpha), 1f to Sinema.scrim(bottomAlpha),
                 startY = h - botH, endY = h
@@ -820,13 +820,13 @@ private fun SetRow(
                 .size(28.dp)
                 .clip(CircleShape)
                 .then(
-                    if (active) Modifier.sinemaSolid(accent)
+                    if (active) Modifier.background(accent.copy(0.22f)).border(1.5.dp, accent, CircleShape)
                     else Modifier.border(1.5.dp, Color.White.copy(0.30f), CircleShape)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                "${index + 1}", color = if (active) Sinema.Ink else Sinema.Text,
+                "${index + 1}", color = if (active) accent else Sinema.Text,
                 fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, maxLines = 1,
                 style = TextStyle(fontFamily = com.cosmibit.profitness.core.theme.AppFontFamily, fontFeatureSettings = "tnum")
             )

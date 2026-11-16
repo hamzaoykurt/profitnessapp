@@ -556,7 +556,7 @@ private fun ProfileHeroBanner(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        theme.t("TOPLAM XP", "TOTAL XP"), color = textSub, style = Sinema.Label.copy(fontSize = 11.sp),
+                        theme.t("TOPLAM XP", "TOTAL XP"), color = textSub, style = Sinema.Label.copy(fontSize = 12.sp),
                         modifier = Modifier.alignByBaseline()
                     )
                     Text(
@@ -580,7 +580,7 @@ private fun HeroMetric(value: String, label: String, theme: AppThemeState, modif
         Spacer(Modifier.height(6.dp))
         Text(
             label.sinemaUpper(theme), color = Sinema.textSecondary(theme),
-            style = Sinema.Label.copy(fontSize = 10.sp, lineHeight = 13.sp), maxLines = 2
+            style = Sinema.Label.copy(fontSize = 12.sp, lineHeight = 13.sp), maxLines = 2
         )
     }
 }
@@ -659,7 +659,6 @@ private fun PerformanceMetricsSection(
     val metrics = buildList {
         add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.rewardGold))
         add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
-        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.accentHi))
         if (totalDurationSeconds > 0) {
             add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, theme.accentHi))
         }
@@ -675,7 +674,7 @@ private fun PerformanceMetricsSection(
     ) {
         LazyRow(
             contentPadding        = PaddingValues(horizontal = sinemaGutter()),
-            horizontalArrangement = Arrangement.spacedBy(28.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             items(metrics) { metric -> MetricCell(metric, theme, onNavigateToDetail) }
         }
@@ -686,7 +685,7 @@ private fun PerformanceMetricsSection(
 private fun MetricCell(metric: PerformanceMetric, theme: AppThemeState, onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .width(132.dp)
+            .width(124.dp)
             .sinemaClickable(onClick = onClick)
             .clip(RoundedCornerShape(SinemaRadius.R12))
             .padding(vertical = 8.dp)

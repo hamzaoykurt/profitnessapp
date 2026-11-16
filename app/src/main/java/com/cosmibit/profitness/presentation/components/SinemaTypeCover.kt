@@ -50,12 +50,12 @@ fun SinemaTypeCover(
     ghostLift: androidx.compose.ui.unit.Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
-    val base = lerp(Sinema.Surface, hue, 0.30f)
+    val base = lerp(Sinema.Surface, lerp(hue, Color.White, 0.30f), 0.30f)
     val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.40f)
     // 3D yumuşak blok: tek renk hue; üst açık, alt koyu, üstte yayılan yumuşak parlama, altta iç gölge (keskin hat yok)
     BoxWithConstraints(
         modifier
-            .background(Brush.verticalGradient(0f to lerp(base, Color.White, 0.12f), 1f to lerp(base, Color.Black, 0.38f)))
+            .background(Brush.verticalGradient(0f to lerp(base, Color.White, 0.12f), 1f to lerp(base, Color.Black, 0.30f)))
             .drawBehind {
                 drawRect(
                     Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx().coerceAtMost(size.height)),

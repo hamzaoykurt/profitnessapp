@@ -2324,10 +2324,10 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .sinemaSolid(accent),
+                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Add, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Add, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(14.dp))
         Text(
@@ -2394,12 +2394,12 @@ private fun ManualDayCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(if (rest) line else accent),
+                    .background(if (rest) line else androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     dayNumber.toString(),
-                    color = if (rest) textSec else onAccent,
+                    color = if (rest) textSec else accent,
                     style = Sinema.Metric.copy(fontSize = 20.sp)
                 )
             }
@@ -2712,10 +2712,10 @@ private fun ExerciseEditDialog(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .sinemaSolid(accent),
+                        .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Edit, null, tint = onAccent, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {
@@ -2897,10 +2897,10 @@ private fun EditCounterField(
                 .size(44.dp)
                 .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement)
                 .clip(CircleShape)
-                .sinemaSolid(accent),
+                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Add, null, tint = onAccent, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))
         }
     }
 }

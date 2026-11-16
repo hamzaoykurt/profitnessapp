@@ -167,7 +167,7 @@ private fun RankRoadmapSection(
                     )
                 }
                 if (isCurrent) {
-                    SinemaCapsule(selected = true, height = 28.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+                    SinemaCapsule(selected = true, neutralSelected = true, height = 28.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
                         Text(
                             theme.t("MEVCUT", "CURRENT"), color = fg, fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp
@@ -229,7 +229,7 @@ private fun XpProgressCard(
                     Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(10.dp))
-                SinemaGlowBar(rankProgress, color = theme.accentHi, color2 = Color(0xFFFF4D8D))   // rank: mercan -> pembe
+                SinemaGlowBar(rankProgress, color = theme.accentHi, color2 = theme.accentHi)   // rank: mercan -> pembe
             }
         }
     }

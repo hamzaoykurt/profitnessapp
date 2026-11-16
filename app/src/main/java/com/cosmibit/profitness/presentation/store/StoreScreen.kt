@@ -603,8 +603,8 @@ private fun SubscriptionTab(
     val textSub = Sinema.textSecondary(theme)
     val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = gutter, end = gutter, top = 12.dp, bottom = storeListBottomPadding()),
+        modifier = Modifier.fillMaxSize().sinemaTopFade(),
+        contentPadding = PaddingValues(start = gutter, end = gutter, top = 24.dp, bottom = storeListBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
@@ -640,7 +640,7 @@ private fun SubscriptionTab(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     theme.t("$name İLE AÇILANLAR", "UNLOCKED WITH $name").sinemaUpper(theme),
-                    color = textSub, style = Sinema.Label.copy(fontSize = 11.sp)
+                    color = textSub, style = Sinema.Label.copy(fontSize = 12.sp)
                 )
             }
         }
@@ -783,7 +783,7 @@ private fun PlanOfferCard(
                 else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme, onFill = selected) }
                 if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme, hi = false, onFill = selected)
             }
-            Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -804,7 +804,7 @@ private fun StoreChip(text: String, theme: AppThemeState, hi: Boolean = true, on
         Modifier.height(22.dp).clip(CircleShape).background(if (onFill) Color.Black.copy(0.14f) else Color.White.copy(0.10f)).padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (onFill) theme.effectiveOnAccentColor else if (hi) theme.accentHiTextColor else Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = if (onFill) theme.effectiveOnAccentColor else if (hi) theme.accentHiTextColor else Sinema.textSecondary(theme), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -851,7 +851,7 @@ private fun EnergyTab(
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Rounded.Bolt, null, tint = theme.rewardGold, modifier = Modifier.size(24.dp))
-                    Text(theme.t("Enerji", "Energy").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label.copy(fontSize = 11.sp))
+                    Text(theme.t("Enerji", "Energy").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label.copy(fontSize = 12.sp))
                 }
                 SinemaFitText(
                     text = state.credits.toString(),

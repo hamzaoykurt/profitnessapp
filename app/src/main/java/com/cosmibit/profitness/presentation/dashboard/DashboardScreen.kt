@@ -384,6 +384,15 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         }
         }
 
+        // Durum çubuğu altı yumuşak scrim: kayan içerik saat/simgelerle çakışmasın (Antrenman fotoğrafı hariç)
+        if (selectedTab != DashboardTab.Workout) {
+            val statusTopPad = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            Box(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().height(statusTopPad + 14.dp).zIndex(99f)
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Sinema.page(theme).copy(alpha = 0.94f), androidx.compose.ui.graphics.Color.Transparent)))
+            )
+        }
+
         val navItems = remember(theme) { ALL_TABS.map { SinemaNavItem(it.sinemaIcon, it.label(theme)) } }
         if (useNavRail) {
             SinemaNavRail(

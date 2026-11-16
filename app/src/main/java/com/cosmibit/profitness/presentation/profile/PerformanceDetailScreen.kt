@@ -243,7 +243,7 @@ private fun PerformanceCover(
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
-                    drawRect(Sinema.Ink.copy(0.35f))
+                    drawRect(Sinema.Ink.copy(0.55f))
                     val fadeStart = (200.dp.toPx() / size.height).coerceIn(0f, 1f)
                     drawRect(
                         Brush.verticalGradient(0f to Color.Black, fadeStart to Color.Black, 1f to Color.Transparent),
@@ -503,14 +503,14 @@ private fun RangeSegment(weeks: Int, onWeeks: (Int) -> Unit, english: Boolean) {
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(CircleShape)
-                        .background(if (sel) accent else Color.Transparent),
+                        .background(if (sel) accent.copy(0.22f) else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
                     // büyük yazıda 84dp yarıya sığsın: ≥1.3 ölçekten sonra sp küçülür
                     val segFs = androidx.compose.ui.platform.LocalDensity.current.fontScale
                     PText(
                         if (english) "$w wk" else "$w hf", if (segFs > 1.3f) (13 * 1.3f / segFs).toInt() else 13, if (sel) FontWeight.Bold else FontWeight.SemiBold,
-                        color = if (sel) theme.effectiveOnAccentColor else Sinema.White, maxLines = 1
+                        color = if (sel) accent else Sinema.White, maxLines = 1
                     )
                 }
             }
@@ -728,7 +728,7 @@ private fun ExercisePoster(theme: AppThemeState, onClick: () -> Unit, modifier: 
         }
         SinemaCapsule(
             Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 14.dp).size(44.dp),
-            selected = true, height = 44.dp, shape = CircleShape,
+            selected = true, neutralSelected = true, height = 44.dp, shape = CircleShape,
             contentPadding = PaddingValues(0.dp), horizontalArrangement = Arrangement.Center
         ) { fg -> Icon(Icons.Rounded.ArrowForward, null, tint = fg, modifier = Modifier.size(20.dp)) }
     }
