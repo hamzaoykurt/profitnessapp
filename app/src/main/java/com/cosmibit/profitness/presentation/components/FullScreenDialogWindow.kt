@@ -17,7 +17,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +44,10 @@ fun FullScreenDialogWindow() {
         if (applied) return@SideEffect
         val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
         applied = true
+        // Yerleşim oturana kadar pencere görünmez (ilk karede eski inset'le çizilip kayma olmasın).
+        window.decorView.alpha = 0f
+        window.setDimAmount(0f)
+        window.setWindowAnimations(0)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         window.statusBarColor = Color.Transparent.toArgb()
@@ -51,6 +57,12 @@ fun FullScreenDialogWindow() {
             isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = false
         }
+    }
+    // Pencere ayarları + yerleşim oturduktan (2 kare) sonra göster.
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        withFrameNanos { }
+        (view.parent as? DialogWindowProvider)?.window?.decorView?.alpha = 1f
     }
 }
 
