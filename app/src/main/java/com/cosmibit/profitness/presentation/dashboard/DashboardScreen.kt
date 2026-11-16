@@ -1,5 +1,8 @@
 package com.cosmibit.profitness.presentation.dashboard
 
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -224,25 +227,40 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         derivedStateOf { ALL_TABS.indexOf(selectedTab) }
     }
     val draggableState = rememberDraggableState { delta -> swipeAccum += delta }
-    val swipeModifier = Modifier.draggable(
+    // Yatay kaydırma: iç yatay listeler (çip satırı, kart listesi, pager) kendi ucuna gelince artan kaydırma/fling sekme geçişine döner.
+    val nestedAccum = remember { floatArrayOf(0f) }
+    fun changeTab(goNext: Boolean) {
+        val curIdx = selectedTabIndex
+        if (goNext && curIdx < ALL_TABS.lastIndex) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            selectedTabRoute = ALL_TABS[curIdx + 1].route
+        } else if (!goNext && curIdx > 0) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            selectedTabRoute = ALL_TABS[curIdx - 1].route
+        }
+    }
+    val tabNestedScroll = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                if (abs(available.x) > abs(available.y)) nestedAccum[0] += available.x
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+            override suspend fun onPostFling(consumed: androidx.compose.ui.unit.Velocity, available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                val acc = nestedAccum[0]; nestedAccum[0] = 0f
+                if (abs(acc) > 120f || (abs(acc) > 24f && abs(available.x) > 500f)) changeTab(goNext = acc < 0f)
+                return androidx.compose.ui.unit.Velocity.Zero
+            }
+        }
+    }
+    val swipeModifier = Modifier.nestedScroll(tabNestedScroll).draggable(
         state       = draggableState,
         orientation = Orientation.Horizontal,
         onDragStarted = { swipeAccum = 0f },
         onDragStopped = { velocity ->
-            val curIdx = selectedTabIndex
             // Fast fling (velocity) OR slow-but-wide drag both trigger tab change
             val byVelocity = abs(velocity) > 500f
             val byDistance = abs(swipeAccum) > 120f
-            if (byVelocity || byDistance) {
-                val goNext = if (byVelocity) velocity < 0f else swipeAccum < 0f
-                if (goNext && curIdx < ALL_TABS.lastIndex) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    selectedTabRoute = ALL_TABS[curIdx + 1].route
-                } else if (!goNext && curIdx > 0) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    selectedTabRoute = ALL_TABS[curIdx - 1].route
-                }
-            }
+            if (byVelocity || byDistance) changeTab(goNext = if (byVelocity) velocity < 0f else swipeAccum < 0f)
             swipeAccum = 0f
         }
     )
@@ -263,7 +281,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             targetState  = selectedTab,
             transitionSpec = {
                 // Tek seferde geçiş: zemin (SinemaBackdrop) sabit kalır, yalnız içerik kısa çapraz solar; kayma yok.
-                fadeIn(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) togetherWith fadeOut(tween(SinemaMotion.Instant, easing = SinemaMotion.EaseStandard))
+                // Zemin (SinemaBackdrop) sabit; içerik kısa yatay kayma + çapraz solma (menü sırasına göre yön)
+                val fwd = ALL_TABS.indexOf(targetState) > ALL_TABS.indexOf(initialState)
+                (fadeIn(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) +
+                    slideInHorizontally(tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard)) { w -> if (fwd) w / 10 else -w / 10 }) togetherWith
+                    (fadeOut(tween(SinemaMotion.Instant, easing = SinemaMotion.EaseStandard)) +
+                        slideOutHorizontally(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) { w -> if (fwd) -w / 10 else w / 10 })
             },
             modifier = Modifier
                 .fillMaxSize()

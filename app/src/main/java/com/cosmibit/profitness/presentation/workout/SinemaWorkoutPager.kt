@@ -324,7 +324,7 @@ fun SinemaWorkoutPager(
         Box(modifier.fillMaxSize()) {
             // Zemin: DashboardScreen kökündeki tek SinemaBackdrop (fotosuz sayfalar onu gösterir)
             HorizontalPager(
-                state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0,
+                state = hState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0, userScrollEnabled = false,
                 key = { it }
             ) { dayPage ->
               val active = dayPage == selectedDayIdx
