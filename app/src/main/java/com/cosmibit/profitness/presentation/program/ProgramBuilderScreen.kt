@@ -903,7 +903,11 @@ private fun BuilderChooseScreen(
                             )
                         }
                     }
-                    filtered.forEach { prog ->
+                }
+            }
+        }
+        items(filtered, key = { it.title }) { prog ->
+            Box(Modifier.offset(y = (-28).dp)) {
                         ReadyProgramCard(
                             title = prog.localizedTitle(theme),
                             tag = prog.category.localizedLabel(),
@@ -915,8 +919,6 @@ private fun BuilderChooseScreen(
                             iconKey = prog.muscleLabels.firstOrNull().orEmpty(),
                             onClick = { selectedProgram = prog }
                         )
-                    }
-                }
             }
         }
     }

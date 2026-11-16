@@ -1,5 +1,8 @@
 package com.cosmibit.profitness.presentation.profile
 
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
@@ -236,6 +239,34 @@ fun ExerciseProgressionScreen(
                     EmptyProgressionState(theme = theme, onBack = onBack)
                 }
                 else -> {
+                    // Filtre / sıralama / arama: yalnız UI state'i (veri katmanı değişmez)
+                    var query by rememberSaveable { mutableStateOf("") }
+                    var kind by rememberSaveable { mutableStateOf(ProgKind.All) }
+                    var muscle by rememberSaveable { mutableStateOf<String?>(null) }
+                    var sort by rememberSaveable { mutableStateOf(ProgSort.Recent) }
+                    val muscles = remember(state.summaries) {
+                        state.summaries.map { it.targetMuscle }.filter { it.isNotBlank() }.groupingBy { it }.eachCount()
+                            .entries.sortedByDescending { it.value }.map { it.key }.take(8)
+                    }
+                    val shown = remember(state.summaries, query, kind, muscle, sort) {
+                        val q = query.trim().lowercase()
+                        state.summaries.filter { s ->
+                            (q.isEmpty() || s.name.lowercase().contains(q) || theme.exerciseDisplayName(s.name).lowercase().contains(q)) &&
+                                (muscle == null || s.targetMuscle == muscle) &&
+                                when (kind) {
+                                    ProgKind.All -> true
+                                    ProgKind.Weight -> s.maxWeight > 0f || s.totalVolume > 0f
+                                    ProgKind.Time -> s.totalDurationSeconds > 0
+                                    ProgKind.Distance -> s.totalDistanceMeters > 0f
+                                }
+                        }.let { list ->
+                            when (sort) {
+                                ProgSort.Recent -> list.sortedByDescending { it.lastDate.orEmpty() }
+                                ProgSort.Highest -> list.sortedByDescending { it.maxWeight }
+                                ProgSort.Name -> list.sortedBy { theme.exerciseDisplayName(it.name).lowercase() }
+                            }
+                        }
+                    }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = SinemaNavHeight + 24.dp + navBarBottom),
@@ -244,7 +275,22 @@ fun ExerciseProgressionScreen(
                         item(key = "summary_hero") {
                             ProgressionSummaryHero(summaries = state.summaries, theme = theme)
                         }
-                        items(state.summaries, key = { it.exerciseId }) { summary ->
+                        item(key = "filters") {
+                            ProgressionFilters(
+                                theme = theme, query = query, onQuery = { query = it },
+                                kind = kind, onKind = { kind = it },
+                                muscles = muscles, muscle = muscle, onMuscle = { muscle = it },
+                                sort = sort, onSort = { sort = it }, shown = shown.size, total = state.summaries.size
+                            )
+                        }
+                        if (shown.isEmpty()) item(key = "no_match") {
+                            Text(
+                                theme.t("Eşleşen hareket yok", "No matching exercise"),
+                                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                        items(shown, key = { it.exerciseId }, contentType = { "exercise" }) { summary ->
                             ExerciseProgressionCard(
                                 summary      = summary,
                                 history      = state.historyMap[summary.exerciseId] ?: emptyList(),
@@ -273,25 +319,134 @@ private fun ProgressionSummaryHero(
     val weightCount = summaries.count { it.maxWeight > 0f || it.totalVolume > 0f }
     val timedCount = summaries.count { it.totalDurationSeconds > 0 }
     val distanceCount = summaries.count { it.totalDistanceMeters > 0f }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SinemaBigStat(
             value = "$trackedCount",
             label = theme.t("Takip edilen hareket", "Tracked exercises"),
-            size = 72,
-            color = theme.accentHiTextColor
+            size = 64,
+            color = Sinema.text(theme)
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SinemaBigStat("$weightCount", theme.t("Ağırlık", "Weight"), Modifier.weight(1f), size = 28)
-            SinemaBigStat("$timedCount", theme.t("Süre", "Time"), Modifier.weight(1f), size = 28)
-            SinemaBigStat("$distanceCount", theme.t("Mesafe", "Distance"), Modifier.weight(1f), size = 28)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ProgMiniStat("$weightCount", theme.t("Ağırlık", "Weight"), Icons.Rounded.FitnessCenter, theme.accentHi, Modifier.weight(1f), theme)
+            ProgMiniStat("$timedCount", theme.t("Süre", "Time"), Icons.Rounded.Timer, theme.accentColor, Modifier.weight(1f), theme)
+            ProgMiniStat("$distanceCount", theme.t("Mesafe", "Distance"), Icons.Rounded.Route, null, Modifier.weight(1f), theme)
         }
+    }
+}
+
+@Composable
+private fun ProgMiniStat(value: String, label: String, icon: ImageVector, tint: Color?, modifier: Modifier, theme: AppThemeState) {
+    Column(
+        modifier.sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = tint).padding(horizontal = 12.dp, vertical = 12.dp)
+    ) {
+        Icon(icon, null, tint = if (tint != null) androidx.compose.ui.graphics.lerp(tint, Color.White, 0.35f) else Sinema.textSecondary(theme), modifier = Modifier.size(18.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(value, color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(label, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1)
+    }
+}
+
+private enum class ProgKind { All, Weight, Time, Distance }
+private enum class ProgSort { Recent, Highest, Name }
+
+/** Arama + tür çipleri + kas grubu çipleri + sıralama menüsü (yalnız UI state'i). */
+@Composable
+private fun ProgressionFilters(
+    theme: AppThemeState, query: String, onQuery: (String) -> Unit,
+    kind: ProgKind, onKind: (ProgKind) -> Unit,
+    muscles: List<String>, muscle: String?, onMuscle: (String?) -> Unit,
+    sort: ProgSort, onSort: (ProgSort) -> Unit, shown: Int, total: Int
+) {
+    var menu by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Arama alanı
+            Row(
+                Modifier.weight(1f).heightIn(min = 48.dp).sinemaRaised(RoundedCornerShape(24.dp), SinemaRaise.Mini).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Search, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                androidx.compose.foundation.text.BasicTextField(
+                    value = query, onValueChange = onQuery, singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(color = Sinema.text(theme), fontSize = SinemaType.Body),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(theme.effectiveAccentColor),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { inner ->
+                        if (query.isEmpty()) Text(theme.t("Hareket ara", "Search exercise"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, maxLines = 1)
+                        inner()
+                    }
+                )
+                if (query.isNotEmpty()) {
+                    Icon(
+                        Icons.Rounded.Close, theme.t("Temizle", "Clear"), tint = Sinema.textSecondary(theme),
+                        modifier = Modifier.size(20.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onQuery("") }
+                    )
+                }
+            }
+            // Sıralama
+            Box {
+                SinemaCapsuleIconButton(
+                    icon = Icons.Rounded.SwapVert, description = theme.t("Sırala", "Sort"),
+                    onClick = { menu = true }, selected = false, size = 48.dp
+                )
+                androidx.compose.material3.DropdownMenu(
+                    expanded = menu, onDismissRequest = { menu = false },
+                    containerColor = Sinema.surface(theme), shape = RoundedCornerShape(SinemaRadius.R20)
+                ) {
+                    listOf(
+                        ProgSort.Recent to theme.t("Son yapılan", "Most recent"),
+                        ProgSort.Highest to theme.t("En yüksek", "Highest"),
+                        ProgSort.Name to theme.t("A-Z", "A-Z")
+                    ).forEach { (s, label) ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(label, color = if (s == sort) theme.effectiveAccentColor else Sinema.text(theme), fontWeight = if (s == sort) FontWeight.ExtraBold else FontWeight.Normal) },
+                            onClick = { onSort(s); menu = false }
+                        )
+                    }
+                }
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(ProgKind.values().toList(), key = { it.name }) { k ->
+                val label = when (k) {
+                    ProgKind.All -> theme.t("Tümü", "All")
+                    ProgKind.Weight -> theme.t("Ağırlık", "Weight")
+                    ProgKind.Time -> theme.t("Süre", "Time")
+                    ProgKind.Distance -> theme.t("Mesafe", "Distance")
+                }
+                SinemaChip(active = kind == k, onClick = { onKind(k) }, height = 36.dp, selectable = true, neutralSelected = true) { fg ->
+                    Text(label, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+            if (muscles.isNotEmpty()) {
+                item(key = "sep") { Box(Modifier.padding(horizontal = 2.dp).width(1.dp).height(36.dp).background(Sinema.line(theme))) }
+                items(muscles, key = { "m_$it" }) { m ->
+                    SinemaChip(active = muscle == m, onClick = { onMuscle(if (muscle == m) null else m) }, height = 36.dp, selectable = true, neutralSelected = true) { fg ->
+                        Text(theme.fitnessTermDisplayName(m).localizedPrimary(theme), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    }
+                }
+            }
+        }
+        if (shown != total) {
+            Text(theme.t("$shown / $total hareket", "$shown / $total exercises"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+        }
+    }
+}
+
+/** Kas grubuna göre ikon + ton (hepsi aynı ikon olmasın). */
+private fun muscleStyle(target: String, name: String, theme: AppThemeState): Pair<ImageVector, Color> {
+    val k = (target + " " + name).lowercase()
+    fun has(vararg w: String) = w.any { it in k }
+    return when {
+        has("kardiyo", "cardio", "kosu", "koşu", "running", "bisiklet", "cycling", "rowing", "kürek", "swim", "yüz") -> SinemaIcons.Flame to Color(0xFFFF4D8D)
+        has("karın", "karin", "core", "abs") -> SinemaIcons.Bolt to Color(0xFF818CF8)
+        has("bacak", "leg", "quad", "ham", "calf", "baldır", "glute", "kalça") -> Icons.Rounded.DirectionsRun to Color(0xFF2DD4BF)
+        has("omuz", "shoulder", "delt") -> Icons.Rounded.SelfImprovement to Color(0xFFC084FC)
+        has("kol", "biceps", "triceps", "arm", "forearm") -> SinemaIcons.Dumbbell to Color(0xFFF97316)
+        has("sırt", "sirt", "back", "lat", "trap") -> Icons.Rounded.Accessibility to Color(0xFFFFB938)
+        has("göğüs", "gogus", "chest", "pec") -> Icons.Rounded.FitnessCenter to theme.accentHi
+        else -> Icons.Rounded.FitnessCenter to theme.accentHi
     }
 }
 
@@ -357,43 +512,36 @@ private fun ExerciseProgressionCard(
             .fillMaxWidth()
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
     ) {
-        // ── Header row ────────────────────────────────────────────────────
+        // ── Header row ────────────────────────────────────────────────�
+        val (muscleIcon, muscleHue) = remember(summary.targetMuscle, summary.name, theme) { muscleStyle(summary.targetMuscle, summary.name, theme) }
+        val isRecord = hasWeight && summary.lastWeight >= summary.maxWeight && summary.maxWeight > 0f
+        val lastText = remember(summary.lastDate) {
+            summary.lastDate?.let { d -> runCatching { LocalDate.parse(d.take(10)).format(SHORT_DATE_FMT) }.getOrNull() }
+        }
         Row(
             modifier = Modifier
-                .fillMaxWidth().sinemaClickable(onClick = {
+                .fillMaxWidth().heightIn(min = 72.dp).sinemaClickable(onClick = {
                     isExpanded = !isExpanded
                     if (isExpanded) onExpand()
                 }, scale = 0.98f)
-                .padding(16.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(SinemaRadius.R16))
-                    .background(Sinema.line(theme))
+                modifier = Modifier.size(48.dp).clip(CircleShape)
+                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, muscleHue, 0.24f)),
+                contentAlignment = Alignment.Center
             ) {
-                if (summary.imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = summary.imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = theme.accentHi, modifier = Modifier.size(24.dp))
-                    }
-                }
+                Icon(muscleIcon, null, tint = androidx.compose.ui.graphics.lerp(muscleHue, Color.White, 0.35f), modifier = Modifier.size(24.dp))
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     displayName,
                     color = Sinema.text(theme),
-                    fontSize = SinemaType.BodyLg,
+                    fontSize = SinemaType.Body,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -406,20 +554,35 @@ private fun ExerciseProgressionCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (hasWeight) {
-                        StatChip(label = theme.t("MAKS", "MAX") + " ${"%.1f".format(summary.maxWeight)} kg")
-                    }
-                    if (hasDistance) {
-                        StatChip(label = formatDistance(summary.totalDistanceMeters))
-                    }
-                    if (hasDuration) {
-                        StatChip(label = formatDuration(summary.totalDurationSeconds, theme))
-                    }
-                    if (!hasWeight && !hasDistance && !hasDuration) {
-                        StatChip(label = "${summary.sessionCount} ${theme.t("seans", "sessions")}")
-                    }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Sağda büyük ana metrik + küçük "son" / rekor rozeti
+            Column(horizontalAlignment = Alignment.End) {
+                val main = when {
+                    hasWeight -> "${"%.1f".format(summary.maxWeight).removeSuffix(".0")} kg"
+                    hasDistance -> formatDistance(summary.totalDistanceMeters)
+                    hasDuration -> formatDuration(summary.totalDurationSeconds, theme)
+                    else -> "${summary.sessionCount}"
+                }
+                val mainLabel = when {
+                    hasWeight -> theme.t("MAKS", "MAX")
+                    hasDistance -> theme.t("MESAFE", "DISTANCE")
+                    hasDuration -> theme.t("SÜRE", "TIME")
+                    else -> theme.t("SEANS", "SESSIONS")
+                }
+                Text(main, color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                if (isRecord) {
+                    Text(
+                        theme.t("REKOR", "PR"), color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.22f)).padding(horizontal = 8.dp, vertical = 1.dp)
+                    )
+                } else {
+                    Text(
+                        if (lastText != null) theme.t("son: $lastText", "last: $lastText") else mainLabel,
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1
+                    )
                 }
             }
 

@@ -313,10 +313,11 @@ fun SinemaChip(
     shape: Shape = CircleShape,
     selectable: Boolean = false,
     glass: Boolean = false,
+    neutralSelected: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     SinemaCapsule(
-        modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape, glass = glass,
+        modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape, glass = glass, neutralSelected = neutralSelected,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center, selectable = selectable, content = content
     )

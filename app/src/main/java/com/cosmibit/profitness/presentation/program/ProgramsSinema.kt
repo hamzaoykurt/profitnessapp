@@ -1,5 +1,11 @@
 package com.cosmibit.profitness.presentation.program
 
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.sinemaSolid
 import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.SinemaRaise
@@ -104,8 +110,6 @@ import com.cosmibit.profitness.domain.model.Program
 import com.cosmibit.profitness.domain.model.ProgramType
 import com.cosmibit.profitness.presentation.workout.SceneImage
 import com.cosmibit.profitness.presentation.workout.WorkoutDayState
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 
 /** Antrenman sekmesindeki aktif programın bugünkü özeti (Programlar kapağı için). Veri yoksa null → panel gizlenir. */
 data class ProgramTodayInfo(
@@ -114,7 +118,13 @@ data class ProgramTodayInfo(
     val todayTitle: String,
     val todayExercises: Int,
     val todayIsRest: Boolean,
-    val week: List<WeekCell>
+    val week: List<WeekCell>,
+    /** Bugünün tamamlanan hareket sayısı. */
+    val todayCompleted: Int = 0,
+    /** Bugünün hedef kas grupları (en çok geçen <=3; veri yoksa boş). */
+    val todayMuscles: List<String> = emptyList(),
+    /** Tahmini süre (dk): set x (45 sn çalışma + dinlenme); 0 = bilinmiyor. */
+    val todayMinutes: Int = 0
 )
 
 data class WeekCell(val label: String, val isToday: Boolean, val isRest: Boolean, val isDone: Boolean = false)
@@ -136,6 +146,9 @@ fun buildProgramTodayInfo(
         todayTitle = com.cosmibit.profitness.presentation.workout.compactWorkoutTitle(today.day.title, theme),
         todayExercises = today.totalCount,
         todayIsRest = today.day.isRestDay,
+        todayCompleted = today.completedCount,
+        todayMuscles = topMuscles(today.day.exercises.map { it.target }, theme),
+        todayMinutes = (today.day.exercises.sumOf { it.sets * (45 + it.restSeconds) } / 60f).let { if (it < 1f) 0 else (Math.round(it / 5f) * 5).coerceAtLeast(5) },
         week = days.mapIndexed { i, d ->
             WeekCell(com.cosmibit.profitness.presentation.workout.localizedWorkoutDayLabel(d.day.day, theme), i == selectedIdx, d.day.isRestDay,
                 isDone = d.totalCount > 0 && d.day.exercises.count { it.id in d.completedIds } >= d.totalCount)
@@ -151,62 +164,71 @@ private val SheetTopRadius = 28.dp
 @Composable
 fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit, onOpen: (() -> Unit)? = null) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val haze = remember { HazeState() }
-    // Kapak = ekran yüksekliği × 0.62 ∈ [360, 560] (D3: SinemaLayout.cover); yazı ölçeği büyüdükçe içerik payı kadar uzar.
-    val wc = LocalWindowClass.current
-    val heroH = (SinemaLayout.cover(wc.heightDp, 0.62f, 360.dp, 560.dp) * (1f + 0.4f * (wc.fontScale.coerceIn(1f, 1.5f) - 1f)))
-        .coerceAtMost((wc.heightDp * 0.85f).dp)
-    Box(Modifier.fillMaxWidth().height(heroH).clipToBounds()) {
+    // Kompakt hero: yükseklik içerikten gelir (boş alan yok); kapak içeriği saran katmanda.
+    Box(Modifier.fillMaxWidth().clipToBounds()) {
         Box(
-            Modifier.fillMaxSize().hazeSource(haze)
-                // Foto alt ~%40'ta alfa → 0: kapak ortak SinemaBackdrop'a yumuşakça söner (katı sayfa rengi bandı yok)
+            Modifier.matchParentSize()
+                // Alt ~%40'ta alfa -> 0: kapak ortak SinemaBackdrop'a yumuşakça söner
                 .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
                     drawRect(
-                        Brush.verticalGradient(0.58f to Sinema.scrim(1f), 1f to Color.Transparent),
+                        Brush.verticalGradient(0.62f to Sinema.scrim(1f), 1f to Color.Transparent),
                         blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                     )
                 }
                 .then(if (active != null && onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
         ) {
-            // Tipografik kapak (foto yok): yüzey + köşe ışığı + hayalet ikon; hero alt sönümü yukarıdaki maske ile
             SinemaTypeCover(
                 icon = coverIconFor(active?.name), hue = coverHueFor(active?.name), modifier = Modifier.fillMaxSize(),
-                ghostSize = 96.dp, underStatusBar = true
+                ghostSize = 88.dp, underStatusBar = true
             )
         }
         if (active != null) {
-            // AKTİF PROGRAM çipi
-            Row(
-                Modifier.padding(start = 16.dp, top = statusTop + 16.dp).height(28.dp)
-                    .clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // c3 = işaretle (rozet); hale yok (hale yalnız c1)
-                Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text,
-                    fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
-                )
-            }
             val workoutDays = active.days.count { !it.isRestDay }
             val totalExercises = active.days.sumOf { it.exercises.size }
-            val info = theme.t(
-                "$workoutDays antrenman günü" + if (totalExercises > 0) " · $totalExercises egzersiz" else "",
-                "$workoutDays training days" + if (totalExercises > 0) " · $totalExercises exercises" else ""
-            )
-            CompositionLocalProvider(LocalSinemaHaze provides haze) {
-                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 46.dp)) {
+            val progress = if (today != null && today.total > 0) (today.completed.toFloat() / today.total).coerceIn(0f, 1f) else 0f
+            CompositionLocalProvider(LocalSinemaHaze provides null) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = statusTop + 16.dp, bottom = 46.dp)) {
+                    // AKTİF PROGRAM çipi
+                    Row(
+                        Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text,
+                            fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
+                        )
+                    }
+                    Spacer(Modifier.height(32.dp))
+                    // başlık: ikon bölgesine (sağ-üst) taşmaz
                     Text(
                         active.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = if (wc.isTight) 2 else 3, overflow = TextOverflow.Ellipsis
+                        letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(end = 40.dp)
                     )
-                    Text(info, color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, theme.t("$workoutDays gün", "$workoutDays days"))
+                        if (totalExercises > 0) HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, theme.t("$totalExercises egzersiz", "$totalExercises exercises"))
+                    }
+                    if (today != null) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(Color.White.copy(0.18f))) {
+                                Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(theme.accentHi))
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                theme.t("Program %${(progress * 100).toInt()}", "Program ${(progress * 100).toInt()}%"),
+                                color = Color.White.copy(0.8f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
                     if (today != null) TodayPanel(today)
                     SinemaGoButton(
                         label = theme.t("Başla", "Start"), icon = SinemaIcons.Play, onClick = onStart
@@ -217,65 +239,113 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
     }
 }
 
+/** Hero bilgi çipi: ikon + metin, yarı saydam beyaz hap. */
+@Composable
+private fun HeroInfoChip(icon: ImageVector, text: String) {
+    Row(
+        Modifier.height(28.dp).clip(CircleShape).background(Color.White.copy(0.14f)).padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = Color.White.copy(0.9f), modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
 @Composable
 private fun TodayPanel(info: ProgramTodayInfo) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val onAccent = theme.effectiveOnAccentColor
     Column(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        Modifier.fillMaxWidth().padding(bottom = 14.dp)
             .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), edge = Color.White.copy(0.2f), fillAlpha = 0.38f, blur = 22.dp)
-            .sinemaCardAccent(theme.accentHi, inset = 28.dp)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill((info.completed.toFloat() / info.total).coerceIn(0f, 1f))
-            val doneCount = com.cosmibit.profitness.core.theme.rememberSinemaCount(info.completed, fromZero = true)
-            val ring = theme.accentHi   // c2 = ölç
-            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+        Row(verticalAlignment = Alignment.Top) {
+            // Sol: BUGÜNÜN halkası (0/4); program toplamı ikincil metinde
+            val dayFrac = if (info.todayExercises > 0) (info.todayCompleted.toFloat() / info.todayExercises).coerceIn(0f, 1f) else 0f
+            val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill(dayFrac)
+            val ring = theme.accentHi
+            Box(Modifier.size(84.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val sw = 6.dp.toPx()
+                    val sw = 7.dp.toPx()
                     val d = size.minDimension - sw
                     val tl = Offset(sw / 2, sw / 2)
                     drawArc(Color.White.copy(0.22f), -90f, 360f, false, tl, Size(d, d), style = Stroke(sw))
                     val frac = fill.value
-                    if (frac > 0f) {
-                        drawArc(ring, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
+                    if (frac > 0f) drawArc(ring, -90f, 360f * frac, false, tl, Size(d, d), style = Stroke(sw, cap = StrokeCap.Round))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (info.todayIsRest) {
+                        Icon(androidx.compose.material.icons.Icons.Rounded.Bedtime, null, tint = Color.White.copy(0.9f), modifier = Modifier.size(28.dp))
+                    } else {
+                        Text("${info.todayCompleted}/${info.todayExercises}", color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
+                        Text(theme.t("bugün", "today"), color = Color.White.copy(0.75f), fontSize = SinemaType.Caption, maxLines = 1)
                     }
                 }
-                Text("$doneCount/${info.total}", color = Color.White, fontSize = cappedDisplaySp(15f, with(LocalDensity.current) { 15.sp.toDp().value } / 15f, 1.2f).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em, maxLines = 1, softWrap = false)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(theme.t("Bugün", "Today").sinemaUpper(theme), color = theme.accentHiTextColor, style = Sinema.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold))
+                val todayLabel = info.week.firstOrNull { it.isToday }?.label.orEmpty()
                 Text(
-                    if (info.todayIsRest) theme.t("Dinlenme", "Rest") else info.todayTitle,
-                    color = Color.White, fontSize = cappedDisplaySp(if (info.todayTitle.length > 9) 26f else 34f, with(LocalDensity.current) { 34.sp.toDp().value } / 34f, 1.3f).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em,
-                    lineHeight = 1.05.em, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    (theme.t("Bugün", "Today") + if (todayLabel.isNotBlank()) " · $todayLabel" else "").sinemaUpper(theme),
+                    color = theme.accentHiTextColor, style = Sinema.Label
+                )
+                Text(
+                    if (info.todayIsRest) theme.t("Dinlenme günü", "Rest day") else info.todayTitle,
+                    color = Color.White, fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 1.15.em, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
                 if (!info.todayIsRest) {
-                    Text(theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises"), color = Color.White.copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium)
+                    val minutes = if (info.todayMinutes > 0) " · ~${info.todayMinutes} ${theme.t("dk", "min")}" else ""
+                    Text(
+                        theme.t("${info.todayExercises} egzersiz", "${info.todayExercises} exercises") + minutes + " · " + theme.t("Program ${info.completed}/${info.total}", "Program ${info.completed}/${info.total}"),
+                        color = Color.White.copy(0.78f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Medium,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
+                    )
+                    if (info.todayMuscles.isNotEmpty()) {
+                        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            info.todayMuscles.take(3).forEach { m ->
+                                Box(Modifier.weight(1f, fill = false).clip(CircleShape).background(Color.White.copy(0.14f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                                    Text(m, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        // Gün seçici: 7 eşit sütun, >=48dp; durumlar: seçili (amber tint), tamamlandı (mercan tik), dinlenme (soluk + ay), diğer (nokta)
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             info.week.forEach { c ->
                 val shape = RoundedCornerShape(SinemaRadius.R12)
-                val fg = if (c.isToday) accent else Color.White.copy(0.85f)
+                val stateDesc = when {
+                    c.isToday -> theme.t("seçili gün", "selected day")
+                    c.isDone -> theme.t("tamamlandı", "completed")
+                    c.isRest -> theme.t("dinlenme günü", "rest day")
+                    else -> theme.t("antrenman günü", "training day")
+                }
                 Column(
-                    Modifier.weight(1f).heightIn(min = 42.dp)
-                        .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.45f else 1f }
+                    Modifier.weight(1f).heightIn(min = 52.dp)
+                        .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.5f else 1f }
                         .clip(shape)
-                        .background(if (c.isToday) accent.copy(0.22f) else Color.White.copy(0.09f)),
+                        .background(if (c.isToday) accent.copy(0.22f) else Color.White.copy(0.09f))
+                        .semantics(mergeDescendants = true) { contentDescription = "${c.label}, $stateDesc" },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                 ) {
-                    val actualScale = with(LocalDensity.current) { 11.sp.toDp().value } / 11f
+                    val actualScale = with(LocalDensity.current) { 12.sp.toDp().value } / 12f
                     Text(
-                        c.label, color = fg, fontSize = cappedDisplaySp(11f, actualScale, 1.3f).sp, fontWeight = FontWeight.Bold,
+                        c.label, color = if (c.isToday) accent else Color.White.copy(0.88f),
+                        fontSize = cappedDisplaySp(12f, actualScale, 1.3f).sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
                     )
                     Spacer(Modifier.height(4.dp))
-                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) accent else if (c.isDone) theme.accentHi else Color.White.copy(0.4f)))
+                    when {
+                        c.isDone -> Icon(androidx.compose.material.icons.Icons.Rounded.Check, null, tint = theme.accentHi, modifier = Modifier.size(14.dp))
+                        c.isRest -> Icon(androidx.compose.material.icons.Icons.Rounded.Bedtime, null, tint = Color.White.copy(0.7f), modifier = Modifier.size(14.dp))
+                        else -> Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) accent else Color.White.copy(0.45f)))
+                    }
                 }
             }
         }
@@ -403,16 +473,15 @@ fun SavedProgramCard(
         )
     }
 
-    val haze = remember { HazeState() }
     Box(
         Modifier.width(226.dp).height(288.dp)
             .sinemaRaised(shape, SinemaRaise.Card)
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
-        Box(Modifier.fillMaxSize().hazeSource(haze)) {
+        Box(Modifier.fillMaxSize()) {
             SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
         }
-        CompositionLocalProvider(LocalSinemaHaze provides haze) {
+        CompositionLocalProvider(LocalSinemaHaze provides null) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 val typeTint = badge
                 Icon(typeIcon, null, tint = typeTint, modifier = Modifier.size(14.dp))
@@ -530,16 +599,15 @@ fun ReadyProgramCard(
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val shape = RoundedCornerShape(SinemaRadius.R28)
-    val haze = remember { HazeState() }
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp).height(176.dp)
             .sinemaRaised(shape, SinemaRaise.Card)
             .clickable(role = Role.Button, onClick = onClick)
     ) {
-        Box(Modifier.fillMaxSize().hazeSource(haze)) {
+        Box(Modifier.fillMaxSize()) {
             SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
         }
-        CompositionLocalProvider(LocalSinemaHaze provides haze) {
+        CompositionLocalProvider(LocalSinemaHaze provides null) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,
                 modifier = Modifier.padding(start = 14.dp, top = 14.dp))
             Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Bottom) {

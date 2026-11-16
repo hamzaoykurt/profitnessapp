@@ -69,7 +69,7 @@ fun SinemaTypeCover(
     ) {
         // hayalet ikon: sağ-üst/orta bölge, düğme/çiplerle (alt satır) çakışmasın diye yüksekliğin ~%52'siyle sınırlı
         // Küçük + sağ-üst köşe: başlık / metrik / çip bölgesiyle çakışmaz (başlıklar kartın alt-orta bölgesinde)
-        val sz = minOf(ghostSize, 64.dp, maxHeight * 0.30f)
+        val sz = minOf(ghostSize, if (underStatusBar) 88.dp else 64.dp, maxHeight * 0.30f)
         val top = (if (underStatusBar) 0.dp else 14.dp) + if (underStatusBar) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp
         Icon(
             icon, contentDescription = null, tint = ghost,
