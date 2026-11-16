@@ -125,9 +125,9 @@ object SinemaType {
 object SinemaRadius {
     val R12 = 12.dp
     val R16 = 16.dp
-    val R20 = 20.dp
-    val R24 = 24.dp
-    val R28 = 28.dp
+    val R20 = 24.dp   // 3D yumuşak bloklar için büyütüldü
+    val R24 = 28.dp
+    val R28 = 32.dp
     val Pill = RoundedCornerShape(percent = 50)
 }
 

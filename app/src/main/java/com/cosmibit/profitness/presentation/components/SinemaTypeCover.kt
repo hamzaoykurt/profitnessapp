@@ -1,7 +1,9 @@
 package com.cosmibit.profitness.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -27,8 +29,8 @@ import com.cosmibit.profitness.core.theme.accentHi
 
 /**
  * Tipografik kapak: program / etkinlik / challenge yüzeyleri için ortak zemin (egzersiz fotoğrafı YOK;
- * görsel/video yalnız egzersizlerde). TEK renk, OPAK düz yüzey: #15171C üstüne [hue] %27 karışım; köşe gradyanı / çift ışık YOK.
- * Sağ-altta hayalet ikon (hue açık, α.16). Metinler tam okunur olduğundan foto perdesi gerekmez.
+ * görsel/video yalnız egzersizlerde). TEK renk hue, OPAK, 3D yumuşak blok (üst açık / alt koyu dikey gradyan + üst yumuşak parlama + alt iç gölge).
+ * Sağ-üstte hayalet ikon (hue açık, α.40; alt satır düğmeleriyle çakışmaz). Metinler tam okunur olduğundan foto perdesi gerekmez.
  */
 @Composable
 fun SinemaTypeCover(
@@ -40,12 +42,30 @@ fun SinemaTypeCover(
     hue: Color = LocalAppTheme.current.accentColor,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
-    val surface = lerp(Sinema.Surface, hue, 0.30f)
-    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.38f)
-    Box(modifier.background(surface).clipToBounds()) {
+    val base = lerp(Sinema.Surface, hue, 0.30f)
+    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.40f)
+    // 3D yumuşak blok: tek renk hue; üst açık, alt koyu, üstte yayılan yumuşak parlama, altta iç gölge (keskin hat yok)
+    BoxWithConstraints(
+        modifier
+            .background(Brush.verticalGradient(0f to lerp(base, Color.White, 0.12f), 1f to lerp(base, Color.Black, 0.38f)))
+            .drawBehind {
+                drawRect(
+                    Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx().coerceAtMost(size.height)),
+                    size = androidx.compose.ui.geometry.Size(size.width, 10.dp.toPx().coerceAtMost(size.height))
+                )
+                val h = 22.dp.toPx().coerceAtMost(size.height)
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(0.28f), startY = size.height - h, endY = size.height),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h), size = androidx.compose.ui.geometry.Size(size.width, h)
+                )
+            }
+            .clipToBounds()
+    ) {
+        // hayalet ikon: sağ-üst/orta bölge, düğme/çiplerle (alt satır) çakışmasın diye yüksekliğin ~%52'siyle sınırlı
+        val sz = minOf(ghostSize, maxHeight * 0.52f, maxWidth * 0.5f)
         Icon(
             icon, contentDescription = null, tint = ghost,
-            modifier = Modifier.align(ghostAlignment).offset(ghostOffset.x, ghostOffset.y).requiredSize(ghostSize)
+            modifier = Modifier.align(Alignment.TopEnd).offset(-(maxWidth * 0.06f), maxHeight * 0.10f).requiredSize(sz)
         )
         content()
     }
