@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -503,7 +504,7 @@ private fun DifficultyChip(
         modifier = Modifier
             .clip(shape)
             .background(if (selected) accent.copy(0.22f) else theme.bg2.copy(0.5f))
-            .border(1.dp, if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), shape)
+            .sinemaSoftRing(if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), shape)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {

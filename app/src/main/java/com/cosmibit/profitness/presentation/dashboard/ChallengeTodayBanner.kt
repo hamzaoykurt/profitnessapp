@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.dashboard
 
+import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,7 +72,7 @@ fun ChallengeTodayBanner(
             )
             .clip(shape)
             .background(surface)
-            .border(1.dp, accent.copy(0.34f), shape)
+            .sinemaSoftRing(accent.copy(0.34f), shape)
             .padding(horizontal = 16.dp, vertical = 15.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

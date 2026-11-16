@@ -615,3 +615,23 @@ fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
             size = Size(size.width, height.toPx()), blendMode = BlendMode.DstIn
         )
     }
+
+/**
+ * Yumuşak geçişli işaret halkası (sert kontur YOK): şeklin iç kenarında 6-10dp'ye yayılan, üst-solda daha parlak / alt-sağda sönük renkli parıltı.
+ * Üst üste binen sönük konturlar iç içe bir blur etkisi verir; seçili/aktif kart ve çiplerde `border` yerine kullanılır.
+ */
+fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 8.dp): Modifier = this.drawWithContent {
+    drawContent()
+    val path = shapePath(shape, size, layoutDirection, this)
+    val brush = Brush.linearGradient(
+        0f to color.copy(alpha = color.alpha.coerceAtLeast(0.0f) * 1f),
+        0.55f to color.copy(alpha = color.alpha * 0.45f),
+        1f to color.copy(alpha = color.alpha * 0.12f),
+        start = Offset.Zero, end = Offset(size.width, size.height)
+    )
+    clipPath(path) {
+        for (i in 1..5) {
+            drawPath(path, brush, alpha = 0.22f, style = Stroke(width = (spread.toPx() * 2f) * i / 5f))
+        }
+    }
+}

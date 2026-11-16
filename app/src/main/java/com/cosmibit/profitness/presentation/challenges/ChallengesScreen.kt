@@ -2,6 +2,7 @@
 
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import com.cosmibit.profitness.core.theme.accentColor
 import androidx.compose.foundation.lazy.itemsIndexed
 import com.cosmibit.profitness.core.theme.sinemaListEnter
@@ -528,7 +529,7 @@ private fun InviteFriendRow(
         modifier = Modifier
             .fillMaxWidth()
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = theme.accentColor)
-            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
+            .then(if (selected) Modifier.sinemaSoftRing(accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically

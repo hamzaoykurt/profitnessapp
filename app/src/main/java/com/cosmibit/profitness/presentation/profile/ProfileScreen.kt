@@ -243,7 +243,7 @@ fun ProfileScreen(
                         .background(
                             Brush.verticalGradient(listOf(Sinema.Elevated, Sinema.Surface))
                         )
-                        .border(1.dp, accent.copy(0.5f), RoundedCornerShape(SinemaRadius.R28))
+                        .sinemaSoftRing(accent.copy(0.5f), RoundedCornerShape(SinemaRadius.R28))
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -290,7 +290,7 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(accent.copy(0.15f))
-                            .border(1.dp, accent.copy(0.3f), RoundedCornerShape(SinemaRadius.R12))
+                            .sinemaSoftRing(accent.copy(0.3f), RoundedCornerShape(SinemaRadius.R12))
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {

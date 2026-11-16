@@ -596,7 +596,7 @@ private fun OnboardingChoiceGrid(
                         .weight(1f)
                         .heightIn(min = 88.dp)
                         .then(
-                            if (isSelected) Modifier.sinemaRaised(shape, SinemaRaise.Card, tint = accent).border(1.5.dp, accent.copy(0.7f), shape)
+                            if (isSelected) Modifier.sinemaRaised(shape, SinemaRaise.Card, tint = accent).sinemaSoftRing(accent.copy(0.7f), shape)
                             else Modifier.sinemaCard(theme, shape)
                         )
                         .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })

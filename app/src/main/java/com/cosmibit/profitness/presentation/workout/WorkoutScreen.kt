@@ -852,7 +852,7 @@ private fun SkippedProgramNotice() {
             .padding(horizontal = 24.dp, vertical = 24.dp)
             .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(accent.copy(0.08f))
-            .border(1.dp, accent.copy(0.30f), RoundedCornerShape(SinemaRadius.R16))
+            .sinemaSoftRing(accent.copy(0.30f), RoundedCornerShape(SinemaRadius.R16))
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import androidx.compose.foundation.layout.navigationBars
@@ -950,7 +951,7 @@ private fun LeaderboardEntryRow(rank: Int = 0, entry: ChallengeLeaderboardEntry,
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
-            .then(if (highlight) Modifier.border(1.dp, accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
+            .then(if (highlight) Modifier.sinemaSoftRing(accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

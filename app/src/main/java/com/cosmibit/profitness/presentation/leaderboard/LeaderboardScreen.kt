@@ -276,8 +276,8 @@ private fun PodiumCard(row: LeaderboardRow, tab: LeaderboardTab, theme: AppTheme
         modifier = modifier
             .sinemaCard(theme, shape)
             .then(
-                if (row.isMe) Modifier.border(1.5.dp, accent, shape)   // kendi sıran: c1 kenar
-                else if (first) Modifier.border(1.5.dp, gold, shape) else Modifier
+                if (row.isMe) Modifier.sinemaSoftRing(accent, shape)   // kendi sıran: c1 kenar
+                else if (first) Modifier.sinemaSoftRing(gold, shape) else Modifier
             )
             .padding(horizontal = 8.dp)
             .padding(top = if (first) 22.dp else 16.dp, bottom = if (first) 22.dp else 16.dp),
@@ -366,7 +366,7 @@ private fun LeaderboardRowItem(
         modifier = modifier
             .fillMaxWidth()
             .sinemaCard(theme, shape)
-            .then(if (me) Modifier.border(1.5.dp, accent, shape) else Modifier)   // kendi sıran: c1 kenar
+            .then(if (me) Modifier.sinemaSoftRing(accent, shape) else Modifier)   // kendi sıran: c1 kenar
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

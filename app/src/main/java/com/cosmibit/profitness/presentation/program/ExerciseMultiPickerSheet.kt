@@ -260,11 +260,7 @@ fun ExerciseMultiPickerSheet(
                                         if (isSelected) accent
                                         else Color.Transparent
                                     )
-                                    .border(
-                                        1.5.dp,
-                                        if (isSelected) accent else theme.stroke,
-                                        RoundedCornerShape(6.dp)
-                                    ),
+                                    .sinemaSoftRing(if (isSelected) accent else theme.stroke, RoundedCornerShape(6.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (isSelected) {

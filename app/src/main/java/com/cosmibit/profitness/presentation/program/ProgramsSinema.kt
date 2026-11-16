@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Bedtime
@@ -251,7 +252,7 @@ private fun TodayPanel(info: ProgramTodayInfo, hue: Color) {
                 edgeColors = listOf(hue.copy(0.75f), hue.copy(0.12f)), glow = hue.copy(0.25f))
             .drawBehind {
                 // sol kenarda kısa dikey program şeridi
-                drawRoundRect(hue, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * 0.3f), size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height * 0.4f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Transparent, 0.5f to hue.copy(0.85f), 1f to Color.Transparent, startY = size.height * 0.2f, endY = size.height * 0.8f), topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * 0.2f), size = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height * 0.6f))
             }
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
@@ -459,7 +460,7 @@ fun SavedProgramCard(
     Box(
         Modifier.width(226.dp).height(288.dp)
             .sinemaRaised(shape, SinemaRaise.Card)
-            .then(if (program.isActive) Modifier.border(2.dp, coverHueFor(program.name), shape) else Modifier)
+            .then(if (program.isActive) Modifier.sinemaSoftRing(coverHueFor(program.name), shape) else Modifier)
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize()) {
