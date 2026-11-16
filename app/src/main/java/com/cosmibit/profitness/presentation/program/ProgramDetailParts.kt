@@ -85,12 +85,12 @@ internal fun ProgramBigStats(items: List<Pair<String, String>>) {
         items.forEachIndexed { i, (value, label) ->
             val tint = tints[i % tints.size]
             Column(
-                Modifier.weight(1f).fillMaxHeight().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = tint).padding(horizontal = 12.dp, vertical = 14.dp)
+                Modifier.weight(1f).fillMaxHeight().then(if (i == 0) Modifier.sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Card, fill = theme.accentHi) else Modifier.sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = tint)).padding(horizontal = 12.dp, vertical = 14.dp)
             ) {
-                Icon(icons[i % icons.size], null, tint = lerp(tint, Color.White, 0.35f), modifier = Modifier.size(20.dp))
+                Icon(icons[i % icons.size], null, tint = if (i == 0) theme.effectiveOnAccentColor else lerp(tint, Color.White, 0.35f), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.height(8.dp))
-                Text(value, color = Sinema.text(theme), fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false)
-                Text(label, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(value, color = if (i == 0) theme.effectiveOnAccentColor else Sinema.text(theme), fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false)
+                Text(label, color = if (i == 0) theme.effectiveOnAccentColor.copy(0.75f) else Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }

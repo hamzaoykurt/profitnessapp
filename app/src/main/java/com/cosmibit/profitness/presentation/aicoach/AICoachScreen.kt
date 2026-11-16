@@ -248,7 +248,7 @@ fun AICoachScreen(
                                 else -> androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f)
                             }
                             SinemaCapsule(
-                                modifier = Modifier.weight(1f), tint = chipTint, fillColor = if (chipIdx == 0) theme.accentHi else null,
+                                modifier = Modifier.weight(1f), tint = chipTint,
                                 onClick = { inputText = chip }, enabled = !state.isLoading,
                                 height = 40.dp, shape = RoundedCornerShape(SinemaRadius.R20),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
@@ -704,7 +704,7 @@ private fun SanctuaryInput(
     val responsive = rememberResponsiveLayoutInfo()
     val sendActive = value.isNotBlank() && !isTyping
     SinemaCapsule(
-        modifier = Modifier.fillMaxWidth(), tint = theme.accentHi,
+        modifier = Modifier.fillMaxWidth(), fillColor = theme.accentHi,
         height = 52.dp, shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp)
     ) {
@@ -712,15 +712,15 @@ private fun SanctuaryInput(
             if (value.isEmpty()) {
                 Text(
                     theme.t("AI Koç'a bir şey sor…", "Ask AI Coach anything…"),
-                    color = Color.White.copy(0.6f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, maxLines = 1,
+                    color = theme.effectiveOnAccentColor.copy(0.62f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
-                textStyle = TextStyle(color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.Medium),
-                cursorBrush = SolidColor(accent),
+                textStyle = TextStyle(color = theme.effectiveOnAccentColor, fontSize = SinemaType.Body, fontWeight = FontWeight.Medium),
+                cursorBrush = SolidColor(theme.effectiveOnAccentColor),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
                 maxLines = if (responsive.isShortScreen) 3 else 4,
@@ -735,12 +735,11 @@ private fun SanctuaryInput(
             Modifier
                 .size(38.dp)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
-                .clip(CircleShape)
-                .sinemaSolid(accent)
+                .sinemaRaised(CircleShape, SinemaRaise.Mini)
                 .clickable(enabled = sendActive, interactionSource = src, indication = null, role = Role.Button, onClick = onSend),
             contentAlignment = Alignment.Center
         ) {
-            Icon(SinemaIcons.Send, theme.t("Gönder", "Send"), tint = theme.effectiveOnAccentColor, modifier = Modifier.size(18.dp))
+            Icon(SinemaIcons.Send, theme.t("Gönder", "Send"), tint = if (sendActive) accent else Sinema.textSecondary(theme), modifier = Modifier.size(18.dp))
         }
     }
 }

@@ -743,15 +743,15 @@ private fun SelectableStoreCard(
         .alpha(if (enabled) 1f else 0.5f)
         .sinemaClickable(onClick = onSelect, enabled = enabled, scale = 0.98f, role = androidx.compose.ui.semantics.Role.RadioButton)
     Row(
-        modifier = (if (selected) base.clip(shape).background(theme.accentSoft).border(1.dp, accent.copy(0.55f), shape)
+        modifier = (if (selected) base.sinemaRaised(shape, SinemaRaise.Card, fill = theme.accentHi)
         else base.sinemaCard(theme, shape)).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            Modifier.size(20.dp).border(1.5.dp, if (selected) accent else Sinema.textSecondary(theme), CircleShape),
+            Modifier.size(20.dp).border(1.5.dp, if (selected) theme.effectiveOnAccentColor else Sinema.textSecondary(theme), CircleShape),
             contentAlignment = Alignment.Center
-        ) { if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(accent)) }
+        ) { if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(theme.effectiveOnAccentColor)) }
         content()
     }
 }
@@ -765,8 +765,8 @@ private fun PlanOfferCard(
     theme: AppThemeState,
     onSelect: () -> Unit
 ) {
-    val textMain = Sinema.text(theme)
-    val textSub = Sinema.textSecondary(theme)
+    val textMain = if (selected) theme.effectiveOnAccentColor else Sinema.text(theme)   // seçili = dolu mercan zemin: koyu metin
+    val textSub = if (selected) theme.effectiveOnAccentColor.copy(0.72f) else Sinema.textSecondary(theme)
     val yearly = isYearly && tier.discountBadge.isNotEmpty()
     val price = if (yearly) tier.yearlyPrice else tier.monthlyPrice
     val period = when {
@@ -778,9 +778,9 @@ private fun PlanOfferCard(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
-                if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme)
-                else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme) }
-                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme, hi = false)
+                if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme, onFill = selected)
+                else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme, onFill = selected) }
+                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme, hi = false, onFill = selected)
             }
             Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
@@ -798,12 +798,12 @@ private fun sentenceCase(s: String): String = s.lowercase().replaceFirstChar { i
 
 /** Nötr cam rozet. */
 @Composable
-private fun StoreChip(text: String, theme: AppThemeState, hi: Boolean = true) {
+private fun StoreChip(text: String, theme: AppThemeState, hi: Boolean = true, onFill: Boolean = false) {
     Box(
-        Modifier.height(22.dp).clip(CircleShape).background(Color.White.copy(0.10f)).padding(horizontal = 8.dp),
+        Modifier.height(22.dp).clip(CircleShape).background(if (onFill) Color.Black.copy(0.14f) else Color.White.copy(0.10f)).padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (hi) theme.accentHiTextColor else Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = if (onFill) theme.effectiveOnAccentColor else if (hi) theme.accentHiTextColor else Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 

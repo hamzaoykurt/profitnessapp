@@ -71,47 +71,85 @@ fun SinemaTypeCover(
     }
 }
 
-/** Program / etkinlik türü: kapak rengi + ikonu bu tek tablodan gelir (yalnız kapaklarda; UI geneline sızmaz). */
+/**
+ * Program / etkinlik türü: kapak rengi + ikonu bu tek tablodan gelir (yalnız kapaklarda; UI geneline sızmaz).
+ * FİTNESS ailesi (Strength mercan / Cardio pembe / Core indigo) varsayılandır; spor türleri yalnız başlıkta/etiketinde spor adı geçince.
+ */
 enum class CoverType(val hue: Color, val icon: () -> ImageVector) {
-    Football(Color(0xFF4ADE80), { Icons.Rounded.SportsSoccer }),
-    Tennis(Color(0xFFC6F135), { Icons.Rounded.SportsTennis }),
-    Swim(Color(0xFF38BDF8), { Icons.Rounded.Pool }),
-    Run(Color(0xFFFFB938), { Icons.Rounded.DirectionsRun }),
-    Bike(Color(0xFF2DD4BF), { Icons.Rounded.DirectionsBike }),
-    Combat(Color(0xFF94A3B8), { Icons.Rounded.SportsMma }),
-    Yoga(Color(0xFFC084FC), { Icons.Rounded.SelfImprovement }),
     Strength(Color(0xFFFF7A6E), { SinemaIcons.Dumbbell }),
     Cardio(Color(0xFFFF4D8D), { SinemaIcons.Flame }),
+    Core(Color(0xFF818CF8), { SinemaIcons.Bolt }),
+    Run(Color(0xFFFFB938), { Icons.Rounded.DirectionsRun }),
+    Walk(Color(0xFFD4A373), { Icons.Rounded.Hiking }),
+    Bike(Color(0xFF2DD4BF), { Icons.Rounded.DirectionsBike }),
+    Swim(Color(0xFF38BDF8), { Icons.Rounded.Pool }),
+    Rowing(Color(0xFF22D3EE), { Icons.Rounded.Rowing }),
+    Football(Color(0xFF4ADE80), { Icons.Rounded.SportsSoccer }),
     Basketball(Color(0xFFF97316), { Icons.Rounded.SportsBasketball }),
     Volleyball(Color(0xFF60A5FA), { Icons.Rounded.SportsVolleyball }),
+    Tennis(Color(0xFFC6F135), { Icons.Rounded.SportsTennis }),
+    Combat(Color(0xFF94A3B8), { Icons.Rounded.SportsMma }),
+    Yoga(Color(0xFFC084FC), { Icons.Rounded.SelfImprovement }),
     Pilates(Color(0xFFE879F9), { Icons.Rounded.SportsGymnastics }),
-    Core(Color(0xFF818CF8), { SinemaIcons.Bolt })
+    Handball(Color(0xFFE11D48), { Icons.Rounded.SportsHandball }),
+    Rugby(Color(0xFFA16207), { Icons.Rounded.SportsRugby }),
+    Cricket(Color(0xFF65A30D), { Icons.Rounded.SportsCricket }),
+    Golf(Color(0xFF059669), { Icons.Rounded.SportsGolf }),
+    Baseball(Color(0xFFDC2626), { Icons.Rounded.SportsBaseball }),
+    Ski(Color(0xFFF1F5F9), { Icons.Rounded.DownhillSkiing }),
+    Surf(Color(0xFF0EA5E9), { Icons.Rounded.Surfing })
 }
 
-private val GeneralTypes = listOf(CoverType.Strength, CoverType.Cardio, CoverType.Run, CoverType.Yoga, CoverType.Bike, CoverType.Strength, CoverType.Swim, CoverType.Core)
+/** Anahtar kelime tablosu (ASCII-normalize; "=" ile başlayan tam jeton, diğerleri jeton öneki). Sıra = öncelik. */
+private val SportKeywords: List<Pair<CoverType, List<String>>> = listOf(
+    CoverType.Football to listOf("futbol", "football", "soccer"),
+    CoverType.Basketball to listOf("basket"),
+    CoverType.Volleyball to listOf("voleybol", "volley"),
+    CoverType.Tennis to listOf("tenis", "tennis", "badminton", "padel", "squash", "raket"),
+    CoverType.Rowing to listOf("kurek", "rowing", "=row", "=erg", "kano", "kayaking", "canoe"),
+    CoverType.Swim to listOf("yuzme", "yuzucu", "swim", "havuz", "=pool"),
+    CoverType.Surf to listOf("surf"),
+    CoverType.Ski to listOf("kayak", "ski", "snowboard"),
+    CoverType.Bike to listOf("bisiklet", "cycl", "bike", "spinning", "pedal"),
+    CoverType.Run to listOf("kosu", "kosma", "running", "runner", "=run", "jog", "maraton", "marathon", "sprint"),
+    CoverType.Walk to listOf("yuruyus", "yurume", "walking", "=walk", "hiking", "trekking", "=trek", "tirmanis", "climbing"),
+    CoverType.Combat to listOf("boks", "=box", "boxing", "kickbox", "dovus", "=mma", "muay", "judo", "karate", "taekwondo", "gures", "wrestl", "jiu", "martial", "krav"),
+    CoverType.Pilates to listOf("pilates", "jimnastik", "gymnast", "dans", "dance", "balet", "ballet"),
+    CoverType.Yoga to listOf("yoga", "esnek", "stretch", "mobilit", "flexib", "meditasyon"),
+    CoverType.Handball to listOf("hentbol", "handball"),
+    CoverType.Rugby to listOf("ragbi", "rugby"),
+    CoverType.Cricket to listOf("kriket", "cricket"),
+    CoverType.Golf to listOf("golf"),
+    CoverType.Baseball to listOf("beyzbol", "baseball")
+)
 
-private fun hasAny(k: String, vararg w: String) = w.any { it in k }
+/** İkinci öncelik: kategori / fitness alt türleri (spor adı yoksa). Eşleşmeyen HER şey Strength (fitness mercan + dambıl). */
+private val CategoryKeywords: List<Pair<CoverType, List<String>>> = listOf(
+    CoverType.Cardio to listOf("hiit", "kardiyo", "cardio", "crossfit", "kondisyon", "conditioning", "dayaniklilik", "endurance", "aerobik", "aerobic", "tabata"),
+    CoverType.Core to listOf("=core", "karin", "=abs")
+)
 
-/** Anahtar (kategori / etiket / başlık; TR+EN) -> tür. Eşleşmezse başlık hash'i ile tür (aynı başlık hep aynı tür). */
-fun coverTypeFor(key: String?): CoverType {
-    val k = key.orEmpty().lowercase()
-    return when {
-        hasAny(k, "futbol", "football", "soccer") -> CoverType.Football
-        hasAny(k, "tenis", "tennis", "raket", "badminton", "padel") -> CoverType.Tennis
-        hasAny(k, "yüz", "swim", "pool", "havuz") -> CoverType.Swim
-        hasAny(k, "bisiklet", "cycl", "bike", "spinning") -> CoverType.Bike
-        hasAny(k, "koş", "run", "jog", "maraton", "marathon", "yürü", "walk") -> CoverType.Run
-        hasAny(k, "boks", "box", "dövüş", "mma", "muay", "kick", "karate", "güreş", "wrestl", "martial") -> CoverType.Combat
-        hasAny(k, "pilates") -> CoverType.Pilates
-        hasAny(k, "yoga", "esnek", "mobil", "stretch", "flex") -> CoverType.Yoga
-        hasAny(k, "basket") -> CoverType.Basketball
-        hasAny(k, "voley", "volley") -> CoverType.Volleyball
-        hasAny(k, "kardiyo", "cardio", "hiit", "dayan", "endur", "crossfit", "hibrit", "hybrid", "karma") -> CoverType.Cardio
-        hasAny(k, "core", "karın", "abs") -> CoverType.Core
-        hasAny(k, "kuvvet", "strength", "halter", "weight", "göğüs", "sırt", "bacak", "omuz", "kol", "chest", "back", "leg", "shoulder", "arm", "kas", "muscle", "bulk") -> CoverType.Strength
-        k.isBlank() -> CoverType.Strength   // bilinmeyen/boş = fitness mercan
-        else -> GeneralTypes[(k.hashCode() and 0x7fffffff) % GeneralTypes.size]   // eşleşmeyen başlık: genel türler arası (kartlar tek renk olmasın)
+private fun normalizeCoverKey(s: String): String = buildString {
+    for (ch in s.lowercase(java.util.Locale.ROOT)) {
+        when (ch) {
+            'ı' -> append('i'); 'ş' -> append('s'); 'ğ' -> append('g'); 'ü' -> append('u'); 'ö' -> append('o'); 'ç' -> append('c')
+            '\u0307' -> {}   // İ -> i + birleşik nokta
+            else -> append(ch)
+        }
     }
+}
+
+private fun matches(token: String, kw: String) = if (kw.startsWith("=")) token == kw.substring(1) else token.startsWith(kw)
+
+/**
+ * Anahtar (başlık + etiketler + kategori; TR+EN) -> tür. Öncelik: 1) spor adı (başlıktaki ilk eşleşen jeton), 2) kategori (kardiyo/core),
+ * 3) hepsi değilse FİTNESS = Strength. Hash / rastgele atama YOK. "Atletik / Temel / Hibrit / Güncellenmiş Antrenman Programı" spor değildir.
+ */
+fun coverTypeFor(key: String?): CoverType {
+    val tokens = normalizeCoverKey(key.orEmpty()).split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
+    for (t in tokens) SportKeywords.firstOrNull { (_, kws) -> kws.any { matches(t, it) } }?.let { return it.first }
+    for (t in tokens) CategoryKeywords.firstOrNull { (_, kws) -> kws.any { matches(t, it) } }?.let { return it.first }
+    return CoverType.Strength
 }
 
 /** Kapak tek rengi (türe göre; opak düz yüzey için). */
