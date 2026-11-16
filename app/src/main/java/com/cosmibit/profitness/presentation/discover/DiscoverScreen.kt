@@ -38,7 +38,7 @@ import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.core.ui.SinemaLayout
@@ -395,7 +395,7 @@ private fun SharedProgramDetailScreen(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             description = theme.t("Geri", "Back"),
             onClick = onBack, selected = false, size = 48.dp,
-            modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 12.dp)
+            modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 12.dp), glass = true
         )
 
         // Sabit UYGULA: arkası yumuşak geçiş
@@ -438,7 +438,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 }
         ) {
             SinemaTypeCover(
-                icon = coverIconFor(program.tags.firstOrNull()), glow = coverGlowFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
+                icon = coverIconFor(program.tags.firstOrNull()), hue = coverHueFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
                 ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp)
             )
         }
@@ -478,17 +478,17 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 Text(meta.sinemaUpper(theme), style = Sinema.Label, color = Color.White.copy(0.78f), modifier = Modifier.padding(top = 4.dp))
             }
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SinemaCapsule(selected = program.isLikedByMe, onClick = onLike, height = 48.dp) { fg ->
+                SinemaCapsule(selected = program.isLikedByMe, onClick = onLike, height = 48.dp, glass = true) { fg ->
                     Icon(if (program.isLikedByMe) Icons.Rounded.Favorite else SinemaIcons.Heart, theme.t("Beğen", "Like"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(countFormat.format(program.likesCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
-                SinemaCapsule(selected = program.isSavedByMe, onClick = onSave, height = 48.dp) { fg ->
+                SinemaCapsule(selected = program.isSavedByMe, onClick = onSave, height = 48.dp, glass = true) { fg ->
                     Icon(if (program.isSavedByMe) Icons.Rounded.Bookmark else SinemaIcons.Bookmark, theme.t("Kaydet", "Save"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(countFormat.format(program.savesCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
                 }
-                SinemaCapsule(height = 48.dp) { fg ->
+                SinemaCapsule(height = 48.dp, glass = true) { fg ->
                     Icon(SinemaIcons.Download, theme.t("Uygulanma sayısı", "Applied count"), tint = fg, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(countFormat.format(program.downloadsCount), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold)
@@ -738,7 +738,7 @@ private fun SinemaPhotoCard(
             .sinemaCard(theme, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), glow = coverGlowFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(tag), hue = coverHueFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 340.dp).padding(16.dp),
             verticalArrangement = Arrangement.Bottom
@@ -814,7 +814,7 @@ private fun SubListHeader(
         SinemaCapsuleIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             description = theme.t("Akışa dön", "Back to feed"),
-            onClick = onBack, selected = false, size = 48.dp
+            onClick = onBack, selected = false, size = 48.dp, glass = true
         )
         Spacer(Modifier.width(12.dp))
         Text(
@@ -929,7 +929,7 @@ private fun MySharedProgramsList(
                 SinemaCapsuleIconButton(
                     icon = SinemaIcons.Plus,
                     description = theme.t("Program paylaş", "Share program"),
-                    onClick = onStartShare, selected = true, size = 48.dp
+                    onClick = onStartShare, selected = true, size = 48.dp, glass = true
                 )
             }
         }
@@ -1131,7 +1131,7 @@ private fun DiscoverTopControls(
                 description = theme.t("Kaydedilenler ve paylaşımlarım", "Saved and my shares"),
                 onClick = onOpenMenu,
                 selected = programsSub != ProgramsSubTab.Community,
-                size = 48.dp
+                size = 48.dp, glass = true
             )
         }
     }
@@ -1270,7 +1270,7 @@ private fun ProgramPosterCard(
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), glow = coverGlowFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(tag), hue = coverHueFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

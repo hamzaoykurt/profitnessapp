@@ -235,6 +235,74 @@ fun Modifier.sinemaCapsuleGlass(
         }
 }
 
+/** [sinemaRaised] seviyesi: Card = kart/blok, Mini = çip / ikon diski / segment (aynı dil, düşük kontrast). */
+enum class SinemaRaise { Card, Mini }
+
+/**
+ * YÜKSELTİLMİŞ BLOK (cam OLMAYAN yüzeyler; tek yer; KALAN-ISLER 2a): dikey gradyan dolgu #22252D -> #16181D,
+ * 1.5dp GRADYAN kenar (sol-üst beyaz .18 -> orta .05 -> sağ-alt .02), üst iç parlama 1dp (yatayda sönümlü; [accent] verilirse c2 .10),
+ * alt iç gölge, iki katman dış gölge (yumuşak + temas). Basılma ölçeği (.98) çağıranın sinemaClickable'ından gelir.
+ * [fill]: seçili/dolu hal (düz renk; gradyan yerine). Mini seviyede aynı dil, düşük kontrast, küçük gölge.
+ */
+fun Modifier.sinemaRaised(
+    shape: Shape,
+    level: SinemaRaise = SinemaRaise.Card,
+    accent: Color? = null,
+    fill: Color? = null
+): Modifier {
+    val mini = level == SinemaRaise.Mini
+    return this
+        .drawWithCache {
+            val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
+            val path = shapePath(shape, size, layoutDirection, this)
+            fun paintOf(blur: Dp, dy: Dp, a: Float) = Paint().asFrameworkPaint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.TRANSPARENT
+                setShadowLayer(blur.toPx(), 0f, dy.toPx(), Color.Black.copy(a).toArgb())
+            }
+            val soft = paintOf(if (mini) 12.dp else 24.dp, if (mini) 5.dp else 10.dp, if (mini) 0.30f else 0.35f)
+            val contact = paintOf(if (mini) 3.dp else 4.dp, if (mini) 1.dp else 2.dp, if (mini) 0.40f else 0.50f)
+            onDrawBehind {
+                clipPath(path, ClipOp.Difference) {
+                    drawIntoCanvas { c ->
+                        c.nativeCanvas.drawPath(androidPath, soft)
+                        c.nativeCanvas.drawPath(androidPath, contact)
+                    }
+                }
+            }
+        }
+        .clip(shape)
+        .drawWithCache {
+            val w = size.width
+            val h = size.height
+            val path = shapePath(shape, size, layoutDirection, this)
+            val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
+            val top = if (mini) Color(0xFF1F2229) else Color(0xFF22252D)
+            val bottom = if (mini) Color(0xFF181A20) else Color(0xFF16181D)
+            val fillBrush: Brush = if (fill != null) androidx.compose.ui.graphics.SolidColor(fill)
+                else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
+            val edgeBrush = Brush.linearGradient(
+                0f to Color.White.copy(if (mini) 0.14f else 0.18f), 0.5f to Color.White.copy(0.05f), 1f to Color.White.copy(0.02f),
+                start = Offset.Zero, end = Offset(w, h)
+            )
+            val glowColor = (accent ?: Color.White).copy(if (fill != null) 0.18f else 0.10f)
+            val topGlow = Brush.horizontalGradient(
+                0f to Color.Transparent, 0.2f to glowColor, 0.8f to glowColor, 1f to Color.Transparent
+            )
+            val innerH = (if (mini) 8.dp else 16.dp).toPx().coerceAtMost(h)
+            val inner = Brush.verticalGradient(
+                0f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.14f else 0.18f), startY = h - innerH, endY = h
+            )
+            val edgeStroke = Stroke(3.dp.toPx())   // 1.5dp görünür: dış yarısı clip ile kesilir
+            onDrawBehind {
+                drawRect(fillBrush)
+                drawRect(inner, topLeft = Offset(0f, h - innerH), size = Size(w, innerH))
+                clipPath(shifted, ClipOp.Difference) { drawPath(path, topGlow) }
+                drawPath(path, edgeBrush, style = edgeStroke)
+            }
+        }
+}
+
 /** Eski kapsül varsayılan kenarı; verilirse yeni degrade kenar kullanılır. */
 private val LegacyGlassEdge = Color.White.copy(0.18f)
 

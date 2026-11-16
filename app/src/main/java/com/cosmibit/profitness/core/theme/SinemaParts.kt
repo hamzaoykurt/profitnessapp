@@ -122,6 +122,8 @@ fun SinemaScene(modifier: Modifier = Modifier) = SinemaBackdrop(modifier)
  * - `light`: geriye uyum için durur, YOK SAYILIR (tek koyu tema).
  * - Tıklanabilirken dokunma hedefi ≥48dp (görsel boyut aynı; minimumInteractiveComponentSize).
  * - `selectable`: seçilebilir kullanım (filtre/segment) — `selected` erişilebilirlik semantiği yayınlanır.
+ * - `glass`: true = cam C (YALNIZ foto/video/renkli kapak üstü, SinemaBackdrop üst bölgesi, yüzen menü/zamanlayıcı/toast);
+ *   false (varsayılan) = yükseltilmiş mini blok ([sinemaRaised] Mini; düz siyah zemin üstü). Cam içinde cam yok: cam yüzey içindeki kapsül glass=false.
  */
 @Composable
 fun SinemaCapsule(
@@ -138,11 +140,15 @@ fun SinemaCapsule(
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
     selectable: Boolean = false,
+    glass: Boolean = false,
+    /** Yumuşak mercan dolgu (c2 α.16 + açık mercan ön plan): bilgi çipi / ikincil düğme. Yalnız cam değil + seçili değil iken. */
+    soft: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
+    val softOn = soft && !glass && !selected
+    val fg = if (selected) theme.effectiveOnAccentColor else if (softOn) theme.accentHiTextColor else Sinema.Text
     val src = remember { MutableInteractionSource() }
     val haptic = LocalHapticFeedback.current
     Row(
@@ -150,10 +156,10 @@ fun SinemaCapsule(
             .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .heightIn(min = height)
             .then(if (onClick != null && enabled) Modifier.sinemaPressScale(src) else Modifier)
-            .sinemaCapsuleGlass(
-                shape,
-                fill = if (selected) accent else null,
-                edge = edge
+            .then(
+                if (glass) Modifier.sinemaCapsuleGlass(shape, fill = if (selected) accent else null, edge = edge)
+                else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (selected) accent else if (softOn) softHiFill(theme) else null)
+                    .then(if (edge != null && !selected) Modifier.border(1.dp, edge, shape) else Modifier)
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .then(
@@ -179,11 +185,14 @@ fun SinemaPill(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     description: String? = null,
+    glass: Boolean = false,
+    /** Tıklanmayan bilgi çipi varsayılanı yumuşak mercan; tıklanabilir hap nötr. */
+    soft: Boolean = onClick == null,
     content: @Composable RowScope.() -> Unit
 ) {
     SinemaCapsule(
         modifier.then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
-        onClick = onClick, height = 32.dp, shape = CircleShape,
+        onClick = onClick, height = 32.dp, shape = CircleShape, glass = glass, soft = soft,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
     ) { content() }
 }
@@ -202,20 +211,25 @@ fun SinemaCapsuleIconButton(
     selected: Boolean = true,
     enabled: Boolean = true,
     size: Dp = 38.dp,
-    @Suppress("UNUSED_PARAMETER") light: Boolean = false
+    @Suppress("UNUSED_PARAMETER") light: Boolean = false,
+    /** true = cam (yalnız foto/video/kapak üstü); false = yükseltilmiş mini disk. */
+    glass: Boolean = false,
+    /** Seçili olmayan, cam olmayan ikon düğme yumuşak mercan dolgu alır (ikincil düğme). */
+    soft: Boolean = true
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val fg = if (selected) theme.effectiveOnAccentColor else Sinema.Text
+    val softOn = soft && !glass && !selected
+    val fg = if (selected) theme.effectiveOnAccentColor else if (softOn) theme.accentHiTextColor else Sinema.Text
     val src = remember { MutableInteractionSource() }
     Box(
         modifier
             .minimumInteractiveComponentSize()
             .size(size)
             .then(if (enabled) Modifier.sinemaPressScale(src, pressedScale = 0.92f) else Modifier)
-            .sinemaCapsuleGlass(
-                CircleShape,
-                fill = if (selected) accent else null
+            .then(
+                if (glass) Modifier.sinemaCapsuleGlass(CircleShape, fill = if (selected) accent else null)
+                else Modifier.sinemaRaised(CircleShape, SinemaRaise.Mini, fill = if (selected) accent else if (softOn) softHiFill(theme) else null)
             )
             .clickable(interactionSource = src, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
@@ -270,11 +284,13 @@ fun SinemaGoButton(
     }
 }
 
-/** Nötr Sinema kartı: #15171C (opak) + 1dp beyaz .09 çizgi, vurgu tonu yok. */
-fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(24.dp)): Modifier = this
-    .clip(shape)
-    .background(Sinema.surface(theme))
-    .border(1.dp, Sinema.line(theme), shape)
+/** Yumuşak mercan dolgu (c2 α.16, #1A1D23 kart ortası üstü; opak): çip / ikon diski / ikincil düğme. */
+internal fun softHiFill(theme: AppThemeState): Color = androidx.compose.ui.graphics.lerp(Color(0xFF1A1D23), theme.accentHi, 0.16f)
+
+/** Nötr Sinema kartı = YÜKSELTİLMİŞ BLOK ([sinemaRaised]); tüm kartlar tek yerden bu stile bağlı. [accent] verilirse üst parlama c2 tonlu. */
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(24.dp), accent: Color? = null): Modifier =
+    sinemaRaised(shape, SinemaRaise.Card, accent)
 
 /**
  * Çizimdeki hap/segment düğmesi: pasif = cam C (beyaz ışık), aktif = seçili taş (dolu vurgu, glow yok). `content` aktif/pasif ön plan rengini alır.
@@ -289,10 +305,11 @@ fun SinemaChip(
     height: Dp = 32.dp,
     shape: Shape = CircleShape,
     selectable: Boolean = false,
+    glass: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     SinemaCapsule(
-        modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape,
+        modifier, selected = active, onClick = onClick, enabled = enabled, height = height, shape = shape, glass = glass,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center, selectable = selectable, content = content
     )

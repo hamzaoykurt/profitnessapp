@@ -921,7 +921,7 @@ private fun CancelPlanDialog(
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(

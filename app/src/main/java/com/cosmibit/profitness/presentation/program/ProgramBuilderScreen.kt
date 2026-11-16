@@ -6,7 +6,7 @@ import com.cosmibit.profitness.presentation.components.safeTopPadding
 import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import android.util.Base64
 import androidx.activity.compose.BackHandler
@@ -962,14 +962,14 @@ internal fun ProgramDetailShell(
                 // Kapak: ekran yüksekliğinin ~%45'i, durum çubuğunun altına uzanır
                 val coverHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp.coerceAtLeast(300.dp)
                 Box(Modifier.fillMaxWidth().height(coverHeight).clipToBounds()) {
-                    SinemaTypeCover(icon = coverIconFor(coverIconKey), glow = coverGlowFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
+                    SinemaTypeCover(icon = coverIconFor(coverIconKey), hue = coverHueFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
                     SinemaCapsuleIconButton(
                         icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         description = theme.t("Kapat", "Close"),
                         onClick = { if (!blocking) onDismiss() },
                         selected = false,
                         size = 48.dp,
-                        modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = 16.dp, top = 8.dp)
+                        modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = 16.dp, top = 8.dp), glass = true
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
                         Text(
@@ -1287,7 +1287,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     description = aiTheme.t("Geri", "Back"),
                     onClick = onBack,
                     selected = false,
-                    size = 48.dp
+                    size = 48.dp, glass = true
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
@@ -1430,7 +1430,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                             selectedFileError = null
                         },
                         selected = false,
-                        size = 48.dp
+                        size = 48.dp, glass = true
                     )
                 }
             }
@@ -2191,7 +2191,7 @@ private fun UnsavedChangesDialog(onSave: () -> Unit, onDiscard: () -> Unit, onKe
     val theme = LocalAppTheme.current
     androidx.compose.ui.window.Dialog(onDismissRequest = onKeepEditing) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(theme.t("Değişiklikler kaydedilsin mi?", "Save your changes?"), style = Sinema.Title, color = Sinema.text(theme))

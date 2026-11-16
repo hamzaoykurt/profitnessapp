@@ -93,7 +93,7 @@ import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.core.theme.SinemaType
 import com.cosmibit.profitness.core.theme.SinemaRadius
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import androidx.compose.ui.unit.DpOffset
 import com.cosmibit.profitness.domain.model.Program
@@ -170,7 +170,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
         ) {
             // Tipografik kapak (foto yok): yüzey + köşe ışığı + hayalet ikon; hero alt sönümü yukarıdaki maske ile
             SinemaTypeCover(
-                icon = coverIconFor(active?.name), glow = coverGlowFor(active?.name), modifier = Modifier.fillMaxSize(),
+                icon = coverIconFor(active?.name), hue = coverHueFor(active?.name), modifier = Modifier.fillMaxSize(),
                 ghostSize = 220.dp, ghostAlignment = Alignment.TopEnd, ghostOffset = DpOffset(56.dp, statusTop + 72.dp)
             )
         }
@@ -414,7 +414,7 @@ fun SavedProgramCard(
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SinemaTypeCover(icon = coverIconFor(program.name), glow = coverGlowFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
+            SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -540,7 +540,7 @@ fun ReadyProgramCard(
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SinemaTypeCover(icon = coverIconFor(iconKey), glow = coverGlowFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
+            SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,

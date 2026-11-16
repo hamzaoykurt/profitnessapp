@@ -92,7 +92,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -755,7 +755,7 @@ private fun ChallengeFilterBar(
         description = if (activeFilterCount > 0) theme.t("Filtreler · $activeFilterCount", "Filters · $activeFilterCount") else theme.t("Filtreler", "Filters"),
         onClick = { showFilters = true },
         selected = activeFilterCount > 0,
-        size = 44.dp
+        size = 44.dp, glass = true
     )
 
     if (showFilters) {
@@ -1021,7 +1021,7 @@ private fun ChallengeCard(
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), glow = coverGlowFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), hue = coverHueFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = if (featured) 440.dp else 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
@@ -1122,7 +1122,7 @@ private fun ChallengeCard(
                     }
                     c.isJoined -> SinemaCapsule(
                         Modifier.fillMaxWidth(), onClick = onToggle, enabled = !inFlight, height = 56.dp,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center, glass = true
                     ) { fg ->
                         if (inFlight) {
                             CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
@@ -1135,7 +1135,7 @@ private fun ChallengeCard(
                     // c1 ekranda tek dolgu (FAB): kart eylemi nötr cam + c1 ikon/metin
                     else -> SinemaCapsule(
                         Modifier.fillMaxWidth(), onClick = { if (!inFlight) onToggle() }, enabled = !inFlight, height = 56.dp,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center, glass = true
                     ) { _ ->
                         Icon(Icons.Rounded.Bolt, null, tint = accent, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))

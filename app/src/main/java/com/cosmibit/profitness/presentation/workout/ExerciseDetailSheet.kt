@@ -208,7 +208,7 @@ fun ExerciseDetailSheet(
                 onClick = onDismiss,
                 selected = false,
                 size = 44.dp,
-                modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = gutter, top = 8.dp)
+                modifier = Modifier.align(Alignment.TopStart).safeTopPadding().padding(start = gutter, top = 8.dp), glass = true
             )
 
             // ── Küçük cam bilgi kartı: ad + kas/ekipman çipleri + plan; yukarı çekince / dokununca panel açılır ──

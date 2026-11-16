@@ -650,7 +650,7 @@ private fun HowToPill(onClick: () -> Unit) {
     SinemaCapsule(
         onClick = onClick, height = 32.dp,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp), glass = true
     ) { fg ->
         Icon(Icons.Rounded.PlayCircle, contentDescription = null, tint = theme.accentHi, modifier = Modifier.size(16.dp))
         Text(
@@ -1301,7 +1301,7 @@ private fun DayPill(
     Box {
         SinemaCapsule(
             onClick = { open = !open }, height = 32.dp, shape = CircleShape,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp), glass = true
         ) { fg ->
             Text(selectedLabel, color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1)
             Spacer(Modifier.width(5.dp))

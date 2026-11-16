@@ -125,6 +125,6 @@ fun ExercisePlayButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         onClick = onClick,
         selected = false,
         size = 48.dp,
-        modifier = modifier
+        modifier = modifier, glass = true
     )
 }

@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.aicoach
 
+import com.cosmibit.profitness.core.theme.SinemaRaise
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -278,19 +280,19 @@ fun AICoachScreen(
                     Text("AI Koç", color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
-                SinemaPill(onClick = { viewModel.openHistory() }) {
+                SinemaPill(onClick = { viewModel.openHistory() }, glass = true) {
                     Icon(Icons.Rounded.History, theme.t("Geçmiş", "History"), tint = theme.accentHi, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = {
                     viewModel.startNewSession()
                     viewModel.initWelcome(strings.oracleWelcome)
-                }) {
+                }, glass = true) {
                     Icon(Icons.Rounded.Add, theme.t("Yeni Sohbet", "New Chat"), tint = theme.accentHi, modifier = Modifier.size(16.dp))
                 }
-                SinemaPill(onClick = { viewModel.openPreferences() }) {
+                SinemaPill(onClick = { viewModel.openPreferences() }, glass = true) {
                     Icon(Icons.Rounded.Settings, theme.t("Ayarlar", "Settings"), tint = Color.White, modifier = Modifier.size(16.dp))
                 }
-                SinemaPill(onClick = onNavigateToStore) {
+                SinemaPill(onClick = onNavigateToStore, glass = true) {
                     Icon(SinemaIcons.Bolt, null, tint = theme.accentHi, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
@@ -569,7 +571,7 @@ private fun SanctuaryMessage(
                 modifier = Modifier
                     .padding(top = 2.dp, end = 8.dp)
                     .size(30.dp)
-                    .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
+                    .sinemaRaised(CircleShape, SinemaRaise.Mini),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
@@ -589,7 +591,7 @@ private fun SanctuaryMessage(
                 // Glass bubble
                 Box(
                     modifier = Modifier
-                        .sinemaCapsuleGlass(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), blur = 16.dp)
+                        .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card)
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
                     SelectionContainer {
@@ -633,7 +635,7 @@ private fun SanctuaryMessage(
                     if (showProgramButton) {
                         Box(
                             modifier = Modifier
-                                .sinemaCapsuleGlass(CircleShape, blur = 16.dp)
+                                .sinemaRaised(CircleShape, SinemaRaise.Mini)
                                 .clickable(role = Role.Button) { onApplyProgram(msg) }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
@@ -897,7 +899,7 @@ private fun SanctuaryTypingIndicator() {
             modifier = Modifier
                 .padding(top = 2.dp, end = 8.dp)
                 .size(30.dp)
-                .sinemaCapsuleGlass(CircleShape, blur = 16.dp),
+                .sinemaRaised(CircleShape, SinemaRaise.Mini),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(14.dp))
@@ -905,7 +907,7 @@ private fun SanctuaryTypingIndicator() {
 
         Box(
             modifier = Modifier
-                .sinemaCapsuleGlass(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), blur = 16.dp)
+                .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card)
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             Row(

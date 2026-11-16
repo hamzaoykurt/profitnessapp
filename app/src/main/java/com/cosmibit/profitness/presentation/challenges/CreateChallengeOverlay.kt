@@ -20,7 +20,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -296,14 +296,14 @@ fun CreateChallengeOverlay(
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(Sinema.scrim(1f))
             ) {
-                SinemaTypeCover(icon = coverIconFor(sceneCategory), glow = coverGlowFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
+                SinemaTypeCover(icon = coverIconFor(sceneCategory), hue = coverHueFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
                 Column(
                     Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     SinemaCapsuleIconButton(
                         icon = Icons.Rounded.Close, description = theme.t("Kapat", "Close"),
-                        onClick = requestClose, selected = false, size = 44.dp
+                        onClick = requestClose, selected = false, size = 44.dp, glass = true
                     )
                     Column {
                         Text(

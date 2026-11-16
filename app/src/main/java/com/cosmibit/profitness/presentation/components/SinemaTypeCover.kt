@@ -11,8 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -24,13 +23,10 @@ import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.accentHi
 
-/** Kapak köşe ışığı: Kuvvet = c1, Kardiyo = c2, Esneklik = nötr, Hibrit/diğer = c1 + c2 (düşük alfa). */
-enum class CoverGlow { Strength, Cardio, Mobility, Hybrid }
-
 /**
  * Tipografik kapak: program / etkinlik / challenge yüzeyleri için ortak zemin (egzersiz fotoğrafı YOK;
- * görsel/video yalnız egzersizlerde). Yüzey + tek yönlü hafif accentSoft köşe ışığı + sağ-altta hayalet ikon.
- * Metinler tam okunur olduğundan foto perdesi gerekmez. Çizim: .ekip/mockup/uc-sayfa.html `.cover`/`.ghost`.
+ * görsel/video yalnız egzersizlerde). TEK renk, OPAK düz yüzey: #15171C üstüne [hue] %27 karışım; köşe gradyanı / çift ışık YOK.
+ * Sağ-altta hayalet ikon (hue açık, α.16). Metinler tam okunur olduğundan foto perdesi gerekmez.
  */
 @Composable
 fun SinemaTypeCover(
@@ -39,66 +35,36 @@ fun SinemaTypeCover(
     ghostSize: Dp = 160.dp,
     ghostAlignment: Alignment = Alignment.BottomEnd,
     ghostOffset: DpOffset = DpOffset(48.dp, 48.dp),
-    glow: CoverGlow = CoverGlow.Hybrid,
+    hue: Color = LocalAppTheme.current.accentColor,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
-    val theme = LocalAppTheme.current
-    val c1 = theme.accentColor
-    val c2 = theme.accentHi
-    // (köşe ışığı rengi, alfa) — ikinci ışık yalnız Hibrit'te sağ-alt köşede düşük alfa
-    val (primary, a1) = when (glow) {
-        CoverGlow.Strength -> c1 to 0.16f
-        CoverGlow.Cardio -> c2 to 0.16f
-        CoverGlow.Mobility -> Color.White to 0.06f
-        CoverGlow.Hybrid -> c1 to 0.11f
-    }
-    val ghostTint = when (glow) {
-        CoverGlow.Strength -> c1.copy(alpha = 0.07f)
-        CoverGlow.Cardio -> c2.copy(alpha = 0.08f)
-        CoverGlow.Mobility -> Color.White.copy(alpha = 0.05f)
-        CoverGlow.Hybrid -> Color.White.copy(alpha = 0.05f)
-    }
-    Box(
-        modifier.background(Sinema.Surface).clipToBounds()
-            .drawBehind {
-                // tek yön (sol-üst), lekesiz: radyal yerine geniş doğrusal sönüm
-                drawRect(
-                    Brush.linearGradient(
-                        0f to primary.copy(alpha = a1), 0.55f to Color.Transparent, 1f to Color.Transparent,
-                        start = androidx.compose.ui.geometry.Offset.Zero,
-                        end = androidx.compose.ui.geometry.Offset(size.width, size.height)
-                    )
-                )
-                if (glow == CoverGlow.Hybrid) {
-                    drawRect(
-                        Brush.linearGradient(
-                            0f to c2.copy(alpha = 0.09f), 0.5f to Color.Transparent, 1f to Color.Transparent,
-                            start = androidx.compose.ui.geometry.Offset(size.width, size.height),
-                            end = androidx.compose.ui.geometry.Offset(0f, 0f)
-                        )
-                    )
-                }
-            }
-    ) {
+    val surface = lerp(Sinema.Surface, hue, 0.27f)
+    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.16f)
+    Box(modifier.background(surface).clipToBounds()) {
         Icon(
-            icon, contentDescription = null, tint = ghostTint,
+            icon, contentDescription = null, tint = ghost,
             modifier = Modifier.align(ghostAlignment).offset(ghostOffset.x, ghostOffset.y).requiredSize(ghostSize)
         )
         content()
     }
 }
 
-/** Kategori / etiket anahtarından köşe ışığı (yoksa/diğer = Hibrit). coverIconFor ile aynı anahtar. */
-fun coverGlowFor(key: String?): CoverGlow {
+/**
+ * Kapak tek rengi (c1 amber | c2 mercan): Kuvvet = c1, Kardiyo / Esneklik = c2,
+ * Hibrit / bilinmeyen / boş = anahtarın (başlık) hash'i ile c1|c2 (aynı başlık hep aynı renk). coverIconFor ile aynı anahtar.
+ */
+@Composable
+fun coverHueFor(key: String?): Color {
+    val theme = LocalAppTheme.current
     val k = key.orEmpty().lowercase()
-    return when {
-        "kardiyo" in k || "cardio" in k || "koş" in k || "run" in k || "bisiklet" in k || "yüzme" in k || "dayan" in k || "endur" in k -> CoverGlow.Cardio
-        "esnek" in k || "mobil" in k || "stretch" in k || "yoga" in k || "pilates" in k || "flex" in k -> CoverGlow.Mobility
-        "hibrit" in k || "hybrid" in k || "karma" in k || "hiit" in k || "crossfit" in k -> CoverGlow.Hybrid
+    val useC2 = when {
+        "kardiyo" in k || "cardio" in k || "koş" in k || "run" in k || "bisiklet" in k || "yüzme" in k || "dayan" in k || "endur" in k ||
+            "esnek" in k || "mobil" in k || "stretch" in k || "yoga" in k || "pilates" in k || "flex" in k -> true
         "kuvvet" in k || "strength" in k || "göğüs" in k || "sırt" in k || "bacak" in k || "omuz" in k || "kol" in k ||
-            "chest" in k || "back" in k || "leg" in k || "shoulder" in k || "arm" in k || "core" in k || "karın" in k || "abs" in k -> CoverGlow.Strength
-        else -> CoverGlow.Hybrid
+            "chest" in k || "back" in k || "leg" in k || "shoulder" in k || "arm" in k || "core" in k || "karın" in k || "abs" in k -> false
+        else -> (k.hashCode() and 1) == 1   // Hibrit / boş: başlık hash'i
     }
+    return if (useC2) theme.accentHi else theme.accentColor
 }
 
 /** Kategori / etiket anahtarından hayalet ikon (mevcut Sinema ikon seti; yoksa dambıl). */

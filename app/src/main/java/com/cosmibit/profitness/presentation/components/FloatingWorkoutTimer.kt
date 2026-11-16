@@ -155,7 +155,7 @@ private fun TimerCapsule(
         height = 48.dp,
         light = light,
         contentPadding = PaddingValues(start = 16.dp, end = 4.dp),
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.Start, glass = true
     ) { fg ->
         if (timer.isDone) {
             Icon(Icons.Rounded.CheckCircle, null, tint = timeColor, modifier = Modifier.size(18.dp).graphicsLayer { scaleX = beat.value; scaleY = beat.value })

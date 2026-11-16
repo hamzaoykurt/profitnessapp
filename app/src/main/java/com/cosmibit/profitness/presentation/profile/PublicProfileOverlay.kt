@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.profile
 
+import com.cosmibit.profitness.core.theme.sinemaCardAccent
+import com.cosmibit.profitness.core.theme.accentHi
 import com.cosmibit.profitness.presentation.components.safeTopPadding
 import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
@@ -277,7 +279,7 @@ private fun ProfileContent(
             Spacer(Modifier.height(24.dp))
 
             Row(
-                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(20.dp),
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SinemaBigStat(profile.totalWorkouts.toString(), theme.t("Antrenman", "Workouts"), Modifier.weight(1f), size = 36)
@@ -288,7 +290,7 @@ private fun ProfileContent(
             Spacer(Modifier.height(12.dp))
 
             Row(
-                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(20.dp),
+                Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SinemaBigStat(profile.followersCount.toString(), theme.t("Takipçi", "Followers"), Modifier.weight(1f), size = 36)

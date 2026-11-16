@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -245,7 +246,7 @@ fun SinemaDialog(
     val theme = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(title, style = Sinema.Title, color = Sinema.text(theme))

@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -106,7 +107,7 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
-import com.cosmibit.profitness.presentation.components.coverGlowFor
+import com.cosmibit.profitness.presentation.components.coverHueFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.core.ui.SinemaFitText
@@ -236,7 +237,7 @@ fun ChallengeDetailOverlay(
                                                 description = theme.t("Menü", "Menu"),
                                                 onClick = { showOwnerMenu = true },
                                                 selected = false,
-                                                size = 44.dp
+                                                size = 44.dp, glass = true
                                             )
                                             OwnerActionMenu(
                                                 expanded = showOwnerMenu,
@@ -377,7 +378,7 @@ fun ChallengeDetailOverlay(
                     if (isChallengeEnded(c)) {
                         SinemaCapsule(
                             Modifier.fillMaxWidth(), height = 48.dp,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Center, glass = true
                         ) { fg ->
                             Text(theme.t("Etkinlik sona erdi", "Event ended"), color = fg.copy(0.8f), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
@@ -399,7 +400,7 @@ fun ChallengeDetailOverlay(
                         }
                         SinemaCapsule(
                             Modifier.fillMaxWidth(), onClick = action, enabled = !state.inFlight, height = 52.dp,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Center, glass = true
                         ) { fg ->
                             if (state.inFlight) {
                                 CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
@@ -577,7 +578,7 @@ private fun ChallengeHero(
                 )
             }
     ) {
-        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), glow = coverGlowFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 200.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 30.dp))
+        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), hue = coverHueFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 200.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 30.dp))
         Column(
             Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.SpaceBetween
@@ -585,7 +586,7 @@ private fun ChallengeHero(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AppBackButton(onClick = onBack, accent = accent, size = 48.dp)
                 Spacer(Modifier.weight(1f))
-                SinemaCapsule(height = 32.dp, shape = CircleShape, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
+                SinemaCapsule(height = 32.dp, shape = CircleShape, contentPadding = PaddingValues(horizontal = 12.dp), glass = true) { fg ->
                     Box(Modifier.size(6.dp).clip(CircleShape).background(if (c.isCompleted) theme.rewardGold else if (live) theme.accentHi else fg.copy(0.5f)))
                     Spacer(Modifier.width(6.dp))
                     Text(statusLabel, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -634,7 +635,7 @@ private fun SinemaCardDialog(onDismiss: () -> Unit, content: @Composable ColumnS
     val theme = LocalAppTheme.current
     Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).padding(24.dp),
+            Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(24.dp),
             content = content
         )
     }
