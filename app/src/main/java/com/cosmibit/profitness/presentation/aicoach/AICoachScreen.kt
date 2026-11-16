@@ -266,7 +266,7 @@ fun AICoachScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
-                                    Modifier.size(36.dp).clip(CircleShape).background(androidx.compose.ui.graphics.lerp(androidx.compose.ui.graphics.lerp(Sinema.Page, Color.White, 0.06f), rowTint, 0.22f)),
+                                    Modifier.size(36.dp).clip(CircleShape).background(androidx.compose.ui.graphics.lerp(androidx.compose.ui.graphics.lerp(Sinema.Page, Color.White, 0.06f), rowTint, 0.45f)),
                                     contentAlignment = Alignment.Center
                                 ) { Icon(rowIcon, null, tint = androidx.compose.ui.graphics.lerp(rowTint, Color.White, 0.35f), modifier = Modifier.size(20.dp)) }
                                 Spacer(Modifier.width(12.dp))

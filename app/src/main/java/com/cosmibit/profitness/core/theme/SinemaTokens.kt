@@ -21,7 +21,7 @@ object Sinema {
 
     // ── Tek koyu tema değerleri ────────────────────────────────────────────
     /** Zemin: nötr koyu (kart katmanları bundan türer; deneme: .ekip/kanit/zemin-*). */
-    val Page = Color(0xFF262523)
+    val Page = Color(0xFF1E1D1B)
     val Surface = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.02f)
     val Elevated = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.03f)
     val Text = Color(0xFFF4F5F7)

@@ -147,7 +147,7 @@ private fun RankRoadmapSection(
                 // rank kendi rengi: ulaşılan dolu disk, kilitli soluk renkli disk (tamamen gri değil)
                 Box(
                     Modifier.size(40.dp).clip(CircleShape)
-                        .background(if (isReached) color else androidx.compose.ui.graphics.lerp(Sinema.Surface, color, 0.22f)),
+                        .background(if (isReached) color else androidx.compose.ui.graphics.lerp(Sinema.Surface, color, 0.45f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isReached) Icon(Icons.Rounded.Star, null, tint = Color.Black.copy(0.75f), modifier = Modifier.size(20.dp))

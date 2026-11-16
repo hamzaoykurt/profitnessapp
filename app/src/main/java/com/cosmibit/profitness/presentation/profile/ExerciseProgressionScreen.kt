@@ -530,7 +530,7 @@ private fun ExerciseProgressionCard(
         ) {
             Box(
                 modifier = Modifier.size(48.dp).clip(CircleShape)
-                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, muscleHue, 0.24f)),
+                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, muscleHue, 0.45f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(muscleIcon, null, tint = androidx.compose.ui.graphics.lerp(muscleHue, Color.White, 0.35f), modifier = Modifier.size(24.dp))
@@ -577,7 +577,7 @@ private fun ExerciseProgressionCard(
                 if (isRecord) {
                     Text(
                         theme.t("REKOR", "PR"), color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.22f)).padding(horizontal = 8.dp, vertical = 1.dp)
+                        modifier = Modifier.clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.45f)).padding(horizontal = 8.dp, vertical = 1.dp)
                     )
                 } else {
                     Text(

@@ -2324,7 +2324,7 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
+                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.45f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Add, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(22.dp))
@@ -2394,7 +2394,7 @@ private fun ManualDayCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(if (rest) line else androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
+                    .background(if (rest) line else androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.45f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -2712,7 +2712,7 @@ private fun ExerciseEditDialog(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
+                        .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.45f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Edit, null, tint = accent, modifier = Modifier.size(18.dp))
@@ -2897,7 +2897,7 @@ private fun EditCounterField(
                 .size(44.dp)
                 .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement)
                 .clip(CircleShape)
-                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.24f)),
+                .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, accent, 0.45f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(18.dp))

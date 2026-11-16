@@ -320,13 +320,13 @@ private fun Modifier.sinemaRaisedImpl(
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
             val baseTop = surfaceTop ?: lerp(Sinema.Page, Color.White, if (mini) 0.14f else 0.16f)
             val baseBottom = surfaceBottom ?: lerp(Sinema.Page, Color.White, 0.07f)   // zeminden ayrışır (kontrast >= 1.15)
-            val tintL = tint?.let { lerp(it, Color.White, 0.22f) }   // açık ton: kahve/bordo üretmesin
-            val top = if (tintL != null) lerp(baseTop, tintL, if (mini) 0.12f else 0.06f) else baseTop
-            val bottom = if (tintL != null) lerp(baseBottom, tintL, if (mini) 0.04f else 0.015f) else baseBottom
+            val tintL = tint   // saf doygun ton (beyaz karışımı yok); alt kısım aynı hue koyu
+            val top = if (tintL != null) lerp(baseTop, tintL, if (mini) 0.34f else 0.24f) else baseTop
+            val bottom = if (tintL != null) lerp(baseBottom, lerp(tintL, Color.Black, 0.45f), if (mini) 0.30f else 0.22f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
-                0f to (tint?.let { lerp(it, Color.White, 0.55f) } ?: Color.White).copy(if (tint != null) 0.16f else 0.10f), 0.4f to Color.White.copy(0.025f), 1f to Color.Transparent,
+                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(if (tint != null) 0.30f else 0.10f), 0.4f to Color.White.copy(0.025f), 1f to Color.Transparent,
                 start = Offset.Zero, end = Offset(w, h)
             )
             val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.30f else if (tint != null) 0.20f else 0.12f).let { if (fill != null) it.copy(0.30f) else it }

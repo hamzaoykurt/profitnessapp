@@ -259,7 +259,7 @@ fun SinemaDialog(
             // tonlu ikon diski (diyalog türünü gösterir)
             Box(
                 Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.24f)),
+                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.45f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(confirmIcon, null, tint = androidx.compose.ui.graphics.lerp(theme.accentHi, Color.White, 0.3f), modifier = Modifier.size(26.dp))
