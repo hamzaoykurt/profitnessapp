@@ -5,6 +5,7 @@
 
 package com.cosmibit.profitness.presentation.discover
 
+import androidx.compose.foundation.border
 import com.cosmibit.profitness.core.theme.SinemaRaise
 import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.accentHi
@@ -1273,6 +1274,7 @@ private fun ProgramPosterCard(
         Modifier.fillMaxWidth()
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
+            .then(if (isApplied) Modifier.border(2.dp, coverHueFor("$tag ${program.title}"), shape) else Modifier)
     ) {
         SinemaTypeCover(icon = coverIconFor("$tag ${program.title}"), hue = coverHueFor("$tag ${program.title}"), modifier = Modifier.matchParentSize(), ghostAlignment = Alignment.CenterEnd)
         Column(

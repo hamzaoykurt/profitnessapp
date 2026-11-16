@@ -56,8 +56,19 @@ fun SinemaTypeCover(
     // 3D yumuşak blok: tek renk hue; üst açık, alt koyu, üstte yayılan yumuşak parlama, altta iç gölge (keskin hat yok)
     BoxWithConstraints(
         modifier
-            .background(Brush.verticalGradient(0f to topC, 1f to bottomC))
+            .then(
+                if (underStatusBar) Modifier.background(Sinema.Page).drawBehind {
+                    // FULL-SCREEN hero: zemin sayfa rengi; tür rengi yalnız sağ-üstte küçük yumuşak ışık (≈300dp, α .16)
+                    drawRect(
+                        Brush.radialGradient(
+                            0f to hue.copy(alpha = 0.18f), 1f to Color.Transparent,
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, 0f), radius = 300.dp.toPx()
+                        )
+                    )
+                } else Modifier.background(Brush.verticalGradient(0f to topC, 1f to bottomC))
+            )
             .drawBehind {
+                if (underStatusBar) return@drawBehind
                 drawRect(
                     Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx().coerceAtMost(size.height)),
                     size = androidx.compose.ui.geometry.Size(size.width, 10.dp.toPx().coerceAtMost(size.height))

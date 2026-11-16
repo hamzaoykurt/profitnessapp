@@ -186,19 +186,20 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             )
         }
         if (active != null) {
+            val heroHue = coverHueFor(active.name)
             val workoutDays = active.days.count { !it.isRestDay }
             val totalExercises = active.days.sumOf { it.exercises.size }
             CompositionLocalProvider(LocalSinemaHaze provides null) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = statusTop + 16.dp, bottom = 46.dp)) {
                     // AKTİF PROGRAM çipi
                     Row(
-                        Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(Color.White.copy(0.14f)).padding(horizontal = 12.dp),
+                        Modifier.height(28.dp).sinemaRaised(RoundedCornerShape(SinemaRadius.R12), SinemaRaise.Mini, fill = heroHue).padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(SinemaIcons.Bolt, null, tint = Sinema.Text, modifier = Modifier.size(14.dp))
+                        Icon(SinemaIcons.Bolt, null, tint = Sinema.Ink, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Text,
+                            theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink,
                             fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
                         )
                     }
@@ -209,13 +210,15 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                         letterSpacing = (-0.01).em, lineHeight = 1.12.em, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(end = 40.dp)
                     )
+                    // başlık altı ince program renkli çizgi
+                    Box(Modifier.padding(top = 8.dp).width(48.dp).height(3.dp).clip(CircleShape).background(heroHue))
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, theme.t("$workoutDays gün", "$workoutDays days"))
-                        if (totalExercises > 0) HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, theme.t("$totalExercises egzersiz", "$totalExercises exercises"))
+                        HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, theme.t("$workoutDays gün", "$workoutDays days"), heroHue)
+                        if (totalExercises > 0) HeroInfoChip(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, theme.t("$totalExercises egzersiz", "$totalExercises exercises"), heroHue)
                     }
                     Spacer(Modifier.height(16.dp))
-                    if (today != null) TodayPanel(today)
+                    if (today != null) TodayPanel(today, heroHue)
                     SinemaGoButton(
                         label = theme.t("Başla", "Start"), icon = SinemaIcons.Play, onClick = onStart
                     )
@@ -227,9 +230,9 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
 
 /** Hero bilgi çipi: ikon + metin, yarı saydam beyaz hap. */
 @Composable
-private fun HeroInfoChip(icon: ImageVector, text: String) {
+private fun HeroInfoChip(icon: ImageVector, text: String, hue: Color) {
     Row(
-        Modifier.height(28.dp).clip(CircleShape).background(Color.White.copy(0.14f)).padding(horizontal = 10.dp),
+        Modifier.height(28.dp).clip(CircleShape).background(hue.copy(0.24f)).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = Color.White.copy(0.9f), modifier = Modifier.size(14.dp))
@@ -239,19 +242,24 @@ private fun HeroInfoChip(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun TodayPanel(info: ProgramTodayInfo) {
+private fun TodayPanel(info: ProgramTodayInfo, hue: Color) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     Column(
         Modifier.fillMaxWidth().padding(bottom = 14.dp)
-            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.20f, fillBottom = 0.07f, blur = 22.dp)
+            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.20f, fillBottom = 0.07f, blur = 22.dp, overlay = hue.copy(alpha = 0.10f),
+                edgeColors = listOf(hue.copy(0.75f), hue.copy(0.12f)), glow = hue.copy(0.25f))
+            .drawBehind {
+                // sol kenarda kısa dikey program şeridi
+                drawRoundRect(hue, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * 0.3f), size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height * 0.4f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+            }
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
             // Sol: BUGÜNÜN halkası (0/4); program toplamı ikincil metinde
             val dayFrac = if (info.todayExercises > 0) (info.todayCompleted.toFloat() / info.todayExercises).coerceIn(0f, 1f) else 0f
             val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill(dayFrac)
-            val ring = theme.accentHi
+            val ring = hue
             Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw = 6.dp.toPx()
@@ -451,6 +459,7 @@ fun SavedProgramCard(
     Box(
         Modifier.width(226.dp).height(288.dp)
             .sinemaRaised(shape, SinemaRaise.Card)
+            .then(if (program.isActive) Modifier.border(2.dp, coverHueFor(program.name), shape) else Modifier)
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize()) {
