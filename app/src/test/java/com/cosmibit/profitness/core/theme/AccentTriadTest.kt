@@ -18,8 +18,8 @@ class AccentTriadTest {
         assertEquals(Color(0xFFFF7A6E), p.hi)
         assertEquals(Color(0xFFFFB8AE), p.hiText)
         assertEquals(Color(0xFF362E20), p.soft)
-        assertEquals(0.14f, p.glowAlpha)
-        assertEquals(0.14f, SinemaBackdropTopAlpha)
+        assertEquals(0.07f, p.glowAlpha)
+        assertEquals(0.07f, SinemaBackdropTopAlpha)
     }
 
     @Test fun publicApiReadsPalette() {

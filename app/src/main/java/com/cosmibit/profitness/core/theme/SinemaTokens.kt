@@ -20,9 +20,10 @@ object Sinema {
     val White = Color.White
 
     // ── Tek koyu tema değerleri ────────────────────────────────────────────
-    val Page = Color(0xFF0C0D10)
-    val Surface = Color(0xFF15171C)
-    val Elevated = Color(0xFF1D2027)
+    /** Zemin: nötr koyu (kart katmanları bundan türer; deneme: .ekip/kanit/zemin-*). */
+    val Page = Color(0xFF15161B)
+    val Surface = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.04f)
+    val Elevated = androidx.compose.ui.graphics.lerp(Page, Color.White, 0.065f)
     val Text = Color(0xFFF4F5F7)
     val TextSecondary = Color(0xFFA6A9B2)
     /** Üçüncül / pasif metin-ikon. */

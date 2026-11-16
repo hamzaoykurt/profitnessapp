@@ -339,7 +339,7 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         // Manuel
         Box(
             Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
-                .sinemaRaised(shape, SinemaRaise.Card, tint = theme.accentColor)
+                .sinemaRaised(shape, SinemaRaise.Card)
                 .clickable(role = Role.Button, onClick = onManual)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
@@ -498,11 +498,11 @@ fun ProgramFilterPill(label: String, icon: ImageVector?, selected: Boolean, onCl
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
     val shape = RoundedCornerShape(SinemaRadius.R16)
-    val fg = if (selected) theme.effectiveOnAccentColor else Sinema.text(theme)
+    val fg = if (selected) accent else Sinema.text(theme)
     Box(Modifier.heightIn48().clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Row(
             Modifier.height(36.dp)
-                .then(if (selected) Modifier.clip(shape).sinemaSolid(accent) else Modifier.sinemaRaised(shape, SinemaRaise.Mini))
+                .then(Modifier.sinemaRaised(shape, SinemaRaise.Mini, tint = if (selected) accent else null))
                 .padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

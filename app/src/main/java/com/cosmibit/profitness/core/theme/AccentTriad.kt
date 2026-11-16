@@ -33,7 +33,7 @@ data class SinemaPalette(
             hi = Color(0xFFFF7A6E),
             hiText = Color(0xFFFFB8AE),
             soft = Color(0xFF362E20),   // c1 α.14 üzeri #15171C
-            glowAlpha = 0.14f           // palet.html --ga
+            glowAlpha = 0.07f           // zemin ışığı: küçük ve soluk (v3 değerlendirme §1)
         )
 
         /** Uygulamanın tek teması. */

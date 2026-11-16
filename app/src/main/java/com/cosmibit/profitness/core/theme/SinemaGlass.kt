@@ -319,14 +319,14 @@ private fun Modifier.sinemaRaisedImpl(
             val h = size.height
             val path = shapePath(shape, size, layoutDirection, this)
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
-            val baseTop = surfaceTop ?: if (mini) Color(0xFF292D36) else Color(0xFF2C3039)
-            val baseBottom = surfaceBottom ?: if (mini) Color(0xFF14161B) else Color(0xFF111317)
+            val baseTop = surfaceTop ?: lerp(Sinema.Page, Color.White, if (mini) 0.14f else 0.16f)
+            val baseBottom = surfaceBottom ?: lerp(Sinema.Page, Color.White, 0.07f)   // zeminden ayrışır (kontrast >= 1.15)
             val top = if (tint != null) lerp(baseTop, tint, 0.26f) else baseTop
             val bottom = if (tint != null) lerp(baseBottom, tint, 0.10f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
-                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(0.06f), 0.4f to Color.White.copy(0.015f), 1f to Color.Transparent,
+                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(0.10f), 0.4f to Color.White.copy(0.025f), 1f to Color.Transparent,
                 start = Offset.Zero, end = Offset(w, h)
             )
             val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.30f else if (tint != null) 0.20f else 0.12f).let { if (fill != null) it.copy(0.30f) else it }
@@ -462,7 +462,7 @@ fun SinemaNavBar(
                 .widthIn(max = SinemaLayout.NavMax)
                 .fillMaxWidth()
                 .height(barH)
-                .sinemaRaised(barShape, SinemaRaise.Card, top = Color(0xFF1B1D23), bottom = Color(0xFF14161B))
+                .sinemaRaised(barShape, SinemaRaise.Card, top = lerp(Sinema.Page, Color.White, 0.10f), bottom = lerp(Sinema.Page, Color.White, 0.06f))
                 .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

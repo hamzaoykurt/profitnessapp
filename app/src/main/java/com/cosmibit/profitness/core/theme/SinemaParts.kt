@@ -77,7 +77,7 @@ fun rememberSinemaMotionOn(): Boolean {
 @Composable
 fun SinemaBackdrop(modifier: Modifier = Modifier) {
     val theme = LocalAppTheme.current
-    val accent = theme.accentColor
+    val accent = Color(0xFFFFD9A0)   // sıcak-nötr ışık (saf amber kahve/zeytin lekesi yapıyordu)
     val glowA = theme.palette.glowAlpha
     Spacer(
         modifier
@@ -86,9 +86,9 @@ fun SinemaBackdrop(modifier: Modifier = Modifier) {
                 val k = (size.width / 360.dp.toPx()).coerceIn(com.cosmibit.profitness.core.ui.SinemaLayout.BackdropScaleMin, com.cosmibit.profitness.core.ui.SinemaLayout.BackdropScaleMax)   // çizim çerçevesi 360dp → ekran; geniş ekranda ışık ekranı kaplamaz
                 fun d(v: Float) = v.dp.toPx() * k
                 val c1 = Offset(d(180f), d(-40f))
-                val r1 = d(520f)
+                val r1 = d(360f)
                 val o1 = Brush.radialGradient(
-                    0f to accent.copy(glowA), 0.55f to accent.copy(glowA * 0.35f), 1f to Color.Transparent,
+                    0f to accent.copy(glowA), 0.45f to accent.copy(glowA * 0.35f), 1f to Color.Transparent,
                     center = c1, radius = r1
                 )
                 val sh = d(380f).coerceAtMost(size.height)

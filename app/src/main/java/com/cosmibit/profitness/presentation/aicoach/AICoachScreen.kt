@@ -225,7 +225,7 @@ fun AICoachScreen(
                 AnimatedVisibility(
                     visible = !imeVisible,
                     enter = fadeIn(), exit = fadeOut(),
-                    modifier = Modifier.padding(top = statusTop + 152.dp)
+                    modifier = Modifier.padding(top = statusTop + 88.dp)
                 ) {
                     OracleTodayBlock(trainingSummary, onAction = ::sendMessage)
                 }
@@ -240,24 +240,40 @@ fun AICoachScreen(
                     .padding(bottom = bottomGap)
             ) {
                 if (!imeVisible) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    // Tam genişlik soru satırları (52-56dp raised): ikon diski + başlık + 1 satır açıklama
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         quickChips.forEachIndexed { chipIdx, chip ->
-                            val chipTint = when (chipIdx % 3) {
+                            val rowTint = when (chipIdx % 3) {
                                 0 -> theme.accentHi
                                 1 -> theme.accentColor
                                 else -> androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f)
                             }
-                            SinemaCapsule(
-                                modifier = Modifier.weight(1f), tint = chipTint,
-                                onClick = { inputText = chip }, enabled = !state.isLoading,
-                                height = 40.dp, shape = RoundedCornerShape(SinemaRadius.R20),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) { fg ->
-                                Text(
-                                    chip.substringBefore(" "), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                                )
+                            val rowIcon = when (chipIdx % 3) {
+                                0 -> androidx.compose.material.icons.Icons.Rounded.Bedtime
+                                1 -> androidx.compose.material.icons.Icons.Rounded.EventNote
+                                else -> androidx.compose.material.icons.Icons.Rounded.Restaurant
+                            }
+                            val rowDesc = when (chipIdx % 3) {
+                                0 -> theme.t("Dinlenme ve toparlanma önerisi", "Rest and recovery advice")
+                                1 -> theme.t("Programını gözden geçir", "Review your program")
+                                else -> theme.t("Hedefine uygun beslenme", "Nutrition for your goal")
+                            }
+                            Row(
+                                Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                                    .sinemaClickable(enabled = !state.isLoading, onClick = { inputText = chip }, scale = 0.98f, role = Role.Button)
+                                    .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier.size(36.dp).clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Color(0xFF1A1D23), rowTint, 0.22f)),
+                                    contentAlignment = Alignment.Center
+                                ) { Icon(rowIcon, null, tint = androidx.compose.ui.graphics.lerp(rowTint, Color.White, 0.35f), modifier = Modifier.size(20.dp)) }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(chip.substringBefore(" "), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(rowDesc, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
                             }
                         }
                     }
@@ -462,7 +478,7 @@ private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String)
             val fill by animateFloatAsState(frac, tween(900, easing = SinemaMotion.EaseStandard), label = "oracle_fill")
             Spacer(Modifier.height(6.dp))
             SinemaCount(summary.completed) { n ->
-                Text("$n/${summary.exercises}", style = Sinema.Display, color = Color.White, maxLines = 1, softWrap = false)
+                Text("$n/${summary.exercises}", style = Sinema.Metric, color = Color.White, maxLines = 1, softWrap = false)
             }
             Spacer(Modifier.height(16.dp))
             Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
@@ -712,7 +728,7 @@ private fun SanctuaryInput(
             if (value.isEmpty()) {
                 Text(
                     theme.t("AI Koç'a bir şey sor…", "Ask AI Coach anything…"),
-                    color = theme.effectiveOnAccentColor.copy(0.62f), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, maxLines = 1,
+                    color = theme.effectiveOnAccentColor.copy(0.80f), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
