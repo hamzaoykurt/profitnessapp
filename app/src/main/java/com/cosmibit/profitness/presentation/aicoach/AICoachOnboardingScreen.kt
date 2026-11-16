@@ -340,8 +340,8 @@ private fun CenteredOptionCard(
         modifier = Modifier
             .widthIn(max = responsive.formMaxWidth)
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
-            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(SinemaRadius.R24)) else Modifier)
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = if (selected) accent else null)
+            .then(if (selected) Modifier.border(1.5.dp, accent.copy(0.7f), RoundedCornerShape(SinemaRadius.R24)) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = if (responsive.isSmallPhone) 16.dp else 20.dp, vertical = 20.dp),
         verticalAlignment     = Alignment.CenterVertically,

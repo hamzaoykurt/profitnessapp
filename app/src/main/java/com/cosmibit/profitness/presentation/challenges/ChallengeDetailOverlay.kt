@@ -1290,7 +1290,7 @@ private fun MetricTargetTypeSection(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ChallengeTargetType.selectableForMetric.forEach { type ->
                 SinemaCapsule(
-                    Modifier.fillMaxWidth(), selected = type == targetType, onClick = { onTargetType(type) },
+                    Modifier.fillMaxWidth(), selected = type == targetType, neutralSelected = true, onClick = { onTargetType(type) },
                     height = 52.dp
                 ) { fg ->
                     Icon(metricTargetIcon(type), null, tint = fg, modifier = Modifier.size(18.dp))

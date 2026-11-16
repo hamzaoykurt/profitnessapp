@@ -1321,7 +1321,7 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
 
             // Büyük cam giriş kartı (çizgisiz)
             SinemaCapsule(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), tint = aiTheme.accentHi,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), tint = androidx.compose.ui.graphics.lerp(aiTheme.accentHi, Color.White, 0.35f),
                 onClick = { if (!uiState.aiLoading) promptFocus.requestFocus() },
                 height = 220.dp,
                 shape = RoundedCornerShape(SinemaRadius.R28),

@@ -614,7 +614,7 @@ private fun SanctuaryMessage(
                 // Glass bubble
                 Box(
                     modifier = Modifier
-                        .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = LocalAppTheme.current.accentHi)
+                        .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = androidx.compose.ui.graphics.lerp(LocalAppTheme.current.accentHi, Color.White, 0.3f))
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
                     SelectionContainer {
@@ -929,7 +929,7 @@ private fun SanctuaryTypingIndicator() {
 
         Box(
             modifier = Modifier
-                .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = LocalAppTheme.current.accentHi)
+                .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = androidx.compose.ui.graphics.lerp(LocalAppTheme.current.accentHi, Color.White, 0.3f))
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             Row(

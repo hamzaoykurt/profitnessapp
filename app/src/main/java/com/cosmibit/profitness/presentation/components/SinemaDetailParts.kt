@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import androidx.compose.material3.Icon
 import com.cosmibit.profitness.core.theme.accentColor
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -94,6 +95,8 @@ fun SinemaDetailHeader(
         }
         Spacer(Modifier.height(20.dp))
         Text(title, style = Sinema.ScreenTitle, color = Sinema.text(theme), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        // imza çizgisi: mercan -> amber
+        Box(Modifier.padding(top = 8.dp).width(44.dp).height(3.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(theme.accentHi, theme.accentColor))))
         if (!subtitle.isNullOrBlank()) {
             Spacer(Modifier.height(4.dp))
             Text(subtitle, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp)
@@ -253,6 +256,15 @@ fun SinemaDialog(
             Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28)).sinemaCardAccent(theme.accentHi).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // tonlu ikon diski (diyalog türünü gösterir)
+            Box(
+                Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.24f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(confirmIcon, null, tint = androidx.compose.ui.graphics.lerp(theme.accentHi, Color.White, 0.3f), modifier = Modifier.size(26.dp))
+            }
+            Spacer(Modifier.height(14.dp))
             Text(title, style = Sinema.Title, color = Sinema.text(theme))
             Spacer(Modifier.height(8.dp))
             if (body.isNotEmpty()) Text(body, color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp)
@@ -288,7 +300,7 @@ fun <T> SinemaSegmentRow(
         options.forEach { opt ->
             SinemaCapsule(
                 modifier = Modifier.weight(1f).semantics { this.selected = opt == selected },
-                selected = opt == selected && !neutral, tint = if (neutral && opt == selected) Color.White else null,
+                selected = opt == selected, neutralSelected = neutral,
                 onClick = { onSelect(opt) },
                 height = height,horizontalArrangement = Arrangement.Center,
                 contentPadding = PaddingValues(horizontal = 8.dp)

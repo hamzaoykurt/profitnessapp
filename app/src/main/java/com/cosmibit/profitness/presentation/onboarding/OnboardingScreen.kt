@@ -428,13 +428,13 @@ private fun StepName(
                             .weight(1f)
                             .aspectRatio(1f)
                             .then(
-                                if (selected) Modifier.clip(avatarShape).sinemaSolid(accent)
+                                if (selected) Modifier.sinemaRaised(avatarShape, SinemaRaise.Card, tint = accent)
                                 else Modifier.sinemaCard(theme, avatarShape)
                             )
                             .selectable(selected = selected, role = Role.RadioButton, onClick = { vm.setAvatar(emoji) }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(emoji, fontSize = SinemaType.Headline, color = onAccent)
+                        Text(emoji, fontSize = SinemaType.Headline)
                     }
                 }
             }
@@ -596,7 +596,7 @@ private fun OnboardingChoiceGrid(
                         .weight(1f)
                         .heightIn(min = 88.dp)
                         .then(
-                            if (isSelected) Modifier.clip(shape).sinemaSolid(accent)
+                            if (isSelected) Modifier.sinemaRaised(shape, SinemaRaise.Card, tint = accent).border(1.5.dp, accent.copy(0.7f), shape)
                             else Modifier.sinemaCard(theme, shape)
                         )
                         .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })
@@ -606,13 +606,13 @@ private fun OnboardingChoiceGrid(
                 ) {
                     Icon(
                         iconFor(option), null,
-                        tint = if (isSelected) onAccent else Sinema.textSecondary(theme),
+                        tint = if (isSelected) accent else Sinema.textSecondary(theme),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = label,
-                        color = if (isSelected) onAccent else Sinema.text(theme),
+                        color = if (isSelected) accent else Sinema.text(theme),
                         fontSize = SinemaType.BodySm,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 17.sp,
