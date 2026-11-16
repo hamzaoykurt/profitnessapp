@@ -3,7 +3,6 @@ package com.cosmibit.profitness.presentation.dashboard
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInHorizontally
-import dev.chrisbanes.haze.hazeSource
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -168,7 +167,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val contentPad   = if (useNavRail) 16.dp + navBarBottom   // rail: alt menü yok
                        else SinemaNavHeight + 16.dp + navBarBottom
     val sinemaNav = remember { SinemaNavState() }
-    val navHaze = remember { dev.chrisbanes.haze.HazeState() }
     val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val haptic = LocalHapticFeedback.current
     val theme = LocalAppTheme.current
@@ -224,7 +222,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     // ── Swipe gesture — Orientation.Horizontal doesn't compete with vertical scrollers
     var swipeAccum by remember { mutableStateOf(0f) }
     val selectedTabIndex by remember {
-        derivedStateOf { ALL_TABS.indexOf(selectedTab) }
+        derivedStateOf { ALL_TABS.indexOfFirst { it.route == selectedTabRoute }.coerceAtLeast(0) }
     }
     val draggableState = rememberDraggableState { delta -> swipeAccum += delta }
     // Yatay kaydırma: iç yatay listeler (çip satırı, kart listesi, pager) kendi ucuna gelince artan kaydırma/fling sekme geçişine döner.
@@ -267,7 +265,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     CompositionLocalProvider(LocalFloatingTimerReserve provides overlayTimerReserve) {
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().then(if (useNavRail) Modifier else Modifier.hazeSource(navHaze))) {
+        Box(Modifier.fillMaxSize()) {
         SinemaBackdrop(Modifier.fillMaxSize())   // tek zemin kaynağı: sekmeler bunun üstünde geçer
 
         Box(
@@ -403,7 +401,6 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 onSelect      = { i -> ALL_TABS[i].let { tab -> if (tab != selectedTab) selectedTabRoute = tab.route } },
                 visible       = !imeVisible && !(sinemaNav.pagerOwned && sinemaNav.pagerBusy),
                 onPhoto       = navOnPhoto,
-                haze          = navHaze,
                 modifier      = Modifier.align(Alignment.BottomCenter).zIndex(100f)
             )
         }

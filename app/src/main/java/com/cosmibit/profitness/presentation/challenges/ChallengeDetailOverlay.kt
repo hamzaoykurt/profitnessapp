@@ -566,7 +566,7 @@ private fun ChallengeHero(
                 )
             }
     ) {
-        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), hue = coverHueFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 200.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 30.dp))
+        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), hue = coverHueFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 96.dp, underStatusBar = true)
         Column(
             Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.SpaceBetween

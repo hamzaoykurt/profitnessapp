@@ -241,7 +241,7 @@ fun ProfileScreen(
                         .padding(32.dp)
                         .clip(RoundedCornerShape(SinemaRadius.R28))
                         .background(
-                            Brush.verticalGradient(listOf(Color(0xFF0D2B1F), Color(0xFF051A12)))
+                            Brush.verticalGradient(listOf(Sinema.Elevated, Sinema.Surface))
                         )
                         .border(1.dp, accent.copy(0.5f), RoundedCornerShape(SinemaRadius.R28))
                         .padding(32.dp),
@@ -351,11 +351,11 @@ fun ProfileScreen(
 // ── Profile Hero (SİNEMA çizimi: kapak foto + XP + sheet) ───────────────────────
 
 private fun rankColor(rank: String) = when (rank.lowercase()) {
-    "silver"   -> Color(0xFFB0BEC5)
-    "gold"     -> Color(0xFFF2C23F)
-    "platinum" -> Color(0xFF3DB5E8)
-    "diamond"  -> Color(0xFF64B5F6)
-    else       -> Color(0xFFCD7F32)  // Bronze
+    "silver"   -> Color(0xFFB4B8C0)
+    "gold"     -> Sinema.Gold
+    "platinum" -> androidx.compose.ui.graphics.lerp(Sinema.Gold, Color.White, 0.5f)
+    "diamond"  -> androidx.compose.ui.graphics.lerp(Sinema.Gold, Color.White, 0.8f)
+    else       -> androidx.compose.ui.graphics.lerp(Sinema.Gold, Color.Black, 0.35f)  // Bronze
 }
 
 /** Çizimdeki `.chip.metal`: silver için birebir 135° C0C4CC→8E949E; diğer rütbelerde rütbe renginden türetilir. */
@@ -731,7 +731,7 @@ private fun WeeklyActivitySection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = sinemaGutter())
-                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
                 .padding(20.dp)
         ) {
             if (weekWorkoutCount > 0) {
@@ -1194,7 +1194,7 @@ private fun LanguageSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
         ) {
             LanguageOptionRow(
                 flag       = "🇹🇷",
@@ -1263,13 +1263,13 @@ private fun LanguageOptionRow(
                 Modifier
                     .size(22.dp)
                     .clip(CircleShape)
-                    .sinemaSolid(accent),
+                    .background(accent.copy(0.22f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Rounded.Check,
                     null,
-                    tint     = theme.effectiveOnAccentColor,
+                    tint     = accent,
                     modifier = Modifier.size(13.dp)
                 )
             }
@@ -1349,10 +1349,10 @@ private fun BodyMetricsCard(
 
     val bmiColor = when {
         bmi <= 0   -> accent
-        bmi < 18.5 -> Color(0xFF64B5F6)
-        bmi < 25.0 -> Color(0xFF4CAF50)
-        bmi < 30.0 -> Color(0xFFFFB74D)
-        else       -> Color(0xFFEF5350)
+        bmi < 18.5 -> Sinema.TextSecondary
+        bmi < 25.0 -> Sinema.Gold
+        bmi < 30.0 -> Sinema.TextSecondary
+        else       -> Sinema.Alert
     }
     val bmiLabel = when {
         bmi <= 0   -> ""

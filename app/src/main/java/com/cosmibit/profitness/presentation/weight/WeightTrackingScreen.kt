@@ -2,6 +2,7 @@
 
 package com.cosmibit.profitness.presentation.weight
 
+import com.cosmibit.profitness.core.theme.AppLanguage
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -452,7 +453,10 @@ private fun WeightEntryRow(
     var showDelete by remember { mutableStateOf(false) }
 
     val dateStr = runCatching {
-        java.time.LocalDateTime.parse(entry.recordedAt).format(FULL_DATE_FMT)
+        // offset'li ISO ("...+00:00") ve offset'siz ikisi de; yerel saat dilimine çevrilir
+        val zdt = runCatching { java.time.OffsetDateTime.parse(entry.recordedAt).atZoneSameInstant(java.time.ZoneId.systemDefault()) }
+            .getOrElse { java.time.LocalDateTime.parse(entry.recordedAt).atZone(java.time.ZoneId.systemDefault()) }
+        zdt.format(FULL_DATE_FMT.withLocale(if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")))
     }.getOrElse { entry.recordedAt }
 
     Row(

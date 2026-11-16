@@ -105,8 +105,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 
 /**
- * SİNEMA camı: tek yer. `sinemaGlass` bağımlılıksız (Haze YOK) — yarı saydam koyu dolgu + kenar + üst parlama + gölge.
- * Haze gelirse yalnız bu iki fonksiyonun içi değişir.
+ * SİNEMA camı: `sinemaGlass` bağımlılıksız — yarı saydam koyu dolgu + kenar + üst parlama + gölge; `sinemaCapsuleGlass` Haze kaynağı varsa blur uygular.
  * Cam YALNIZ foto/gradyan üstünde kullanılır.
  */
 fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = this
@@ -321,8 +320,8 @@ private fun Modifier.sinemaRaisedImpl(
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
             val baseTop = surfaceTop ?: lerp(Sinema.Page, Color.White, if (mini) 0.14f else 0.16f)
             val baseBottom = surfaceBottom ?: lerp(Sinema.Page, Color.White, 0.07f)   // zeminden ayrışır (kontrast >= 1.15)
-            val top = if (tint != null) lerp(baseTop, tint, 0.26f) else baseTop
-            val bottom = if (tint != null) lerp(baseBottom, tint, 0.10f) else baseBottom
+            val top = if (tint != null) lerp(baseTop, tint, 0.17f) else baseTop
+            val bottom = if (tint != null) lerp(baseBottom, tint, 0.07f) else baseBottom
             val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
@@ -402,7 +401,7 @@ val SinemaNavHeight = 72.dp   // yüzen bar 62dp + alt boşluk 12dp + üst nefes
 val NavFadeHeight = 56.dp
 
 /**
- * Çizimdeki alt menü (.nv3): 60dp, 5 eşit sütun, üstte 20dp simge + 3dp + 10sp etiket (hepsinde etiket var, nokta/kutu yok).
+ * Alt menü: yüzen 64dp opak 3D kapsül; seçili sekme = amber hap (ikon + 13sp etiket), diğerleri yalnız 24dp ikon.
  * `onPhoto` = foto sayfası (Antrenman/AI Koç/Keşfet): zemin şeffaf, beyaz %70, seçili beyaz.
  * Değilse düz zemin sayfası (Programlar/Profil): zemin sayfa rengi, ikincil metin, seçili ana metin.
  * Seçili simge her iki durumda vurgu renginde.
@@ -414,8 +413,7 @@ fun SinemaNavBar(
     onSelect: (Int) -> Unit,
     visible: Boolean,
     onPhoto: Boolean,
-    modifier: Modifier = Modifier,
-    haze: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor

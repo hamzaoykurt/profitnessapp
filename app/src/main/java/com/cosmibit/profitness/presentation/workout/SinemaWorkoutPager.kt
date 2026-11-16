@@ -477,9 +477,9 @@ internal fun Scrims(modifier: Modifier = Modifier, bottomAlpha: Float = 0.88f, s
     Box(
         modifier.fillMaxSize().drawWithCache {
             val h = size.height
-            val topH = 140.dp.toPx().coerceAtMost(h)
+            val topH = 320.dp.toPx().coerceAtMost(h)
             val botH = 470.dp.toPx().coerceAtMost(h)
-            val top = Brush.verticalGradient(listOf(Sinema.scrim(0.55f), Color.Transparent), startY = 0f, endY = topH)
+            val top = Brush.verticalGradient(0f to Sinema.scrim(0.66f), 0.6f to Sinema.scrim(0.46f), 1f to Color.Transparent, startY = 0f, endY = topH)
             val bottom = Brush.verticalGradient(
                 0f to Color.Transparent, solidAt to Sinema.scrim(bottomAlpha), 1f to Sinema.scrim(bottomAlpha),
                 startY = h - botH, endY = h

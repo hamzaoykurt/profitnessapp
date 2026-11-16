@@ -175,7 +175,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
             // Tipografik kapak (foto yok): yüzey + köşe ışığı + hayalet ikon; hero alt sönümü yukarıdaki maske ile
             SinemaTypeCover(
                 icon = coverIconFor(active?.name), hue = coverHueFor(active?.name), modifier = Modifier.fillMaxSize(),
-                ghostSize = 220.dp, ghostAlignment = Alignment.TopEnd, ghostOffset = DpOffset(56.dp, statusTop + 72.dp)
+                ghostSize = 96.dp, underStatusBar = true
             )
         }
         if (active != null) {
@@ -261,12 +261,12 @@ private fun TodayPanel(info: ProgramTodayInfo) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             info.week.forEach { c ->
                 val shape = RoundedCornerShape(SinemaRadius.R12)
-                val fg = if (c.isToday) onAccent else Color.White.copy(0.85f)
+                val fg = if (c.isToday) accent else Color.White.copy(0.85f)
                 Column(
                     Modifier.weight(1f).heightIn(min = 42.dp)
                         .graphicsLayer { alpha = if (c.isRest && !c.isToday) 0.45f else 1f }
                         .clip(shape)
-                        .background(if (c.isToday) accent else Color.White.copy(0.09f)),
+                        .background(if (c.isToday) accent.copy(0.22f) else Color.White.copy(0.09f)),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                 ) {
                     val actualScale = with(LocalDensity.current) { 11.sp.toDp().value } / 11f
@@ -275,7 +275,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
                         maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
                     )
                     Spacer(Modifier.height(4.dp))
-                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) onAccent else if (c.isDone) theme.accentHi else Color.White.copy(0.4f)))
+                    Box(Modifier.size(5.dp).clip(CircleShape).background(if (c.isToday) accent else if (c.isDone) theme.accentHi else Color.White.copy(0.4f)))
                 }
             }
         }
@@ -410,7 +410,7 @@ fun SavedProgramCard(
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
+            SinemaTypeCover(icon = coverIconFor(program.name), hue = coverHueFor(program.name), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -419,11 +419,15 @@ fun SavedProgramCard(
                 Spacer(Modifier.width(5.dp))
                 Text(typeLabel.sinemaUpper(theme), color = typeTint, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
                 Box {
+                    // dokunma alanı 48dp, görsel cam disk 32dp
                     Box(
-                        Modifier.size(32.dp).sinemaCapsuleGlass(CircleShape, blur = 16.dp)
-                            .clickable(role = Role.Button) { menu = true },
+                        Modifier.size(48.dp).clickable(role = Role.Button) { menu = true },
                         contentAlignment = Alignment.Center
-                    ) { Icon(SinemaIcons.More, theme.t("Diğer", "More"), tint = Color.White, modifier = Modifier.size(18.dp)) }
+                    ) {
+                        Box(Modifier.size(32.dp).sinemaCapsuleGlass(CircleShape, blur = 16.dp), contentAlignment = Alignment.Center) {
+                            Icon(SinemaIcons.More, theme.t("Diğer", "More"), tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                    }
                     DropdownMenu(
                         expanded = menu, onDismissRequest = { menu = false },
                         containerColor = Sinema.surface(theme), shape = RoundedCornerShape(SinemaRadius.R20),
@@ -533,7 +537,7 @@ fun ReadyProgramCard(
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
-            SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp)
+            SinemaTypeCover(icon = coverIconFor(iconKey), hue = coverHueFor(iconKey), modifier = Modifier.fillMaxSize(), ghostSize = 150.dp, ghostAlignment = Alignment.CenterEnd)
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Text(tag.sinemaUpper(theme), color = Color.White.copy(0.85f), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, maxLines = 1,

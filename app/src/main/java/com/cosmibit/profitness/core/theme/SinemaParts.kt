@@ -147,12 +147,15 @@ fun SinemaCapsule(
     tint: Color? = null,
     /** Seçili değilken DOLU renkli blok (ör. mercan c2; ikincil öne çıkan öğe). Ön plan koyu. */
     fillColor: Color? = null,
+    /** Seçili hali amber dolgu yerine amber tint + amber metin (ekranda dolu amber tek kalsın). */
+    neutralSelected: Boolean = false,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     val theme = LocalAppTheme.current
     val accent = theme.effectiveAccentColor
-    val softOn = soft && !glass && !selected && fillColor == null
-    val fg = if (selected || (fillColor != null && !glass)) theme.effectiveOnAccentColor else if (softOn) theme.accentHiTextColor else Sinema.Text
+    val solid = selected && !neutralSelected
+    val softOn = soft && !glass && !solid && fillColor == null && !(selected && neutralSelected)
+    val fg = if (solid || (fillColor != null && !glass)) theme.effectiveOnAccentColor else if (selected && neutralSelected) accent else if (softOn) theme.accentHiTextColor else Sinema.Text
     val src = remember { MutableInteractionSource() }
     val haptic = LocalHapticFeedback.current
     Row(
@@ -161,8 +164,8 @@ fun SinemaCapsule(
             .heightIn(min = height)
             .then(if (onClick != null && enabled) Modifier.sinemaPressScale(src) else Modifier)
             .then(
-                if (glass) Modifier.sinemaCapsuleGlass(shape, fill = if (selected) accent else null, edge = edge)
-                else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (selected) accent else fillColor ?: if (softOn) softHiFill(theme) else null, tint = if (selected) null else tint)
+                if (glass) Modifier.sinemaCapsuleGlass(shape, fill = if (solid) accent else null, edge = edge)
+                else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (solid) accent else fillColor ?: if (softOn) softHiFill(theme) else null, tint = if (selected && neutralSelected) accent else if (selected) null else tint)
                     .then(if (edge != null && !selected) Modifier.border(1.dp, edge, shape) else Modifier)
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)

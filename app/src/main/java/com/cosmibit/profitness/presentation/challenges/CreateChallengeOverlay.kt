@@ -296,7 +296,7 @@ fun CreateChallengeOverlay(
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(Sinema.scrim(1f))
             ) {
-                SinemaTypeCover(icon = coverIconFor(sceneCategory), hue = coverHueFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
+                SinemaTypeCover(icon = coverIconFor(sceneCategory), hue = coverHueFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 96.dp, underStatusBar = true)
                 Column(
                     Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.SpaceBetween

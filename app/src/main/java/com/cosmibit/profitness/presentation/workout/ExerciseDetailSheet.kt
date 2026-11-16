@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.core.theme.SinemaRaise
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.presentation.components.safeTopPadding
 import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
@@ -229,7 +231,7 @@ fun ExerciseDetailSheet(
                         .fillMaxWidth()
                         .safeBottomPadding()
                         .padding(horizontal = gutter, vertical = 16.dp)
-                        .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.16f, fillBottom = 0.10f)
+                        .sinemaRaised(RoundedCornerShape(SinemaRadius.R28), SinemaRaise.Card)   // opak: parlak foto üstünde okunur
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
                                 onDragStart = { drag = 0f },

@@ -5,6 +5,8 @@
 
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.SinemaRaise
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.accentHi
 import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.sinemaSolid
@@ -442,7 +444,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
         ) {
             SinemaTypeCover(
                 icon = coverIconFor((program.tags + program.title).joinToString(" ")), hue = coverHueFor((program.tags + program.title).joinToString(" ")), modifier = Modifier.matchParentSize(),
-                ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp)
+                ghostSize = 96.dp, underStatusBar = true
             )
         }
         Column(
@@ -1101,15 +1103,14 @@ private fun DiscoverTopControls(
             val stoneShape = RoundedCornerShape(SinemaRadius.R24)
             Box(
                 Modifier.offset(x = x).width(tabW).fillMaxHeight()
-                    .clip(stoneShape)
-                    .sinemaSolid(accent)
+                    .sinemaRaised(stoneShape, SinemaRaise.Mini, tint = accent)
             )
             // Tek ortak etiket boyu: biri taşarsa üçü birlikte küçülür; taban 11sp.
             var labelSp by remember { mutableFloatStateOf(13f) }
             Row(Modifier.fillMaxSize()) {
                 tabs.forEach { (tab, label) ->
                     val on = tab == selected
-                    val fg by animateColorAsState(if (on) onAccent else Color.White.copy(0.78f), tween(SinemaMotion.Quick), label = "discover_tab_fg")
+                    val fg by animateColorAsState(if (on) accent else Color.White.copy(0.78f), tween(SinemaMotion.Quick), label = "discover_tab_fg")
                     Box(
                         Modifier.weight(1f).fillMaxHeight()
                             .clip(stoneShape)
@@ -1273,7 +1274,7 @@ private fun ProgramPosterCard(
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
     ) {
-        SinemaTypeCover(icon = coverIconFor("$tag ${program.title}"), hue = coverHueFor("$tag ${program.title}"), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor("$tag ${program.title}"), hue = coverHueFor("$tag ${program.title}"), modifier = Modifier.matchParentSize(), ghostAlignment = Alignment.CenterEnd)
         Column(
             Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

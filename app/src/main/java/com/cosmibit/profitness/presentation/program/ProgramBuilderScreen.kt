@@ -962,7 +962,7 @@ internal fun ProgramDetailShell(
                 // Kapak: ekran yüksekliğinin ~%45'i, durum çubuğunun altına uzanır
                 val coverHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp.coerceAtLeast(300.dp)
                 Box(Modifier.fillMaxWidth().height(coverHeight).clipToBounds()) {
-                    SinemaTypeCover(icon = coverIconFor(coverIconKey), hue = coverHueFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
+                    SinemaTypeCover(icon = coverIconFor(coverIconKey), hue = coverHueFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 96.dp, underStatusBar = true)
                     SinemaCapsuleIconButton(
                         icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         description = theme.t("Kapat", "Close"),

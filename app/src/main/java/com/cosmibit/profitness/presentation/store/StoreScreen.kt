@@ -579,7 +579,7 @@ private fun StoreDock(modifier: Modifier = Modifier, content: @Composable () -> 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(0f to Color.Transparent, 0.25f to page.copy(0.92f), 1f to page.copy(0.92f)))
+            .background(Brush.verticalGradient(0f to Color.Transparent, 0.25f to page, 1f to page))
             .padding(bottom = LocalFloatingTimerReserve.current)
             .navigationBarsPadding()
             .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 16.dp)
@@ -649,7 +649,7 @@ private fun SubscriptionTab(
             val (icon, text) = features[i]
             Row(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = if (i % 2 == 0) theme.accentHi else theme.accentColor)
+                    .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini)
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -714,6 +714,7 @@ private fun BillingCycleSelector(
             label = { yearly -> if (yearly) theme.t("Yıllık", "Yearly") else theme.t("Aylık", "Monthly") },
             onSelect = onToggle,
             height = 44.dp,
+            neutral = true,
             modifier = Modifier.weight(1f)
         )
         if (isYearly) {

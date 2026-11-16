@@ -1,5 +1,9 @@
 package com.cosmibit.profitness.presentation.components
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.draw.drawBehind
@@ -37,9 +41,11 @@ fun SinemaTypeCover(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     ghostSize: Dp = 160.dp,
-    ghostAlignment: Alignment = Alignment.BottomEnd,
+    ghostAlignment: Alignment = Alignment.TopEnd,
     ghostOffset: DpOffset = DpOffset(48.dp, 48.dp),
     hue: Color = LocalAppTheme.current.accentColor,
+    /** true: kapak durum çubuğunun altına uzanır (hero); ikon durum çubuğu kadar aşağı alınır. */
+    underStatusBar: Boolean = false,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val base = lerp(Sinema.Surface, hue, 0.30f)
@@ -62,10 +68,12 @@ fun SinemaTypeCover(
             .clipToBounds()
     ) {
         // hayalet ikon: sağ-üst/orta bölge, düğme/çiplerle (alt satır) çakışmasın diye yüksekliğin ~%52'siyle sınırlı
-        val sz = minOf(ghostSize, maxHeight * 0.52f, maxWidth * 0.5f)
+        // Küçük + sağ-üst köşe: başlık / metrik / çip bölgesiyle çakışmaz (başlıklar kartın alt-orta bölgesinde)
+        val sz = minOf(ghostSize, 64.dp, maxHeight * 0.30f)
+        val top = (if (underStatusBar) 0.dp else 14.dp) + if (underStatusBar) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp
         Icon(
             icon, contentDescription = null, tint = ghost,
-            modifier = Modifier.align(Alignment.TopEnd).offset(-(maxWidth * 0.06f), maxHeight * 0.10f).requiredSize(sz)
+            modifier = Modifier.align(ghostAlignment).padding(top = if (ghostAlignment == Alignment.TopEnd) top else 0.dp, end = if (underStatusBar) 10.dp else 14.dp).requiredSize(sz)
         )
         content()
     }

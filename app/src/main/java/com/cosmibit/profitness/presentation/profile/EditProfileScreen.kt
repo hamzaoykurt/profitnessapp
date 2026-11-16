@@ -406,7 +406,8 @@ fun EditProfileScreen(
                             selected = gender,
                             label = { db -> theme.genderLabel(db, GENDER_OPTIONS.first { it.second == db }.first) },
                             onSelect = { gender = it },
-                            height = 44.dp
+                            height = 44.dp,
+                            neutral = true
                         )
                     }
 
@@ -587,7 +588,7 @@ private fun ProfileChoiceSection(
                 row.forEach { option ->
                     SinemaCapsule(
                         modifier = Modifier.weight(1f),
-                        selected = selected == option,
+                        selected = selected == option, neutralSelected = true,
                         onClick = { onSelect(option) },
                         height = 46.dp,
                         horizontalArrangement = Arrangement.Center,

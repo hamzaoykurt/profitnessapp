@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.components
 
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -275,13 +277,17 @@ fun <T> SinemaSegmentRow(
     label: (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 40.dp
+    height: Dp = 40.dp,
+    /** true: seçili seçenek amber değil nötr vurgulu (ekranda ikinci dolu amber olmasın). */
+    neutral: Boolean = false
 ) {
     val theme = LocalAppTheme.current
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { opt ->
             SinemaCapsule(
-                modifier = Modifier.weight(1f), selected = opt == selected, onClick = { onSelect(opt) },
+                modifier = Modifier.weight(1f).semantics { this.selected = opt == selected },
+                selected = opt == selected && !neutral, tint = if (neutral && opt == selected) Color.White else null,
+                onClick = { onSelect(opt) },
                 height = height,horizontalArrangement = Arrangement.Center,
                 contentPadding = PaddingValues(horizontal = 8.dp)
             ) { fg ->

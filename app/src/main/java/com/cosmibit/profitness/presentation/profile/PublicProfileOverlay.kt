@@ -154,6 +154,7 @@ fun PublicProfileOverlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Sinema.page(theme).copy(0.88f), Color.Transparent)))
                     .safeTopPadding()
                     .padding(SinemaLayout.gutter(LocalWindowClass.current.widthDp)),
                 verticalAlignment = Alignment.CenterVertically
@@ -266,7 +267,7 @@ private fun ProfileContent(
             // XP
             Column(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                    SinemaBigStat("${profile.totalXp}", "XP", size = 52, color = theme.effectiveAccentColor)
+                    SinemaBigStat("${profile.totalXp}", "", unit = "XP", size = 52, color = theme.effectiveAccentColor)
                     Text(
                         theme.t("Sıradaki: ${xpForNextLevel} XP", "Next: ${xpForNextLevel} XP"),
                         color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, modifier = Modifier.padding(bottom = 6.dp)

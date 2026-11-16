@@ -951,7 +951,7 @@ private fun challengeStatusAccent(
     trophy: Color
 ): Color = when {
     completed -> trophy
-    status == CardStatus.Ended -> Color(0xFF9CA3AF)
+    status == CardStatus.Ended -> Sinema.TextTertiary
     status == CardStatus.NotStarted -> Color.White.copy(0.6f)
     else -> accent
 }
