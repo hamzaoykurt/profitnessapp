@@ -245,7 +245,7 @@ private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
             .padding(horizontal = 16.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -282,7 +282,7 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentColor)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -380,7 +380,7 @@ private fun AiInsightCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -460,7 +460,7 @@ private fun WeightEntryRow(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .sinemaClickable(onClick = onEdit, scale = 0.98f)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
             .padding(start = 18.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

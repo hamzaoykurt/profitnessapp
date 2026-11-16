@@ -2,6 +2,7 @@
 
 package com.cosmibit.profitness.presentation.challenges
 
+import com.cosmibit.profitness.core.theme.accentColor
 import androidx.compose.foundation.lazy.itemsIndexed
 import com.cosmibit.profitness.core.theme.sinemaListEnter
 import androidx.compose.foundation.background
@@ -190,7 +191,7 @@ fun ChallengesTab(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
+                        .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = theme.accentHi)
                         .clickable { vm.clearError() }
                         .padding(14.dp)
                 ) {
@@ -526,7 +527,7 @@ private fun InviteFriendRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = theme.accentColor)
             .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
@@ -663,7 +664,7 @@ private fun ChallengeInviteRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
             .clickable(onClick = onOpen)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically

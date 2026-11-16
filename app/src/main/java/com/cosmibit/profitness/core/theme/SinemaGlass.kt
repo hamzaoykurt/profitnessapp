@@ -248,7 +248,9 @@ fun Modifier.sinemaRaised(
     shape: Shape,
     level: SinemaRaise = SinemaRaise.Card,
     accent: Color? = null,
-    fill: Color? = null
+    fill: Color? = null,
+    /** Renkli blok: dolgu gradyanı tint ile karışır (üst ~α.26, alt ~α.10), kenar/üst parlama tint tonlu. Düz siyah üstündeki anlamlı yüzeyler için. */
+    tint: Color? = null
 ): Modifier {
     val mini = level == SinemaRaise.Mini
     return this
@@ -277,15 +279,17 @@ fun Modifier.sinemaRaised(
             val h = size.height
             val path = shapePath(shape, size, layoutDirection, this)
             val shifted = Path().apply { addPath(path, Offset(0f, 1.dp.toPx())) }
-            val top = if (mini) Color(0xFF1F2229) else Color(0xFF22252D)
-            val bottom = if (mini) Color(0xFF181A20) else Color(0xFF16181D)
+            val baseTop = if (mini) Color(0xFF1F2229) else Color(0xFF22252D)
+            val baseBottom = if (mini) Color(0xFF181A20) else Color(0xFF16181D)
+            val top = if (tint != null) lerp(baseTop, tint, 0.26f) else baseTop
+            val bottom = if (tint != null) lerp(baseBottom, tint, 0.10f) else baseBottom
             val fillBrush: Brush = if (fill != null) androidx.compose.ui.graphics.SolidColor(fill)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
-                0f to Color.White.copy(if (mini) 0.14f else 0.18f), 0.5f to Color.White.copy(0.05f), 1f to Color.White.copy(0.02f),
+                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(if (mini) 0.20f else 0.26f), 0.5f to Color.White.copy(0.05f), 1f to (tint ?: Color.White).copy(0.06f),
                 start = Offset.Zero, end = Offset(w, h)
             )
-            val glowColor = (accent ?: Color.White).copy(if (fill != null) 0.18f else 0.10f)
+            val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.18f else if (tint != null) 0.22f else 0.10f)
             val topGlow = Brush.horizontalGradient(
                 0f to Color.Transparent, 0.2f to glowColor, 0.8f to glowColor, 1f to Color.Transparent
             )

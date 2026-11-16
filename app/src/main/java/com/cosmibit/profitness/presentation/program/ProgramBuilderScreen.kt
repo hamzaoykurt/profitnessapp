@@ -2307,7 +2307,7 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick, scale = 0.98f)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentHi)
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -2373,7 +2373,7 @@ private fun ManualDayCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentColor)
             .padding(16.dp)
     ) {
         // Day header row
@@ -2693,7 +2693,7 @@ private fun ExerciseEditDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {

@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.aicoach
 
+import com.cosmibit.profitness.core.theme.accentColor
+import com.cosmibit.profitness.core.theme.accentHi
 import com.cosmibit.profitness.core.theme.SinemaRaise
 import com.cosmibit.profitness.core.theme.sinemaRaised
 import androidx.activity.compose.BackHandler
@@ -239,9 +241,14 @@ fun AICoachScreen(
             ) {
                 if (!imeVisible) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        quickChips.forEach { chip ->
+                        quickChips.forEachIndexed { chipIdx, chip ->
+                            val chipTint = when (chipIdx % 3) {
+                                0 -> theme.accentHi
+                                1 -> theme.accentColor
+                                else -> androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f)
+                            }
                             SinemaCapsule(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f), tint = chipTint,
                                 onClick = { inputText = chip }, enabled = !state.isLoading,
                                 height = 40.dp, shape = RoundedCornerShape(SinemaRadius.R20),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
@@ -697,7 +704,7 @@ private fun SanctuaryInput(
     val responsive = rememberResponsiveLayoutInfo()
     val sendActive = value.isNotBlank() && !isTyping
     SinemaCapsule(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(), tint = theme.accentHi,
         height = 52.dp, shape = RoundedCornerShape(SinemaRadius.R28),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp)
     ) {

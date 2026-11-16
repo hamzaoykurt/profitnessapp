@@ -143,6 +143,8 @@ fun SinemaCapsule(
     glass: Boolean = false,
     /** Yumuşak mercan dolgu (c2 α.16 + açık mercan ön plan): bilgi çipi / ikincil düğme. Yalnız cam değil + seçili değil iken. */
     soft: Boolean = false,
+    /** Renkli blok (düz siyah üstü; [sinemaRaised] tint). Seçili/cam değilken geçerli. */
+    tint: Color? = null,
     content: @Composable RowScope.(Color) -> Unit
 ) {
     val theme = LocalAppTheme.current
@@ -158,7 +160,7 @@ fun SinemaCapsule(
             .then(if (onClick != null && enabled) Modifier.sinemaPressScale(src) else Modifier)
             .then(
                 if (glass) Modifier.sinemaCapsuleGlass(shape, fill = if (selected) accent else null, edge = edge)
-                else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (selected) accent else if (softOn) softHiFill(theme) else null)
+                else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (selected) accent else if (softOn) softHiFill(theme) else null, tint = if (selected) null else tint)
                     .then(if (edge != null && !selected) Modifier.border(1.dp, edge, shape) else Modifier)
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
@@ -289,8 +291,8 @@ internal fun softHiFill(theme: AppThemeState): Color = androidx.compose.ui.graph
 
 /** Nötr Sinema kartı = YÜKSELTİLMİŞ BLOK ([sinemaRaised]); tüm kartlar tek yerden bu stile bağlı. [accent] verilirse üst parlama c2 tonlu. */
 @Suppress("UNUSED_PARAMETER")
-fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(24.dp), accent: Color? = null): Modifier =
-    sinemaRaised(shape, SinemaRaise.Card, accent)
+fun Modifier.sinemaCard(theme: AppThemeState, shape: Shape = RoundedCornerShape(24.dp), accent: Color? = null, tint: Color? = null): Modifier =
+    sinemaRaised(shape, SinemaRaise.Card, accent, tint = tint)
 
 /**
  * Çizimdeki hap/segment düğmesi: pasif = cam C (beyaz ışık), aktif = seçili taş (dolu vurgu, glow yok). `content` aktif/pasif ön plan rengini alır.

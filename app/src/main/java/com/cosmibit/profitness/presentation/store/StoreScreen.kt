@@ -417,7 +417,7 @@ private fun PendingOrderPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentHi)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }

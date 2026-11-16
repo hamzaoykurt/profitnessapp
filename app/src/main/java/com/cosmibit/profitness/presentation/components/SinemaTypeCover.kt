@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,8 +40,8 @@ fun SinemaTypeCover(
     hue: Color = LocalAppTheme.current.accentColor,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
-    val surface = lerp(Sinema.Surface, hue, 0.27f)
-    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.16f)
+    val surface = lerp(Sinema.Surface, hue, 0.30f)
+    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.38f)
     Box(modifier.background(surface).clipToBounds()) {
         Icon(
             icon, contentDescription = null, tint = ghost,
@@ -49,30 +51,48 @@ fun SinemaTypeCover(
     }
 }
 
-/**
- * Kapak tek rengi (c1 amber | c2 mercan): Kuvvet = c1, Kardiyo / Esneklik = c2,
- * Hibrit / bilinmeyen / boş = anahtarın (başlık) hash'i ile c1|c2 (aynı başlık hep aynı renk). coverIconFor ile aynı anahtar.
- */
-@Composable
-fun coverHueFor(key: String?): Color {
-    val theme = LocalAppTheme.current
-    val k = key.orEmpty().lowercase()
-    val useC2 = when {
-        "kardiyo" in k || "cardio" in k || "koş" in k || "run" in k || "bisiklet" in k || "yüzme" in k || "dayan" in k || "endur" in k ||
-            "esnek" in k || "mobil" in k || "stretch" in k || "yoga" in k || "pilates" in k || "flex" in k -> true
-        "kuvvet" in k || "strength" in k || "göğüs" in k || "sırt" in k || "bacak" in k || "omuz" in k || "kol" in k ||
-            "chest" in k || "back" in k || "leg" in k || "shoulder" in k || "arm" in k || "core" in k || "karın" in k || "abs" in k -> false
-        else -> (k.hashCode() and 1) == 1   // Hibrit / boş: başlık hash'i
-    }
-    return if (useC2) theme.accentHi else theme.accentColor
+/** Program / etkinlik türü: kapak rengi + ikonu bu tek tablodan gelir (yalnız kapaklarda; UI geneline sızmaz). */
+enum class CoverType(val hue: Color, val icon: () -> ImageVector) {
+    Football(Color(0xFF4ADE80), { Icons.Rounded.SportsSoccer }),
+    Tennis(Color(0xFFC6F135), { Icons.Rounded.SportsTennis }),
+    Swim(Color(0xFF38BDF8), { Icons.Rounded.Pool }),
+    Run(Color(0xFFFF7A6E), { Icons.Rounded.DirectionsRun }),
+    Bike(Color(0xFF2DD4BF), { Icons.Rounded.DirectionsBike }),
+    Combat(Color(0xFFF0524F), { Icons.Rounded.SportsMma }),
+    Yoga(Color(0xFFA78BFA), { Icons.Rounded.SelfImprovement }),
+    Strength(Color(0xFFFFB938), { SinemaIcons.Dumbbell }),
+    Cardio(Color(0xFFFF6FA5), { SinemaIcons.Flame }),
+    Basketball(Color(0xFFFB923C), { Icons.Rounded.SportsBasketball }),
+    Volleyball(Color(0xFF60A5FA), { Icons.Rounded.SportsVolleyball }),
+    Pilates(Color(0xFFE879F9), { Icons.Rounded.SportsGymnastics }),
+    Core(Color(0xFF34D399), { SinemaIcons.Bolt })
 }
 
-/** Kategori / etiket anahtarından hayalet ikon (mevcut Sinema ikon seti; yoksa dambıl). */
-fun coverIconFor(key: String?): ImageVector {
+private fun hasAny(k: String, vararg w: String) = w.any { it in k }
+
+/** Anahtar (kategori / etiket / başlık; TR+EN) -> tür. Eşleşmezse başlık hash'i ile tür (aynı başlık hep aynı tür). */
+fun coverTypeFor(key: String?): CoverType {
     val k = key.orEmpty().lowercase()
     return when {
-        "kardiyo" in k || "cardio" in k || "koş" in k || "run" in k -> SinemaIcons.Flame
-        "core" in k || "karın" in k || "abs" in k -> SinemaIcons.Bolt
-        else -> SinemaIcons.Dumbbell
+        hasAny(k, "futbol", "football", "soccer") -> CoverType.Football
+        hasAny(k, "tenis", "tennis", "raket", "badminton", "padel") -> CoverType.Tennis
+        hasAny(k, "yüz", "swim", "pool", "havuz") -> CoverType.Swim
+        hasAny(k, "bisiklet", "cycl", "bike", "spinning") -> CoverType.Bike
+        hasAny(k, "koş", "run", "jog", "maraton", "marathon", "yürü", "walk") -> CoverType.Run
+        hasAny(k, "boks", "box", "dövüş", "mma", "muay", "kick", "karate", "güreş", "wrestl", "martial") -> CoverType.Combat
+        hasAny(k, "pilates") -> CoverType.Pilates
+        hasAny(k, "yoga", "esnek", "mobil", "stretch", "flex") -> CoverType.Yoga
+        hasAny(k, "basket") -> CoverType.Basketball
+        hasAny(k, "voley", "volley") -> CoverType.Volleyball
+        hasAny(k, "kardiyo", "cardio", "hiit", "dayan", "endur", "crossfit", "hibrit", "hybrid", "karma") -> CoverType.Cardio
+        hasAny(k, "core", "karın", "abs") -> CoverType.Core
+        hasAny(k, "kuvvet", "strength", "halter", "weight", "göğüs", "sırt", "bacak", "omuz", "kol", "chest", "back", "leg", "shoulder", "arm", "kas", "muscle", "bulk") -> CoverType.Strength
+        else -> CoverType.entries[(k.hashCode() and 0x7fffffff) % CoverType.entries.size]
     }
 }
+
+/** Kapak tek rengi (türe göre; opak düz yüzey için). */
+fun coverHueFor(key: String?): Color = coverTypeFor(key).hue
+
+/** Kapak hayalet ikonu (türe göre belirgin ikon). */
+fun coverIconFor(key: String?): ImageVector = coverTypeFor(key).icon()

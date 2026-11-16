@@ -438,7 +438,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 }
         ) {
             SinemaTypeCover(
-                icon = coverIconFor(program.tags.firstOrNull()), hue = coverHueFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
+                icon = coverIconFor((program.tags + program.title).joinToString(" ")), hue = coverHueFor((program.tags + program.title).joinToString(" ")), modifier = Modifier.matchParentSize(),
                 ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp)
             )
         }
@@ -738,7 +738,7 @@ private fun SinemaPhotoCard(
             .sinemaCard(theme, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), hue = coverHueFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor("$tag $title"), hue = coverHueFor("$tag $title"), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 340.dp).padding(16.dp),
             verticalArrangement = Arrangement.Bottom
@@ -1270,7 +1270,7 @@ private fun ProgramPosterCard(
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), hue = coverHueFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor("$tag ${program.title}"), hue = coverHueFor("$tag ${program.title}"), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

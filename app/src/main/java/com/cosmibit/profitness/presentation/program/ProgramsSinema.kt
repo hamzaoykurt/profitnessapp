@@ -1,5 +1,8 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.core.theme.accentColor
+import com.cosmibit.profitness.core.theme.SinemaRaise
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import com.cosmibit.profitness.core.theme.accentHiTextColor
 import com.cosmibit.profitness.core.theme.sinemaListEnter
@@ -319,9 +322,7 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
             Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
-                .clip(shape)
-                .background(Sinema.Surface)
-                .border(1.dp, Sinema.line(theme), shape)
+                .sinemaRaised(shape, SinemaRaise.Card, tint = theme.accentHi)
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
@@ -337,10 +338,7 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         // Manuel
         Box(
             Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
-                .clip(shape)
-                .background(raiseBrush(theme))
-                .insetLook(theme, shape)
-                .border(1.dp, Sinema.line(theme), shape)
+                .sinemaRaised(shape, SinemaRaise.Card, tint = theme.accentColor)
                 .clickable(role = Role.Button, onClick = onManual)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
