@@ -279,19 +279,19 @@ fun AICoachScreen(
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında
                 SinemaPill(onClick = { viewModel.openHistory() }) {
-                    Icon(Icons.Rounded.History, theme.t("Geçmiş", "History"), tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.History, theme.t("Geçmiş", "History"), tint = theme.accentHi, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = {
                     viewModel.startNewSession()
                     viewModel.initWelcome(strings.oracleWelcome)
                 }) {
-                    Icon(Icons.Rounded.Add, theme.t("Yeni Sohbet", "New Chat"), tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Add, theme.t("Yeni Sohbet", "New Chat"), tint = theme.accentHi, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = { viewModel.openPreferences() }) {
                     Icon(Icons.Rounded.Settings, theme.t("Ayarlar", "Settings"), tint = Color.White, modifier = Modifier.size(16.dp))
                 }
                 SinemaPill(onClick = onNavigateToStore) {
-                    Icon(SinemaIcons.Bolt, null, tint = Sinema.TextSecondary, modifier = Modifier.size(14.dp))
+                    Icon(SinemaIcons.Bolt, null, tint = theme.accentHi, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (hasPlan) state.userPlan.displayName
@@ -641,7 +641,7 @@ private fun SanctuaryMessage(
                                 verticalAlignment     = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Rounded.FitnessCenter, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(11.dp))
+                                Icon(Icons.Rounded.FitnessCenter, null, tint = theme.accentHi, modifier = Modifier.size(11.dp))
                                 Text(theme.t("Planlarıma Ekle", "Add to Plans"), color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                             }
                         }

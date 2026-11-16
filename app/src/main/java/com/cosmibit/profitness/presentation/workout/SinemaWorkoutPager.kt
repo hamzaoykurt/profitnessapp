@@ -652,7 +652,7 @@ private fun HowToPill(onClick: () -> Unit) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) { fg ->
-        Icon(Icons.Rounded.PlayCircle, contentDescription = null, tint = theme.effectiveAccentColor, modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.PlayCircle, contentDescription = null, tint = theme.accentHi, modifier = Modifier.size(16.dp))
         Text(
             theme.t("Hareketi gör", "How to"), color = fg, fontSize = SinemaType.Caption,
             fontWeight = FontWeight.Bold, maxLines = 1

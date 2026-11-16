@@ -105,6 +105,8 @@ fun SinemaSectionLabel(text: String, modifier: Modifier = Modifier, trailing: St
         modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 40.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        com.cosmibit.profitness.core.theme.SinemaLabelDot()
+        Spacer(Modifier.width(8.dp))
         Text(text.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f))
         if (trailing != null) Text(trailing, color = Sinema.textSecondary(theme), style = Sinema.Label)
     }

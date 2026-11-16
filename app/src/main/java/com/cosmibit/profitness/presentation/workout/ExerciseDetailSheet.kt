@@ -624,7 +624,11 @@ private fun EmptyHistoryCard(text: String, theme: AppThemeState) {
 
 @Composable
 private fun DetailNote(label: String, text: String, theme: AppThemeState) {
-    Text(text = label, color = Sinema.textSecondary(theme), style = Sinema.Label)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        com.cosmibit.profitness.core.theme.SinemaLabelDot()
+        Spacer(Modifier.width(8.dp))
+        Text(text = label, color = Sinema.textSecondary(theme), style = Sinema.Label)
+    }
     Spacer(Modifier.height(6.dp))
     Text(text = text, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 22.sp)
 }

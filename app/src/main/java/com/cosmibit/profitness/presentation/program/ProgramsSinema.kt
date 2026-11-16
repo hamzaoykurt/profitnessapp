@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.core.theme.sinemaCardAccent
 import com.cosmibit.profitness.core.theme.accentHiTextColor
 import com.cosmibit.profitness.core.theme.sinemaListEnter
 import androidx.compose.foundation.Canvas
@@ -220,6 +221,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
     Column(
         Modifier.fillMaxWidth().padding(bottom = 12.dp)
             .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), edge = Color.White.copy(0.2f), fillAlpha = 0.38f, blur = 22.dp)
+            .sinemaCardAccent(theme.accentHi, inset = 28.dp)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -241,7 +243,7 @@ private fun TodayPanel(info: ProgramTodayInfo) {
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(theme.t("Bugün", "Today").sinemaUpper(theme), color = accent, style = Sinema.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold))
+                Text(theme.t("Bugün", "Today").sinemaUpper(theme), color = theme.accentHiTextColor, style = Sinema.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold))
                 Text(
                     if (info.todayIsRest) theme.t("Dinlenme", "Rest") else info.todayTitle,
                     color = Color.White, fontSize = cappedDisplaySp(if (info.todayTitle.length > 9) 26f else 34f, with(LocalDensity.current) { 34.sp.toDp().value } / 34f, 1.3f).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em,
@@ -288,7 +290,9 @@ fun ProgramsSheet(content: @Composable () -> Unit) {
 @Composable
 fun ProgramsSection(title: String, count: Int?, topGap: Dp = 26.dp) {
     val theme = LocalAppTheme.current
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = topGap, bottom = 10.dp)) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = topGap, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        com.cosmibit.profitness.core.theme.SinemaLabelDot()
+        Spacer(Modifier.width(8.dp))
         Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f))
         if (count != null) Text("$count", color = Sinema.textSecondary(theme), style = Sinema.Label)
     }
@@ -341,9 +345,9 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(
-                Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(0.10f)),
+                Modifier.size(42.dp).clip(CircleShape).background(theme.accentHi.copy(0.16f)),
                 contentAlignment = Alignment.Center
-            ) { Icon(SinemaIcons.Plus, null, tint = Sinema.text(theme), modifier = Modifier.size(22.dp)) }
+            ) { Icon(SinemaIcons.Plus, null, tint = theme.accentHi, modifier = Modifier.size(22.dp)) }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
                 Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
@@ -414,7 +418,7 @@ fun SavedProgramCard(
         }
         CompositionLocalProvider(LocalSinemaHaze provides haze) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                val typeTint = if (showTypeBadge) badge else Color.White.copy(0.85f)
+                val typeTint = badge
                 Icon(typeIcon, null, tint = typeTint, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(typeLabel.sinemaUpper(theme), color = typeTint, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em, modifier = Modifier.weight(1f), maxLines = 1)
@@ -487,7 +491,7 @@ fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Un
             .padding(horizontal = 18.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = on, modifier = Modifier.size(14.dp))
+        Icon(icon, null, tint = theme.accentHiTextColor, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
         Text(label, color = on, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }

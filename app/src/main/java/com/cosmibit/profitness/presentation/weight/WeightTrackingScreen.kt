@@ -286,6 +286,8 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            com.cosmibit.profitness.core.theme.SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
             Text(
                 theme.t("Son 90 gün", "Last 90 days").sinemaUpper(theme),
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
@@ -382,7 +384,7 @@ private fun AiInsightCard(
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = Sinema.TextSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label)

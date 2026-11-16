@@ -142,7 +142,7 @@ fun FriendsTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(Modifier.size(72.dp).sinemaCard(theme, CircleShape), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.PersonAdd, null, tint = Color.White.copy(0.85f), modifier = Modifier.size(28.dp))
+                            Icon(Icons.Rounded.PersonAdd, null, tint = theme.accentHi, modifier = Modifier.size(28.dp))
                         }
                         Spacer(Modifier.height(18.dp))
                         Text(
@@ -191,10 +191,11 @@ fun FriendsTab(
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(
-        text, style = Sinema.Label, color = Color.White.copy(0.70f),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-    )
+    Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        com.cosmibit.profitness.core.theme.SinemaLabelDot()
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = Sinema.Label, color = Color.White.copy(0.70f))
+    }
 }
 
 @Composable

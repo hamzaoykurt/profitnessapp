@@ -277,7 +277,7 @@ private fun PerformanceCover(
                 contentAlignment = Alignment.Center
             ) {
                 SinemaCapsule(height = 44.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
-                    Icon(Icons.Rounded.Calculate, null, tint = fg, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Calculate, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     PText(theme.t("Hesapla", "Calculate"), 14, FontWeight.SemiBold, color = fg, maxLines = 1)
                 }
@@ -689,7 +689,7 @@ private fun TotalRow(value: String, unit: String?, label: String, icon: ImageVec
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PText(label, 13, FontWeight.SemiBold, color = Dim, maxLines = 1)
-            Icon(icon, null, tint = Dim, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = LocalAppTheme.current.accentHi, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -1572,7 +1572,7 @@ private fun CalculatorPanel(
                 Modifier.size(44.dp).clip(CircleShape).background(Sinema.line(theme)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = theme.effectiveAccentColor, modifier = Modifier.size(22.dp))
+                Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(22.dp))
             }
             Column {
                 Text(title, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold)
@@ -1622,7 +1622,11 @@ private fun CalculationResultCard(
     theme: AppThemeState
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
+            Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+        }
         Spacer(Modifier.height(6.dp))
         SinemaFitText(value, style = Sinema.Metric, baseSp = 52f, floorSp = 28f, color = Sinema.text(theme))
         if (subtitle.isNotBlank()) {

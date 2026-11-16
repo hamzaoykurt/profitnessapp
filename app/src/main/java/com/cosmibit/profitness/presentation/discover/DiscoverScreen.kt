@@ -28,6 +28,7 @@ import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.SinemaIcons
 import com.cosmibit.profitness.core.theme.SinemaMotion
+import com.cosmibit.profitness.core.theme.accentHiTextColor
 import com.cosmibit.profitness.core.theme.sinemaCard
 import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
@@ -447,7 +448,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = Color.White.copy(0.78f),
+                    program.tags.firstOrNull()?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = theme.accentHiTextColor,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
                 Text(program.creatorName, style = Sinema.Label, color = Color.White.copy(0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -744,7 +745,7 @@ private fun SinemaPhotoCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    tag?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = Color.White.copy(0.78f),
+                    tag?.sinemaUpper(theme).orEmpty(), style = Sinema.Label, color = theme.accentHiTextColor,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                 )
                 if (!rightLabel.isNullOrBlank()) {

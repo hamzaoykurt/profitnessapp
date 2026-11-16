@@ -297,3 +297,31 @@ fun SinemaChip(
         horizontalArrangement = Arrangement.Center, selectable = selectable, content = content
     )
 }
+
+/**
+ * c2 BÜTÇESİ yardımcıları (ekranın ~%90'ı nötr; c2 yalnız küçük işaretlerde).
+ * Bölüm etiketi öncesi 6dp mercan nokta.
+ */
+@Composable
+fun SinemaLabelDot(modifier: Modifier = Modifier) {
+    val theme = LocalAppTheme.current
+    Box(modifier.size(6.dp).clip(CircleShape).background(theme.accentHi))
+}
+
+/**
+ * Öne çıkan kart (aktif program, bugünkü antrenman, ana istatistik): üst kenarda 2dp c2 -> saydam gradyan çizgi.
+ * Kartın kendi clip/shape'inden SONRA uygulanmalı (içeriğin üstüne çizer, yerleşimi değiştirmez).
+ */
+fun Modifier.sinemaCardAccent(color: Color, inset: Dp = 18.dp): Modifier = this.drawWithContent {
+    drawContent()
+    val h = 2.dp.toPx()
+    val x = inset.toPx()
+    drawRect(
+        brush = Brush.horizontalGradient(
+            0f to color.copy(alpha = 0.9f), 1f to Color.Transparent,
+            startX = x, endX = size.width - x
+        ),
+        topLeft = Offset(x, 0f),
+        size = androidx.compose.ui.geometry.Size((size.width - 2 * x).coerceAtLeast(0f), h)
+    )
+}

@@ -82,6 +82,7 @@ import com.cosmibit.profitness.core.theme.SinemaChip
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.accentHiTextColor
 import com.cosmibit.profitness.core.theme.rewardGold
 import com.cosmibit.profitness.core.theme.rewardGoldTextColor
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
@@ -421,7 +422,7 @@ private fun InviteFriendsDialog(
                             .background(Sinema.line(theme)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.PersonAdd, null, tint = accent, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Rounded.PersonAdd, null, tint = theme.accentHi, modifier = Modifier.size(20.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -1083,7 +1084,7 @@ private fun ChallengeCard(
                 }
                 Text(
                     "${c.targetType.displayLabel(theme)} · $info".sinemaUpper(theme),
-                    style = Sinema.Label, color = Color.White.copy(0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis
+                    style = Sinema.Label, color = theme.accentHiTextColor, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
 
                 if (c.isJoined) {

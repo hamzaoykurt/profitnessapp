@@ -382,7 +382,7 @@ private fun ExerciseProgressionCard(
                     )
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = accent, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Rounded.FitnessCenter, null, tint = theme.accentHi, modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -541,6 +541,8 @@ private fun LastSessionBreakdown(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            com.cosmibit.profitness.core.theme.SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
             Text(
                 theme.t("SON ANTRENMAN", "LAST WORKOUT"),
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
@@ -624,6 +626,8 @@ private fun ProgressionChartSection(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            com.cosmibit.profitness.core.theme.SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
             Text(
                 theme.t("İLERLEME", "PROGRESS"),
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
@@ -707,7 +711,7 @@ private fun AiInsightCard(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
+            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accentHi, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)

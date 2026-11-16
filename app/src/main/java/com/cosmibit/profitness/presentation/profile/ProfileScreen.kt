@@ -600,6 +600,8 @@ private fun SinemaSection(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp).heightIn(min = 56.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
             Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f))
             trailing?.invoke(this)
         }
@@ -657,12 +659,12 @@ private fun PerformanceMetricsSection(
     val metrics = buildList {
         add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.rewardGold))
         add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
-        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.supportStrength))
+        add(PerformanceMetric(totalExercises.toString(), theme.t("kez", "times"), theme.t("Toplam egzersiz", "Total exercises"), Icons.Rounded.FitnessCenter, theme.accentHi))
         if (totalDurationSeconds > 0) {
-            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, theme.supportSuccess))
+            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, theme.accentHi))
         }
         if (totalDistanceMeters > 0f) {
-            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.supportRest))
+            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.accentHi))
         }
     }
 
@@ -829,6 +831,8 @@ private fun TrophyGallery(
                 .padding(horizontal = sinemaGutter()),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            SinemaLabelDot()
+            Spacer(Modifier.width(8.dp))
             Text(
                 theme.t("Başarımlar", "Achievements").sinemaUpper(theme), color = sub, style = Sinema.Label,
                 modifier = Modifier.weight(1f)
@@ -945,7 +949,11 @@ private fun SettingsSection(
         Spacer(Modifier.height(32.dp))
         Box(Modifier.fillMaxWidth().padding(horizontal = sinemaGutter()).height(1.dp).background(Sinema.line(theme)))
         Box(Modifier.fillMaxWidth().padding(horizontal = sinemaGutter()).heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
-            Text(theme.t("VERİLER", "DATA"), color = Sinema.textSecondary(theme), style = Sinema.Label)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SinemaLabelDot()
+                Spacer(Modifier.width(8.dp))
+                Text(theme.t("VERİLER", "DATA"), color = Sinema.textSecondary(theme), style = Sinema.Label)
+            }
         }
 
         Column(
@@ -1371,7 +1379,7 @@ private fun BodyMetricsCard(
                     value    = "${heightCm.toInt()}",
                     unit     = "cm",
                     label    = theme.t("BOY", "HEIGHT"),
-                    color    = CardCyan,
+                    color    = theme.accentHi,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
                 )
@@ -1381,7 +1389,7 @@ private fun BodyMetricsCard(
                     value    = "${weightKg.toInt()}",
                     unit     = "kg",
                     label    = theme.t("KİLO", "WEIGHT"),
-                    color    = CardPurple,
+                    color    = theme.accentHi,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
                 )
@@ -1401,7 +1409,7 @@ private fun BodyMetricsCard(
                     value    = "%.1f".format(bodyFatPct),
                     unit     = "%",
                     label    = theme.t("YAĞ", "FAT"),
-                    color    = CardCoral,
+                    color    = theme.accentHi,
                     theme    = theme,
                     modifier = Modifier.weight(1f)
                 )
@@ -1495,13 +1503,13 @@ private fun PerformanceShortcutCard(
             modifier = Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(SinemaRadius.R12))
-                .background(accent.copy(0.12f)),
+                .background(theme.accentHi.copy(0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                tint     = accent,
+                tint     = theme.accentHi,
                 modifier = Modifier.size(24.dp)
             )
         }

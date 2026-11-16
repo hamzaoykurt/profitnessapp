@@ -635,11 +635,14 @@ private fun SubscriptionTab(
 
         item {
             val name = selectedPlan.localizedDisplayName(theme)
-            Text(
-                theme.t("$name İLE AÇILANLAR", "UNLOCKED WITH $name").sinemaUpper(theme),
-                color = textSub, style = Sinema.Label.copy(fontSize = 11.sp),
-                modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-            )
+            Row(Modifier.padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.cosmibit.profitness.core.theme.SinemaLabelDot()
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    theme.t("$name İLE AÇILANLAR", "UNLOCKED WITH $name").sinemaUpper(theme),
+                    color = textSub, style = Sinema.Label.copy(fontSize = 11.sp)
+                )
+            }
         }
         val features = planHighlights(selectedPlan, theme)
         items(features.size) { i ->
@@ -649,7 +652,7 @@ private fun SubscriptionTab(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(icon, null, tint = textSub, modifier = Modifier.size(20.dp))
+                Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(20.dp))
                 Text(text, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, lineHeight = 20.sp, modifier = Modifier.weight(1f))
             }
         }
@@ -775,7 +778,7 @@ private fun PlanOfferCard(
                 Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
                 if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme)
                 else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme) }
-                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme)
+                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme, hi = false)
             }
             Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
@@ -793,12 +796,12 @@ private fun sentenceCase(s: String): String = s.lowercase().replaceFirstChar { i
 
 /** Nötr cam rozet. */
 @Composable
-private fun StoreChip(text: String, theme: AppThemeState) {
+private fun StoreChip(text: String, theme: AppThemeState, hi: Boolean = true) {
     Box(
         Modifier.height(22.dp).clip(CircleShape).background(Color.White.copy(0.10f)).padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = if (hi) theme.accentHiTextColor else Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
