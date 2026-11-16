@@ -35,10 +35,7 @@ import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.data.store.BillingProduct
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
-import com.cosmibit.profitness.presentation.profile.photoFadeToBackdrop
-import com.cosmibit.profitness.presentation.components.SinemaBigStat
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
-import com.cosmibit.profitness.presentation.components.SinemaGlowBar
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 
@@ -216,6 +213,9 @@ fun StoreScreen(
     val plans = remember(state.products) { planTiersFrom(state.products) }
     val energyPackages = remember(state.products) { energyPackagesFrom(state.products) }
     val hasPaidPlan  = state.plan != UserPlan.FREE
+    var selectedAmount by remember { mutableIntStateOf(0) }
+    val effectiveAmount = energyPackages.firstOrNull { it.amount == selectedAmount }?.amount
+        ?: (energyPackages.firstOrNull { it.badge != null } ?: energyPackages.firstOrNull())?.amount ?: 0
 
     Box(
         modifier = Modifier
@@ -225,17 +225,13 @@ fun StoreScreen(
         SinemaBackdrop(Modifier.fillMaxSize())
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Top bar
             StoreTopBar(
                 theme       = theme,
                 activeTab   = activeTab,
-                plan        = state.plan,
-                credits     = state.credits,
                 onBack      = onBack,
                 onTabChange = { activeTab = it }
             )
 
-            // Tab content
             AnimatedContent(
                 targetState = activeTab,
                 transitionSpec = {
@@ -256,22 +252,79 @@ fun StoreScreen(
                         state           = state,
                         selectedPlan    = selectedPlan,
                         hasPaidPlan     = hasPaidPlan,
-                        onSelectPlan    = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            selectedPlan = it
-                        },
+                        onSelectPlan    = { selectedPlan = it },
                         onYearlyChange  = viewModel::setYearly,
                         plans           = plans,
-                        onPurchase      = { viewModel.purchasePlan(it) },
                         onCancelPlan    = { showCancelDialog = true }
                     )
                     else -> EnergyTab(
-                        theme      = theme,
-                        haptic     = haptic,
-                        state      = state,
-                        packages   = energyPackages,
-                        onPurchase = { viewModel.purchaseCredits(it) }
+                        theme          = theme,
+                        haptic         = haptic,
+                        state          = state,
+                        packages       = energyPackages,
+                        selectedAmount = effectiveAmount,
+                        onSelectAmount = { selectedAmount = it }
                     )
+                }
+            }
+        }
+
+        // Alt sabit dock: tek birincil düğme
+        StoreDock(Modifier.align(Alignment.BottomCenter)) {
+            Box(Modifier.widthIn(max = SinemaLayout.ContentMaxList).fillMaxWidth().align(Alignment.Center)) {
+                if (activeTab == 0) {
+                    val tier = plans.first { it.plan == selectedPlan }
+                    val isCurrent = state.plan == selectedPlan
+                    val yearly = state.isYearly && tier.discountBadge.isNotEmpty()
+                    val price = if (yearly) tier.yearlyPrice else tier.monthlyPrice
+                    val per = if (yearly) theme.t("/yıl", "/yr") else theme.t("/ay", "/mo")
+                    when {
+                        isCurrent -> SinemaGoOrIdle(
+                            label = theme.t("Aktif mod", "Current mode"),
+                            icon = Icons.Rounded.WorkspacePremium,
+                            enabled = false,
+                            onClick = {}
+                        )
+                        selectedPlan == UserPlan.FREE -> SinemaCapsule(
+                            modifier = Modifier.fillMaxWidth().alpha(if (state.isLoading) 0.5f else 1f),
+                            height = 56.dp,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showCancelDialog = true
+                            },
+                            enabled = !state.isLoading,
+                            horizontalArrangement = Arrangement.Center
+                        ) { fg ->
+                            Text(theme.t("Ücretsiz moda dön", "Return to Free mode"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                        else -> StoreGoButton(
+                            label = theme.t(
+                                "${tier.localizedLabel(theme)} modunu aç · $price$per",
+                                "Unlock ${tier.localizedLabel(theme)} mode · $price$per"
+                            ),
+                            icon = Icons.Rounded.WorkspacePremium,
+                            enabled = !state.isLoading,
+                            loading = state.isLoading,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.purchasePlan(selectedPlan)
+                            }
+                        )
+                    }
+                } else {
+                    val pkg = energyPackages.firstOrNull { it.amount == effectiveAmount }
+                    if (pkg != null) {
+                        StoreGoButton(
+                            label = theme.t("${pkg.amount} Enerji al · ${pkg.price}", "Get ${pkg.amount} Energy · ${pkg.price}"),
+                            icon = Icons.Rounded.Bolt,
+                            enabled = !state.isLoading,
+                            loading = state.isLoading,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.purchaseCredits(pkg.amount)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -458,46 +511,6 @@ private fun PendingOrderPanel(
 }
 
 @Composable
-private fun PaymentModeBand(
-    state: StoreState,
-    theme: AppThemeState,
-    modifier: Modifier = Modifier
-) {
-    val accent = theme.effectiveAccentColor
-    SinemaCapsule(
-        modifier = modifier.fillMaxWidth(),
-        height = 56.dp,
-        shape = RoundedCornerShape(SinemaRadius.R28),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-    ) { fg ->
-        Icon(
-            if (state.billingSandboxAvailable) Icons.Rounded.Science else Icons.Rounded.Lock,
-            null,
-            tint = accent,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                if (state.billingSandboxAvailable) theme.t("Demo ödeme modu açık", "Demo payment mode on") else theme.t("Demo ödeme modu kapalı", "Demo payment mode off"),
-                color = fg,
-                fontSize = SinemaType.BodySm,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                if (state.billingSandboxAvailable)
-                    theme.t("Gerçek çekim yapılmadan akışı deneyebilirsin.", "Test the flow without a real charge.")
-                else
-                    theme.t("Ödeme tamamlanınca haklar hesabına işlenir.", "Benefits are applied when payment is completed."),
-                color = fg.copy(0.7f),
-                fontSize = SinemaType.Caption,
-                lineHeight = 14.sp
-            )
-        }
-    }
-}
-
-@Composable
 private fun DemoField(
     value: String,
     onValueChange: (String) -> Unit,
@@ -522,92 +535,55 @@ private fun DemoField(
 private fun StoreTopBar(
     theme      : AppThemeState,
     activeTab  : Int,
-    plan       : UserPlan,
-    credits    : Int,
     onBack     : () -> Unit,
     onTabChange: (Int) -> Unit
 ) {
-    val accent = theme.effectiveAccentColor
-    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val wc = LocalWindowClass.current
-    val gutter = SinemaLayout.gutter(wc.widthDp)
-    val coverH = SinemaLayout.cover(wc.heightDp, 0.275f, 200.dp, 280.dp)
-
-    Box(
+    val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(coverH + topInset)
+            .statusBarsPadding()
+            .padding(start = gutter, end = gutter, top = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Salon fotoğrafı; yüklenmezse SinemaScene
-        Box(Modifier.fillMaxSize().photoFadeToBackdrop(90.dp)) {
-        coil.compose.SubcomposeAsyncImage(
-            model = com.cosmibit.profitness.core.ui.categoryImageUrl(""),
-            contentDescription = null,
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-            loading = { SinemaScene() },
-            error = { SinemaScene() }
-        )
-        // Karartma: beyaz yazı için alt bölgede >= %85 siyah
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(0.40f),
-                        0.5f to Color.Black.copy(0.46f),
-                        1f to Color.Black.copy(0.85f)
-                    )
-                )
-        )
+        Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+            SinemaCapsuleIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                description = theme.t("Geri", "Back"),
+                onClick = onBack,
+                selected = false,
+                size = 48.dp,
+                modifier = Modifier.align(Alignment.CenterStart)
+            )
+            Text(theme.t("Mağaza", "Store"), color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.Bold)
         }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(start = gutter, end = gutter, top = 10.dp, bottom = 18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SinemaCapsuleIconButton(
-                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                    description = theme.t("Geri", "Back"),
-                    onClick = onBack,
-                    selected = false,
-                    size = 48.dp
-                )
-                // Foto üstü: her zaman koyu cam segment
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(theme.t("Üyelik", "Membership"), theme.t("Enerji", "Energy")).forEachIndexed { idx, label ->
-                        SinemaCapsule(
-                            modifier = Modifier.weight(1f),
-                            selected = activeTab == idx,
-                            onClick = { onTabChange(idx) },
-                            height = 48.dp,
-                            horizontalArrangement = Arrangement.Center,
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) { fg ->
-                            Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1)
-                        }
-                    }
-                }
-                SinemaCapsule(
-                    height = 48.dp,
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) { fg ->
-                    Icon(Icons.Rounded.Bolt, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
-                    Text("$credits", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            StoreAccountStrip(plan = plan, theme = theme)
-        }
+        SinemaSegmentRow(
+            options = listOf(0, 1),
+            selected = activeTab,
+            label = { idx -> if (idx == 0) theme.t("Üyelik", "Membership") else theme.t("Enerji", "Energy") },
+            onSelect = onTabChange,
+            height = 48.dp
+        )
     }
+}
+
+/** Liste alt boşluğu: dock (96dp) + yüzen sayaç rezervi + gezinme çubuğu. */
+@Composable
+private fun storeListBottomPadding(): Dp =
+    96.dp + LocalFloatingTimerReserve.current + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+/** Alt sabit dock: tek birincil düğme. */
+@Composable
+private fun StoreDock(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val page = Sinema.page(LocalAppTheme.current)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(0f to Color.Transparent, 0.25f to page.copy(0.92f), 1f to page.copy(0.92f)))
+            .padding(bottom = LocalFloatingTimerReserve.current)
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 16.dp)
+    ) { content() }
 }
 
 // ── Subscription Tab ──────────────────────────────────────────────────────────
@@ -622,88 +598,100 @@ private fun SubscriptionTab(
     onSelectPlan  : (UserPlan) -> Unit,
     onYearlyChange: (Boolean) -> Unit,
     plans         : List<PlanTier>,
-    onPurchase    : (UserPlan) -> Unit,
     onCancelPlan  : () -> Unit
 ) {
+    val textSub = Sinema.textSecondary(theme)
+    val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = SinemaLayout.gutter(LocalWindowClass.current.widthDp), end = SinemaLayout.gutter(LocalWindowClass.current.widthDp), top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
+        contentPadding = PaddingValues(start = gutter, end = gutter, top = 12.dp, bottom = storeListBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (state.billingSandboxAvailable) {
-            item {
-                PaymentModeBand(state = state, theme = theme)
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(theme.t("Şu anki plan:", "Current plan:"), color = textSub, fontSize = SinemaType.BodySm)
+                Text(state.plan.localizedDisplayName(theme), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold)
             }
         }
 
         item {
-            BillingCycleSelector(
-                isYearly = state.isYearly,
-                onToggle = onYearlyChange,
-                theme = theme
-            )
+            BillingCycleSelector(isYearly = state.isYearly, onToggle = onYearlyChange, theme = theme)
         }
 
         items(plans.size) { index ->
             val tier = plans[index]
             PlanOfferCard(
                 tier = tier,
-                currentPlan = state.plan,
+                isCurrent = state.plan == tier.plan,
                 selected = selectedPlan == tier.plan,
                 isYearly = state.isYearly,
-                isLoading = state.isLoading,
-                hasPaidPlan = hasPaidPlan,
                 theme = theme,
                 onSelect = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onSelectPlan(tier.plan)
-                },
-                onPurchase = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    if (tier.plan == UserPlan.FREE) onCancelPlan() else onPurchase(tier.plan)
                 }
             )
         }
 
-        if (hasPaidPlan) {
-            item {
-                SinemaCapsule(
-                    modifier = Modifier.fillMaxWidth(),
-                    height = 48.dp,
-                    onClick = onCancelPlan,
-                    horizontalArrangement = Arrangement.Center
-                ) { fg ->
-                    Icon(Icons.Rounded.Cancel, null, tint = fg.copy(0.6f), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(theme.t("Aboneliği iptal et", "Cancel subscription"), color = fg.copy(0.8f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold)
-                }
+        item {
+            val name = selectedPlan.localizedDisplayName(theme)
+            Text(
+                theme.t("$name İLE AÇILANLAR", "UNLOCKED WITH $name").sinemaUpper(theme),
+                color = textSub, style = Sinema.Label.copy(fontSize = 11.sp),
+                modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+            )
+        }
+        val features = planHighlights(selectedPlan, theme)
+        items(features.size) { i ->
+            val (icon, text) = features[i]
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(icon, null, tint = textSub, modifier = Modifier.size(20.dp))
+                Text(text, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, lineHeight = 20.sp, modifier = Modifier.weight(1f))
             }
         }
 
+        if (state.billingSandboxAvailable) {
+            item { DemoNote(theme) }
+        }
+
+        if (hasPaidPlan) {
+            item {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .heightIn(min = 48.dp)
+                            .sinemaClickable(onClick = onCancelPlan, role = androidx.compose.ui.semantics.Role.Button)
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            theme.t("Aboneliği iptal et", "Cancel subscription"),
+                            color = textSub, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun StoreAccountStrip(
-    plan: UserPlan,
-    theme: AppThemeState
-) {
-    // Foto üstünde: her zaman beyaz (karartma altı)
-    Column(Modifier.fillMaxWidth()) {
+private fun DemoNote(theme: AppThemeState) {
+    SinemaCapsule(
+        modifier = Modifier.fillMaxWidth(),
+        height = 48.dp,
+        shape = RoundedCornerShape(SinemaRadius.R20),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) { fg ->
+        Icon(Icons.Rounded.Info, null, tint = fg.copy(0.7f), modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
         Text(
-            "${theme.t("Program Merkezi", "Program Hub")} · ${theme.t("AKTİF PLAN", "ACTIVE PLAN")}".sinemaUpper(theme),
-            color = Color.White.copy(0.78f), style = Sinema.Label.copy(fontSize = 11.sp), maxLines = 1
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            plan.localizedDisplayName(theme),
-            color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.01).em, maxLines = 1
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            theme.t("Planın, Enerjin ve AI hamlelerin", "Your plan, Energy, and AI moves"),
-            color = Color.White.copy(0.78f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium, maxLines = 1
+            theme.t("Demo ödeme modu açık · gerçek çekim yok", "Demo payment mode on · no real charge"),
+            color = fg.copy(0.8f), fontSize = SinemaType.BodySm, maxLines = 2
         )
     }
 }
@@ -714,170 +702,103 @@ private fun BillingCycleSelector(
     onToggle: (Boolean) -> Unit,
     theme: AppThemeState
 ) {
-    Column(Modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         SinemaSegmentRow(
             options = listOf(false, true),
             selected = isYearly,
             label = { yearly -> if (yearly) theme.t("Yıllık", "Yearly") else theme.t("Aylık", "Monthly") },
             onSelect = onToggle,
-            height = 48.dp
+            height = 44.dp,
+            modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            if (isYearly) theme.t("%${MAX_YEARLY_DISCOUNT_PCT}'e varan avantaj", "Up to $MAX_YEARLY_DISCOUNT_PCT% value") else theme.t("Esnek", "Flexible"),
-            color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
-            modifier = Modifier.padding(horizontal = 4.dp)
-        )
+        if (isYearly) {
+            Text(
+                theme.t("%${MAX_YEARLY_DISCOUNT_PCT}'e varan indirim", "Up to $MAX_YEARLY_DISCOUNT_PCT% off"),
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, maxLines = 2,
+                modifier = Modifier.weight(0.8f)
+            )
+        }
+    }
+}
+
+/** Seçilebilir radyo kart (96dp, eşit boy): seçili = soft zemin + ince c1 kenar; glow/boyut sıçraması yok. */
+@Composable
+private fun SelectableStoreCard(
+    selected: Boolean,
+    theme: AppThemeState,
+    enabled: Boolean = true,
+    onSelect: () -> Unit,
+    content: @Composable RowScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(SinemaRadius.R20)
+    val accent = theme.effectiveAccentColor
+    val base = Modifier
+        .fillMaxWidth()
+        .height(96.dp)
+        .alpha(if (enabled) 1f else 0.5f)
+        .sinemaClickable(onClick = onSelect, enabled = enabled, scale = 0.98f, role = androidx.compose.ui.semantics.Role.RadioButton)
+    Row(
+        modifier = (if (selected) base.clip(shape).background(theme.accentSoft).border(1.dp, accent.copy(0.55f), shape)
+        else base.sinemaCard(theme, shape)).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            Modifier.size(20.dp).border(1.5.dp, if (selected) accent else Sinema.textSecondary(theme), CircleShape),
+            contentAlignment = Alignment.Center
+        ) { if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(accent)) }
+        content()
     }
 }
 
 @Composable
 private fun PlanOfferCard(
     tier: PlanTier,
-    currentPlan: UserPlan,
+    isCurrent: Boolean,
     selected: Boolean,
     isYearly: Boolean,
-    isLoading: Boolean,
-    hasPaidPlan: Boolean,
     theme: AppThemeState,
-    onSelect: () -> Unit,
-    onPurchase: () -> Unit
+    onSelect: () -> Unit
 ) {
-    val accent = theme.effectiveAccentColor
     val textMain = Sinema.text(theme)
     val textSub = Sinema.textSecondary(theme)
-    val isCurrent = currentPlan == tier.plan
-    val price = if (isYearly && tier.discountBadge.isNotEmpty()) tier.yearlyPrice else tier.monthlyPrice
+    val yearly = isYearly && tier.discountBadge.isNotEmpty()
+    val price = if (yearly) tier.yearlyPrice else tier.monthlyPrice
     val period = when {
         tier.plan == UserPlan.FREE -> ""
         isYearly -> theme.t("/yıl", "/yr")
         else -> theme.t("/ay", "/mo")
     }
-    val ctaLabel = when {
-        isCurrent -> theme.t("Aktif mod", "Current mode")
-        tier.plan == UserPlan.FREE && hasPaidPlan -> theme.t("Ücretsiz moda dön", "Return to Free mode")
-        tier.plan == UserPlan.FREE -> theme.t("Ücretsiz mod", "Free mode")
-        else -> theme.t("${tier.localizedLabel(theme)} modunu aç", "Unlock ${tier.localizedLabel(theme)} mode")
-    }
-    val priceSize = if (selected) 56.sp else 28.sp
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaClickable(onClick = onSelect, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
-            .storeCard(theme, accent, selected, if (selected) 28.dp else 24.dp)
-            .padding(if (selected) 20.dp else 16.dp)
-    ) {
-        Text(
-            when (tier.plan) {
-                UserPlan.FREE -> theme.t("GÜNLÜK MOD", "DAILY MODE")
-                UserPlan.PRO -> theme.t("PRO MODU", "PRO MODE")
-                UserPlan.ELITE -> theme.t("ELITE MOD", "ELITE MODE")
-            },
-            color = textSub, style = Sinema.Label.copy(fontSize = 11.sp)
-        )
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.ExtraBold)
-            tier.localizedBadge(theme)?.let { badge -> StoreChip(badge, filled = true, theme = theme) }
-            if (isCurrent) StoreChip(theme.t("AKTİF", "ACTIVE"), filled = true, theme = theme)
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, lineHeight = 18.sp)
-
-        Spacer(Modifier.height(if (selected) 14.dp else 10.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            SinemaFitText(
-                text = price,
-                style = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.04).em),
-                color = textMain,
-                baseSp = priceSize.value,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            if (period.isNotEmpty()) {
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    period, color = textSub, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = if (selected) 10.dp else 4.dp)
-                )
+    SelectableStoreCard(selected = selected, theme = theme, onSelect = onSelect) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
+                if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme)
+                else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme) }
+                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme)
             }
+            Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
-
-        if (isYearly && tier.discountBadge.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tier.yearlyPerMonth, color = textSub, fontSize = SinemaType.Caption)
-                StoreChip(tier.discountBadge, filled = false, theme = theme)
+        Column(horizontalAlignment = Alignment.End) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(price, color = textMain, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, maxLines = 1)
+                if (period.isNotEmpty()) Text(period, color = textSub, fontSize = SinemaType.BodySm, modifier = Modifier.padding(start = 2.dp, bottom = 3.dp))
             }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        planHighlights(tier.plan, theme).take(2).forEach { (icon, text) ->
-            CompactPlanFeature(icon = icon, text = text, accent = accent, theme = theme)
-        }
-
-        Spacer(Modifier.height(14.dp))
-        when {
-            isCurrent -> SinemaGoOrIdle(
-                label = ctaLabel,
-                icon = Icons.Rounded.WorkspacePremium,
-                enabled = false,
-                onClick = {}
-            )
-            selected -> StoreGoButton(
-                label = ctaLabel,
-                icon = Icons.Rounded.WorkspacePremium,
-                enabled = !isLoading,
-                loading = isLoading,
-                onClick = onPurchase
-            )
-            else -> SinemaCapsule(
-                modifier = Modifier.fillMaxWidth().alpha(if (isLoading) 0.5f else 1f),
-                height = 52.dp,
-                onClick = onPurchase,
-                enabled = !isLoading,
-                horizontalArrangement = Arrangement.Center
-            ) { fg ->
-                Text(ctaLabel, color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-            }
+            if (yearly) Text(tier.yearlyPerMonth.replace("≈", "≈ "), color = textSub, fontSize = SinemaType.Caption, maxLines = 1)
         }
     }
 }
 
-/** Mağaza kartı: öne çıkan = accent 1.5dp kenar + glow; diğerleri nötr sinemaCard. */
-private fun Modifier.storeCard(theme: AppThemeState, accent: Color, featured: Boolean, radius: Dp): Modifier {
-    val shape = RoundedCornerShape(radius)
-    return if (featured) {
-        this
-            .clip(shape)
-            .background(Sinema.surface(theme))
-            .border(1.5.dp, accent, shape)
-    } else {
-        this.sinemaCard(theme, shape)
-    }
-}
+private fun sentenceCase(s: String): String = s.lowercase().replaceFirstChar { it.uppercase() }
 
-/** Küçük cam rozet (SinemaCapsule ailesi): dolu = accent + glow. */
+/** Nötr cam rozet. */
 @Composable
-private fun StoreChip(text: String, filled: Boolean, theme: AppThemeState) {
-    if (filled) {
-        // c3 = işaretle: öne çıkan rozet (dolgu düğme/taş değil, %16 örtü)
-        Box(
-            Modifier.height(24.dp).clip(CircleShape).background(Sinema.TextSecondary.copy(0.16f)).padding(horizontal = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text, color = Sinema.TextSecondary, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-        }
-        return
-    }
-    SinemaCapsule(
-        height = 24.dp,
-        shape = CircleShape,
-        selected = filled,
-        contentPadding = PaddingValues(horizontal = 10.dp),
-        horizontalArrangement = Arrangement.Center
-    ) { fg ->
-        Text(text, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+private fun StoreChip(text: String, theme: AppThemeState) {
+    Box(
+        Modifier.height(22.dp).clip(CircleShape).background(Color.White.copy(0.10f)).padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = Sinema.textSecondary(theme), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -897,186 +818,74 @@ private fun StoreGoButton(
     }
 }
 
-@Composable
-private fun CompactPlanFeature(
-    icon: ImageVector,
-    text: String,
-    accent: Color,
-    theme: AppThemeState
-) {
-    Row(
-        modifier = Modifier.padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
-        Text(text, color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 18.sp, modifier = Modifier.weight(1f))
-    }
-}
-
 private fun planOneLiner(plan: UserPlan, theme: AppThemeState): String = when (plan) {
     UserPlan.FREE -> theme.t("Temel takip; AI hakları dahil değildir.", "Basic tracking; AI allowance is not included.")
     UserPlan.PRO -> theme.t("AI üretim, analiz ve AI Koç akışı açılır.", "Unlock AI creation, analysis, and AI Coach flow.")
     UserPlan.ELITE -> theme.t("Pro'nun üstüne kişisel koç, öncelik ve üst limitler.", "Pro plus personal coaching, priority, and higher limits.")
 }
 
-@Composable
-private fun StoreSectionHeader(
-    title: String,
-    subtitle: String,
-    theme: AppThemeState,
-    trailing: @Composable (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
-            if (subtitle.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, lineHeight = 16.sp)
-            }
-        }
-        trailing?.invoke()
-    }
-}
-
 // ── Energy Tab ────────────────────────────────────────────────────────────────
 
 @Composable
 private fun EnergyTab(
-    theme     : AppThemeState,
-    haptic    : androidx.compose.ui.hapticfeedback.HapticFeedback,
-    state     : StoreState,
-    packages  : List<EnergyPackage>,
-    onPurchase: (Int) -> Unit
+    theme         : AppThemeState,
+    haptic        : androidx.compose.ui.hapticfeedback.HapticFeedback,
+    state         : StoreState,
+    packages      : List<EnergyPackage>,
+    selectedAmount: Int,
+    onSelectAmount: (Int) -> Unit
 ) {
+    val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
-        contentPadding      = PaddingValues(start = SinemaLayout.gutter(LocalWindowClass.current.widthDp), end = SinemaLayout.gutter(LocalWindowClass.current.widthDp), top = 10.dp, bottom = 28.dp + LocalFloatingTimerReserve.current),
+        contentPadding      = PaddingValues(start = gutter, end = gutter, top = 12.dp, bottom = storeListBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            SimpleEnergyBalanceCard(state = state, theme = theme)
-        }
-
-        if (state.billingSandboxAvailable) {
-            item {
-                PaymentModeBand(state = state, theme = theme)
+            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Rounded.Bolt, null, tint = theme.rewardGold, modifier = Modifier.size(24.dp))
+                    Text(theme.t("Enerji", "Energy").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label.copy(fontSize = 11.sp))
+                }
+                SinemaFitText(
+                    text = state.credits.toString(),
+                    style = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em),
+                    color = Sinema.text(theme),
+                    baseSp = 64f
+                )
             }
-        }
-
-        item {
-            StoreSectionHeader(
-                title = theme.t("Enerji paketleri", "Energy packs"),
-                subtitle = "",
-                theme = theme
-            )
         }
 
         items(packages.size) { idx ->
             val pkg = packages[idx]
-            SimpleEnergyPackageRow(
-                pkg = pkg,
+            SelectableStoreCard(
+                selected = pkg.amount == selectedAmount,
                 theme = theme,
-                isLoading = state.isLoading,
-                onPurchase = {
+                enabled = !state.isLoading,
+                onSelect = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onPurchase(pkg.amount)
+                    onSelectAmount(pkg.amount)
                 }
-            )
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(energyLabel(pkg.amount, theme), color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
+                        pkg.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme) }
+                    }
+                    if (pkg.perEnergy.isNotBlank()) {
+                        Text(pkg.localizedPerEnergy(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, maxLines = 1)
+                    }
+                }
+                Text(pkg.price, color = Sinema.text(theme), fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, maxLines = 1)
+            }
+        }
+
+        if (state.billingSandboxAvailable) {
+            item { DemoNote(theme) }
         }
     }
 }
 
-@Composable
-private fun SimpleEnergyBalanceCard(
-    state: StoreState,
-    theme: AppThemeState
-) {
-    val capacity = energyCapacityFor(state.credits)
-    val fillTarget = (state.credits.toFloat() / capacity.toFloat()).coerceIn(0.04f, 1f)
-    val fill by animateFloatAsState(
-        targetValue = fillTarget,
-        animationSpec = tween(durationMillis = 900, easing = SinemaMotion.EaseStandard),
-        label = "energy_reserve_fill"
-    )
-    val creditsText = state.credits.toString()
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
-            .padding(20.dp)
-    ) {
-        SinemaBigStat(
-            value = creditsText,
-            label = theme.t("ENERJİ", "ENERGY"),
-            unit = theme.t("Enerji", "Energy"),
-            size = if (creditsText.length >= 5) 64 else 88
-        )
-        Spacer(Modifier.height(18.dp))
-        SinemaGlowBar(progress = fill, height = 10.dp, color = theme.accentHi)
-    }
-}
-
-private fun energyCapacityFor(credits: Int): Int = when {
-    credits <= 32 -> 32
-    credits <= 100 -> 100
-    credits <= 250 -> 250
-    else -> (((credits + 99) / 100) * 100).coerceAtLeast(300)
-}
-
-@Composable
-private fun SimpleEnergyPackageRow(
-    pkg: EnergyPackage,
-    theme: AppThemeState,
-    isLoading: Boolean,
-    onPurchase: () -> Unit
-) {
-    val accent = theme.effectiveAccentColor
-    val featured = pkg.localizedBadge(theme) != null
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (isLoading) 0.5f else 1f)
-            .sinemaClickable(onClick = onPurchase, enabled = !isLoading, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
-            .storeCard(theme, accent, featured, 24.dp)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    pkg.amount.toString(),
-                    color = Sinema.text(theme), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.04).em, maxLines = 1
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    theme.t("Enerji", "Energy"),
-                    color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 5.dp)
-                )
-            }
-            pkg.localizedBadge(theme)?.let { badge ->
-                Spacer(Modifier.height(8.dp))
-                StoreChip(badge, filled = true, theme = theme)
-            }
-        }
-        Text(
-            pkg.price,
-            color = Sinema.text(theme), fontSize = SinemaType.Headline, fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.02).em, maxLines = 1
-        )
-    }
-}
 
 private fun planHighlights(plan: UserPlan, theme: AppThemeState): List<Pair<ImageVector, String>> = when (plan) {
     UserPlan.FREE -> listOf(
