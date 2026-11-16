@@ -56,7 +56,7 @@ internal fun ActivityMetricsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
             .padding(12.dp)
     ) {
         Text(
@@ -216,7 +216,7 @@ internal fun ActivityTimerSetupPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
             .padding(12.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

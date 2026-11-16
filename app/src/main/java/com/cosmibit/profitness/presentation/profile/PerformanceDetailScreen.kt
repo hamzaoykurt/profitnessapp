@@ -1564,7 +1564,7 @@ private fun CalculatorPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentHi)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

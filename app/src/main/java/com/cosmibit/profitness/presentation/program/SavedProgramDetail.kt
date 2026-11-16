@@ -91,7 +91,8 @@ fun SavedProgramDetail(
         }
     ) {
         val planDays = program.days.filter { !it.isRestDay && it.exercises.isNotEmpty() }.map { d ->
-            DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) })
+            DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) },
+                topMuscles(d.exercises.map { it.targetMuscle.ifBlank { catalog.find(it.exerciseName)?.targetMuscle.orEmpty() } }, theme))
         }
         ProgramBigStats(
             buildList {

@@ -81,6 +81,9 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.composed
+import androidx.compose.ui.modifier.modifierLocalOf
+import androidx.compose.ui.modifier.modifierLocalConsumer
+import androidx.compose.runtime.State
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.BlendMode
@@ -244,6 +247,7 @@ enum class SinemaRaise { Card, Mini }
  * alt iç gölge, iki katman dış gölge (yumuşak + temas). Basılma ölçeği (.98) çağıranın sinemaClickable'ından gelir.
  * [fill]: seçili/dolu hal (düz renk; gradyan yerine). Mini seviyede aynı dil, düşük kontrast, küçük gölge.
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 fun Modifier.sinemaRaised(
     shape: Shape,
     level: SinemaRaise = SinemaRaise.Card,
@@ -251,32 +255,52 @@ fun Modifier.sinemaRaised(
     fill: Color? = null,
     /** Renkli blok: dolgu gradyanı tint ile karışır (üst ~α.26, alt ~α.10), kenar/üst parlama tint tonlu. Düz siyah üstündeki anlamlı yüzeyler için. */
     tint: Color? = null
+): Modifier = composed {
+    // basılma durumu: üstteki sinemaClickable / sinemaPressScale ModifierLocal ile yayınlar; dış gölge ~%40 azalır, üst parlama söner
+    val holder = remember { mutableStateOf<State<Boolean>?>(null) }
+    Modifier
+        .modifierLocalConsumer { holder.value = SinemaPressedLocal.current }
+        .sinemaRaisedImpl(shape, level, accent, fill, tint) { holder.value?.value == true }
+}
+
+/** Basılma durumu yayını (sinemaClickable / sinemaPressScale -> sinemaRaised). */
+val SinemaPressedLocal = modifierLocalOf<State<Boolean>?> { null }
+
+private fun Modifier.sinemaRaisedImpl(
+    shape: Shape,
+    level: SinemaRaise,
+    accent: Color?,
+    fill: Color?,
+    tint: Color?,
+    pressed: () -> Boolean
 ): Modifier {
     val mini = level == SinemaRaise.Mini
     return this
         .drawWithCache {
             val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
             val path = shapePath(shape, size, layoutDirection, this)
-            fun paintOf(blur: Dp, dy: Dp, a: Float) = Paint().asFrameworkPaint().apply {
+            fun paintOf(blur: Dp, dy: Dp, color: Color) = Paint().asFrameworkPaint().apply {
                 isAntiAlias = true
-                color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(blur.toPx(), 0f, dy.toPx(), Color.Black.copy(a).toArgb())
+                this.color = android.graphics.Color.TRANSPARENT
+                setShadowLayer(blur.toPx(), 0f, dy.toPx(), color.toArgb())
             }
-            val soft = paintOf(if (mini) 16.dp else 30.dp, if (mini) 6.dp else 12.dp, if (mini) 0.38f else 0.45f)
-            val contact = paintOf(if (mini) 3.dp else 5.dp, if (mini) 1.dp else 2.dp, if (mini) 0.35f else 0.40f)
-            // dolu renkli (amber/mercan) yüzeylerde yumuşak renkli gölge (abartısız)
-            val colored = fill?.let { fc ->
-                Paint().asFrameworkPaint().apply {
-                    isAntiAlias = true; color = android.graphics.Color.TRANSPARENT
-                    setShadowLayer(18.dp.toPx(), 0f, 7.dp.toPx(), fc.copy(0.26f).toArgb())
-                }
-            }
+            val sA = if (mini) 0.38f else 0.45f
+            val cA = if (mini) 0.35f else 0.40f
+            fun shadows(k: Float) = Triple(
+                paintOf(if (mini) 16.dp else 30.dp, if (mini) 6.dp else 12.dp, Color.Black.copy(sA * k)),
+                paintOf(if (mini) 3.dp else 5.dp, if (mini) 1.dp else 2.dp, Color.Black.copy(cA * k)),
+                // dolu renkli (amber/mercan) yüzeylerde yumuşak renkli gölge (abartısız)
+                fill?.let { paintOf(18.dp, 7.dp, it.copy(0.26f * k)) }
+            )
+            val (soft, contact, colored) = shadows(1f)
+            val (softP, contactP, coloredP) = shadows(0.6f)
             onDrawBehind {
+                val down = pressed()
                 clipPath(path, ClipOp.Difference) {
                     drawIntoCanvas { c ->
-                        c.nativeCanvas.drawPath(androidPath, soft)
-                        colored?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
-                        c.nativeCanvas.drawPath(androidPath, contact)
+                        c.nativeCanvas.drawPath(androidPath, if (down) softP else soft)
+                        (if (down) coloredP else colored)?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
+                        c.nativeCanvas.drawPath(androidPath, if (down) contactP else contact)
                     }
                 }
             }
@@ -309,7 +333,7 @@ fun Modifier.sinemaRaised(
             onDrawBehind {
                 drawRect(fillBrush)
                 drawRect(inner, topLeft = Offset(0f, h - innerH), size = Size(w, innerH))
-                drawRect(topGlow, size = Size(w, glowH))
+                drawRect(topGlow, size = Size(w, glowH), alpha = if (pressed()) 0.55f else 1f)
                 drawPath(path, edgeBrush, style = edgeStroke)
             }
         }

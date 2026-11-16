@@ -134,7 +134,7 @@ fun PremiumCreationControl(
             .clickable(source, null, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(36.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(accent), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(SinemaRadius.R12)).sinemaSolid(accent), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(19.dp))
         }
         Spacer(Modifier.width(12.dp))

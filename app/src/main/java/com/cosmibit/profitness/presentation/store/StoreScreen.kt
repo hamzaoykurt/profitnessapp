@@ -648,7 +648,9 @@ private fun SubscriptionTab(
         items(features.size) { i ->
             val (icon, text) = features[i]
             Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 4.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini, tint = if (i % 2 == 0) theme.accentHi else theme.accentColor)
+                    .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {

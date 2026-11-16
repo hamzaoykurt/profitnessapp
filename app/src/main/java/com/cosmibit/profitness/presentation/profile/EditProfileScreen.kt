@@ -332,7 +332,7 @@ fun EditProfileScreen(
                                 .size(124.dp)
                                 .align(Alignment.Center)
                                 .clip(CircleShape)
-                                .background(accent)
+                                .sinemaSolid(accent)
                                 .padding(4.dp)
                                 .sinemaClickable(onClick = { showAvatarPicker = true }, role = androidx.compose.ui.semantics.Role.Button)
                                 .clip(CircleShape)

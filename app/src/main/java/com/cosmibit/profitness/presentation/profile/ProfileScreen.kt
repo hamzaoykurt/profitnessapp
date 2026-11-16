@@ -496,7 +496,7 @@ private fun ProfileHeroBanner(
                         .background(page)
                         .padding(4.dp)
                         .clip(CircleShape)
-                        .background(accent),
+                        .sinemaSolid(accent),
                     contentAlignment = Alignment.Center
                 ) {
                     if (avatar.startsWith("http")) {
@@ -731,7 +731,7 @@ private fun WeeklyActivitySection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = sinemaGutter())
-                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentHi)
                 .padding(20.dp)
         ) {
             if (weekWorkoutCount > 0) {
@@ -1194,7 +1194,7 @@ private fun LanguageSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24))
+                .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f))
         ) {
             LanguageOptionRow(
                 flag       = "🇹🇷",
@@ -1263,7 +1263,7 @@ private fun LanguageOptionRow(
                 Modifier
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(accent),
+                    .sinemaSolid(accent),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

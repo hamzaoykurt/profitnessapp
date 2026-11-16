@@ -5,6 +5,8 @@
 
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.accentHi
+import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.sinemaSolid
 import androidx.compose.foundation.lazy.itemsIndexed
 import com.cosmibit.profitness.core.theme.sinemaListEnter
@@ -506,7 +508,7 @@ private fun SharedProgramDayCard(day: SharedProgramDetailDay, onViewExercise: (S
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentHi)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -579,7 +581,7 @@ private fun EmptyProgramDetailCard() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28), tint = theme.accentColor)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

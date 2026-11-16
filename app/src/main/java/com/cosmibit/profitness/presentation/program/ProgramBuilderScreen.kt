@@ -1075,9 +1075,10 @@ private fun ProgramDetailDialog(
             }
         }
     ) {
-            val planDays = remember(templateDays, theme) {
+            val planDays = remember(templateDays, theme, catalog) {
                 templateDays.filter { !it.isRestDay && it.exercises.isNotEmpty() }.map { d ->
-                    DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) })
+                    DetailDay(d.title, d.exercises.map { DetailEx(theme.exerciseDisplayName(it.exerciseName), it.sets, it.reps, it.restSeconds, it.targetDurationSeconds) },
+                        topMuscles(d.exercises.map { catalog.find(it.exerciseName)?.targetMuscle.orEmpty() }, theme))
                 }
             }
             ProgramBigStats(

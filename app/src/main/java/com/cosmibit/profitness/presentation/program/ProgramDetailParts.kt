@@ -52,7 +52,13 @@ import com.cosmibit.profitness.core.theme.*
 
 /** Program detayı ortak parçaları (hazır + kayıtlı program): özet blokları, gün kartları, kas yükü, açıklama. */
 internal data class DetailEx(val name: String, val sets: Int, val reps: Int, val restSeconds: Int, val durationSeconds: Int?)
-internal data class DetailDay(val title: String, val exercises: List<DetailEx>)
+internal data class DetailDay(val title: String, val exercises: List<DetailEx>, val muscles: List<String> = emptyList())
+
+/** Gün içi hareketlerin kas grubu alanından en çok geçen 2-3 grup (UI katmanı; veri yoksa boş -> çip gösterilmez). */
+internal fun topMuscles(raw: List<String>, theme: AppThemeState): List<String> =
+    raw.map { it.trim() }.filter { it.isNotEmpty() }
+        .groupingBy { theme.fitnessTermDisplayName(it) }.eachCount()
+        .entries.sortedByDescending { it.value }.take(3).map { it.key }
 internal data class DetailMuscle(val label: String, val pct: String, val fraction: Float)
 
 private val CardShape = RoundedCornerShape(SinemaRadius.R24)
@@ -120,6 +126,15 @@ internal fun ProgramPlanDays(days: List<DetailDay>, hue: Color = LocalAppTheme.c
                         )
                     }
                     Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(24.dp).rotate(rot))
+                }
+                if (day.muscles.isNotEmpty()) {
+                    Row(Modifier.padding(start = 68.dp, end = 16.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        day.muscles.forEach { m ->
+                            Box(Modifier.weight(1f, fill = false).clip(CircleShape).background(softHiFill(theme)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                Text(m, color = theme.accentHiTextColor, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
                 }
                 AnimatedVisibility(
                     visible = open,

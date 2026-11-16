@@ -804,10 +804,10 @@ private fun SetRow(
                 overlay = if (done) measure.copy(0.18f) else null,
                 edgeColors = when (state) {
                     SetRowState.Pending -> null
-                    SetRowState.Active -> listOf(accent.copy(0.75f), accent.copy(0.25f))
+                    SetRowState.Active -> listOf(androidx.compose.ui.graphics.lerp(accent, Color.White, 0.30f).copy(0.95f), accent.copy(0.40f))
                     SetRowState.Done -> listOf(measure.copy(0.45f))
                 },
-                glow = null,
+                glow = if (active) accent.copy(0.20f) else null,
                 shadow = !active
             )
             .semantics { contentDescription = setLabel }
@@ -820,7 +820,7 @@ private fun SetRow(
                 .size(28.dp)
                 .clip(CircleShape)
                 .then(
-                    if (active) Modifier.background(Sinema.Text)
+                    if (active) Modifier.sinemaSolid(accent)
                     else Modifier.border(1.5.dp, Color.White.copy(0.30f), CircleShape)
                 ),
             contentAlignment = Alignment.Center

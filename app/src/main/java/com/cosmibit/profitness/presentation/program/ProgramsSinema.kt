@@ -357,9 +357,9 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
 }
 
 @Composable
-private fun GlassTag(text: String) {
+private fun GlassTag(text: String, hue: Color) {
     Box(
-        Modifier.height(24.dp).sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R12), blur = 12.dp).padding(horizontal = 10.dp),
+        Modifier.height(24.dp).sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R12), blur = 12.dp, overlay = hue.copy(alpha = 0.26f)).padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) { Text(text, color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
 }
@@ -451,8 +451,8 @@ fun SavedProgramCard(
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp)) {
                 Text(program.name.sinemaUpper(theme), color = Color.White, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, lineHeight = 1.15.em, letterSpacing = (-0.01).em, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    GlassTag(theme.t("$workoutDays gün", "$workoutDays days"))
-                    if (totalExercises > 0) GlassTag(theme.t("$totalExercises egzersiz", "$totalExercises exercises"))
+                    GlassTag(theme.t("$workoutDays gün", "$workoutDays days"), coverHueFor(program.name))
+                    if (totalExercises > 0) GlassTag(theme.t("$totalExercises egzersiz", "$totalExercises exercises"), coverHueFor(program.name))
                 }
                 if (program.isActive) {
                     Row(
@@ -541,7 +541,7 @@ fun ReadyProgramCard(
             Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
                     Text(title, color = Color.White, fontSize = SinemaType.Headline, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em, lineHeight = 1.1.em, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips.forEach { GlassTag(it) } }
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips.forEach { GlassTag(it, coverHueFor(iconKey)) } }
                 }
                 Spacer(Modifier.width(10.dp))
                 ActPill(theme.t("Ekle", "Add"), SinemaIcons.Plus, filled = false, onClick = onClick)

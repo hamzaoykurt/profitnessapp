@@ -598,7 +598,7 @@ private fun SanctuaryMessage(
                 // Glass bubble
                 Box(
                     modifier = Modifier
-                        .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card)
+                        .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = LocalAppTheme.current.accentHi)
                         .padding(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
                 ) {
                     SelectionContainer {
@@ -827,7 +827,7 @@ private fun SessionHistorySheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (isActive) Modifier.clip(rowShape).sinemaSolid(accent) else Modifier.sinemaCard(theme, rowShape))
+                            .then(if (isActive) Modifier.clip(rowShape).sinemaSolid(accent) else Modifier.sinemaCard(theme, rowShape, tint = androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f)))
                             .clickable(role = Role.Button) { onSelectSession(session) }
                             .heightIn(min = 56.dp)
                             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
@@ -914,7 +914,7 @@ private fun SanctuaryTypingIndicator() {
 
         Box(
             modifier = Modifier
-                .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card)
+                .sinemaRaised(RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp), SinemaRaise.Card, tint = LocalAppTheme.current.accentHi)
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             Row(
