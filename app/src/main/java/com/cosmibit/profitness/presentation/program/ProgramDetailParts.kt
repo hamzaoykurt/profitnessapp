@@ -101,7 +101,7 @@ internal fun ProgramBigStats(items: List<Pair<String, String>>) {
 internal fun ProgramPlanDays(days: List<DetailDay>, hue: Color = LocalAppTheme.current.accentHi, onOpen: (DetailEx) -> Unit) {
     val theme = LocalAppTheme.current
     var openIdx by rememberSaveable { mutableStateOf(listOf(0)) }
-    val badgeBg = lerp(Color(0xFF1A1D23), hue, 0.24f)
+    val badgeBg = lerp(androidx.compose.ui.graphics.lerp(Sinema.Page, Color.White, 0.06f), hue, 0.24f)
     val badgeFg = lerp(hue, Color.White, 0.40f)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         days.forEachIndexed { idx, day ->

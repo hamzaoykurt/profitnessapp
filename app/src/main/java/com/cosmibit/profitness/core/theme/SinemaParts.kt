@@ -292,7 +292,7 @@ fun SinemaGoButton(
 }
 
 /** Yumuşak mercan dolgu (c2 α.16, #1A1D23 kart ortası üstü; opak): çip / ikon diski / ikincil düğme. */
-internal fun softHiFill(theme: AppThemeState): Color = androidx.compose.ui.graphics.lerp(Color(0xFF1A1D23), theme.accentHi, 0.16f)
+internal fun softHiFill(theme: AppThemeState): Color = androidx.compose.ui.graphics.lerp(androidx.compose.ui.graphics.lerp(Sinema.Page, Color.White, 0.06f), theme.accentHi, 0.16f)
 
 /** Nötr Sinema kartı = YÜKSELTİLMİŞ BLOK ([sinemaRaised]); tüm kartlar tek yerden bu stile bağlı. [accent] verilirse üst parlama c2 tonlu. */
 @Suppress("UNUSED_PARAMETER")
