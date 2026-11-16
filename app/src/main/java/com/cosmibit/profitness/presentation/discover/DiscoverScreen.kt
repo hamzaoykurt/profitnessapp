@@ -37,6 +37,7 @@ import com.cosmibit.profitness.core.theme.rememberSinemaMotionOn
 import com.cosmibit.profitness.core.theme.sinemaCapsuleGlass
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverGlowFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.core.ui.SinemaLayout
@@ -436,7 +437,7 @@ private fun SharedProgramDetailHero(program: SharedProgram, onLike: () -> Unit, 
                 }
         ) {
             SinemaTypeCover(
-                icon = coverIconFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
+                icon = coverIconFor(program.tags.firstOrNull()), glow = coverGlowFor(program.tags.firstOrNull()), modifier = Modifier.matchParentSize(),
                 ghostSize = 240.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 40.dp)
             )
         }
@@ -736,7 +737,7 @@ private fun SinemaPhotoCard(
             .sinemaCard(theme, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(tag), glow = coverGlowFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 340.dp).padding(16.dp),
             verticalArrangement = Arrangement.Bottom
@@ -1268,7 +1269,7 @@ private fun ProgramPosterCard(
             .sinemaClickable(onClick = onOpen, scale = 0.985f, role = Role.Button)
             .sinemaCard(theme, shape)
     ) {
-        SinemaTypeCover(icon = coverIconFor(tag), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(tag), glow = coverGlowFor(tag), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

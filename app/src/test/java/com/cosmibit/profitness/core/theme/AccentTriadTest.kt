@@ -5,28 +5,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Renk v2 (.ekip/yon-renk-v2.md): tek sabit tema Kor + geriye uyum köprüsü. */
+/** Renk v3 (palet.html P1 Güneş + Pembe): tek sabit tema + geriye uyum köprüsü. */
 @Suppress("DEPRECATION")
 class AccentTriadTest {
     private val theme = AppThemeState()
 
-    @Test fun korTokensMatchDirection() {
+    @Test fun gunesTokensMatchDirection() {
         val p = SinemaPalette.Current
-        assertEquals(SinemaPalette.Kor, p)
-        assertEquals(Color(0xFFF98942), p.c1)
-        assertEquals(Color(0xFFE07227), p.press)
-        assertEquals(Color(0xFFFBD5C1), p.hi)
-        assertEquals(Color(0xFF352721), p.soft)
-        assertEquals(0.16f, p.glowAlpha)
-        assertEquals(0.16f, SinemaBackdropTopAlpha)
+        assertEquals(SinemaPalette.Gunes, p)
+        assertEquals(Color(0xFFFFB938), p.c1)
+        assertEquals(Color(0xFFE8A22A), p.press)
+        assertEquals(Color(0xFFFF7A6E), p.hi)
+        assertEquals(Color(0xFFFFB8AE), p.hiText)
+        assertEquals(Color(0xFF362E20), p.soft)
+        assertEquals(0.14f, p.glowAlpha)
+        assertEquals(0.14f, SinemaBackdropTopAlpha)
     }
 
     @Test fun publicApiReadsPalette() {
-        assertEquals(SinemaPalette.Kor.c1, theme.accentColor)
-        assertEquals(SinemaPalette.Kor.c1, theme.effectiveAccentColor)
-        assertEquals(SinemaPalette.Kor.hi, theme.accentHi)
-        assertEquals(SinemaPalette.Kor.press, theme.accentPress)
-        assertEquals(Color(0xFFEBCD90), theme.rewardGold)
+        assertEquals(SinemaPalette.Gunes.c1, theme.accentColor)
+        assertEquals(SinemaPalette.Gunes.c1, theme.effectiveAccentColor)
+        assertEquals(SinemaPalette.Gunes.hi, theme.accentHi)
+        assertEquals(SinemaPalette.Gunes.press, theme.accentPress)
+        assertEquals(Color(0xFFFFD98A), theme.rewardGold)
+        assertEquals(Color(0xFFFFB8AE), theme.accentHiTextColor)
+        assertEquals(theme.rewardGold, theme.rewardGoldTextColor)
         assertEquals(Sinema.Ink, theme.effectiveOnAccentColor)
     }
 

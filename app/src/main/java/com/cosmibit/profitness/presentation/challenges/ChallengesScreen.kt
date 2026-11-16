@@ -91,6 +91,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsule
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverGlowFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -1019,7 +1020,7 @@ private fun ChallengeCard(
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), glow = coverGlowFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth().heightIn(min = if (featured) 440.dp else 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

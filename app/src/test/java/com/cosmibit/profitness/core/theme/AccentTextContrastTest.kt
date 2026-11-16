@@ -28,14 +28,24 @@ class AccentTextContrastTest {
         val r = ratio(theme.effectiveOnAccentColor, theme.accentColor)
         assertTrue("ink/c1 = $r", r >= 7.0)
         assertTrue(ratio(theme.effectiveOnAccentColor, theme.accentPress) >= 4.5)
-        assertTrue(ratio(theme.effectiveOnAccentColor, theme.accentHi) >= 4.5)  // tamamlanan set onay diski
+        // c2 (#FF7A6E) üstü ink: tamamlanan set onay diski (örtü, metin değil)
+        assertTrue(ratio(theme.effectiveOnAccentColor, theme.accentHi) >= 4.5)
+    }
+
+    @Test fun c2AsIconAndLineOnSurfaces() {
+        // c2 (#FF7A6E) ikon/çizgi/halka: UI bileşeni eşiği 3.0 (metin değil; metin = c2 açık, ≥4.5 aşağıda)
+        for (bg in listOf(Sinema.Page, Sinema.Surface, Sinema.Elevated)) {
+            val r = ratio(theme.accentHi, bg)
+            assertTrue("c2/$bg = $r", r >= 3.0)
+        }
     }
 
     @Test fun accentTextOnSurfaces() = assertAll("accentText", theme.accentTextColor)
     @Test fun accentFillAsTextOnSurfaces() = assertAll("c1", theme.accentColor)
     @Test fun accentHiTextOnSurfaces() {
-        assertAll("hi", theme.accentHi)
+        // c2 açık #FFB8AE metin/rozet yazısı ≥4.5 (c2 çıplak ≥4.5 olması şart değil: ikon eşiği yukarıda ≥3.0)
         assertAll("hiText", theme.accentHiTextColor)
+        assertTrue(theme.accentHiTextColor == androidx.compose.ui.graphics.Color(0xFFFFB8AE))
     }
     @Test fun rewardGoldTextOnSurfaces() {
         assertAll("gold", theme.rewardGold)
@@ -45,6 +55,6 @@ class AccentTextContrastTest {
         assertAll("text", Sinema.Text)
         assertAll("text2", Sinema.TextSecondary)
         for (bg in listOf(Sinema.Page, Sinema.Surface, Sinema.Elevated)) assertTrue(ratio(Sinema.TextTertiary, bg) >= 4.5)
-        assertAll("alert", Sinema.Alert)
+        for (bg in listOf(Sinema.Page, Sinema.Surface, Sinema.Elevated)) assertTrue("alert on $bg", ratio(Sinema.Alert, bg) >= 4.5)
     }
 }

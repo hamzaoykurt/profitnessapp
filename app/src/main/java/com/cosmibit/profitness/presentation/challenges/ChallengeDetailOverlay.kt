@@ -106,6 +106,7 @@ import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.strings
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverGlowFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.core.ui.LocalWindowClass
 import com.cosmibit.profitness.core.ui.SinemaFitText
@@ -576,7 +577,7 @@ private fun ChallengeHero(
                 )
             }
     ) {
-        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 200.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 30.dp))
+        SinemaTypeCover(icon = coverIconFor(heroPhotoCategory(c)), glow = coverGlowFor(heroPhotoCategory(c)), modifier = Modifier.matchParentSize(), ghostSize = 200.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(56.dp, 30.dp))
         Column(
             Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.SpaceBetween

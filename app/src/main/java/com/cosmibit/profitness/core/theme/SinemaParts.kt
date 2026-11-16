@@ -107,7 +107,7 @@ fun SinemaBackdrop(modifier: Modifier = Modifier) {
     )
 }
 
-/** Tepe ışığı gücü (sayfaya göre DEĞİŞMEZ): etkin temanın değeri (Kor .16). Alt ışık kaldırıldı. */
+/** Tepe ışığı gücü (sayfaya göre DEĞİŞMEZ): etkin temanın değeri (.15). Alt ışık kaldırıldı. */
 val SinemaBackdropTopAlpha: Float get() = SinemaPalette.Current.glowAlpha
 
 /** Eski ad: gövdesi artık [SinemaBackdrop] (orb hareketi kalktı). Çağıranlar otomatik yeni zemine geçer. */

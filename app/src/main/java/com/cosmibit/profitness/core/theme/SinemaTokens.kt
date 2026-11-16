@@ -30,10 +30,10 @@ object Sinema {
     val Line = Color.White.copy(0.09f)
 
     // ── Temadan bağımsız sabitler (.ekip/yon-renk-v2.md) ──────────────────
-    /** İşaretle (ödül) kum-altın: kupa, rekor, seri, XP, rütbe. */
-    val Gold = Color(0xFFEBCD90)
+    /** Ödül = c1 açık ton (ayrı altın yok): kupa, rekor, seri, XP, rütbe. */
+    val Gold = Color(0xFFFFD98A)
     /** Hata / silme / atlandı (her zaman ikon + metinle). */
-    val Alert = Color(0xFFF4748A)
+    val Alert = Color(0xFFF0524F)
 
     // ── Glow disiplini: yalnız ekranın tek birincil düğmesi (+ birincil yoksa FAB) ──
     const val GlowAlpha = 0.22f

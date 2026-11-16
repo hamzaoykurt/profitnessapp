@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.core.theme.accentHi
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -83,7 +84,7 @@ fun SinemaEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(Modifier.size(72.dp).sinemaCapsuleGlass(CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Sinema.TextSecondary, modifier = Modifier.size(28.dp))
+            Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))
         Text(

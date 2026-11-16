@@ -20,6 +20,7 @@ import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.effectiveAccentColor
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverGlowFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
 import com.cosmibit.profitness.presentation.workout.SceneImage
@@ -295,7 +296,7 @@ fun CreateChallengeOverlay(
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(Sinema.scrim(1f))
             ) {
-                SinemaTypeCover(icon = coverIconFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
+                SinemaTypeCover(icon = coverIconFor(sceneCategory), glow = coverGlowFor(sceneCategory), modifier = Modifier.matchParentSize(), ghostSize = 200.dp)
                 Column(
                     Modifier.matchParentSize().safeTopPadding().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.SpaceBetween
@@ -1670,7 +1671,7 @@ private fun EventModeChip(
         modifier, active = isActive, onClick = onClick, height = 48.dp,
         horizontalArrangement = Arrangement.Center, contentPadding = PaddingValues(horizontal = 6.dp)
     ) { fg ->
-        Icon(icon, null, tint = Sinema.TextSecondary, modifier = Modifier.size(14.dp))   // c3 = tür işareti (3 mod)
+        Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(14.dp))   // c2 = tür işareti (3 mod)
         Spacer(Modifier.width(5.dp))
         Text(label, color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp, maxLines = 1)
     }

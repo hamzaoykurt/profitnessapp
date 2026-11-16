@@ -274,7 +274,7 @@ fun AICoachScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(SinemaIcons.Spark, null, tint = Sinema.TextSecondary, modifier = Modifier.size(16.dp))
+                    Icon(SinemaIcons.Spark, null, tint = com.cosmibit.profitness.core.theme.LocalAppTheme.current.accentHi, modifier = Modifier.size(16.dp))
                     Text("AI Koç", color = Color.White, fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 // Çizimde yalnız kredi hapı var; mevcut işlevler (geçmiş, yeni sohbet, ayarlar) aynı cam hap diliyle yanında

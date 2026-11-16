@@ -6,6 +6,7 @@ import com.cosmibit.profitness.presentation.components.safeTopPadding
 import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
+import com.cosmibit.profitness.presentation.components.coverGlowFor
 import com.cosmibit.profitness.presentation.components.coverIconFor
 import android.util.Base64
 import androidx.activity.compose.BackHandler
@@ -961,7 +962,7 @@ internal fun ProgramDetailShell(
                 // Kapak: ekran yüksekliğinin ~%45'i, durum çubuğunun altına uzanır
                 val coverHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp.coerceAtLeast(300.dp)
                 Box(Modifier.fillMaxWidth().height(coverHeight).clipToBounds()) {
-                    SinemaTypeCover(icon = coverIconFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
+                    SinemaTypeCover(icon = coverIconFor(coverIconKey), glow = coverGlowFor(coverIconKey), modifier = Modifier.fillMaxSize(), ghostSize = 260.dp, ghostOffset = androidx.compose.ui.unit.DpOffset(64.dp, 64.dp))
                     SinemaCapsuleIconButton(
                         icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         description = theme.t("Kapat", "Close"),
