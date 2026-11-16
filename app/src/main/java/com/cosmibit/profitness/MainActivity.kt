@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
 
             ProfitnessTheme(themeState = effectiveThemeState) {
               ProvideWindowClass {
+               com.cosmibit.profitness.presentation.components.ProvideSafeInsets {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color    = Color.Transparent
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+               }
               }
             }
         }

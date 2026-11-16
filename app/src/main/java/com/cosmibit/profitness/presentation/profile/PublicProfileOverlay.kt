@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.profile
 
 import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.foundation.background
 import com.cosmibit.profitness.core.theme.sinemaClickable
@@ -258,7 +259,7 @@ private fun ProfileContent(
                 .offset(y = (-28).dp)
                 .padding(horizontal = gutter)
                 .padding(top = 28.dp, bottom = 40.dp + timerExtraPad)
-                .navigationBarsPadding()
+                .safeBottomPadding()
         ) {
             // XP
             Column(Modifier.fillMaxWidth()) {

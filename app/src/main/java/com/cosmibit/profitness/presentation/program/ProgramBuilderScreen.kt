@@ -3,6 +3,7 @@
 package com.cosmibit.profitness.presentation.program
 
 import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import com.cosmibit.profitness.presentation.components.SinemaTypeCover
 import com.cosmibit.profitness.presentation.components.coverIconFor
@@ -985,7 +986,7 @@ internal fun ProgramDetailShell(
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     Column(
                         Modifier.widthIn(max = com.cosmibit.profitness.core.ui.SinemaLayout.ContentMaxReading)
-                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 160.dp).navigationBarsPadding()
+                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 160.dp).safeBottomPadding()
                     ) {
                         content()
                     }
@@ -999,7 +1000,7 @@ internal fun ProgramDetailShell(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
             ) {
-                Box(Modifier.navigationBarsPadding()) { bottomBar() }
+                Box(Modifier.safeBottomPadding()) { bottomBar() }
             }
 
             overlay()

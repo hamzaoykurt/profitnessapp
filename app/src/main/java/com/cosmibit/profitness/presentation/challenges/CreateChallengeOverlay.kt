@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.challenges
 
 import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.runtime.getValue
 import com.cosmibit.profitness.core.theme.sinemaClickable
@@ -541,7 +542,7 @@ error?.let {
 
             Spacer(
                 Modifier
-                    .navigationBarsPadding()
+                    .safeBottomPadding()
                     .height(40.dp)
             )
         }

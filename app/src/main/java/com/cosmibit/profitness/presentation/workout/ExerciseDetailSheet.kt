@@ -1,6 +1,7 @@
 package com.cosmibit.profitness.presentation.workout
 
 import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -158,12 +159,10 @@ fun ExerciseDetailSheet(
                 if (videoUrl != null) {
                     SinemaVideo(url = videoUrl, posterUrl = photoUrl, playing = true, muted = muted, modifier = Modifier.fillMaxSize())
                 } else {
-                    BoxWithConstraints(Modifier.fillMaxSize()) {
-                        // Istek boyutu = olculen boyut (ust sinir 2048px)
-                        val reqW = if (constraints.hasBoundedWidth && constraints.maxWidth > 0) constraints.maxWidth.coerceAtMost(2048) else 1080
-                        val reqH = if (constraints.hasBoundedHeight && constraints.maxHeight > 0) constraints.maxHeight.coerceAtMost(2048) else 1920
-                        val imageRequest = remember(context, photoUrl, reqW, reqH) {
-                            ImageRequest.Builder(context).data(photoUrl).size(reqW, reqH).crossfade(false).build()
+                    run {
+                        val imageRequest = remember(context, photoUrl) {
+                            ImageRequest.Builder(context).data(photoUrl).size(1080, 1920)
+                                .memoryCacheKey(photoUrl).crossfade(false).build()
                         }
                         AsyncImage(
                             model = imageRequest,
@@ -228,7 +227,7 @@ fun ExerciseDetailSheet(
                     Modifier
                         .widthIn(max = SinemaLayout.ContentMaxReading)
                         .fillMaxWidth()
-                        .navigationBarsPadding()
+                        .safeBottomPadding()
                         .padding(horizontal = gutter, vertical = 16.dp)
                         .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.16f, fillBottom = 0.10f)
                         .pointerInput(Unit) {
@@ -310,7 +309,7 @@ fun ExerciseDetailSheet(
                             .fillMaxWidth()
                             .nestedScroll(panelScrollGuard)
                             .verticalScroll(rememberScrollState())
-                            .navigationBarsPadding()
+                            .safeBottomPadding()
                     ) {
             Column(Modifier.padding(horizontal = gutter)) {
                 Spacer(Modifier.height(4.dp))

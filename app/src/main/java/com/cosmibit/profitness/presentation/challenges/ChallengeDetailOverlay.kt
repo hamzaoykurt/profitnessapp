@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import com.cosmibit.profitness.presentation.components.safeTopPadding
+import com.cosmibit.profitness.presentation.components.safeBottomPadding
 import com.cosmibit.profitness.presentation.components.FullScreenDialogWindow
 import android.content.Intent
 import com.cosmibit.profitness.core.theme.sinemaClickable
@@ -368,7 +369,7 @@ fun ChallengeDetailOverlay(
                                 1f to Sinema.page(theme)
                             )
                         )
-                        .navigationBarsPadding()
+                        .safeBottomPadding()
                         .padding(start = 20.dp, end = 20.dp, top = 40.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
