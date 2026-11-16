@@ -264,10 +264,18 @@ fun Modifier.sinemaRaised(
             }
             val soft = paintOf(if (mini) 16.dp else 30.dp, if (mini) 6.dp else 12.dp, if (mini) 0.38f else 0.45f)
             val contact = paintOf(if (mini) 3.dp else 5.dp, if (mini) 1.dp else 2.dp, if (mini) 0.35f else 0.40f)
+            // dolu renkli (amber/mercan) yüzeylerde yumuşak renkli gölge (abartısız)
+            val colored = fill?.let { fc ->
+                Paint().asFrameworkPaint().apply {
+                    isAntiAlias = true; color = android.graphics.Color.TRANSPARENT
+                    setShadowLayer(18.dp.toPx(), 0f, 7.dp.toPx(), fc.copy(0.26f).toArgb())
+                }
+            }
             onDrawBehind {
                 clipPath(path, ClipOp.Difference) {
                     drawIntoCanvas { c ->
                         c.nativeCanvas.drawPath(androidPath, soft)
+                        colored?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
                         c.nativeCanvas.drawPath(androidPath, contact)
                     }
                 }
@@ -283,13 +291,13 @@ fun Modifier.sinemaRaised(
             val baseBottom = if (mini) Color(0xFF14161B) else Color(0xFF111317)
             val top = if (tint != null) lerp(baseTop, tint, 0.26f) else baseTop
             val bottom = if (tint != null) lerp(baseBottom, tint, 0.10f) else baseBottom
-            val fillBrush: Brush = if (fill != null) androidx.compose.ui.graphics.SolidColor(fill)
+            val fillBrush: Brush = if (fill != null) Brush.verticalGradient(0f to lerp(fill, Color.White, 0.22f), 1f to lerp(fill, Color.Black, 0.10f), startY = 0f, endY = h)
                 else Brush.verticalGradient(0f to top, 1f to bottom, startY = 0f, endY = h)
             val edgeBrush = Brush.linearGradient(
-                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(0.10f), 0.45f to Color.White.copy(0.02f), 1f to Color.Transparent,
+                0f to (tint?.let { lerp(it, Color.White, 0.35f) } ?: Color.White).copy(0.06f), 0.4f to Color.White.copy(0.015f), 1f to Color.Transparent,
                 start = Offset.Zero, end = Offset(w, h)
             )
-            val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.18f else if (tint != null) 0.20f else 0.12f)
+            val glowColor = (accent ?: tint?.let { lerp(it, Color.White, 0.4f) } ?: Color.White).copy(if (fill != null) 0.30f else if (tint != null) 0.20f else 0.12f).let { if (fill != null) it.copy(0.30f) else it }
             // şişkin his: üstte 6-10dp'ye yayılan yumuşak parlama (tek çizgi değil)
             val glowH = (if (mini) 6.dp else 10.dp).toPx().coerceAtMost(h)
             val topGlow = Brush.verticalGradient(0f to glowColor, 1f to Color.Transparent, startY = 0f, endY = glowH)
@@ -305,6 +313,19 @@ fun Modifier.sinemaRaised(
                 drawPath(path, edgeBrush, style = edgeStroke)
             }
         }
+}
+
+/**
+ * DOLU renk (amber/mercan) yüzey zemini: `.clip(shape).background(accent)` yerine drop-in. Dikey gradyan (üst açık / alt koyu),
+ * üstte yumuşak parlama, altta iç gölge. Gölge/clip uygulamaz (çağıran clip'ten SONRA koyar).
+ */
+fun Modifier.sinemaSolid(color: Color): Modifier = this.drawBehind {
+    val h = size.height
+    drawRect(Brush.verticalGradient(0f to lerp(color, Color.White, 0.22f), 1f to lerp(color, Color.Black, 0.10f), startY = 0f, endY = h))
+    val gh = 9.dp.toPx().coerceAtMost(h)
+    drawRect(Brush.verticalGradient(0f to Color.White.copy(0.28f), 1f to Color.Transparent, startY = 0f, endY = gh), size = Size(size.width, gh))
+    val ih = 14.dp.toPx().coerceAtMost(h)
+    drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(0.18f), startY = h - ih, endY = h), topLeft = Offset(0f, h - ih), size = Size(size.width, ih))
 }
 
 /** Eski kapsül varsayılan kenarı; verilirse yeni degrade kenar kullanılır. */

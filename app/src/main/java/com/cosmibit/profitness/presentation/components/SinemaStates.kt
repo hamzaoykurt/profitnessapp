@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.SinemaRaise
 import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.accentHi
@@ -85,8 +86,8 @@ fun SinemaEmptyState(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(Modifier.size(72.dp).sinemaRaised(CircleShape, SinemaRaise.Mini, accent = theme.accentHi), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(28.dp))
+        Box(Modifier.size(72.dp).sinemaRaised(CircleShape, SinemaRaise.Mini, fill = theme.accentHi), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))
         Text(

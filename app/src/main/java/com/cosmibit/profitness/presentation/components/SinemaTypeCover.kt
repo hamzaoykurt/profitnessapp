@@ -76,17 +76,19 @@ enum class CoverType(val hue: Color, val icon: () -> ImageVector) {
     Football(Color(0xFF4ADE80), { Icons.Rounded.SportsSoccer }),
     Tennis(Color(0xFFC6F135), { Icons.Rounded.SportsTennis }),
     Swim(Color(0xFF38BDF8), { Icons.Rounded.Pool }),
-    Run(Color(0xFFFF7A6E), { Icons.Rounded.DirectionsRun }),
+    Run(Color(0xFFFFB938), { Icons.Rounded.DirectionsRun }),
     Bike(Color(0xFF2DD4BF), { Icons.Rounded.DirectionsBike }),
-    Combat(Color(0xFFF0524F), { Icons.Rounded.SportsMma }),
-    Yoga(Color(0xFFA78BFA), { Icons.Rounded.SelfImprovement }),
-    Strength(Color(0xFFFFB938), { SinemaIcons.Dumbbell }),
-    Cardio(Color(0xFFFF6FA5), { SinemaIcons.Flame }),
-    Basketball(Color(0xFFFB923C), { Icons.Rounded.SportsBasketball }),
+    Combat(Color(0xFF94A3B8), { Icons.Rounded.SportsMma }),
+    Yoga(Color(0xFFC084FC), { Icons.Rounded.SelfImprovement }),
+    Strength(Color(0xFFFF7A6E), { SinemaIcons.Dumbbell }),
+    Cardio(Color(0xFFFF4D8D), { SinemaIcons.Flame }),
+    Basketball(Color(0xFFF97316), { Icons.Rounded.SportsBasketball }),
     Volleyball(Color(0xFF60A5FA), { Icons.Rounded.SportsVolleyball }),
     Pilates(Color(0xFFE879F9), { Icons.Rounded.SportsGymnastics }),
-    Core(Color(0xFF34D399), { SinemaIcons.Bolt })
+    Core(Color(0xFF818CF8), { SinemaIcons.Bolt })
 }
+
+private val GeneralTypes = listOf(CoverType.Strength, CoverType.Cardio, CoverType.Run, CoverType.Yoga, CoverType.Bike, CoverType.Strength, CoverType.Swim, CoverType.Core)
 
 private fun hasAny(k: String, vararg w: String) = w.any { it in k }
 
@@ -107,7 +109,8 @@ fun coverTypeFor(key: String?): CoverType {
         hasAny(k, "kardiyo", "cardio", "hiit", "dayan", "endur", "crossfit", "hibrit", "hybrid", "karma") -> CoverType.Cardio
         hasAny(k, "core", "karın", "abs") -> CoverType.Core
         hasAny(k, "kuvvet", "strength", "halter", "weight", "göğüs", "sırt", "bacak", "omuz", "kol", "chest", "back", "leg", "shoulder", "arm", "kas", "muscle", "bulk") -> CoverType.Strength
-        else -> CoverType.entries[(k.hashCode() and 0x7fffffff) % CoverType.entries.size]
+        k.isBlank() -> CoverType.Strength   // bilinmeyen/boş = fitness mercan
+        else -> GeneralTypes[(k.hashCode() and 0x7fffffff) % GeneralTypes.size]   // eşleşmeyen başlık: genel türler arası (kartlar tek renk olmasın)
     }
 }
 

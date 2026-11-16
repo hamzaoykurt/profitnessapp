@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.core.theme.sinemaSolid
 import com.cosmibit.profitness.core.theme.SinemaBackdrop
 import com.cosmibit.profitness.core.theme.sinemaClickable
 import com.cosmibit.profitness.core.theme.sinemaCard
@@ -1050,7 +1051,7 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
             .graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (dim) 0.5f else 1f }
             .sinemaPrimaryGlow(accent, shape)
             .clip(shape)
-            .background(accent)
+            .sinemaSolid(accent)
             .drawWithContent {
                 drawContent()
                 val line = 1.dp.toPx()
@@ -1339,7 +1340,7 @@ private fun DayPill(
                                 .fillMaxWidth().height(48.dp)
                                 .sinemaClickable(onClick = { open = false; onSelect(i) }, role = Role.Button, scale = 0.98f)
                                 .clip(RoundedCornerShape(SinemaRadius.R12))
-                                .then(if (sel) Modifier.background(accent) else Modifier)
+                                .then(if (sel) Modifier.sinemaSolid(accent) else Modifier)
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {

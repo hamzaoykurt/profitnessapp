@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.core.theme.sinemaSolid
 import com.cosmibit.profitness.core.theme.accentColor
 import com.cosmibit.profitness.core.theme.SinemaRaise
 import com.cosmibit.profitness.core.theme.sinemaRaised
@@ -322,16 +323,16 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
             Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
-                .sinemaRaised(shape, SinemaRaise.Card, tint = theme.accentHi)
+                .sinemaRaised(shape, SinemaRaise.Card, fill = theme.accentHi)
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(theme.accentHi.copy(0.16f)), contentAlignment = Alignment.Center) {
-                Icon(SinemaIcons.Spark, null, tint = theme.accentHi, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(CircleShape).background(Color.Black.copy(0.12f)), contentAlignment = Alignment.Center) {
+                Icon(SinemaIcons.Spark, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
-                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = theme.effectiveOnAccentColor, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
+                Text(theme.t("Sana özel plan", "A plan made for you"), color = theme.effectiveOnAccentColor.copy(0.72f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }
@@ -405,10 +406,7 @@ fun SavedProgramCard(
     val haze = remember { HazeState() }
     Box(
         Modifier.width(226.dp).height(288.dp)
-            .shadow(16.dp, shape, ambientColor = cardBorderShadow(theme), spotColor = cardBorderShadow(theme))
-            .clip(shape)
-            .background(Sinema.scrim(1f))
-            .border(1.dp, Color.White.copy(0.2f), shape)
+            .sinemaRaised(shape, SinemaRaise.Card)
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
@@ -483,8 +481,7 @@ fun ActPill(label: String, icon: ImageVector, filled: Boolean, onClick: () -> Un
     // İkincil eylem: nötr cam (ekranda tek c1 düğme = BAŞLA)
     Row(
         modifier.height(42.dp)
-            .clip(shape).background(Color.White.copy(0.18f))
-            .border(1.dp, Color.White.copy(0.2f), shape)
+            .sinemaRaised(shape, SinemaRaise.Mini)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 18.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
@@ -505,8 +502,7 @@ fun ProgramFilterPill(label: String, icon: ImageVector?, selected: Boolean, onCl
     Box(Modifier.heightIn48().clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Row(
             Modifier.height(36.dp)
-                .clip(shape)
-                .then(if (selected) Modifier.background(accent) else Modifier.background(raiseBrush(theme)).insetLook(theme, shape).border(1.dp, Sinema.line(theme), shape))
+                .then(if (selected) Modifier.clip(shape).sinemaSolid(accent) else Modifier.sinemaRaised(shape, SinemaRaise.Mini))
                 .padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -533,8 +529,7 @@ fun ReadyProgramCard(
     val haze = remember { HazeState() }
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp).height(176.dp)
-            .shadow(16.dp, shape, ambientColor = cardBorderShadow(theme), spotColor = cardBorderShadow(theme))
-            .clip(shape).background(Sinema.scrim(1f)).border(1.dp, Color.White.copy(0.2f), shape)
+            .sinemaRaised(shape, SinemaRaise.Card)
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {

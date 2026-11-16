@@ -548,7 +548,7 @@ internal fun PickerPrimaryButton(
                 alpha = if (enabled) 1f else 0.45f
             }
             .clip(shape)
-            .background(accent)
+            .sinemaSolid(accent)
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,

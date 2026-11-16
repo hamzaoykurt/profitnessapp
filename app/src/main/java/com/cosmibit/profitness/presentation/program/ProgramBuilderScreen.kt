@@ -2315,7 +2315,7 @@ private fun NewDayBlock(count: Int, onClick: () -> Unit) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(accent),
+                .sinemaSolid(accent),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Add, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
@@ -2703,7 +2703,7 @@ private fun ExerciseEditDialog(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(accent),
+                        .sinemaSolid(accent),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Edit, null, tint = onAccent, modifier = Modifier.size(18.dp))
@@ -2888,7 +2888,7 @@ private fun EditCounterField(
                 .size(44.dp)
                 .sinemaClickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onIncrement)
                 .clip(CircleShape)
-                .background(accent),
+                .sinemaSolid(accent),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Rounded.Add, null, tint = onAccent, modifier = Modifier.size(18.dp))

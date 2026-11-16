@@ -434,7 +434,7 @@ private fun NotificationPermissionBanner(
                         onRequest()
                     }, haptic = SinemaTapHaptic.None)
                     .clip(RoundedCornerShape(SinemaRadius.R12))
-                    .background(accent)
+                    .sinemaSolid(accent)
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
                 Text(

@@ -5,6 +5,7 @@
 
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.sinemaSolid
 import androidx.compose.foundation.lazy.itemsIndexed
 import com.cosmibit.profitness.core.theme.sinemaListEnter
 import androidx.activity.compose.BackHandler
@@ -1099,7 +1100,7 @@ private fun DiscoverTopControls(
             Box(
                 Modifier.offset(x = x).width(tabW).fillMaxHeight()
                     .clip(stoneShape)
-                    .background(accent)
+                    .sinemaSolid(accent)
             )
             // Tek ortak etiket boyu: biri taşarsa üçü birlikte küçülür; taban 11sp.
             var labelSp by remember { mutableFloatStateOf(13f) }

@@ -248,7 +248,7 @@ fun AICoachScreen(
                                 else -> androidx.compose.ui.graphics.lerp(theme.accentHi, theme.accentColor, 0.5f)
                             }
                             SinemaCapsule(
-                                modifier = Modifier.weight(1f), tint = chipTint,
+                                modifier = Modifier.weight(1f), tint = chipTint, fillColor = if (chipIdx == 0) theme.accentHi else null,
                                 onClick = { inputText = chip }, enabled = !state.isLoading,
                                 height = 40.dp, shape = RoundedCornerShape(SinemaRadius.R20),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
@@ -546,7 +546,7 @@ private fun SanctuaryMessage(
                 Box(
                     modifier = Modifier
                         .clip(userShape)
-                        .background(accent)
+                        .sinemaSolid(accent)
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Text(
@@ -736,7 +736,7 @@ private fun SanctuaryInput(
                 .size(38.dp)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .clip(CircleShape)
-                .background(accent)
+                .sinemaSolid(accent)
                 .clickable(enabled = sendActive, interactionSource = src, indication = null, role = Role.Button, onClick = onSend),
             contentAlignment = Alignment.Center
         ) {
@@ -827,7 +827,7 @@ private fun SessionHistorySheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (isActive) Modifier.clip(rowShape).background(accent) else Modifier.sinemaCard(theme, rowShape))
+                            .then(if (isActive) Modifier.clip(rowShape).sinemaSolid(accent) else Modifier.sinemaCard(theme, rowShape))
                             .clickable(role = Role.Button) { onSelectSession(session) }
                             .heightIn(min = 56.dp)
                             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),

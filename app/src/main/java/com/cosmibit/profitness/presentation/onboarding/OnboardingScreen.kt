@@ -428,7 +428,7 @@ private fun StepName(
                             .weight(1f)
                             .aspectRatio(1f)
                             .then(
-                                if (selected) Modifier.clip(avatarShape).background(accent)
+                                if (selected) Modifier.clip(avatarShape).sinemaSolid(accent)
                                 else Modifier.sinemaCard(theme, avatarShape)
                             )
                             .selectable(selected = selected, role = Role.RadioButton, onClick = { vm.setAvatar(emoji) }),
@@ -596,7 +596,7 @@ private fun OnboardingChoiceGrid(
                         .weight(1f)
                         .heightIn(min = 88.dp)
                         .then(
-                            if (isSelected) Modifier.clip(shape).background(accent)
+                            if (isSelected) Modifier.clip(shape).sinemaSolid(accent)
                             else Modifier.sinemaCard(theme, shape)
                         )
                         .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })
@@ -898,7 +898,7 @@ private fun StepPersonalProgram(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(accent),
+                        .sinemaSolid(accent),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.AutoAwesome, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
