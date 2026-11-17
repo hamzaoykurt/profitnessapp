@@ -1052,14 +1052,6 @@ private fun StartButton(label: String, dim: Boolean, onClick: () -> Unit) {
             .sinemaPrimaryGlow(accent, shape)
             .clip(shape)
             .sinemaSolid(accent)
-            .drawWithContent {
-                drawContent()
-                val line = 1.dp.toPx()
-                drawRoundRect(
-                    brush = Brush.verticalGradient(0f to Color.White.copy(0.40f), (line * 6f / size.height) to Color.Transparent),
-                    cornerRadius = CornerRadius(28.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(line * 1.5f)
-                )
-            }
             .clickable(src, null, role = Role.Button, onClick = { haptic.performHapticFeedback(SinemaHaptics.Light); onClick() }),
         contentAlignment = Alignment.Center
     ) {

@@ -137,17 +137,6 @@ private fun ToastContent(toast: AppToastData) {
                     )
                 )
             )
-            .border(
-                width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        accentColor.copy(alpha = 0.45f),
-                        theme.stroke.copy(alpha = 0.60f),
-                        accentColor.copy(alpha = 0.20f)
-                    )
-                ),
-                shape = RoundedCornerShape(SinemaRadius.R16)
-            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start

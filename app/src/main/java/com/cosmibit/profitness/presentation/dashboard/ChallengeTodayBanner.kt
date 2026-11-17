@@ -119,11 +119,6 @@ private fun EventMiniRow(summary: ChallengeSummary, onClick: () -> Unit) {
             }
             .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.text0.copy(0.055f))
-            .border(
-                1.dp,
-                theme.text0.copy(0.10f),
-                RoundedCornerShape(SinemaRadius.R12)
-            )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

@@ -76,7 +76,7 @@ private typealias Stops = Array<Pair<Float, Color>>
 /**
  * Single cached paint pass for every layered surface: fill, vertical light, optional accent
  * reflection, 1dp top line, optional hero bar, then a 1dp vertical-gradient edge over the content.
- * No saveLayer, no Modifier.border(brush), no blur.
+ * No saveLayer, no Modifier, no blur.
  */
 private fun Modifier.layeredMaterial(
     shape: Shape,
@@ -318,7 +318,7 @@ fun Modifier.performanceSignatureSurface(
 }
 
 // ── Ortak malzeme API'si (cam / kabarık / gömme) ─────────────────────────────
-// Blur yok, saveLayer yok, Modifier.border(brush) yok; yüzey başına tek drawWithCache.
+// Blur yok, saveLayer yok, Modifier yok; yüzey başına tek drawWithCache.
 
 private val GlassInk = Color(0xFF0E0F11)
 

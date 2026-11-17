@@ -705,7 +705,6 @@ private fun ExercisePoster(theme: AppThemeState, onClick: () -> Unit, modifier: 
             .height(168.dp)
             .sinemaClickable(role = Role.Button, onClickLabel = title, onClick = onClick, scale = 0.98f)
             .clip(shape)
-            .border(1.dp, Sinema.White.copy(0.09f), shape)
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current).data(categoryImageUrl("Bacak")).crossfade(true).build(),

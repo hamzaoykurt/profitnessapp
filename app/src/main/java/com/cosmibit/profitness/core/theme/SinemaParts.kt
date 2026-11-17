@@ -166,7 +166,7 @@ fun SinemaCapsule(
             .then(
                 if (glass) Modifier.sinemaCapsuleGlass(shape, fill = if (solid) accent else null, edge = edge)
                 else Modifier.sinemaRaised(shape, SinemaRaise.Mini, fill = if (solid) accent else fillColor ?: if (softOn) softHiFill(theme) else null, tint = if (selected && neutralSelected) accent else if (selected) null else tint)
-                    .then(if (edge != null && !selected) Modifier.border(1.dp, edge, shape) else Modifier)
+                    .then(if (edge != null && !selected) Modifier else Modifier)
             )
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .then(
@@ -269,14 +269,6 @@ fun SinemaGoButton(
             .sinemaPrimaryGlow(accent, shape)
             .clip(shape)
             .sinemaSolid(accent)
-            .drawWithContent {
-                drawContent()
-                val line = 1.dp.toPx()
-                drawRoundRect(
-                    brush = Brush.verticalGradient(0f to Color.White.copy(0.18f), (line * 6f / size.height) to Color.Transparent),
-                    cornerRadius = CornerRadius(28.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(line * 1.5f)
-                )
-            }
             .clickable(src, null, role = Role.Button, onClick = { haptic.performHapticFeedback(SinemaHaptics.Light); onClick() }),
         contentAlignment = Alignment.Center
     ) {

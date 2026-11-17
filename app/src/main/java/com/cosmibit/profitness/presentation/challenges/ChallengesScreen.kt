@@ -550,8 +550,7 @@ private fun InviteFriendRow(
             modifier = Modifier
                 .size(26.dp)
                 .clip(CircleShape)
-                .background(if (selected) accent else Color.Transparent)
-                .border(1.dp, if (selected) accent else Sinema.line(theme), CircleShape),
+                .background(if (selected) accent else Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
             if (selected) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(16.dp))

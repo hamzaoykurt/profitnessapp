@@ -90,7 +90,6 @@ fun Modifier.floatingGlassSurface(
         )
         .clip(shape)
         .background(Sinema.Surface)
-        .border(1.dp, Sinema.Line, shape)
 }
 
 /** Recessed well for inputs and filters; depth points into the screen. */

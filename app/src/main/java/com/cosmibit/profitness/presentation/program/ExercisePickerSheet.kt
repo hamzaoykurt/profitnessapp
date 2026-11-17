@@ -646,7 +646,7 @@ private fun ExerciseRequestDialog(
                         .weight(1f)
                         .height(44.dp),
                     shape = RoundedCornerShape(SinemaRadius.R12),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, theme.stroke)
+                    border = null
                 ) {
                     Text(theme.t("İptal", "Cancel"), color = theme.text2, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
                 }

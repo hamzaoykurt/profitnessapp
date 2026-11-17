@@ -486,7 +486,7 @@ fun SavedProgramCard(
                         expanded = menu, onDismissRequest = { menu = false },
                         containerColor = Sinema.surface(theme), shape = RoundedCornerShape(SinemaRadius.R20),
                         tonalElevation = 0.dp, shadowElevation = 12.dp,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Sinema.line(theme))
+                        border = null
                     ) {
                         DropdownMenuItem(
                             text = { Text(theme.t("Düzenle", "Edit"), color = Sinema.text(theme), fontWeight = FontWeight.Bold) },

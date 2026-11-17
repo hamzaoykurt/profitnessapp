@@ -406,7 +406,6 @@ fun AICoachScreen(
                     )
                     .clip(RoundedCornerShape(SinemaRadius.R12))
                     .background(theme.bg2)
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.6f), RoundedCornerShape(SinemaRadius.R12))
                     .clickable { viewModel.resetProgramStatus() }
                     .padding(16.dp)
             ) {

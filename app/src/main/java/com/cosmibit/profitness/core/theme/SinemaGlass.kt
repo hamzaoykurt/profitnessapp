@@ -112,19 +112,6 @@ fun Modifier.sinemaGlass(shape: Shape, fillAlpha: Float = 0.70f): Modifier = thi
     .shadow(16.dp, shape, ambientColor = Sinema.Page.copy(0.40f), spotColor = Sinema.Page.copy(0.40f))
     .clip(shape)
     .background(Sinema.Surface.copy(alpha = fillAlpha))   // siyah/Ink tint yok (yon-cam-siyah)
-    .border(1.dp, Color.White.copy(0.18f), shape)
-    .drawWithContent {
-        drawContent()
-        val line = 1.dp.toPx()
-        drawRect(
-            brush = Brush.horizontalGradient(
-                0f to Color.Transparent, 0.15f to Color.White.copy(0.35f),
-                0.85f to Color.White.copy(0.35f), 1f to Color.Transparent
-            ),
-            topLeft = Offset(0f, line * 0.5f),
-            size = androidx.compose.ui.geometry.Size(size.width, line)
-        )
-    }
 
 /** Haze kaynağı: foto sayfa katmanı sağlar; kapsül/hap camı bununla arka planı bulanıklaştırır (yoksa düz yarı saydam dolgu). */
 val LocalSinemaHaze = staticCompositionLocalOf<HazeState?> { null }
@@ -234,8 +221,8 @@ fun Modifier.sinemaCapsuleGlass(
                 sheen?.let { drawRect(it) }
                 drawRect(inner, topLeft = Offset(0f, h - innerH), size = Size(w, innerH))
                 // iç üst ışık: şeklin üst kenarını izleyen 1dp hilal
-                clipPath(shifted, ClipOp.Difference) { drawPath(path, topLineColor) }
-                edgeBrush?.let { drawPath(path, it, style = edgeStroke) }
+                // üst iç parlama: sheen (gradyan) yeterli; ince çizgi yok
+
             }
         }
 }
@@ -335,14 +322,14 @@ private fun Modifier.sinemaRaisedImpl(
             val topGlow = Brush.verticalGradient(0f to glowColor, 1f to Color.Transparent, startY = 0f, endY = glowH)
             val innerH = (if (mini) 10.dp else 22.dp).toPx().coerceAtMost(h)
             val inner = Brush.verticalGradient(
-                0f to Color.Transparent, 1f to Color.Black.copy(if (fill != null) 0.20f else 0.30f), startY = h - innerH, endY = h
+                0f to Color.Transparent, 0.35f to Color.Black.copy(0.12f * (if (fill != null) 0.66f else 1f) * 0.25f), 0.7f to Color.Black.copy(0.12f * (if (fill != null) 0.66f else 1f)), 1f to Color.Black.copy(if (fill != null) 0.20f else 0.30f), startY = h - innerH, endY = h
             )
             val edgeStroke = Stroke(3.dp.toPx())   // 1.5dp görünür: dış yarısı clip ile kesilir
             onDrawBehind {
                 drawRect(fillBrush)
                 drawRect(inner, topLeft = Offset(0f, h - innerH), size = Size(w, innerH))
                 drawRect(topGlow, size = Size(w, glowH), alpha = if (pressed()) 0.55f else 1f)
-                drawPath(path, edgeBrush, style = edgeStroke)
+                // kenar çizgisi YOK: ayrım dolgu gradyanı + üst parlama + alt iç gölge + dış gölge
             }
         }
 }
@@ -620,18 +607,36 @@ fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
  * Yumuşak geçişli işaret halkası (sert kontur YOK): şeklin iç kenarında 6-10dp'ye yayılan, üst-solda daha parlak / alt-sağda sönük renkli parıltı.
  * Üst üste binen sönük konturlar iç içe bir blur etkisi verir; seçili/aktif kart ve çiplerde `border` yerine kullanılır.
  */
-fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 8.dp): Modifier = this.drawWithContent {
+fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Modifier = this.drawWithContent {
     drawContent()
+    val w = size.width
+    val h = size.height
+    val sp = spread.toPx()
+    val inset = sp * 0.9f                         // blur'lu kalın kontur iç kenardan başlar: dış pikselde α≈0 (çizgi yok)
     val path = shapePath(shape, size, layoutDirection, this)
-    val brush = Brush.linearGradient(
-        0f to color.copy(alpha = color.alpha.coerceAtLeast(0.0f) * 1f),
-        0.55f to color.copy(alpha = color.alpha * 0.45f),
-        1f to color.copy(alpha = color.alpha * 0.12f),
-        start = Offset.Zero, end = Offset(size.width, size.height)
-    )
-    clipPath(path) {
-        for (i in 1..5) {
-            drawPath(path, brush, alpha = 0.22f, style = Stroke(width = (spread.toPx() * 2f) * i / 5f))
-        }
+    val scaleX = ((w - 2 * inset) / w).coerceIn(0.5f, 1f)
+    val scaleY = ((h - 2 * inset) / h).coerceIn(0.5f, 1f)
+    val inner = android.graphics.Path(path.asAndroidPath()).also {
+        val m = android.graphics.Matrix()
+        m.setScale(scaleX, scaleY, w / 2f, h / 2f)
+        it.transform(m)
+    }
+    val clipP = path.asAndroidPath()
+    val a = color.alpha
+    fun argb(al: Float) = color.copy(alpha = a * al).toArgb()
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = sp * 1.4f
+        maskFilter = android.graphics.BlurMaskFilter(sp * 1.2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        shader = android.graphics.LinearGradient(
+            0f, 0f, w, h,
+            intArrayOf(argb(1f), argb(0.62f), argb(0.28f), argb(0.10f), argb(0.04f)),
+            floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f), android.graphics.Shader.TileMode.CLAMP
+        )
+    }
+    drawIntoCanvas { canvas ->
+        val n = canvas.nativeCanvas
+        n.save(); n.clipPath(clipP); n.drawPath(inner, paint); n.restore()
     }
 }

@@ -1105,7 +1105,7 @@ private fun NotificationsSettingsSheet(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
             ),
-            border = BorderStroke(1.dp, Color.White.copy(0.28f)),
+            border = null,
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 12.dp,
                 pressedElevation = 2.dp
@@ -1224,7 +1224,7 @@ private fun LanguageSettingsSheet(
                 containerColor = accent,
                 contentColor   = theme.effectiveOnAccentColor
             ),
-            border = BorderStroke(1.dp, Color.White.copy(0.28f)),
+            border = null,
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 12.dp,
                 pressedElevation = 2.dp
@@ -1687,8 +1687,7 @@ private fun LeaderboardPreviewCard(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(accent.copy(0.15f))
-                    .border(1.dp, accent.copy(0.35f), CircleShape),
+                    .background(accent.copy(0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

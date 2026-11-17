@@ -180,7 +180,6 @@ fun ShareProgramSheet(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(theme.bg2.copy(0.7f))
-                            .border(1.dp, theme.stroke.copy(0.4f), RoundedCornerShape(SinemaRadius.R12))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
@@ -284,7 +283,6 @@ fun ShareProgramSheet(
                             .weight(1f)
                             .clip(RoundedCornerShape(SinemaRadius.R12))
                             .background(theme.bg2)
-                            .border(1.dp, theme.stroke.copy(0.72f), RoundedCornerShape(SinemaRadius.R12))
                             .clickable { onDismiss() }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
@@ -438,7 +436,6 @@ private fun EmptyProgramsNotice() {
             .fillMaxWidth()
             .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.bg2.copy(0.4f))
-            .border(1.dp, theme.stroke.copy(0.35f), RoundedCornerShape(SinemaRadius.R12))
             .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {

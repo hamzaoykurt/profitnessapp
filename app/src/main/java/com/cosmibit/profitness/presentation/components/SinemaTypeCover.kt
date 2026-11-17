@@ -73,9 +73,9 @@ fun SinemaTypeCover(
                     Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx().coerceAtMost(size.height)),
                     size = androidx.compose.ui.geometry.Size(size.width, 10.dp.toPx().coerceAtMost(size.height))
                 )
-                val h = 22.dp.toPx().coerceAtMost(size.height)
+                val h = 34.dp.toPx().coerceAtMost(size.height)
                 drawRect(
-                    Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(0.28f), startY = size.height - h, endY = size.height),
+                    Brush.verticalGradient(0f to Color.Transparent, 0.35f to Color.Black.copy(0.03f), 0.7f to Color.Black.copy(0.12f), 1f to Color.Black.copy(0.24f), startY = size.height - h, endY = size.height),
                     topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h), size = androidx.compose.ui.geometry.Size(size.width, h)
                 )
             }

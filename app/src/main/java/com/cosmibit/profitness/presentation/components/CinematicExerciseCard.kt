@@ -621,11 +621,6 @@ private fun RestTimerChip(
             .widthIn(min = 112.dp)
             .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(chipBackground)
-            .border(
-                1.dp,
-                chipColor.copy(if (isIdle) 0.62f else 0.74f),
-                RoundedCornerShape(SinemaRadius.R12)
-            )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (isRunning) onStop() else onStart()
@@ -638,8 +633,7 @@ private fun RestTimerChip(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(chipColor.copy(if (isIdle) 0.22f else 0.30f))
-                .border(1.dp, chipColor.copy(0.36f), CircleShape),
+                .background(chipColor.copy(if (isIdle) 0.22f else 0.30f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(

@@ -604,7 +604,6 @@ private fun InfoChip(text: String) {
             .heightIn(min = 32.dp)
             .clip(RoundedCornerShape(SinemaRadius.R16))
             .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(SinemaRadius.R16))
             .padding(horizontal = 12.dp, vertical = 7.dp)
     )
 }

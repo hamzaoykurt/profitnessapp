@@ -1776,7 +1776,6 @@ private fun EditProgramScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(SinemaRadius.R20))
                         .background(Sinema.page(editTheme))
-                        .border(1.dp, Sinema.line(editTheme), RoundedCornerShape(SinemaRadius.R20))
                         .padding(16.dp)
                 ) {
                     BasicTextField(
@@ -2466,7 +2465,6 @@ private fun ManualDayCard(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(SinemaRadius.R16))
                 .background(Sinema.page(theme))
-                .border(1.dp, line, RoundedCornerShape(SinemaRadius.R16))
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             BasicTextField(
@@ -2531,7 +2529,6 @@ private fun ManualDayCard(
                                 .sinemaClickable(onClick = { onEditExercise(i) }, scale = 0.98f)
                                 .clip(RoundedCornerShape(SinemaRadius.R20))
                                 .background(Sinema.page(theme))
-                                .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                                 .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -2740,7 +2737,6 @@ private fun ExerciseEditDialog(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(SinemaRadius.R20))
                     .background(Sinema.page(theme))
-                    .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                     .padding(horizontal = 16.dp)
             ) {
                 if (spec.metric == ExerciseMetric.Strength) {
@@ -2800,7 +2796,6 @@ private fun ExerciseEditDialog(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(SinemaRadius.R20))
                     .background(Sinema.page(theme))
-                    .border(1.dp, line, RoundedCornerShape(SinemaRadius.R20))
                     .padding(16.dp),
                 decorationBox = { inner ->
                     if (notes.isBlank()) Text(

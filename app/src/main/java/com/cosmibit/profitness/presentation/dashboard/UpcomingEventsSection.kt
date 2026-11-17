@@ -121,11 +121,6 @@ private fun UpcomingCard(summary: ChallengeSummary, onClick: () -> Unit) {
             .background(
                 Brush.verticalGradient(listOf(theme.bg2, theme.bg1))
             )
-            .border(
-                1.dp,
-                theme.text0.copy(0.10f),
-                shape
-            )
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(14.dp)
     ) {
