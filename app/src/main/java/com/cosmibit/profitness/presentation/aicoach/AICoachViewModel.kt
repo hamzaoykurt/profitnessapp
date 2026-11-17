@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.aicoach
 
+import com.cosmibit.profitness.domain.ai.isAiLocked
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
@@ -207,7 +208,7 @@ class AICoachViewModel @Inject constructor(
             var creditReserved = false
             runCatching {
                 // Enerji kontrolü — FREE plan + 0 Enerji → paywall, devam etme
-                if (!planRepository.consumeCredit()) {
+                if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.CoachChat) || !planRepository.consumeCredit()) {
                     updateState {
                         it.copy(
                             messages  = it.messages.filterNot { msg -> msg.id == userMessage.id },
@@ -349,6 +350,10 @@ class AICoachViewModel @Inject constructor(
     /** Seçili Oracle mesajını program olarak Supabase'e kaydeder. */
     fun applyProgram(messageText: String, programName: String) {
         viewModelScope.launch {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.CoachToProgram)) {
+                sendEvent(AICoachEvent.ShowPaywall)
+                return@launch
+            }
             updateState { it.copy(programStatus = ProgramStatus.Loading) }
 
             val userId = supabase.auth.currentUserOrNull()?.id

@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.profile
 
+import com.cosmibit.profitness.domain.ai.isAiLocked
 import com.cosmibit.profitness.presentation.components.CoverType
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.lazy.LazyRow
@@ -167,7 +168,7 @@ class ExerciseProgressionViewModel @Inject constructor(
                 return@launch
             }
 
-            if (!planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis) || !planRepository.consumeCredit()) {
                 updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
                 sendEvent(ExerciseProgressionEvent.ShowPaywall)
                 return@launch

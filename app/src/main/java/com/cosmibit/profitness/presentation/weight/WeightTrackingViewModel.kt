@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.weight
 
+import com.cosmibit.profitness.domain.ai.isAiLocked
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.ai.AiAccessException
@@ -52,6 +53,8 @@ data class WeightTrackingState(
     val totalDeltaKg     : Double?               = null,
     /** Gemini AI insight metni */
     val aiInsight        : String                = "",
+    /** Gösterilen analiz son kayıtlardan ESKİ (kayıt eklendi/silindi): "Analizi güncelle" önerilir. */
+    val aiInsightStale   : Boolean               = false,
     val isAiLoading      : Boolean               = false,
     val isLoading        : Boolean               = true,
     /** Add/Edit sheet görünürlüğü */
@@ -80,8 +83,17 @@ class WeightTrackingViewModel @Inject constructor(
     private val weightRepository: WeightRepository,
     private val geminiRepository : GeminiRepository,
     private val planRepository   : com.cosmibit.profitness.data.store.UserPlanRepository,
-    private val supabase         : SupabaseClient
+    private val supabase         : SupabaseClient,
+    private val disk             : com.cosmibit.profitness.data.cache.DiskCache
 ) : BaseViewModel<WeightTrackingState, WeightTrackingEvent>(WeightTrackingState()) {
+
+    /** Kalıcı AI analizi: ekran yeniden açılınca kredi harcamadan gösterilir; [signature] kayıtlar değişince eskir. */
+    @kotlinx.serialization.Serializable
+    data class CachedInsight(val signature: String, val text: String)
+
+    private fun insightKey(userId: String) = "weight_ai_insight_$userId"
+    private var cachedInsight: CachedInsight? = null
+    private var cacheLoaded = false
 
     private var observeJob   : Job? = null
     private var aiInsightJob : Job? = null
@@ -132,10 +144,13 @@ class WeightTrackingViewModel @Inject constructor(
                             )
                         }
 
-                        // Yeterli veri varsa ve daha önce AI insight yoksa üret (ağ çekişinden sonra; eskisi gibi tek sefer)
-                        if (pulled && sorted.size >= 2 && uiState.value.aiInsight.isBlank()) {
-                            generateAiInsight(sorted)
+                        // AI analizi OTOMATİK BAŞLAMAZ (kredi): yalnız kullanıcı "AI ile analiz et"e basınca.
+                        // Kayıtlı analiz varsa gösterilir; kayıtlar değiştiyse "eski" işaretlenir.
+                        if (!cacheLoaded) {
+                            cacheLoaded = true
+                            cachedInsight = runCatching { disk.getOnIo<CachedInsight>(insightKey(userId)) }.getOrNull()
                         }
+                        applyCachedInsight(sorted)
                     }
             }
 
@@ -144,7 +159,7 @@ class WeightTrackingViewModel @Inject constructor(
             pulled = true
             val current = uiState.value.entries
             updateState { it.copy(isLoading = false) }
-            if (current.size >= 2 && uiState.value.aiInsight.isBlank()) generateAiInsight(current)
+            applyCachedInsight(current)
         }
     }
 
@@ -214,9 +229,7 @@ class WeightTrackingViewModel @Inject constructor(
                 sendEvent(WeightTrackingEvent.ShowSnackbar(
                     if (state.editingEntry == null) "Ağırlık kaydedildi" else "Kayıt güncellendi"
                 ))
-                // Veri değişince AI insight yenile
-                aiInsightJob?.cancel()
-                updateState { it.copy(aiInsight = "") }
+                // Veri değişti: analiz silinmez, Flow üzerinden "eski" işaretlenir (yeniden analiz kullanıcıya kalır)
             } else {
                 sendEvent(WeightTrackingEvent.ShowSnackbar("Kayıt başarısız. Lütfen tekrar deneyin."))
             }
@@ -229,8 +242,6 @@ class WeightTrackingViewModel @Inject constructor(
             val result = weightRepository.deleteEntry(entry.id, userId)
             if (result.isSuccess) {
                 sendEvent(WeightTrackingEvent.ShowSnackbar("Kayıt silindi"))
-                aiInsightJob?.cancel()
-                updateState { it.copy(aiInsight = "") }
             } else {
                 sendEvent(WeightTrackingEvent.ShowSnackbar("Silme başarısız"))
             }
@@ -246,8 +257,15 @@ class WeightTrackingViewModel @Inject constructor(
     fun generateAiInsight(entries: List<WeightLogEntity> = uiState.value.entries) {
         if (entries.size < 2) return
         if (uiState.value.isAiLoading) return
-        updateState { it.copy(isAiLoading = true, aiInsight = "") }
+        // Plan kilidi (istemci): Free'de AI yok -> Mağaza. Sunucu yine de reddeder; burası kredi/istek harcamasın diye.
+        val previous = uiState.value.aiInsight
+        updateState { it.copy(isAiLoading = true) }
         aiInsightJob = viewModelScope.launch {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.WeightAnalysis)) {
+                updateState { it.copy(isAiLoading = false) }
+                sendEvent(WeightTrackingEvent.ShowPaywall)
+                return@launch
+            }
             val prompt = AiAnalysisPrompts.weightTrend(entries)
             if (prompt == null) {
                 updateState { it.copy(isAiLoading = false, aiInsight = "Trend analizi için en az iki geçerli kilo kaydı gerekiyor.") }
@@ -274,13 +292,25 @@ class WeightTrackingViewModel @Inject constructor(
             }
             planRepository.refresh()
 
-            updateState { st ->
-                st.copy(
-                    aiInsight   = result.getOrElse { planRepository.refundCredit(); "Trend analizi şu an mevcut değil." },
-                    isAiLoading = false
-                )
+            val text = result.getOrNull()?.trim().orEmpty()
+            if (text.isBlank()) {
+                planRepository.refundCredit()
+                updateState { it.copy(isAiLoading = false, aiInsight = previous) }
+                sendEvent(WeightTrackingEvent.ShowSnackbar("Analiz şu an yapılamadı; Enerji iade edildi. Biraz sonra tekrar dene."))
+                return@launch
             }
+            val userId = supabase.auth.currentUserOrNull()?.id
+            val saved = CachedInsight(insightSignature(entries), text)
+            cachedInsight = saved
+            if (userId != null) runCatching { disk.putOnIo(insightKey(userId), saved) }
+            updateState { it.copy(aiInsight = text, aiInsightStale = saved.signature != insightSignature(it.entries), isAiLoading = false) }
         }
+    }
+
+    private fun applyCachedInsight(sorted: List<WeightLogEntity>) {
+        if (uiState.value.isAiLoading) return
+        val c = cachedInsight ?: return
+        updateState { it.copy(aiInsight = c.text, aiInsightStale = c.signature != insightSignature(sorted)) }
     }
 
     // ── Yardımcı hesaplamalar ─────────────────────────────────────────────────
@@ -318,4 +348,10 @@ class WeightTrackingViewModel @Inject constructor(
         return WeeklySummary(thisAvg, lastAvg, delta)
     }
 
+}
+
+/** Analiz geçerlilik imzası: kayıt sayısı + en son kaydın kimliği/değeri/zamanı. */
+internal fun insightSignature(entries: List<WeightLogEntity>): String {
+    val latest = entries.maxByOrNull { it.recordedAt }
+    return "${entries.size}|${latest?.id}|${latest?.weightKg}|${latest?.recordedAt}"
 }

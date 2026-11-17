@@ -2,6 +2,7 @@ package com.cosmibit.profitness.presentation.program
 
 import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
@@ -365,7 +366,7 @@ private fun raiseBrush(theme: AppThemeState): Brush =
 
 /** AI (kabarık vurgu) + Manuel (gömülü) blokları. */
 @Composable
-fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
+fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit, aiLocked: Boolean = false) {
     val theme = LocalAppTheme.current
     val shape = RoundedCornerShape(SinemaRadius.R28)
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -377,11 +378,15 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(Modifier.size(42.dp).clip(CircleShape).background(theme.accentHi.copy(0.26f)), contentAlignment = Alignment.Center) {
-                Icon(SinemaIcons.Spark, null, tint = theme.accentHiTextColor, modifier = Modifier.size(22.dp))
+                Icon(
+                    if (aiLocked) androidx.compose.material.icons.Icons.Rounded.Lock else SinemaIcons.Spark,
+                    if (aiLocked) theme.t("Kilitli", "Locked") else null,
+                    tint = theme.accentHiTextColor, modifier = Modifier.size(22.dp)
+                )
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(if (aiLocked) theme.t("Pro ile aç", "Unlock with Pro") else theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }

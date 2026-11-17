@@ -293,7 +293,31 @@ fun AICoachScreen(
                     Spacer(Modifier.height(10.dp))
                   }
                 }
-                SanctuaryInput(
+                // ÜYELİK: Free'de AI Koç önizleme (sekme ve öneriler görünür) + mesaj çubuğu yerine "Pro ile aç" kilidi.
+                val coachLocked = state.isBillingLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(
+                    state.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.CoachChat
+                )
+                if (coachLocked) {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .sinemaRaised(androidx.compose.foundation.shape.RoundedCornerShape(SinemaRadius.R24), SinemaRaise.Card, tint = theme.accentHi)
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(androidx.compose.material.icons.Icons.Rounded.Lock, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(theme.t("AI Koç Pro ve Elite'te", "AI Coach is in Pro and Elite"), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            theme.t("Kişisel antrenman soruların ve programa dönüşen öneriler için planını yükselt.",
+                                "Upgrade to ask personal training questions and turn answers into programs."),
+                            color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        SinemaGoButton(label = theme.t("PRO İLE AÇ", "UNLOCK WITH PRO"), icon = androidx.compose.material.icons.Icons.Rounded.Lock, onClick = onNavigateToStore)
+                    }
+                } else SanctuaryInput(
                     value         = inputText,
                     onValueChange = { inputText = it },
                     onSend        = { sendMessage(inputText) },

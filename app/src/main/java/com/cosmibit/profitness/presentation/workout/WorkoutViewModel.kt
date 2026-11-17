@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.workout
 
+import com.cosmibit.profitness.domain.ai.isAiLocked
 import android.os.SystemClock
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
@@ -1325,7 +1326,7 @@ class WorkoutViewModel @Inject constructor(
                 return@launch
             }
 
-            if (!planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis) || !planRepository.consumeCredit()) {
                 updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
                 sendEvent(WorkoutEvent.ShowPaywall)
                 return@launch

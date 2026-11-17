@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -96,7 +97,6 @@ fun WeightTrackingScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showPaywall       by remember { mutableStateOf(false) }
     val navBarBottom      = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val isFree            = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -150,11 +150,14 @@ fun WeightTrackingScreen(
                 item {
                     AiInsightCard(
                         insight   = state.aiInsight,
+                        stale     = state.aiInsightStale,
                         isLoading = state.isAiLoading,
                         theme     = theme,
-                        isFree    = isFree,
+                        plan      = state.userPlan,
                         credits   = state.aiCredits,
-                        onRefresh = { viewModel.generateAiInsight() }
+                        entryCount = state.entries.size,
+                        onAnalyze = { viewModel.generateAiInsight() },
+                        onUnlock  = onNavigateToStore
                     )
                 }
                 item {
@@ -370,13 +373,19 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
 @Composable
 private fun AiInsightCard(
     insight: String,
+    stale: Boolean,
     isLoading: Boolean,
     theme: AppThemeState,
-    isFree: Boolean,
+    plan: com.cosmibit.profitness.data.store.UserPlan,
     credits: Int,
-    onRefresh: () -> Unit
+    entryCount: Int,
+    onAnalyze: () -> Unit,
+    onUnlock: () -> Unit
 ) {
     val accent = theme.effectiveAccentColor
+    val english = theme.language == AppLanguage.ENGLISH
+    val feature = com.cosmibit.profitness.domain.ai.AiFeature.WeightAnalysis
+    val locked = !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(plan, feature)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -385,39 +394,20 @@ private fun AiInsightCard(
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
+            Icon(if (locked) Icons.Rounded.Lock else Icons.Rounded.AutoAwesome, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(theme.t("AI ANALİZ", "AI ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label)
-                if (isFree && !isLoading) {
-                    Text(
-                        if (credits <= 0) theme.t("Enerjin bitti · Enerji yükle veya plana yükselt", "Out of energy · Get more energy or upgrade")
-                        else theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
-                        color = if (credits <= 0) Sinema.text(theme) else Sinema.textSecondary(theme),
-                        fontSize = SinemaType.Caption, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-            if (!isLoading) {
-                if (isFree && credits <= 0) {
-                    Box(
-                        Modifier.size(40.dp).clip(CircleShape).background(Sinema.line(theme)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.Refresh, theme.t("Enerji yok", "No energy"), tint = Sinema.textSecondary(theme).copy(0.6f), modifier = Modifier.size(18.dp))
-                    }
-                } else {
-                    SinemaCapsuleIconButton(
-                        icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
-                        onClick = onRefresh, selected = true, size = 40.dp
-                    )
-                }
-            }
+            Text(theme.t("AI TREND ANALİZİ", "AI TREND ANALYSIS"), color = Sinema.text(theme), style = Sinema.Label, modifier = Modifier.weight(1f))
         }
-
-        Spacer(Modifier.height(14.dp))
-
+        Spacer(Modifier.height(12.dp))
         when {
+            locked -> {
+                Text(
+                    theme.t("Kilo trendinin AI analizi Pro ve Elite planlarında.", "AI weight trend analysis is part of Pro and Elite."),
+                    color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
+                )
+                Spacer(Modifier.height(14.dp))
+                SinemaGoButton(label = theme.t("PRO İLE AÇ", "UNLOCK WITH PRO"), icon = Icons.Rounded.Lock, onClick = onUnlock)
+            }
             isLoading -> Row(
                 modifier              = Modifier.fillMaxWidth(),
                 verticalAlignment     = Alignment.CenterVertically,
@@ -427,14 +417,36 @@ private fun AiInsightCard(
                 Spacer(Modifier.width(10.dp))
                 Text(theme.t("Trend analizi yapılıyor...", "Analyzing trend..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
             }
-            insight.isBlank() -> Text(
-                theme.t(
-                    "En az 2 ölçüm eklediğinde AI koçun trendi analiz edecek.",
-                    "Your AI coach will analyze the trend after you add at least 2 entries."
-                ),
-                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
-            )
-            else -> Text(insight, color = Sinema.text(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
+            else -> {
+                if (insight.isNotBlank()) {
+                    Text(insight, color = Sinema.text(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
+                    if (stale) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            theme.t("Yeni kayıtların var: analizi güncelleyebilirsin.", "You have new entries: you can refresh the analysis."),
+                            color = theme.accentHi, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+                if (entryCount < 2) {
+                    Text(
+                        theme.t("Analiz için en az 2 kilo kaydı gerekiyor.", "At least 2 entries are needed for an analysis."),
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
+                    )
+                } else if (insight.isBlank() || stale) {
+                    SinemaGoButton(
+                        label = if (insight.isBlank()) theme.t("AI İLE ANALİZ ET", "ANALYZE WITH AI") else theme.t("ANALİZİ GÜNCELLE", "REFRESH ANALYSIS"),
+                        icon = Icons.Rounded.AutoAwesome, onClick = onAnalyze
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        com.cosmibit.profitness.domain.ai.AiAccessPolicy.costLine(plan, feature, credits, english),
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
+                        modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }

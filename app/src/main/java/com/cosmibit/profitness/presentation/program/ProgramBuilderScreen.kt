@@ -659,7 +659,7 @@ fun ProgramBuilderScreen(
 
     // Sekme canlı tutulur: dışarıdan (Antrenman -> AI/Manuel oluştur) gelen mod mevcut ekrana uygulanır.
     LaunchedEffect(initialMode) {
-        if (initialMode !is BuilderMode.Choose) mode = initialMode
+        if (initialMode !is BuilderMode.Choose && (initialMode != BuilderMode.AI || viewModel.checkAiAccess())) mode = initialMode
     }
 
     // Sekmeye her girişte stale ise yenile (3 dk cache)
@@ -697,6 +697,7 @@ fun ProgramBuilderScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
                     applyingTemplateKey = uiState.applyingTemplateKey,
+                    aiLocked         = uiState.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(uiState.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate),
                     onMode           = { newMode ->
                         // AI Builder → ViewModel'in checkAiAccess'ini çağır;
                         // yetersizse ProgramEvent.ShowPaywall fırlatır.
@@ -782,6 +783,7 @@ private fun BuilderChooseScreen(
     isLoading      : Boolean,
     applyingTemplateKey: String?,
     onMode         : (BuilderMode) -> Unit,
+    aiLocked       : Boolean = false,
     onSelectTemplate: (String) -> Unit,
     onSetActive    : (String) -> Unit,
     onDeleteProgram: (String) -> Unit,
@@ -880,7 +882,7 @@ private fun BuilderChooseScreen(
         if (heavyReady) item {
             Box(Modifier.offset(y = (-28).dp)) {
                 ProgramsSheet {
-                    ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) })
+                    ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) }, aiLocked = aiLocked)
                     if (isLoading) {
                         Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))

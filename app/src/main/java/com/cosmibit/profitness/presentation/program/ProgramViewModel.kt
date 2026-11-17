@@ -1,5 +1,6 @@
 package com.cosmibit.profitness.presentation.program
 
+import com.cosmibit.profitness.domain.ai.isAiLocked
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.ai.AiAccessException
@@ -76,6 +77,8 @@ data class ProgramUiState(
     val requestLoading: Boolean         = false,
     // Plan & credits (reactive)
     val userPlan     : UserPlan         = UserPlan.FREE,
+    /** Sunucu plan özeti yüklendi mi (yüklenmeden AI kilidi gösterilmez). */
+    val planLoaded   : Boolean          = false,
     val aiCredits    : Int              = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
@@ -124,12 +127,9 @@ class ProgramViewModel @Inject constructor(
             themeRepository.themeFlow.collect { english = it.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH }
         }
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(
-                planRepository.planFlow,
-                planRepository.creditsFlow
-            ) { plan, credits -> plan to credits }
-                .collect { (plan, credits) ->
-                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+            planRepository.billingSnapshotFlow
+                .collect { s ->
+                    updateState { it.copy(userPlan = s.plan, aiCredits = s.credits.coerceAtLeast(0), planLoaded = s.isLoaded) }
                 }
         }
     }
@@ -139,7 +139,13 @@ class ProgramViewModel @Inject constructor(
      * yetersizse [ProgramEvent.ShowPaywall] eventi fırlatılır.
      * @return true → erişim verildi, false → paywall gönderildi
      */
+    /** AI ile Oluştur girişi: plan biliniyor ve yetmiyorsa (Free) Paywall/Mağaza; aksi halde serbest (sunucu yine doğrular). */
     fun checkAiAccess(): Boolean {
+        val s = uiState.value
+        if (s.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(s.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate)) {
+            sendEvent(ProgramEvent.ShowPaywall)
+            return false
+        }
         return true
     }
 
@@ -478,7 +484,8 @@ class ProgramViewModel @Inject constructor(
         updateState { it.copy(aiLoading = true, aiError = null) }
 
         viewModelScope.launch {
-            if (!planRepository.consumeCredit()) {
+            val genFeature = if (hasMedia) com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerateMedia else com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate
+            if (planRepository.isAiLocked(genFeature) || !planRepository.consumeCredit()) {
                 updateState { it.copy(aiLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
@@ -735,7 +742,7 @@ FORMAT:
         updateState { it.copy(aiEditLoading = true, aiEditError = null) }
 
         viewModelScope.launch {
-            if (!planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ProgramEdit) || !planRepository.consumeCredit()) {
                 updateState { it.copy(aiEditLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
