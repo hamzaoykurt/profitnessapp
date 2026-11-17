@@ -321,25 +321,14 @@ fun ChallengesTab(
         }
 
         // ── Create FAB ─────────────────────────────────────────────────
-        val fabAccent = theme.effectiveAccentColor
-        Box(
+        com.cosmibit.profitness.core.theme.SinemaFab(
+            icon = Icons.Rounded.Add,
+            contentDescription = theme.t("Yeni challenge", "New challenge"),
+            onClick = { vm.openCreate() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = bottomPadding + 16.dp)
-                .size(56.dp)
-                .sinemaPrimaryGlow(fabAccent, CircleShape)
-                .clip(CircleShape)
-                .background(fabAccent)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = { vm.openCreate() }),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.Add,
-                contentDescription = theme.t("Yeni challenge", "New challenge"),
-                tint = theme.effectiveOnAccentColor,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+        )
 
         // ── Detail overlay (Dialog-backed: tam ekran + glow) ───────────
         state.openDetailId?.let { id ->

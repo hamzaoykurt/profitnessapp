@@ -204,7 +204,8 @@ fun AICoachScreen(
                     modifier        = Modifier.fillMaxSize(),
                     contentPadding  = PaddingValues(
                         top = statusTop + 72.dp,
-                        bottom = bottomGap + 52.dp + (if (imeVisible) 12.dp else 58.dp)
+                        // öneri satırları sohbette gizli: alt boşluk = giriş kapsülü (52) + nefes payı + alt menü/klavye
+                        bottom = bottomGap + 52.dp + 16.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -239,7 +240,17 @@ fun AICoachScreen(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = bottomGap)
             ) {
-                if (!imeVisible) {
+                // Hazır öneri satırları YALNIZ boş sohbette: ilk mesaj/öneriye dokunma/geçmiş sohbet açılınca kaybolur,
+                // "yeni sohbet" ile geri gelir (karşılama ekranı ile aynı koşul).
+                val motionOn = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
+                AnimatedVisibility(
+                    visible = !imeVisible && !chatting && !state.isLoading && inputText.isBlank(),
+                    enter = fadeIn(tween(if (motionOn) SinemaMotion.Quick else 0)) +
+                        expandVertically(tween(if (motionOn) SinemaMotion.Standard else 0, easing = SinemaMotion.EaseStandard), expandFrom = Alignment.Bottom),
+                    exit = fadeOut(tween(if (motionOn) SinemaMotion.Instant else 0)) +
+                        shrinkVertically(tween(if (motionOn) SinemaMotion.Standard else 0, easing = SinemaMotion.EaseStandard), shrinkTowards = Alignment.Bottom)
+                ) {
+                  Column(Modifier.fillMaxWidth()) {
                     // Tam genişlik soru satırları (52-56dp raised): ikon diski + başlık + 1 satır açıklama
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         quickChips.forEachIndexed { chipIdx, chip ->
@@ -278,12 +289,23 @@ fun AICoachScreen(
                         }
                     }
                     Spacer(Modifier.height(10.dp))
+                  }
                 }
                 SanctuaryInput(
                     value         = inputText,
                     onValueChange = { inputText = it },
                     onSend        = { sendMessage(inputText) },
                     isTyping      = state.isLoading
+                )
+            }
+
+            // Sohbet başlık satırının ALTINDAN kayarken yazılar başlıkla çakışmasın: üstte sayfa rengi scrim
+            if (chatting || state.isLoading) {
+                Box(
+                    Modifier.align(Alignment.TopCenter).fillMaxWidth().height(statusTop + 76.dp)
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                            0f to Sinema.Page, 0.72f to Sinema.Page.copy(alpha = 0.92f), 1f to Color.Transparent
+                        ))
                 )
             }
 

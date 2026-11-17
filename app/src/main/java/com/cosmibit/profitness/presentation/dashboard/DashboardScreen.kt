@@ -127,6 +127,7 @@ private val ALL_TABS = persistentListOf(
 )
 
 private const val FIRST_TAB_CONTENT_DELAY_MS = 16L
+private const val WARMUP_STAGES = 5
 
 @Composable
 fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit = {}) {
@@ -135,8 +136,8 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     val readyTabs               = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     val initialTab              = remember { selectedTab }
-    /** Arka planda önceden kompoze + bir kez çizilen sekme (Programlar): ilk dokunuşta kasma olmasın. */
-    var warmTab                 by remember { mutableStateOf<DashboardTab?>(null) }
+    /** Son kullanıcı etkileşimi (dokunma / sekme değişimi): ısıtmalar bundan 1.5 sn sonrasına ertelenir. */
+    val lastInteractionMs       = remember { longArrayOf(0L) }
     val focusManager            = androidx.compose.ui.platform.LocalFocusManager.current
     var warmupStage             by remember { mutableIntStateOf(0) }
     var programInitialMode      by remember { mutableStateOf<com.cosmibit.profitness.presentation.program.BuilderMode>(com.cosmibit.profitness.presentation.program.BuilderMode.Choose) }
@@ -151,6 +152,29 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     var showLeaderboard             by remember { mutableStateOf(false) }
     var leaderboardInitialTab       by remember {
         mutableStateOf(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp)
+    }
+
+    // ── Sekme geçmişi: geri = bir önceki sekme; uygulamadan çıkış yalnız Antrenman kökünde ve geçmiş boşken.
+    // EN DÜŞÜK öncelik: bu BackHandler overlay'lerinkinden ve sekme içi (TabBackScope) handler'lardan ÖNCE kaydedilir,
+    // yani onlar (alt sayfa, mod, sheet) önce kapanır; sekme geçmişi en son devreye girer.
+    val tabHistory = remember { TabHistory<DashboardTab>(max = 10) }
+    val historyPrev = remember { arrayOf(selectedTab) }
+    val poppingBack = remember { booleanArrayOf(false) }
+    var historySize by remember { mutableIntStateOf(0) }
+    LaunchedEffect(selectedTab) {
+        val prev = historyPrev[0]
+        if (poppingBack[0]) poppingBack[0] = false
+        else tabHistory.onNavigate(prev, selectedTab)
+        historyPrev[0] = selectedTab
+        historySize = tabHistory.size
+    }
+    BackHandler(enabled = historySize > 0 || selectedTab != DashboardTab.Workout) {
+        val target = tabHistory.pop(selectedTab) ?: DashboardTab.Workout
+        historySize = tabHistory.size
+        if (target != selectedTab) {
+            poppingBack[0] = true
+            selectedTabRoute = target.route
+        }
     }
 
     BackHandler(
@@ -200,22 +224,16 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
 
     val restTimer by workoutViewModel.restTimer.collectAsStateWithLifecycle()
 
+    // SOĞUK AÇILIŞ: ilk karelerde ısıtma YOK. İlk kare çizildikten ~1.2 sn sonra başlar, aşamalar arası ≥450ms,
+    // tek seferde tek aşama; kullanıcı son 1.5 sn içinde dokunduysa/sekme değiştirdiyse bekler.
+    // (Eski: 120-780ms içinde 4 aşama + 1.5 sn'de Programlar sekmesini gizli kompoze etme = açılışta kasma.)
     LaunchedEffect(Unit) {
-        delay(120)
-        warmupStage = 1
-        delay(180)
-        warmupStage = 2
-        delay(220)
-        warmupStage = 3
-        delay(260)
-        warmupStage = 4
-        // Programlar sekmesini arka planda kompoze et + bir kez çiz (gizli); sonraki girişler canlı içerikten anında açılır.
-        delay(900)
-        val warm = DashboardTab.Program
-        if (warm !in composedTabs) {
-            if (warm !in readyTabs) readyTabs.add(warm)
-            warmTab = warm
-            composedTabs.add(warm)
+        withFrameNanos { }
+        for (stage in 1..WARMUP_STAGES) {
+            delay(if (stage == 1) 1_200 else 450)
+            while (android.os.SystemClock.uptimeMillis() - lastInteractionMs[0] < 1_500) delay(250)
+            withFrameNanos { }
+            warmupStage = stage
         }
     }
     DashboardViewModelWarmup(stage = warmupStage)
@@ -305,10 +323,24 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             ALL_TABS.indexOf(h[1]) > ALL_TABS.indexOf(h[0])
         }
         LaunchedEffect(selectedTab) {
+            lastInteractionMs[0] = android.os.SystemClock.uptimeMillis()
             focusManager.clearFocus()   // gizlenen sekmedeki alan odakta kalıp klavyeyi tutmasın (eskiden dispose ediyordu)
             if (selectedTab !in composedTabs) composedTabs.add(selectedTab)
         }
-        Box(Modifier.fillMaxSize().then(swipeModifier), contentAlignment = Alignment.TopCenter) {
+        Box(
+            Modifier.fillMaxSize()
+                // etkileşimi yalnız GÖZLEMLE (tüketme): ısıtma zamanlaması için
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            lastInteractionMs[0] = android.os.SystemClock.uptimeMillis()
+                        }
+                    }
+                }
+                .then(swipeModifier),
+            contentAlignment = Alignment.TopCenter
+        ) {
         ALL_TABS.forEach { tab -> if (tab == selectedTab || tab in composedTabs) key(tab.route) {
             LaunchedEffect(Unit) {
                 if (tab !in readyTabs) {
@@ -321,7 +353,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 forward     = forward,
                 motionOn    = motionOn,
                 animateFirst = tab != initialTab,
-                warmDraw    = tab == warmTab
+                warmDraw    = false
             ) {
             // contentMax yalnız liste sekmelerinde (Programlar, Profil); foto sayfaları (Antrenman, AI Koç, Keşfet) tam genişlik.
             val listTab = tab == DashboardTab.Program || tab == DashboardTab.Profile
@@ -673,14 +705,20 @@ private fun TabBackScope(active: Boolean, content: @Composable () -> Unit) {
     val parent = LocalOnBackPressedDispatcherOwner.current
     if (parent == null) { content(); return }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    var childHasEnabled by remember { mutableStateOf(false) }
-    val child = remember { OnBackPressedDispatcher(null) { enabled -> childHasEnabled = enabled } }
+    val activeState = rememberUpdatedState(active)
+    val childRef = remember { arrayOfNulls<OnBackPressedDispatcher>(1) }
     val forwarder = remember {
         object : OnBackPressedCallback(false) {
-            override fun handleOnBackPressed() { child.onBackPressed() }
+            override fun handleOnBackPressed() { childRef[0]?.onBackPressed() }
         }
     }
-    SideEffect { forwarder.isEnabled = active && childHasEnabled }
+    // Etkinlik değişimi doğrudan callback'ten uygulanır (yeniden kompozisyon beklenmez: SideEffect içindeki
+    // state okuması abonelik oluşturmaz; aksi halde Manuel/AI modundaki geri, sekme geçmişine kaçıyordu).
+    val child = remember {
+        OnBackPressedDispatcher(null) { enabled -> forwarder.isEnabled = activeState.value && enabled }
+            .also { childRef[0] = it }
+    }
+    SideEffect { forwarder.isEnabled = active && child.hasEnabledCallbacks() }
     DisposableEffect(parent, lifecycleOwner) {
         parent.onBackPressedDispatcher.addCallback(lifecycleOwner, forwarder)
         onDispose { forwarder.remove() }
@@ -712,15 +750,13 @@ private fun DashboardViewModelWarmup(stage: Int) {
         // yerel önbellekten anında doldur + arka planda tazele (sekme açılmadan hazır)
         val profileVm = hiltViewModel<ProfileViewModel>()
         LaunchedEffect(Unit) { profileVm.initLoad() }
+    }
+    if (stage >= 5) {
         // Alt ekranlar (Hareket performansı, Mağaza): VM'ler dashboard kapsamında; önceden Room'dan dolar.
         // Kilo VM'i ISITILMAZ: açılışta otomatik AI trend analizi (kredi harcar) başlatıyor.
-        var late by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { delay(1_500); late = true }
-        if (late) {
-            hiltViewModel<StoreViewModel>()
-            val progressionVm = hiltViewModel<ExerciseProgressionViewModel>()
-            LaunchedEffect(Unit) { progressionVm.load() }
-        }
+        hiltViewModel<StoreViewModel>()
+        val progressionVm = hiltViewModel<ExerciseProgressionViewModel>()
+        LaunchedEffect(Unit) { progressionVm.load() }
     }
 }
 

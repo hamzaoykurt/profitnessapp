@@ -342,3 +342,26 @@ fun Modifier.sinemaCardAccent(color: Color, inset: Dp = 18.dp): Modifier = this.
         size = androidx.compose.ui.geometry.Size((size.width - 2 * x).coerceAtLeast(0f), h)
     )
 }
+
+/**
+ * Ortak yüzen eylem düğmesi (FAB): 56dp daire, 3D amber (dikey gradyan + üst parlama + alt iç gölge + yumuşak renkli
+ * gölge; basılınca ölçek .94 ve gölge azalır). Çerçeve/çizgi yok, ikon koyu. Konumu çağıran verir.
+ */
+@Composable
+fun SinemaFab(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalAppTheme.current
+    Box(
+        modifier
+            .size(56.dp)
+            .sinemaClickable(onClick = onClick, scale = 0.94f, role = Role.Button, onClickLabel = contentDescription)
+            .sinemaRaised(CircleShape, SinemaRaise.Card, fill = theme.effectiveAccentColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(26.dp))
+    }
+}
