@@ -657,8 +657,15 @@ fun ProgramBuilderScreen(
         }
     }
 
-    // Tab geçişinde stale ise yenile (3 dk cache)
-    LaunchedEffect(Unit) {
+    // Sekme canlı tutulur: dışarıdan (Antrenman -> AI/Manuel oluştur) gelen mod mevcut ekrana uygulanır.
+    LaunchedEffect(initialMode) {
+        if (initialMode !is BuilderMode.Choose) mode = initialMode
+    }
+
+    // Sekmeye her girişte stale ise yenile (3 dk cache)
+    val tabActive by com.cosmibit.profitness.core.ui.LocalTabActive.current
+    LaunchedEffect(tabActive) {
+        if (!tabActive) return@LaunchedEffect
         delay(120)
         viewModel.reloadIfStale()
     }

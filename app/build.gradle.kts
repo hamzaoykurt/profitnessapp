@@ -161,7 +161,13 @@ gradle.taskGraph.whenReady {
         task.path in setOf(":app:assembleRelease", ":app:bundleRelease") ||
             task.name in setOf("assembleRelease", "bundleRelease")
     }
-    if (releaseRequested && !hasReleaseSigning) {
+    // Yerel performans ölçümü: `-PlocalDebugSignedRelease=true` ile minify'lı release debug anahtarıyla imzalanır
+    // (yalnız cihaza kurup ölçmek için; Play'e yüklenemez). CI/yayın varsayılanı değişmedi: imza yoksa hata.
+    val localDebugSigned = (findProperty("localDebugSignedRelease") as String?)?.toBoolean() == true
+    if (releaseRequested && !hasReleaseSigning && localDebugSigned) {
+        logger.warn("UYARI: release DEBUG anahtarıyla imzalanıyor (localDebugSignedRelease=true) — yalnız yerel ölçüm.")
+    }
+    if (releaseRequested && !hasReleaseSigning && !localDebugSigned) {
         throw GradleException(
             "Release signing requires RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD."
         )

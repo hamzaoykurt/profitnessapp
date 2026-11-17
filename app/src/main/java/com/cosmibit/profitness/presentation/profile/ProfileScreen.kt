@@ -501,7 +501,7 @@ private fun ProfileHeroBanner(
                 ) {
                     if (avatar.startsWith("http")) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                            model = LocalContext.current.let { ctx -> remember(avatar) { ImageRequest.Builder(ctx).data(avatar).crossfade(true).build() } },
                             contentDescription = "Avatar",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(CircleShape)
@@ -913,7 +913,7 @@ private fun SettingsSection(
                 ) {
                     if (avatar.startsWith("http")) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(avatar).crossfade(true).build(),
+                            model = LocalContext.current.let { ctx -> remember(avatar) { ImageRequest.Builder(ctx).data(avatar).crossfade(true).build() } },
                             contentDescription = "Avatar",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(CircleShape)

@@ -250,9 +250,13 @@ fun Modifier.sinemaRaised(
 ): Modifier = composed {
     // basılma durumu: üstteki sinemaClickable / sinemaPressScale ModifierLocal ile yayınlar; dış gölge ~%40 azalır, üst parlama söner
     val holder = remember { mutableStateOf<State<Boolean>?>(null) }
-    Modifier
-        .modifierLocalConsumer { holder.value = SinemaPressedLocal.current }
-        .sinemaRaisedImpl(shape, level, accent, fill, tint, top, bottom) { holder.value?.value == true }
+    // PERF: zincir parametreler değişmedikçe aynı örnek -> drawWithCache önbelleği (Path/Paint/Brush) her
+    // yeniden kompozisyonda yeniden kurulmaz; yalnız boyut/parametre değişince.
+    remember(shape, level, accent, fill, tint, top, bottom) {
+        Modifier
+            .modifierLocalConsumer { holder.value = SinemaPressedLocal.current }
+            .sinemaRaisedImpl(shape, level, accent, fill, tint, top, bottom) { holder.value?.value == true }
+    }
 }
 
 /** Basılma durumu yayını (sinemaClickable / sinemaPressScale -> sinemaRaised). */
@@ -337,13 +341,19 @@ private fun Modifier.sinemaRaisedImpl(
  * DOLU renk (amber/mercan) yüzey zemini: `.clip(shape).background(accent)` yerine drop-in. Dikey gradyan (üst açık / alt koyu),
  * üstte yumuşak parlama, altta iç gölge. Gölge/clip uygulamaz (çağıran clip'ten SONRA koyar).
  */
-fun Modifier.sinemaSolid(color: Color): Modifier = this.drawBehind {
+fun Modifier.sinemaSolid(color: Color): Modifier = this.drawWithCache {
+    // PERF: fırçalar boyut/renk değişmedikçe bir kez kurulur (eskiden her karede 3 Brush).
     val h = size.height
-    drawRect(Brush.verticalGradient(0f to lerp(color, Color.White, 0.22f), 1f to lerp(color, Color.Black, 0.10f), startY = 0f, endY = h))
+    val fillB = Brush.verticalGradient(0f to lerp(color, Color.White, 0.22f), 1f to lerp(color, Color.Black, 0.10f), startY = 0f, endY = h)
     val gh = 9.dp.toPx().coerceAtMost(h)
-    drawRect(Brush.verticalGradient(0f to Color.White.copy(0.28f), 1f to Color.Transparent, startY = 0f, endY = gh), size = Size(size.width, gh))
+    val glowB = Brush.verticalGradient(0f to Color.White.copy(0.28f), 1f to Color.Transparent, startY = 0f, endY = gh)
     val ih = 14.dp.toPx().coerceAtMost(h)
-    drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(0.18f), startY = h - ih, endY = h), topLeft = Offset(0f, h - ih), size = Size(size.width, ih))
+    val innerB = Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(0.18f), startY = h - ih, endY = h)
+    onDrawBehind {
+        drawRect(fillB)
+        drawRect(glowB, size = Size(size.width, gh))
+        drawRect(innerB, topLeft = Offset(0f, h - ih), size = Size(size.width, ih))
+    }
 }
 
 /** Eski kapsül varsayılan kenarı; verilirse yeni degrade kenar kullanılır. */
@@ -606,8 +616,8 @@ fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
  * Yumuşak geçişli işaret halkası (sert kontur YOK): şeklin iç kenarında 6-10dp'ye yayılan, üst-solda daha parlak / alt-sağda sönük renkli parıltı.
  * Üst üste binen sönük konturlar iç içe bir blur etkisi verir; seçili/aktif kart ve çiplerde `border` yerine kullanılır.
  */
-fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Modifier = this.drawWithContent {
-    drawContent()
+fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Modifier = this.drawWithCache {
+    // PERF: Path/Paint/BlurMaskFilter/LinearGradient boyut değişmedikçe bir kez kurulur (eskiden her karede).
     val w = size.width
     val h = size.height
     val sp = spread.toPx()
@@ -634,8 +644,11 @@ fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Mod
             floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f), android.graphics.Shader.TileMode.CLAMP
         )
     }
-    drawIntoCanvas { canvas ->
-        val n = canvas.nativeCanvas
-        n.save(); n.clipPath(clipP); n.drawPath(inner, paint); n.restore()
+    onDrawWithContent {
+        drawContent()
+        drawIntoCanvas { canvas ->
+            val n = canvas.nativeCanvas
+            n.save(); n.clipPath(clipP); n.drawPath(inner, paint); n.restore()
+        }
     }
 }

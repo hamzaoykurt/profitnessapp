@@ -104,11 +104,9 @@ class WeightTrackingViewModel @Inject constructor(
             }
 
             updateState { it.copy(isLoading = true) }
+            var pulled = false
 
-            // Remote pull — ağ yoksa Room verisiyle devam eder
-            weightRepository.pullFromRemote(userId)
-
-            // Room Flow'u dinle — kayıt ekleme/silme/güncelleme anında yansır
+            // ROOM-FIRST: önce yerel kayıtları dinle (anında dolu), ağ çekişi arkadan gelir ve Flow'a yansır.
             observeJob?.cancel()
             observeJob = viewModelScope.launch {
                 weightRepository.observeAll(userId)
@@ -129,16 +127,24 @@ class WeightTrackingViewModel @Inject constructor(
                                 weeklySummary = weekly,
                                 latestWeightKg= latest,
                                 totalDeltaKg  = totalDelta,
-                                isLoading     = false
+                                // yerelde kayıt yoksa ağ cevabına kadar "yükleniyor" (boş durum yanıp sönmesin)
+                                isLoading     = sorted.isEmpty() && !pulled
                             )
                         }
 
-                        // Yeterli veri varsa ve daha önce AI insight yoksa üret
-                        if (sorted.size >= 2 && uiState.value.aiInsight.isBlank()) {
+                        // Yeterli veri varsa ve daha önce AI insight yoksa üret (ağ çekişinden sonra; eskisi gibi tek sefer)
+                        if (pulled && sorted.size >= 2 && uiState.value.aiInsight.isBlank()) {
                             generateAiInsight(sorted)
                         }
                     }
             }
+
+            // Remote pull — ağ yoksa Room verisiyle devam eder
+            weightRepository.pullFromRemote(userId)
+            pulled = true
+            val current = uiState.value.entries
+            updateState { it.copy(isLoading = false) }
+            if (current.size >= 2 && uiState.value.aiInsight.isBlank()) generateAiInsight(current)
         }
     }
 

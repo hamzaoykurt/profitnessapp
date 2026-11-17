@@ -102,16 +102,23 @@ class ExerciseProgressionViewModel @Inject constructor(
         }
     }
 
+    private var lastLoadMs = 0L
+
     fun load() {
         if (loadJob?.isActive == true) return
+        // Tekrar girişte (5 dk içinde, veri varsa) yeniden yükleme yok: VM dashboard kapsamında canlı.
+        if (com.cosmibit.profitness.core.ui.isCacheFresh(uiState.value.summaries.isNotEmpty(), lastLoadMs, System.currentTimeMillis())) return
         loadJob = viewModelScope.launch {
-            updateState { it.copy(isLoading = true) }
             val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: run {
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
+            // ROOM-FIRST: yerel özet anında; ağ senkronu arkadan gelir.
+            val local = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
+            updateState { it.copy(summaries = if (local.isEmpty()) it.summaries else local, isLoading = local.isEmpty() && it.summaries.isEmpty()) }
             runCatching { workoutRepository.syncFromRemote(userId) }
-            val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { emptyList() }
+            val summaries = workoutRepository.getTrackedExerciseSummaries(userId).getOrElse { local }
+            lastLoadMs = System.currentTimeMillis()
             updateState { it.copy(summaries = summaries, isLoading = false) }
 
             delay(800L)

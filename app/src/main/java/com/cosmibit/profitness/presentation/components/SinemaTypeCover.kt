@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
@@ -81,20 +82,9 @@ fun SinemaTypeCover(
                             center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, 0f), radius = 300.dp.toPx()
                         )
                     )
-                } else Modifier.background(Brush.verticalGradient(colorStops = deepStops))
+                } else Modifier.background(remember(deepStops) { Brush.verticalGradient(colorStops = deepStops) })
             )
-            .drawBehind {
-                if (underStatusBar) return@drawBehind
-                drawRect(
-                    Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx().coerceAtMost(size.height)),
-                    size = androidx.compose.ui.geometry.Size(size.width, 10.dp.toPx().coerceAtMost(size.height))
-                )
-                val h = 34.dp.toPx().coerceAtMost(size.height)
-                drawRect(
-                    Brush.verticalGradient(0f to Color.Transparent, 0.35f to Color.Black.copy(0.03f), 0.7f to Color.Black.copy(0.12f), 1f to Color.Black.copy(0.24f), startY = size.height - h, endY = size.height),
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h), size = androidx.compose.ui.geometry.Size(size.width, h)
-                )
-            }
+            .then(if (underStatusBar) Modifier else CoverDepthModifier)
             .clipToBounds()
     ) {
         // hayalet ikon: sağ-üst/orta bölge, düğme/çiplerle (alt satır) çakışmasın diye yüksekliğin ~%52'siyle sınırlı
@@ -203,4 +193,16 @@ internal fun hsvTone(c: Color, v: Float): Color {
     hsv[1] = maxOf(hsv[1], 0.66f).coerceAtMost(0.95f)
     hsv[2] = v
     return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/** Kapak üst parlama + alt iç gölge; fırçalar boyut değişmedikçe bir kez kurulur (PERF: eskiden her karede 2 Brush). */
+private val CoverDepthModifier: Modifier = Modifier.drawWithCache {
+    val gh = 10.dp.toPx().coerceAtMost(size.height)
+    val glow = Brush.verticalGradient(0f to Color.White.copy(0.14f), 1f to Color.Transparent, startY = 0f, endY = gh)
+    val h = 34.dp.toPx().coerceAtMost(size.height)
+    val inner = Brush.verticalGradient(0f to Color.Transparent, 0.35f to Color.Black.copy(0.03f), 0.7f to Color.Black.copy(0.12f), 1f to Color.Black.copy(0.24f), startY = size.height - h, endY = size.height)
+    onDrawBehind {
+        drawRect(glow, size = androidx.compose.ui.geometry.Size(size.width, gh))
+        drawRect(inner, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h), size = androidx.compose.ui.geometry.Size(size.width, h))
+    }
 }

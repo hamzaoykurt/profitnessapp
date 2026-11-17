@@ -285,7 +285,10 @@ fun WorkoutScreen(
             notifPermissionDenied = false
         }
     }
-    LaunchedEffect(Unit) {
+    // Sekme canlı tutulur: eskiden her girişte (yeniden kompozisyon) çalışıyordu; aynı davranış aktifliğe bağlandı.
+    val tabActive by com.cosmibit.profitness.core.ui.LocalTabActive.current
+    LaunchedEffect(tabActive) {
+        if (!tabActive) return@LaunchedEffect
         delay(FIRST_REMOTE_SYNC_DELAY_MS)
         viewModel.triggerInitialSync()
     }

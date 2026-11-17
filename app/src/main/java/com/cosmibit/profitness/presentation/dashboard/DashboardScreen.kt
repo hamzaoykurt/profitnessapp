@@ -50,6 +50,16 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.compose.ui.layout.layout
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import com.cosmibit.profitness.core.ui.LocalTabActive
+import com.cosmibit.profitness.presentation.profile.ExerciseProgressionViewModel
+import com.cosmibit.profitness.presentation.store.StoreViewModel
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -124,6 +134,10 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
     val selectedTab             = ALL_TABS.firstOrNull { it.route == selectedTabRoute } ?: DashboardTab.Workout
     val composedTabs            = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
     val readyTabs               = remember { mutableStateListOf<DashboardTab>(DashboardTab.Workout) }
+    val initialTab              = remember { selectedTab }
+    /** Arka planda önceden kompoze + bir kez çizilen sekme (Programlar): ilk dokunuşta kasma olmasın. */
+    var warmTab                 by remember { mutableStateOf<DashboardTab?>(null) }
+    val focusManager            = androidx.compose.ui.platform.LocalFocusManager.current
     var warmupStage             by remember { mutableIntStateOf(0) }
     var programInitialMode      by remember { mutableStateOf<com.cosmibit.profitness.presentation.program.BuilderMode>(com.cosmibit.profitness.presentation.program.BuilderMode.Choose) }
     var discoverRefreshSignal   by rememberSaveable { mutableIntStateOf(0) }
@@ -195,6 +209,14 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
         warmupStage = 3
         delay(260)
         warmupStage = 4
+        // Programlar sekmesini arka planda kompoze et + bir kez çiz (gizli); sonraki girişler canlı içerikten anında açılır.
+        delay(900)
+        val warm = DashboardTab.Program
+        if (warm !in composedTabs) {
+            if (warm !in readyTabs) readyTabs.add(warm)
+            warmTab = warm
+            composedTabs.add(warm)
+        }
     }
     DashboardViewModelWarmup(stage = warmupStage)
 
@@ -275,31 +297,32 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
             contentAlignment = Alignment.TopCenter
         ) {
         CompositionLocalProvider(LocalSinemaNav provides sinemaNav) {
-        AnimatedContent(
-            targetState  = selectedTab,
-            transitionSpec = {
-                // Tek seferde geçiş: zemin (SinemaBackdrop) sabit kalır, yalnız içerik kısa çapraz solar; kayma yok.
-                // Zemin (SinemaBackdrop) sabit; içerik kısa yatay kayma + çapraz solma (menü sırasına göre yön)
-                val fwd = ALL_TABS.indexOf(targetState) > ALL_TABS.indexOf(initialState)
-                (fadeIn(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) +
-                    slideInHorizontally(tween(SinemaMotion.Standard, easing = SinemaMotion.EaseStandard)) { w -> if (fwd) w / 10 else -w / 10 }) togetherWith
-                    (fadeOut(tween(SinemaMotion.Instant, easing = SinemaMotion.EaseStandard)) +
-                        slideOutHorizontally(tween(SinemaMotion.Quick, easing = SinemaMotion.EaseStandard)) { w -> if (fwd) -w / 10 else w / 10 })
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .then(swipeModifier),
-            contentAlignment = Alignment.TopCenter,
-            label = "tab_slide"
-        ) { tab ->
-            LaunchedEffect(tab) {
-                if (tab !in composedTabs) composedTabs.add(tab)
+        // PERF: sekmeler bellekte CANLI tutulur (eskiden AnimatedContent her girişte içeriği baştan kompoze ediyordu).
+        // Gezilen sekme kompoze kalır (state, liste konumu, VM verisi); görünmeyen yerleştirilmez -> çizilmez, dokunulmaz.
+        // Geçiş aynı: giren kısa yatay kayma (w/10) + solma, çıkan hızlı solma + kayma; zemin (SinemaBackdrop) sabit.
+        val forward = remember { arrayOf(selectedTab, selectedTab) }.let { h ->
+            if (h[1] != selectedTab) { h[0] = h[1]; h[1] = selectedTab }
+            ALL_TABS.indexOf(h[1]) > ALL_TABS.indexOf(h[0])
+        }
+        LaunchedEffect(selectedTab) {
+            focusManager.clearFocus()   // gizlenen sekmedeki alan odakta kalıp klavyeyi tutmasın (eskiden dispose ediyordu)
+            if (selectedTab !in composedTabs) composedTabs.add(selectedTab)
+        }
+        Box(Modifier.fillMaxSize().then(swipeModifier), contentAlignment = Alignment.TopCenter) {
+        ALL_TABS.forEach { tab -> if (tab == selectedTab || tab in composedTabs) key(tab.route) {
+            LaunchedEffect(Unit) {
                 if (tab !in readyTabs) {
                     delay(FIRST_TAB_CONTENT_DELAY_MS)
                     if (tab !in readyTabs) readyTabs.add(tab)
                 }
             }
-
+            KeptTab(
+                active      = tab == selectedTab,
+                forward     = forward,
+                motionOn    = motionOn,
+                animateFirst = tab != initialTab,
+                warmDraw    = tab == warmTab
+            ) {
             // contentMax yalnız liste sekmelerinde (Programlar, Profil); foto sayfaları (Antrenman, AI Koç, Keşfet) tam genişlik.
             val listTab = tab == DashboardTab.Program || tab == DashboardTab.Profile
             Box(
@@ -379,7 +402,9 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 )
             }
             }
-        }
+            }   // KeptTab
+        } }     // key / forEach
+        }       // sekme kutusu (swipe)
         }
         }
         }
@@ -408,7 +433,7 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 items         = navItems,
                 selectedIndex = ALL_TABS.indexOf(selectedTab),
                 onSelect      = { i -> ALL_TABS[i].let { tab -> if (tab != selectedTab) selectedTabRoute = tab.route } },
-                visible       = !imeVisible && !(sinemaNav.pagerOwned && sinemaNav.pagerBusy),
+                visible       = !imeVisible && !(selectedTab == DashboardTab.Workout && sinemaNav.pagerOwned && sinemaNav.pagerBusy),
                 onPhoto       = navOnPhoto,
                 modifier      = Modifier.align(Alignment.BottomCenter).zIndex(100f)
             )
@@ -553,6 +578,122 @@ private fun TabWarmupSurface() {
     Box(modifier = Modifier.fillMaxSize())
 }
 
+/**
+ * Canlı tutulan sekme kabı. [active] değilken içerik kompoze kalır ama YERLEŞTİRİLMEZ (çizilmez, dokunma almaz,
+ * geri tuşu callback'leri devre dışı). Giriş/çıkış animasyonu eski AnimatedContent ile aynı; azaltılmış harekette anında.
+ * [warmDraw]: gizli oluşturulan sekme bir kez görünmez (alpha 0) çizilir; ilk gerçek girişte çizim önbellekleri hazırdır.
+ */
+@Composable
+private fun KeptTab(
+    active: Boolean,
+    forward: Boolean,
+    motionOn: Boolean,
+    animateFirst: Boolean,
+    warmDraw: Boolean,
+    content: @Composable () -> Unit
+) {
+    val alpha = remember { Animatable(if (active && !animateFirst) 1f else 0f) }
+    val shift = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(active) }
+    val firstRun = remember { booleanArrayOf(true) }
+    LaunchedEffect(active) {
+        val isFirst = firstRun[0]
+        firstRun[0] = false
+        val ease = SinemaMotion.EaseStandard
+        if (active) {
+            placed = true
+            if ((isFirst && !animateFirst) || !motionOn) {
+                alpha.snapTo(1f); shift.snapTo(0f)
+                return@LaunchedEffect
+            }
+            alpha.snapTo(0f); shift.snapTo(if (forward) 0.1f else -0.1f)
+            coroutineScope {
+                launch { alpha.animateTo(1f, tween(SinemaMotion.Quick, easing = ease)) }
+                shift.animateTo(0f, tween(SinemaMotion.Standard, easing = ease))
+            }
+        } else {
+            if (isFirst) {
+                if (warmDraw) {
+                    alpha.snapTo(0f)
+                    placed = true
+                    repeat(3) { withFrameNanos { } }
+                }
+                placed = false
+                return@LaunchedEffect
+            }
+            if (motionOn) coroutineScope {
+                launch { alpha.animateTo(0f, tween(SinemaMotion.Instant, easing = ease)) }
+                shift.animateTo(if (forward) -0.1f else 0.1f, tween(SinemaMotion.Quick, easing = ease))
+            }
+            placed = false
+        }
+    }
+    val activeState = rememberUpdatedState(active)
+    Box(
+        Modifier
+            .zIndex(if (active) 1f else 0f)
+            .layout { measurable, constraints ->
+                val p = measurable.measure(constraints)
+                layout(p.width, p.height) {
+                    if (placed) p.placeWithLayer(0, 0) {
+                        this.alpha = alpha.value
+                        translationX = shift.value * p.width
+                    }
+                }
+            }
+    ) {
+        // Gizli sekme, dashboard her yeniden kompoze olduğunda (sekme değişimi, kronometre vb.) baştan kompoze OLMASIN:
+        // içerik yalnız aktifken güncel lambda ile çağrılır; gizliyken FrozenTabBody atlanır (kendi state'leri yine çalışır).
+        val holder = remember { TabContentHolder(content) }
+        if (active || holder.wasActive) { holder.content = content; holder.version++ }
+        holder.wasActive = active
+        CompositionLocalProvider(LocalTabActive provides activeState) {
+            TabBackScope(active = active) { FrozenTabBody(holder, holder.version) }
+        }
+    }
+}
+
+@Stable
+private class TabContentHolder(var content: @Composable () -> Unit) {
+    var version = 0
+    var wasActive = false
+}
+
+@Composable
+private fun FrozenTabBody(holder: TabContentHolder, @Suppress("UNUSED_PARAMETER") version: Int) {
+    holder.content()
+}
+
+/**
+ * Gizli sekmedeki BackHandler'lar geri tuşunu yutmasın: sekme kendi alt dispatcher'ını alır; üst dispatcher'daki
+ * yönlendirici yalnız sekme aktifken ve içeride etkin callback varken açıktır (öncelik sırası eskisiyle aynı).
+ */
+@Composable
+private fun TabBackScope(active: Boolean, content: @Composable () -> Unit) {
+    val parent = LocalOnBackPressedDispatcherOwner.current
+    if (parent == null) { content(); return }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var childHasEnabled by remember { mutableStateOf(false) }
+    val child = remember { OnBackPressedDispatcher(null) { enabled -> childHasEnabled = enabled } }
+    val forwarder = remember {
+        object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() { child.onBackPressed() }
+        }
+    }
+    SideEffect { forwarder.isEnabled = active && childHasEnabled }
+    DisposableEffect(parent, lifecycleOwner) {
+        parent.onBackPressedDispatcher.addCallback(lifecycleOwner, forwarder)
+        onDispose { forwarder.remove() }
+    }
+    val childOwner = remember(lifecycleOwner) {
+        object : OnBackPressedDispatcherOwner {
+            override val onBackPressedDispatcher: OnBackPressedDispatcher get() = child
+            override val lifecycle: androidx.lifecycle.Lifecycle get() = lifecycleOwner.lifecycle
+        }
+    }
+    CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides childOwner, content = content)
+}
+
 @Composable
 private fun DashboardViewModelWarmup(stage: Int) {
     if (stage >= 1) {
@@ -563,12 +704,23 @@ private fun DashboardViewModelWarmup(stage: Int) {
         hiltViewModel<AICoachViewModel>()
     }
     if (stage >= 3) {
-        hiltViewModel<DiscoverViewModel>()
+        // Keşfet akışı arka planda yüklensin (sekme açılmadan dolu); initLoad tek seferlik.
+        val discoverVm = hiltViewModel<DiscoverViewModel>()
+        LaunchedEffect(Unit) { discoverVm.initLoad() }
     }
     if (stage >= 4) {
         // yerel önbellekten anında doldur + arka planda tazele (sekme açılmadan hazır)
         val profileVm = hiltViewModel<ProfileViewModel>()
-        androidx.compose.runtime.LaunchedEffect(Unit) { profileVm.initLoad() }
+        LaunchedEffect(Unit) { profileVm.initLoad() }
+        // Alt ekranlar (Hareket performansı, Mağaza): VM'ler dashboard kapsamında; önceden Room'dan dolar.
+        // Kilo VM'i ISITILMAZ: açılışta otomatik AI trend analizi (kredi harcar) başlatıyor.
+        var late by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { delay(1_500); late = true }
+        if (late) {
+            hiltViewModel<StoreViewModel>()
+            val progressionVm = hiltViewModel<ExerciseProgressionViewModel>()
+            LaunchedEffect(Unit) { progressionVm.load() }
+        }
     }
 }
 
