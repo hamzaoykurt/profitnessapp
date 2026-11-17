@@ -622,7 +622,7 @@ fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Mod
         it.transform(m)
     }
     val clipP = path.asAndroidPath()
-    val a = color.alpha
+    val a = color.alpha * 0.45f   // çok yumuşak / düşük α: yalnız aktif işareti
     fun argb(al: Float) = color.copy(alpha = a * al).toArgb()
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true

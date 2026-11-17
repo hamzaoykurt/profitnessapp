@@ -194,13 +194,13 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = statusTop + 16.dp, bottom = 46.dp)) {
                     // AKTİF PROGRAM çipi
                     Row(
-                        Modifier.height(28.dp).sinemaRaised(RoundedCornerShape(SinemaRadius.R12), SinemaRaise.Mini, fill = heroHue).padding(horizontal = 12.dp),
+                        Modifier.height(28.dp).clip(RoundedCornerShape(SinemaRadius.R12)).background(heroHue.copy(0.20f)).padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(SinemaIcons.Bolt, null, tint = Sinema.Ink, modifier = Modifier.size(14.dp))
+                        Icon(SinemaIcons.Bolt, null, tint = androidx.compose.ui.graphics.lerp(heroHue, Color.White, 0.35f), modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = Sinema.Ink,
+                            theme.t("AKTİF PROGRAM", "ACTIVE PROGRAM"), color = androidx.compose.ui.graphics.lerp(heroHue, Color.White, 0.35f),
                             fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 0.06.em, maxLines = 1
                         )
                     }
@@ -233,7 +233,7 @@ fun ProgramsHero(active: Program?, today: ProgramTodayInfo?, onStart: () -> Unit
 @Composable
 private fun HeroInfoChip(icon: ImageVector, text: String, hue: Color) {
     Row(
-        Modifier.height(28.dp).clip(CircleShape).background(hue.copy(0.24f)).padding(horizontal = 10.dp),
+        Modifier.height(28.dp).clip(CircleShape).background(hue.copy(0.18f)).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = Color.White.copy(0.9f), modifier = Modifier.size(14.dp))
@@ -248,19 +248,14 @@ private fun TodayPanel(info: ProgramTodayInfo, hue: Color) {
     val accent = theme.effectiveAccentColor
     Column(
         Modifier.fillMaxWidth().padding(bottom = 14.dp)
-            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.20f, fillBottom = 0.07f, blur = 22.dp, overlay = hue.copy(alpha = 0.10f),
-                edgeColors = listOf(hue.copy(0.75f), hue.copy(0.12f)), glow = hue.copy(0.25f))
-            .drawBehind {
-                // sol kenarda kısa dikey program şeridi
-                drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Transparent, 0.5f to hue.copy(0.85f), 1f to Color.Transparent, startY = size.height * 0.2f, endY = size.height * 0.8f), topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * 0.2f), size = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height * 0.6f))
-            }
+            .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), fillTop = 0.18f, fillBottom = 0.06f, blur = 22.dp)
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
             // Sol: BUGÜNÜN halkası (0/4); program toplamı ikincil metinde
             val dayFrac = if (info.todayExercises > 0) (info.todayCompleted.toFloat() / info.todayExercises).coerceIn(0f, 1f) else 0f
             val fill = com.cosmibit.profitness.core.theme.rememberSinemaFill(dayFrac)
-            val ring = hue
+            val ring = Color.White.copy(0.85f)
             Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw = 6.dp.toPx()
@@ -377,16 +372,16 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         // AI: opak yüzey + c3 ikon diski (tam c1 degrade kalktı)
         Box(
             Modifier.weight(1f).fillMaxHeight().heightIn(min = 148.dp)
-                .sinemaRaised(shape, SinemaRaise.Card, fill = theme.accentHi)
+                .sinemaRaised(shape, SinemaRaise.Card, tint = theme.accentHi)
                 .clickable(role = Role.Button, onClick = onAi)
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(Color.Black.copy(0.12f)), contentAlignment = Alignment.Center) {
-                Icon(SinemaIcons.Spark, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(CircleShape).background(theme.accentHi.copy(0.26f)), contentAlignment = Alignment.Center) {
+                Icon(SinemaIcons.Spark, null, tint = theme.accentHiTextColor, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
-                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = theme.effectiveOnAccentColor, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(theme.t("Sana özel plan", "A plan made for you"), color = theme.effectiveOnAccentColor.copy(0.72f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
+                Text(theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }
@@ -398,9 +393,9 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit) {
         ) {
             Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(
-                Modifier.size(42.dp).clip(CircleShape).background(theme.accentHi.copy(0.16f)),
+                Modifier.size(42.dp).clip(CircleShape).background(theme.accentColor.copy(0.24f)),
                 contentAlignment = Alignment.Center
-            ) { Icon(SinemaIcons.Plus, null, tint = theme.accentHi, modifier = Modifier.size(22.dp)) }
+            ) { Icon(SinemaIcons.Plus, null, tint = theme.accentColor, modifier = Modifier.size(22.dp)) }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("Manuel\nOluştur", "Create\nManually"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
                 Text(theme.t("Kendin kur", "Build your own"), color = Sinema.text(theme).copy(0.7f), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
@@ -460,7 +455,6 @@ fun SavedProgramCard(
     Box(
         Modifier.width(226.dp).height(288.dp)
             .sinemaRaised(shape, SinemaRaise.Card)
-            .then(if (program.isActive) Modifier.sinemaSoftRing(coverHueFor(program.name), shape) else Modifier)
             .clickable(role = Role.Button, onClick = onOpen)
     ) {
         Box(Modifier.fillMaxSize()) {

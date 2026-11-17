@@ -50,9 +50,11 @@ fun SinemaTypeCover(
     ghostLift: androidx.compose.ui.unit.Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
+    val neutralTop = lerp(Sinema.Page, Color.White, 0.13f)
+    val neutralBottom = lerp(Sinema.Page, Color.White, 0.05f)
     val topC = lerp(Sinema.Surface, hue, 0.80f)                                 // canlı, doygun tür rengi
     val bottomC = lerp(Sinema.Surface, lerp(hue, Color.Black, 0.50f), 0.88f)    // aynı hue koyu (siyaha/griye kaçmaz)
-    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = 0.40f)
+    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = if (underStatusBar) 0.26f else 0.30f)
     // 3D yumuşak blok: tek renk hue; üst açık, alt koyu, üstte yayılan yumuşak parlama, altta iç gölge (keskin hat yok)
     BoxWithConstraints(
         modifier
@@ -65,7 +67,12 @@ fun SinemaTypeCover(
                             center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, 0f), radius = 300.dp.toPx()
                         )
                     )
-                } else Modifier.background(Brush.verticalGradient(0f to topC, 1f to bottomC))
+                } else Modifier.background(
+                    // kart gövdesi nötr raised; tür rengi yalnız üst ~%38 bandında yumuşak söner (büyük renk bloğu yok)
+                    Brush.verticalGradient(
+                        0f to lerp(neutralTop, hue, 0.55f), 0.16f to lerp(neutralTop, hue, 0.38f), 0.38f to neutralTop, 1f to neutralBottom
+                    )
+                )
             )
             .drawBehind {
                 if (underStatusBar) return@drawBehind

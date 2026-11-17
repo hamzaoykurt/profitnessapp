@@ -127,7 +127,7 @@ private fun Modifier.layeredMaterial(
             drawContent()
             if (edgeBrush != null && outline != null) {
                 // clipped to the shape, so a 2dp centred stroke leaves exactly 1dp inside
-                drawOutline(outline, edgeBrush, style = Stroke(lineH * 2f))
+                /* kenar çizgisi kaldırıldı */
             }
         }
     }
@@ -288,7 +288,7 @@ fun Modifier.performanceNavSurface(
                 drawRect(topLine, topLeft = Offset(0f, 0f), size = Size(w, lineH))
                 drawRect(rim, topLeft = Offset(0f, h - lineH), size = Size(w, lineH))
                 drawContent()
-                drawOutline(outline, edge, style = Stroke(lineH * 2f))
+                /* kenar çizgisi kaldırıldı */
             }
         }
 }
@@ -442,7 +442,7 @@ fun Modifier.insetFrame(
     onDrawWithContent {
         drawContent()
         drawRect(top, size = Size(size.width, 6.dp.toPx()))
-        drawOutline(outline, rim, style = Stroke(sw * 2f))
+        /* kenar çizgisi kaldırıldı */
     }
 }
 
