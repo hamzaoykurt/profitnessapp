@@ -566,7 +566,9 @@ private fun DashboardViewModelWarmup(stage: Int) {
         hiltViewModel<DiscoverViewModel>()
     }
     if (stage >= 4) {
-        hiltViewModel<ProfileViewModel>()
+        // yerel önbellekten anında doldur + arka planda tazele (sekme açılmadan hazır)
+        val profileVm = hiltViewModel<ProfileViewModel>()
+        androidx.compose.runtime.LaunchedEffect(Unit) { profileVm.initLoad() }
     }
 }
 

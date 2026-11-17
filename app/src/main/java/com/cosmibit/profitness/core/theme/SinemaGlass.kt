@@ -290,12 +290,11 @@ private fun Modifier.sinemaRaisedImpl(
             val (softP, contactP, coloredP) = shadows(0.6f)
             onDrawBehind {
                 val down = pressed()
-                clipPath(path, ClipOp.Difference) {
-                    drawIntoCanvas { c ->
-                        c.nativeCanvas.drawPath(androidPath, if (down) softP else soft)
-                        (if (down) coloredP else colored)?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
-                        c.nativeCanvas.drawPath(androidPath, if (down) contactP else contact)
-                    }
+                // dolgu opak: gölgenin iç kısmı zaten örtülür -> pahalı Difference clip'ine gerek yok
+                drawIntoCanvas { c ->
+                    c.nativeCanvas.drawPath(androidPath, if (down) softP else soft)
+                    (if (down) coloredP else colored)?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
+                    c.nativeCanvas.drawPath(androidPath, if (down) contactP else contact)
                 }
             }
         }
