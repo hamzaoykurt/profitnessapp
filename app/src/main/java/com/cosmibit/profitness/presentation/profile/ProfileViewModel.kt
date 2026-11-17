@@ -128,6 +128,9 @@ class ProfileViewModel @Inject constructor(
 
     private fun observeLatestWeight(userId: String) {
         if (weightObserveJob?.isActive == true) return
+        // Room yalnız Kilo ekranı açılınca doluyordu: en son kaydı (1 satır, TTL 10 dk) sunucudan çekip Room'a yaz.
+        // Yalnız okuma; Kilo ekranı ısıtılmaz, AI analizi/kredi tetiklenmez. Hata: Room/profil alanı ile devam.
+        viewModelScope.launch { weightRepository.syncLatestFromRemote(userId) }
         weightObserveJob = viewModelScope.launch {
             weightRepository.observeAll(userId)
                 .catch { /* DB hatası: profil alanı kullanılmaya devam eder */ }

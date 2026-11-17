@@ -26,6 +26,12 @@ interface WeightRepository {
     /** Supabase'den son kayıtları çekip Room'a yazar (pull sync). */
     suspend fun pullFromRemote(userId: String): Result<Unit>
 
+    /**
+     * Yalnız EN SON kaydı sunucudan çekip Room'a yazar (hafif: 1 satır). Profil/Veri analizi için; TTL içinde tekrar
+     * çağrılırsa ağa gitmez. AI analizi tetiklemez.
+     */
+    suspend fun syncLatestFromRemote(userId: String, ttlMs: Long = 10 * 60_000L): Result<Unit>
+
     /** Synced=false kayıtları Supabase'e push eder. */
     suspend fun pushPending(userId: String): Result<Unit>
 }

@@ -56,6 +56,7 @@ import com.cosmibit.profitness.core.theme.effectiveOnAccentColor
 import com.cosmibit.profitness.core.theme.SinemaCapsuleIconButton
 import com.cosmibit.profitness.core.theme.SinemaGoButton
 import com.cosmibit.profitness.core.theme.sinemaGlass
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.sinemaUpper
 import com.cosmibit.profitness.core.theme.t
 import com.cosmibit.profitness.presentation.components.ActivityMetricsPanel
@@ -100,7 +101,8 @@ internal fun SinemaGlassSheet(onDismiss: () -> Unit, content: @Composable Column
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .sinemaGlass(SheetShape, fillAlpha = 0.96f)   // blur yok: sheet'te okunurluk için neredeyse opak
+                    // OPAK raised zemin: alttaki set satırları sheet içinden okunmasın (eski cam yarı saydamdı)
+                    .sinemaRaised(SheetShape, com.cosmibit.profitness.core.theme.SinemaRaise.Card)
                     .navigationBarsPadding()
                     .imePadding()
             ) {
@@ -233,8 +235,11 @@ private fun StrengthSetContent(
     )
     Spacer(Modifier.height(12.dp))
     val step = 2.5f
+    // Kayıtlı değer "30.0" gibi noktalı gelebilir: tam sayı/ondalık ise yerel biçimde göster (TR: "30", "32,5").
+    // Yazım sırasında yarım değerler ("30.", "30,") olduğu gibi kalır.
+    val shownValue = if (Regex("""^\d+[.,]\d+$""").matches(value)) formatWeightNumber(value, loc) else value
     StepperField(
-        value = value, placeholder = placeholder, unit = "KG", keyboardType = KeyboardType.Decimal, accent = accent,
+        value = shownValue, placeholder = placeholder, unit = "KG", keyboardType = KeyboardType.Decimal, accent = accent,
         onValueChange = { v -> actions.onSetWeightChanged(exercise, setIndex, v.filter { it.isDigit() || it == '.' || it == ',' }) },
         onNudge = { delta ->
             val base = value.replace(',', '.').toFloatOrNull() ?: defaultWeightKg

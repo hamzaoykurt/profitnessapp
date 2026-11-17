@@ -1068,8 +1068,7 @@ private fun NotificationsSettingsSheet(
             .padding(24.dp, 8.dp, 24.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        SheetHandle(theme)
-
+        // tutamaç ModalBottomSheet varsayılanından gelir (ikinci özel tutamaç kaldırıldı)
         Text(
             strings.notifSheetTitle,
             style         = MaterialTheme.typography.labelSmall,

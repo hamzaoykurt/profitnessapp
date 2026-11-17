@@ -805,7 +805,9 @@ private fun OwnerActionMenu(
       Column(
         Modifier
             .padding(4.dp)
-            .widthIn(min = 168.dp)
+            // M3 DropdownMenuItem fillMaxWidth: genişlik sınırı olmazsa popup pencere genişliğine yayılır
+            .width(androidx.compose.foundation.layout.IntrinsicSize.Max)
+            .widthIn(min = 168.dp, max = 260.dp)
             .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Card)
             .padding(vertical = 6.dp)
       ) {

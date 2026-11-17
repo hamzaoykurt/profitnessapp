@@ -84,6 +84,28 @@ class WeightRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun syncLatestFromRemote(userId: String, ttlMs: Long) = withContext(Dispatchers.IO) {
+        runCatching {
+            val now = System.currentTimeMillis()
+            val last = latestSyncAt[userId]
+            if (last != null && now - last < ttlMs) return@runCatching
+            val remote = supabase.from("weight_logs")
+                .select {
+                    filter { eq("user_id", userId) }
+                    order("recorded_at", Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeList<WeightLogDto>()
+            remote.forEach { dto -> dao.upsert(dto.toEntity()) }
+            latestSyncAt[userId] = now
+        }
+    }
+
+    private companion object {
+        /** userId -> son "en son kayıt" çekiminin zamanı (süreç ömrü boyunca; TTL için). */
+        val latestSyncAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    }
+
     override suspend fun pushPending(userId: String) = withContext(Dispatchers.IO) {
         runCatching {
             val pending = dao.getUnsynced(userId)

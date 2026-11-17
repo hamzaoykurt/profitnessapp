@@ -1278,7 +1278,9 @@ class WorkoutViewModel @Inject constructor(
             ?.ifBlank { exerciseId }
             ?: exerciseId
         viewModelScope.launch {
-            workoutRepository.getExerciseWeightHistory(userId, dbExerciseId).onSuccess { history ->
+            // Varsayılan 8 hafta penceresi, 8 haftadan eski kayıtlı hareketlerde "henüz kaydetmedin" gösteriyordu
+            // (Hareket performansı ve SetSheet "Son" tüm zamanlara bakar): son performans tüm geçmişten gelsin.
+            workoutRepository.getExerciseWeightHistory(userId, dbExerciseId, weeks = ALL_HISTORY_WEEKS).onSuccess { history ->
                 updateState { it.copy(exerciseHistory = it.exerciseHistory + (exerciseId to history)) }
             }
         }
@@ -2262,3 +2264,6 @@ class WorkoutViewModel @Inject constructor(
         private fun categoryImageFallback(category: String): String = categoryImageUrl(category)
     }
 }
+
+/** Hareket detayı "son performans" için geçmiş penceresi (fiilen tüm zamanlar). */
+private const val ALL_HISTORY_WEEKS = 520
