@@ -70,3 +70,6 @@ view.xml
 
 # MCP config (contains secrets)
 .mcp.json
+
+# Windows klasör meta dosyası
+desktop.ini

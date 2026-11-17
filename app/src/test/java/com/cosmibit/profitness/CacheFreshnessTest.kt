@@ -14,3 +14,20 @@ class CacheFreshnessTest {
     @Test fun neverLoadedNotFresh() = assertFalse(isCacheFresh(true, 0L, 10L, ttl))
     @Test fun clockWentBackNotFresh() = assertFalse(isCacheFresh(true, 5_000L, 1_000L, ttl))
 }
+
+class TabReentryTrackerTest {
+    @Test fun firstActivationDoesNotFire() = assertFalse(com.cosmibit.profitness.core.ui.TabReentryTracker().update(true))
+
+    @Test fun hiddenThenActiveFiresOnce() {
+        val t = com.cosmibit.profitness.core.ui.TabReentryTracker()
+        t.update(true); t.update(false)
+        assertTrue(t.update(true))
+        assertFalse(t.update(true))
+    }
+
+    @Test fun prewarmedHiddenFirstEntryDoesNotFire() {
+        val t = com.cosmibit.profitness.core.ui.TabReentryTracker()
+        t.update(false)
+        assertFalse(t.update(true))
+    }
+}

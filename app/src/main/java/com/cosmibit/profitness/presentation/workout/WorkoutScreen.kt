@@ -585,7 +585,10 @@ private fun WorkoutContent(
     val dashboardVm: DashboardViewModel = hiltViewModel()
     val dashState by dashboardVm.state.collectAsStateWithLifecycle()
     var detailChallengeId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
+    // Sekme canlı tutulur: etkinlik kartları her sekme girişinde stale ise tazelenir (eskiden yeniden kompozisyonla).
+    val eventsTabActive by com.cosmibit.profitness.core.ui.LocalTabActive.current
+    LaunchedEffect(eventsTabActive) {
+        if (!eventsTabActive) return@LaunchedEffect
         delay(FIRST_DASHBOARD_EVENTS_DELAY_MS)
         dashboardVm.reloadIfStale()
     }

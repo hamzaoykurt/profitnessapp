@@ -104,6 +104,9 @@ fun ProfileScreen(
         delay(16)
         viewModel.initLoad()
     }
+    // Sekme canlı tutulur: eskiden her girişte (yeniden kompozisyon + ON_RESUME) stale ise tazeleniyordu; şimdi sekme aktifleşince.
+    val tabActive by com.cosmibit.profitness.core.ui.LocalTabActive.current
+    com.cosmibit.profitness.core.ui.OnTabReentry(tabActive) { viewModel.reloadIfStale() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {

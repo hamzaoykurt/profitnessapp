@@ -354,6 +354,13 @@ fun ChallengeDetailOverlay(
                 }
             }
 
+            // Durum çubuğu altı yumuşak scrim: kayan içerik saat/simgelerle çakışmasın (dashboard ile aynı dil)
+            Box(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .height(maxOf(com.cosmibit.profitness.presentation.components.LocalSafeTopInset.current, WindowInsets.statusBars.asPaddingValues().calculateTopPadding()) + 14.dp)
+                    .background(Brush.verticalGradient(listOf(Sinema.Page.copy(alpha = 0.94f), Sinema.Page.copy(alpha = 0.6f), Color.Transparent)))
+            )
+
             // ── Alta sabit eylem: arkası yumuşak geçiş ──
             val bottomDetail = state.detail
             if (bottomDetail != null) {
