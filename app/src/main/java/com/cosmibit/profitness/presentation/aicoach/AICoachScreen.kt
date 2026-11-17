@@ -368,7 +368,7 @@ fun AICoachScreen(
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (hasPlan) state.userPlan.displayName
-                        else if (state.isBillingLoaded) theme.t("Premium'a geç", "Go Premium") else "…",
+                        else if (state.isBillingLoaded) theme.t("Ücretsiz", "Free") else "…",
                         color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1
                     )
                 }

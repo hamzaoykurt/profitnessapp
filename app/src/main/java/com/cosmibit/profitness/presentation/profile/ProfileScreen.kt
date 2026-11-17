@@ -153,6 +153,16 @@ fun ProfileScreen(
                     onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) }
                 )
             }
+            // Üyelik kartı: Mağaza'ya görünür, sakin giriş (banner değil; yalnız Profil'de)
+            if (state.planLoaded) item {
+                ProfileMembershipCard(
+                    plan     = state.userPlan,
+                    status   = state.planStatus,
+                    freeLeft = state.freeAiProgramsLeft,
+                    theme    = theme,
+                    onOpen   = onNavigateToStore
+                )
+            }
             if (heavyReady) item {
                 TrophyGallery(
                     accent       = accent,
@@ -193,6 +203,8 @@ fun ProfileScreen(
                     onEditProfile        = onEditProfile,
                     onNotificationsClick = { showNotifications = true },
                     onLanguageClick      = { showLanguagePicker = true },
+                    membershipLabel      = if (state.planLoaded) state.userPlan.displayName else "…",
+                    onMembershipClick    = onNavigateToStore,
                     onExportData         = {
                         exportLauncher.launch("profitness-yedek-${LocalDate.now()}.json")
                     },
@@ -888,6 +900,8 @@ private fun SettingsSection(
     onEditProfile       : () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onLanguageClick     : () -> Unit = {},
+    membershipLabel     : String     = "",
+    onMembershipClick   : () -> Unit = {},
     onExportData        : () -> Unit = {},
     onImportData        : () -> Unit = {},
     isTransferring      : Boolean    = false,
@@ -944,6 +958,8 @@ private fun SettingsSection(
         Column(
             modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
+            SettingsRow(Icons.Rounded.WorkspacePremium, theme.t("Üyelik", "Membership"), membershipLabel, theme, accent, onClick = onMembershipClick)
+            divider()
             val notifStatus = if (theme.notificationsEnabled) strings.notificationsActive else strings.notificationsOff
             SettingsRow(Icons.Rounded.Notifications, strings.notificationsLabel, notifStatus, theme, accent, onClick = onNotificationsClick)
             divider()
@@ -1792,3 +1808,69 @@ private fun RankModeTile(
 
 @Composable
 private fun sinemaGutter() = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
+
+
+/**
+ * Profil üyelik kartı (çerçevesiz raised): Ücretsiz -> "Premium'a geç" amber düğme + 1 satır avantaj (+ kalan AI hakkı);
+ * Premium -> "Premium üyesin" + durum + "Üyeliği yönet". İkisi de Mağaza'yı açar.
+ * Yenileme tarihi: billing-status henüz dönmüyor; gelince [status] yanına eklenecek.
+ */
+@Composable
+private fun ProfileMembershipCard(
+    plan: com.cosmibit.profitness.data.store.UserPlan,
+    status: String,
+    freeLeft: Int?,
+    theme: AppThemeState,
+    onOpen: () -> Unit
+) {
+    val premium = plan == com.cosmibit.profitness.data.store.UserPlan.PREMIUM
+    val english = theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH
+    Column(
+        Modifier
+            .padding(horizontal = sinemaGutter(), vertical = 8.dp)
+            .fillMaxWidth()
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R24), com.cosmibit.profitness.core.theme.SinemaRaise.Card, tint = theme.accentHi)
+            .padding(18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.WorkspacePremium, null, tint = theme.accentHi, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (premium) theme.t("Premium üyesin", "You're Premium") else theme.t("Ücretsiz plan", "Free plan"),
+                    color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, maxLines = 1
+                )
+                Text(
+                    if (premium) membershipStatusText(status, theme)
+                    else theme.t("Premium: AI Koç, sınırsız AI program ve AI analizler.", "Premium: AI Coach, unlimited AI programs and AI analysis."),
+                    color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 2
+                )
+                if (!premium && freeLeft != null) Text(
+                    com.cosmibit.profitness.domain.ai.AiAccessPolicy.freeGrantLine(freeLeft, english),
+                    color = theme.accentHi, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold, maxLines = 1
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        if (premium) SinemaCapsule(
+            modifier = Modifier.fillMaxWidth(),
+            height = 48.dp,
+            onClick = onOpen,
+            horizontalArrangement = Arrangement.Center
+        ) { fg ->
+            Text(theme.t("Üyeliği yönet", "Manage membership"), color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1)
+        } else SinemaGoButton(
+            label = theme.t("PREMIUM'A GEÇ", "GO PREMIUM"),
+            icon = Icons.Rounded.WorkspacePremium,
+            onClick = onOpen
+        )
+    }
+}
+
+private fun membershipStatusText(status: String, theme: AppThemeState): String = when (status.lowercase()) {
+    "active" -> theme.t("Abonelik aktif", "Subscription active")
+    "trialing" -> theme.t("Deneme süresi", "Trial period")
+    "canceled", "cancelled" -> theme.t("İptal edildi · dönem sonuna kadar aktif", "Canceled · active until period end")
+    "past_due" -> theme.t("Ödeme bekleniyor", "Payment pending")
+    else -> theme.t("Abonelik aktif", "Subscription active")
+}

@@ -97,7 +97,13 @@ data class ProfileState(
     val isSaving             : Boolean              = false,
     val isTransferring       : Boolean              = false,
     val userPlan             : UserPlan             = UserPlan.FREE,
-    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
+    val aiCredits            : Int                  = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
+    /** Sunucu plan özeti yüklendi mi (üyelik kartı yüklenmeden yanlış plan göstermesin). */
+    val planLoaded           : Boolean              = false,
+    /** Abonelik durumu (sunucu: active / trialing / canceled / free ...). */
+    val planStatus           : String               = "free",
+    /** Ücretsiz planda kalan AI program hakkı (sunucu dönüyorsa). */
+    val freeAiProgramsLeft   : Int?                 = null
 )
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -152,12 +158,14 @@ class ProfileViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(
-                planRepository.planFlow,
-                planRepository.creditsFlow
-            ) { plan, credits -> plan to credits }
-                .collect { (plan, credits) ->
-                    updateState { it.copy(userPlan = plan, aiCredits = credits) }
+            planRepository.billingSnapshotFlow
+                .collect { s ->
+                    updateState {
+                        it.copy(
+                            userPlan = s.plan, aiCredits = s.credits.coerceAtLeast(0), planLoaded = s.isLoaded,
+                            planStatus = s.status, freeAiProgramsLeft = s.freeAiProgramsLeft
+                        )
+                    }
                 }
         }
     }
