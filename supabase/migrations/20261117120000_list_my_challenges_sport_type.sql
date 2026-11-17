@@ -1,6 +1,7 @@
--- Katıldıklarım (list_my_challenges) etkinlik alanlarını (sport_type, event_exercise_id, event_end_*) döndürsün.
--- Canlı DB'de liste ile detay arasında tür tutarsızlığı görüldü; tanım 20260517163000 ile aynı, yeniden kurulur (idempotent).
--- ONAY GEREKİYOR: Hamza onaylamadan uygulanmaz.
+-- Katıldıklarım (list_my_challenges) etkinlik alanlarını döndürsün: sport_type, event_exercise_id, event_end_geo_lat/lng, event_end_location.
+-- Canlı DB'de liste (Katıldıklarım) ile detay/Keşfet arasında etkinlik türü tutarsızlığı vardı (spor türü dönmüyordu).
+-- Canlı tanım (2026-11-17) temel alındı: max_participants canlı tabloda YOK, eklenmedi. Yetkiler canlıyla aynı korunur
+-- (postgres, service_role, authenticated; public/anon yok).
 
 drop function if exists public.list_my_challenges();
 drop function if exists private.list_my_challenges();
@@ -15,7 +16,6 @@ returns table(
   start_date date,
   end_date date,
   participants_count integer,
-  max_participants integer,
   visibility text,
   creator_id uuid,
   creator_name text,
@@ -44,13 +44,12 @@ language plpgsql
 stable security definer
 set search_path to 'public'
 as $function$
-declare
-  me uuid := auth.uid();
+declare me uuid := auth.uid();
 begin
   return query
   select
     gc.id, gc.title, gc.description, gc.target_type, gc.target_value::bigint,
-    gc.start_date, gc.end_date, gc.participants_count, gc.max_participants, gc.visibility, gc.creator_id,
+    gc.start_date, gc.end_date, gc.participants_count, gc.visibility, gc.creator_id,
     coalesce(nullif(p.display_name, ''), p.username, 'Anonim'),
     p.avatar_url,
     coalesce((select mp.progress from public._challenge_my_progress(gc.id, me) mp), 0),
@@ -60,17 +59,16 @@ begin
     gc.event_timezone, gc.event_location, gc.event_geo_lat, gc.event_geo_lng,
     gc.event_end_geo_lat, gc.event_end_geo_lng, gc.event_end_location,
     gc.event_online_url,
-    coalesce((select count(*)::int from public.challenge_movements m where m.challenge_id = gc.id), 0),
+    coalesce((select count(*)::int from challenge_movements m where m.challenge_id = gc.id), 0),
     coalesce((select count(*)::int
-                from public.challenge_movement_completions cmc
+                from challenge_movement_completions cmc
                where cmc.challenge_id = gc.id and cmc.user_id = me), 0)
-  from public.group_participants gp
-  join public.group_challenges gc on gc.id = gp.challenge_id
-  left join public.profiles p on p.user_id = gc.creator_id
+  from group_participants gp
+  join group_challenges gc on gc.id = gp.challenge_id
+  left join profiles p on p.user_id = gc.creator_id
   where gp.user_id = me
   order by (gp.completed_at is null) desc, gc.end_date desc, gp.joined_at desc;
-end;
-$function$;
+end$function$;
 
 create function public.list_my_challenges()
 returns table(
@@ -82,7 +80,6 @@ returns table(
   start_date date,
   end_date date,
   participants_count integer,
-  max_participants integer,
   visibility text,
   creator_id uuid,
   creator_name text,
@@ -110,10 +107,9 @@ returns table(
 language sql
 stable
 set search_path to 'public', 'private', 'pg_temp'
-as $function$
-  select * from private.list_my_challenges()
-$function$;
+as $function$ select * from private.list_my_challenges() $function$;
 
-
-revoke execute on function public.list_my_challenges() from public;
-grant execute on function public.list_my_challenges() to authenticated;
+revoke all on function private.list_my_challenges() from public, anon;
+revoke all on function public.list_my_challenges() from public, anon;
+grant execute on function private.list_my_challenges() to authenticated, service_role;
+grant execute on function public.list_my_challenges() to authenticated, service_role;
