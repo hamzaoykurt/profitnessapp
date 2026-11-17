@@ -2,7 +2,6 @@
 
 package com.cosmibit.profitness.presentation.challenges
 
-import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import com.cosmibit.profitness.core.theme.accentColor
 import androidx.compose.foundation.lazy.itemsIndexed
 import com.cosmibit.profitness.core.theme.sinemaListEnter
@@ -528,8 +527,8 @@ private fun InviteFriendRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = theme.accentColor)
-            .then(if (selected) Modifier.sinemaSoftRing(accent, RoundedCornerShape(SinemaRadius.R20)) else Modifier)
+            // seçili: çerçeve/halka yerine yumuşak tint dolgu
+            .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R20), tint = if (selected) accent else null)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1097,18 +1096,18 @@ private fun ChallengeCard(
                         Text("%${(c.progressPct * 100).toInt()}", color = theme.accentHi, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold)
                     }
                     Spacer(Modifier.height(6.dp))
-                    ProgressBar(pct = c.progressPct, accent = theme.accentHi, strokeColor = Color.Transparent)
+                    ProgressBar(pct = c.progressPct, accent = androidx.compose.ui.graphics.lerp(coverHueFor(challengePhotoCategory(c)), Color.White, 0.55f), strokeColor = Color.Transparent)
                 }
 
                 Spacer(Modifier.height(14.dp))
 
                 when {
-                    !canAct -> Row(
-                        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(SinemaRadius.R28)).background(Color.White.copy(0.14f)),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Rounded.Lock, null, tint = Color.White.copy(0.55f), modifier = Modifier.size(16.dp))
+                    // kapalı durum: düz gri plaka yerine kapak üstü cam kapsül (tıklanmaz)
+                    !canAct -> SinemaCapsule(
+                        Modifier.fillMaxWidth(), height = 56.dp,
+                        horizontalArrangement = Arrangement.Center, glass = true
+                    ) { _ ->
+                        Icon(Icons.Rounded.Lock, null, tint = Color.White.copy(0.72f), modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             when {
@@ -1116,7 +1115,7 @@ private fun ChallengeCard(
                                 c.isCompleted -> theme.t("TAMAMLANDI", "COMPLETED")
                                 else -> theme.t("KAPALI", "CLOSED")
                             },
-                            color = Color.White.copy(0.55f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
+                            color = Color.White.copy(0.72f), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.08.em
                         )
                     }
                     c.isJoined -> SinemaCapsule(

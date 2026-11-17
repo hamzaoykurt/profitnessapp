@@ -896,9 +896,7 @@ Column(
                             }
                         }
                         if (idx < movements.size - 1) {
-                            androidx.compose.material3.HorizontalDivider(
-                                color = theme.stroke.copy(0.4f), thickness = 0.5.dp
-                            )
+                            Spacer(Modifier.height(2.dp))
                         }
                     }
                 }
@@ -982,8 +980,7 @@ Row(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(if (enabled) accent else Color.Transparent)
-                .border(1.5.dp, if (enabled) accent else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
+                .background(if (enabled) accent else Sinema.line(theme)),   // çerçeve yok: boşken gömük nötr dolgu
             contentAlignment = Alignment.Center
         ) {
             if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp))
@@ -1056,8 +1053,7 @@ Column(
                 modifier = Modifier
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(if (enabled) accent else Color.Transparent)
-                    .border(1.5.dp, if (enabled) accent else Sinema.textSecondary(theme).copy(0.5f), CircleShape),
+                    .background(if (enabled) accent else Sinema.line(theme)),   // çerçeve yok: boşken gömük nötr dolgu
                 contentAlignment = Alignment.Center
             ) {
                 if (enabled) Icon(Icons.Rounded.Check, null, tint = theme.effectiveOnAccentColor, modifier = Modifier.size(15.dp))
