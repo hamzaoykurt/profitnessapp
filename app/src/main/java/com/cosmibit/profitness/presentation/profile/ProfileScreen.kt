@@ -122,6 +122,8 @@ fun ProfileScreen(
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
         val profileListState = androidx.compose.foundation.lazy.rememberLazyListState()
+        // PERF: ilk karede yalnız kahraman banner; kupa/metrik/haftalık/ayarlar kartları sekme yerleşince (+2 kare).
+        val heavyReady = com.cosmibit.profitness.presentation.components.rememberHeavyContentReady()
         LazyColumn(
             state = profileListState,
             modifier = Modifier.fillMaxSize(),
@@ -151,7 +153,7 @@ fun ProfileScreen(
                     onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) }
                 )
             }
-            item {
+            if (heavyReady) item {
                 TrophyGallery(
                     accent       = accent,
                     theme        = theme,
@@ -160,7 +162,7 @@ fun ProfileScreen(
                     onSeeAll     = onNavigateToAchievements
                 )
             }
-            item {
+            if (heavyReady) item {
                 PerformanceMetricsSection(
                     accent             = accent,
                     theme              = theme,
@@ -173,7 +175,7 @@ fun ProfileScreen(
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
-            item {
+            if (heavyReady) item {
                 WeeklyActivitySection(
                     accent           = accent,
                     theme            = theme,
@@ -182,7 +184,7 @@ fun ProfileScreen(
                     weekWorkoutCount = state.weeklyWorkoutCounts.lastOrNull() ?: 0
                 )
             }
-            item {
+            if (heavyReady) item {
                 SettingsSection(
                     theme                = theme,
                     accent               = accent,

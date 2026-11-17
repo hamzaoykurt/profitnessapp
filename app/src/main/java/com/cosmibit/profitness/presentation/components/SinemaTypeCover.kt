@@ -61,8 +61,8 @@ fun SinemaTypeCover(
     // tüm kart boyunca sürekli azalan renk: 9 duraklı yumuşak eğri (%100 -> ~%12), plato/bant yok
     val deepStops = remember(hue) {
         val top = hsvTone(hue, 0.72f)
-        Array(9) { i ->
-            val t = i / 8f
+        Array(5) { i ->   // PERF: 9 -> 5 durak (eğri aynı, görsel fark yok denecek kadar az)
+            val t = i / 4f
             val f = 0.12f + 0.88f * Math.pow((1f - t).toDouble(), 1.5).toFloat()
             t to lerp(deepBase, top, f)
         }
@@ -130,7 +130,7 @@ enum class CoverType(val hue: Color, val icon: () -> ImageVector) {
 
 /** Anahtar kelime tablosu (ASCII-normalize; "=" ile başlayan tam jeton, diğerleri jeton öneki). Sıra = öncelik. */
 private val SportKeywords: List<Pair<CoverType, List<String>>> = listOf(
-    CoverType.Football to listOf("futbol", "football", "soccer"),
+    CoverType.Football to listOf("futbol", "football", "soccer", "futsal", "halisa", "=hali", "=saha"),
     CoverType.Basketball to listOf("basket"),
     CoverType.Volleyball to listOf("voleybol", "volley"),
     CoverType.Tennis to listOf("tenis", "tennis", "badminton", "padel", "squash", "raket"),

@@ -627,6 +627,8 @@ private fun KeptTab(
     val alpha = remember { Animatable(if (active && !animateFirst) 1f else 0f) }
     val shift = remember { Animatable(0f) }
     var placed by remember { mutableStateOf(active) }
+    // Giriş animasyonu bitti mi (ağır alt içerik bunu bekler: geçiş sırasında çizilmez). Bir kez true olunca kalır.
+    val settled = remember { mutableStateOf(false) }
     val firstRun = remember { booleanArrayOf(true) }
     LaunchedEffect(active) {
         val isFirst = firstRun[0]
@@ -636,6 +638,7 @@ private fun KeptTab(
             placed = true
             if ((isFirst && !animateFirst) || !motionOn) {
                 alpha.snapTo(1f); shift.snapTo(0f)
+                settled.value = true
                 return@LaunchedEffect
             }
             alpha.snapTo(0f); shift.snapTo(if (forward) 0.1f else -0.1f)
@@ -643,6 +646,7 @@ private fun KeptTab(
                 launch { alpha.animateTo(1f, tween(SinemaMotion.Quick, easing = ease)) }
                 shift.animateTo(0f, tween(SinemaMotion.Standard, easing = ease))
             }
+            settled.value = true
         } else {
             if (isFirst) {
                 if (warmDraw) {
@@ -679,7 +683,10 @@ private fun KeptTab(
         val holder = remember { TabContentHolder(content) }
         if (active || holder.wasActive) { holder.content = content; holder.version++ }
         holder.wasActive = active
-        CompositionLocalProvider(LocalTabActive provides activeState) {
+        CompositionLocalProvider(
+            LocalTabActive provides activeState,
+            com.cosmibit.profitness.presentation.components.LocalTabSettled provides settled
+        ) {
             TabBackScope(active = active) { FrozenTabBody(holder, holder.version) }
         }
     }

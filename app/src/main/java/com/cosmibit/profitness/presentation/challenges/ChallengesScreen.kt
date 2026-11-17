@@ -969,7 +969,15 @@ internal fun challengeCoverKey(c: ChallengeSummary): String {
         else -> ""
     }
     val sport = c.event?.sportType
-    return "${c.title} ${sport?.raw.orEmpty().replace('_', ' ')} ${sport?.label.orEmpty()} $metric"
+    // Spor türü ÖNCE (coverTypeFor ilk eşleşen jetonu alır): liste, detay ve oluştur ekranı aynı türü seçer;
+    // başlık yalnız spor türü eşleşmezse belirleyici olur. Oluştur ekranındaki createPhotoCategory ile aynı eşleme.
+    val sportKey = when (sport) {
+        null -> ""
+        SportType.Strength -> "Göğüs"
+        SportType.YogaPilates -> "Core"
+        else -> "${sport.raw.replace('_', ' ')} ${sport.label}"
+    }
+    return "$sportKey ${c.title} $metric"
 }
 
 /** Tipografik kapaklı poster kart: tek durum etiketi, büyük hedef rakamı, ilerleme, KATIL/KAPALI. */

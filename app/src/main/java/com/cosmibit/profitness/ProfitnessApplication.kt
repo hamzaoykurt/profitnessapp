@@ -34,6 +34,20 @@ class ProfitnessApplication : Application(), ImageLoaderFactory {
             )
         }
         prewarmSupabaseClient()
+        prewarmFonts()
+    }
+
+    /**
+     * PERF (soğuk açılış): Sora değişken fontunun 7 ağırlık varyasyonu ilk metin çiziminde ANA thread'de tek tek
+     * yükleniyordu. Arka planda önceden çözülür; Compose'un global tipografi önbelleğine düşer, ilk kare beklemez.
+     */
+    private fun prewarmFonts() {
+        appScope.launch {
+            runCatching {
+                androidx.compose.ui.text.font.createFontFamilyResolver(this@ProfitnessApplication)
+                    .preload(com.cosmibit.profitness.core.theme.AppFontFamily)
+            }
+        }
     }
 
     /**

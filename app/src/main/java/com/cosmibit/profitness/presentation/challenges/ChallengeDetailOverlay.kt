@@ -91,6 +91,8 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.cosmibit.profitness.core.theme.sinemaRaised
+import com.cosmibit.profitness.core.theme.SinemaRaise
 import com.cosmibit.profitness.core.theme.LocalAppTheme
 import com.cosmibit.profitness.core.theme.Sinema
 import com.cosmibit.profitness.core.theme.SinemaType
@@ -773,14 +775,40 @@ private fun OwnerActionMenu(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    DropdownMenu(
-        expanded = expanded,
+    // Dialog penceresi içinde DropdownMenu konumu/ofseti güvenilmez (sağ kenara yapışıyordu): kendi konumlanan Popup.
+    // Sağ kenardan 16dp içeride, düğmenin 8dp altında; dışarı dokunma ve geri tuşu kapatır (focusable).
+    if (!expanded) return
+    val density = LocalDensity.current
+    val edge = with(density) { 16.dp.roundToPx() }
+    val gap = with(density) { 8.dp.roundToPx() }
+    val positioner = remember(edge, gap) {
+        object : androidx.compose.ui.window.PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: androidx.compose.ui.unit.IntRect,
+                windowSize: androidx.compose.ui.unit.IntSize,
+                layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+                popupContentSize: androidx.compose.ui.unit.IntSize
+            ): androidx.compose.ui.unit.IntOffset {
+                val x = (windowSize.width - popupContentSize.width - edge).coerceAtLeast(edge)
+                val below = anchorBounds.bottom + gap
+                val y = if (below + popupContentSize.height <= windowSize.height) below
+                        else (anchorBounds.top - gap - popupContentSize.height).coerceAtLeast(0)
+                return androidx.compose.ui.unit.IntOffset(x, y)
+            }
+        }
+    }
+    androidx.compose.ui.window.Popup(
+        popupPositionProvider = positioner,
         onDismissRequest = onDismiss,
-        containerColor = Sinema.Surface.copy(alpha = 0.94f),
-        shape = RoundedCornerShape(SinemaRadius.R20),
-        shadowElevation = 12.dp,
-        tonalElevation = 0.dp
+        properties = androidx.compose.ui.window.PopupProperties(focusable = true)
     ) {
+      Column(
+        Modifier
+            .padding(4.dp)
+            .widthIn(min = 168.dp)
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Card)
+            .padding(vertical = 6.dp)
+      ) {
         val theme = LocalAppTheme.current
         if (canEdit) {
             DropdownMenuItem(
@@ -800,6 +828,7 @@ private fun OwnerActionMenu(
             onClick = onDelete,
             colors = MenuDefaults.itemColors(textColor = DangerText)
         )
+      }
     }
 }
 

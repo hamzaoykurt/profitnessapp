@@ -21,6 +21,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -85,6 +86,8 @@ data class ProfileState(
     val fitnessGoal          : String               = "",
     val heightCm             : Double               = 0.0,
     val weightKg             : Double               = 0.0,
+    /** Profil formundaki kilo (son kilo kaydı yoksa gösterilen). */
+    val profileWeightKg      : Double               = 0.0,
     val gender               : String               = "",
     val bmi                  : Double               = 0.0,
     val bodyFatPct           : Double               = 0.0,
@@ -115,8 +118,31 @@ class ProfileViewModel @Inject constructor(
     private val dataTransferRepository: DataTransferRepository,
     private val authRepository    : AuthRepository,
     private val disk              : DiskCache,
-    private val supabase          : SupabaseClient
+    private val supabase          : SupabaseClient,
+    private val weightRepository  : com.cosmibit.profitness.data.weight.WeightRepository
 ) : BaseViewModel<ProfileState, ProfileEvent>(ProfileState()) {
+
+    /** Son kilo kaydı (Room; yalnız yerel okuma — Kilo ekranı ISITILMAZ, AI analizi tetiklenmez). */
+    private var latestLogKg: Double? = null
+    private var weightObserveJob: kotlinx.coroutines.Job? = null
+
+    private fun observeLatestWeight(userId: String) {
+        if (weightObserveJob?.isActive == true) return
+        weightObserveJob = viewModelScope.launch {
+            weightRepository.observeAll(userId)
+                .catch { /* DB hatası: profil alanı kullanılmaya devam eder */ }
+                .collect { entries ->
+                    latestLogKg = entries.maxByOrNull { it.recordedAt }?.weightKg?.takeIf { it > 0 }
+                    updateState { it.withEffectiveWeight() }
+                }
+        }
+    }
+
+    /** Gösterilen kilo = en son kilo kaydı, yoksa profil alanı; BMI ve yağ oranı ona göre. */
+    private fun ProfileState.withEffectiveWeight(): ProfileState {
+        val b = bodyMetricsFor(profileWeightKg.takeIf { it > 0 } ?: weightKg, latestLogKg, heightCm, ageFromBirthDate(birthDate) ?: 25, gender.lowercase() == "male")
+        return copy(weightKg = b.weightKg, bmi = b.bmi, bodyFatPct = b.bodyFatPct)
+    }
 
     private var lastLoadMs = 0L
     private var isInitialized = false
@@ -138,6 +164,7 @@ class ProfileViewModel @Inject constructor(
         isInitialized = true
         viewModelScope.launch {
             restoreCachedSnapshot()
+            supabase.auth.currentUserOrNull()?.id?.let { observeLatestWeight(it) }
             loadProfile()
         }
     }
@@ -270,6 +297,7 @@ class ProfileViewModel @Inject constructor(
                 fitnessGoal         = profile?.fitness_goal.orEmpty(),
                 heightCm            = profile?.height_cm ?: 0.0,
                 weightKg            = profile?.weight_kg ?: 0.0,
+                profileWeightKg     = profile?.weight_kg ?: 0.0,
                 gender              = profile?.gender.orEmpty(),
                 bmi                 = bmi,
                 bodyFatPct          = bodyFat,
@@ -279,8 +307,10 @@ class ProfileViewModel @Inject constructor(
                 achievements        = achievements,
                 isLoading           = false
             )
-            updateState { loadedState }
-            saveSnapshot(userId, loadedState)
+            observeLatestWeight(userId)
+            val effective = loadedState.withEffectiveWeight()
+            updateState { effective }
+            saveSnapshot(userId, effective)
 
             // Achievement kontrolü
             checkAchievements(userId, currentXp, lvl, totalWorkouts, totalExercises, currentStreak, unlockedKeys, allAch)
@@ -310,7 +340,7 @@ class ProfileViewModel @Inject constructor(
                 val newBodyFat = if (newBmi > 0) {
                     (1.2 * newBmi + 0.23 * age + (if (isMale2) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0)
                 } else 0.0
-                val updatedState = uiState.value.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false)
+                val updatedState = uiState.value.copy(displayName = displayName, avatar = avatar, fitnessGoal = fitnessGoal, heightCm = heightCm, weightKg = weightKg, profileWeightKg = weightKg, gender = gender, birthDate = birthDate, bmi = newBmi, bodyFatPct = newBodyFat, isSaving = false).withEffectiveWeight()
                 updateState { updatedState }
                 saveSnapshot(userId, updatedState)
                 sendEvent(ProfileEvent.ShowSnackbar("Profil güncellendi"))
@@ -594,3 +624,13 @@ private fun ProfileSnapshot.toState(current: ProfileState): ProfileState =
         birthDate = birthDate,
         totalCalories = totalCalories
     )
+
+/** Vücut ölçüleri (saf): kilo = son kayıt ?: profil; BMI; yağ oranı (Deurenberg, %3-60). */
+data class BodyMetrics(val weightKg: Double, val bmi: Double, val bodyFatPct: Double)
+
+fun bodyMetricsFor(profileWeightKg: Double, latestLogKg: Double?, heightCm: Double, age: Int, isMale: Boolean): BodyMetrics {
+    val w = latestLogKg?.takeIf { it > 0 } ?: profileWeightKg
+    val bmi = if (heightCm > 0 && w > 0) w / ((heightCm / 100.0) * (heightCm / 100.0)) else 0.0
+    val fat = if (bmi > 0) (1.2 * bmi + 0.23 * age + (if (isMale) -10.8 else 0.0) - 5.4).coerceIn(3.0, 60.0) else 0.0
+    return BodyMetrics(w, bmi, fat)
+}

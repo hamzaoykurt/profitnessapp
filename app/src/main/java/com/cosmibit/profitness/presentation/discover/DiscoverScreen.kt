@@ -1205,6 +1205,8 @@ private fun SinemaProgramsFeed(
     val theme = LocalAppTheme.current
     val items = state.items
     val listState = rememberLazyListState()
+    // PERF: topluluk kartları (kapak gradyanı + gölge) sekme yerleşince (+2 kare) kompoze edilir.
+    val heavyReady = com.cosmibit.profitness.presentation.components.rememberHeavyContentReady()
     val shouldLoadMore by remember {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -1234,7 +1236,7 @@ private fun SinemaProgramsFeed(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding + 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                itemsIndexed(items, key = { _, p -> p.id }) { i, program ->
+                if (heavyReady) itemsIndexed(items, key = { _, p -> p.id }) { i, program ->
                     val isAppliedByHash = program.contentHash != null && program.contentHash in myProgramHashes
                     val appliedLocalId = state.appliedProgramMap[program.id]
                     val isAppliedFallback = appliedLocalId != null &&

@@ -355,3 +355,15 @@ internal fun ChallengeDetailDto.toDomain(): ChallengeDetail {
         movements   = movements.map { it.toDomain() }
     )
 }
+
+/**
+ * Listeden gelen (eksik olabilen) etkinlik bilgisini aynı id'nin tam bilgisiyle tamamlar: spor türü, egzersiz ve bitiş
+ * konumu tam kaynaktan; kullanıcıya özgü sayılar (hareket/tamamlanan) listeden kalır.
+ */
+fun mergeEventInfo(partial: ChallengeEventInfo, full: ChallengeEventInfo): ChallengeEventInfo = partial.copy(
+    sportType   = full.sportType,
+    exerciseId  = partial.exerciseId ?: full.exerciseId,
+    endLocation = partial.endLocation ?: full.endLocation,
+    endGeoLat   = partial.endGeoLat ?: full.endGeoLat,
+    endGeoLng   = partial.endGeoLng ?: full.endGeoLng
+)

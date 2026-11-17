@@ -243,8 +243,10 @@ fun AICoachScreen(
                 // Hazır öneri satırları YALNIZ boş sohbette: ilk mesaj/öneriye dokunma/geçmiş sohbet açılınca kaybolur,
                 // "yeni sohbet" ile geri gelir (karşılama ekranı ile aynı koşul).
                 val motionOn = com.cosmibit.profitness.core.theme.rememberSinemaMotionOn()
+                // PERF: raised soru satırları sekme yerleşince (+2 kare) gelir; geçiş sırasında çizilmez.
+                val heavyReady = com.cosmibit.profitness.presentation.components.rememberHeavyContentReady()
                 AnimatedVisibility(
-                    visible = !imeVisible && !chatting && !state.isLoading && inputText.isBlank(),
+                    visible = heavyReady && !imeVisible && !chatting && !state.isLoading && inputText.isBlank(),
                     enter = fadeIn(tween(if (motionOn) SinemaMotion.Quick else 0)) +
                         expandVertically(tween(if (motionOn) SinemaMotion.Standard else 0, easing = SinemaMotion.EaseStandard), expandFrom = Alignment.Bottom),
                     exit = fadeOut(tween(if (motionOn) SinemaMotion.Instant else 0)) +

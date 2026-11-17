@@ -273,35 +273,28 @@ private fun Modifier.sinemaRaisedImpl(
     pressed: () -> Boolean
 ): Modifier {
     val mini = level == SinemaRaise.Mini
+    // PERF (telefon, ilk çizim): kart başına 3 ayrı setShadowLayer/blur maskesi (30dp+5dp+renkli) her kart boyutu için ilk çizimde
+    // yeniden üretiliyordu → soğuk açılış/ilk sekme girişinde kare kaybı. Siyah yükseklik gölgesi artık GPU'nun yerel (RenderNode)
+    // gölgesi ile çizilir (ucuz, önbellekli); yalnız dolu renkli (amber/mercan) yüzeyde tek renkli parlama blur'u kalır.
     return this
-        .drawWithCache {
-            val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
-            val path = shapePath(shape, size, layoutDirection, this)
-            fun paintOf(blur: Dp, dy: Dp, color: Color) = Paint().asFrameworkPaint().apply {
-                isAntiAlias = true
-                this.color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(blur.toPx(), 0f, dy.toPx(), color.toArgb())
-            }
-            val sA = if (mini) 0.38f else 0.45f
-            val cA = if (mini) 0.35f else 0.40f
-            fun shadows(k: Float) = Triple(
-                paintOf(if (mini) 16.dp else 30.dp, if (mini) 6.dp else 12.dp, Color.Black.copy(sA * k)),
-                paintOf(if (mini) 3.dp else 5.dp, if (mini) 1.dp else 2.dp, Color.Black.copy(cA * k)),
-                // dolu renkli (amber/mercan) yüzeylerde yumuşak renkli gölge (abartısız)
-                fill?.let { paintOf(18.dp, 7.dp, it.copy(0.26f * k)) }
-            )
-            val (soft, contact, colored) = shadows(1f)
-            val (softP, contactP, coloredP) = shadows(0.6f)
-            onDrawBehind {
-                val down = pressed()
-                // dolgu opak: gölgenin iç kısmı zaten örtülür -> pahalı Difference clip'ine gerek yok
-                drawIntoCanvas { c ->
-                    c.nativeCanvas.drawPath(androidPath, if (down) softP else soft)
-                    (if (down) coloredP else colored)?.let { p -> c.nativeCanvas.drawPath(androidPath, p) }
-                    c.nativeCanvas.drawPath(androidPath, if (down) contactP else contact)
+        .shadow(
+            elevation = if (mini) 7.dp else 14.dp,
+            shape = shape,
+            clip = false,
+            ambientColor = Color.Black.copy(if (mini) 0.30f else 0.34f),
+            spotColor = Color.Black.copy(if (mini) 0.60f else 0.68f)
+        )
+        .then(
+            if (fill != null) Modifier.drawWithCache {
+                val androidPath = shapePath(shape, size, layoutDirection, this).asAndroidPath()
+                val coloredPaint = Paint().asFrameworkPaint().apply {
+                    isAntiAlias = true
+                    this.color = android.graphics.Color.TRANSPARENT
+                    setShadowLayer(18.dp.toPx(), 0f, 7.dp.toPx(), fill.copy(0.26f).toArgb())
                 }
-            }
-        }
+                onDrawBehind { drawIntoCanvas { c -> c.nativeCanvas.drawPath(androidPath, coloredPaint) } }
+            } else Modifier
+        )
         .clip(shape)
         .drawWithCache {
             val w = size.width
@@ -599,7 +592,8 @@ fun Modifier.sinemaPrimaryGlow(color: Color, shape: Shape): Modifier =
 
 /** Renksiz yükseklik gölgesi (glow yerine): 0 4dp 12dp siyah α.35. */
 fun Modifier.sinemaShade(shape: Shape): Modifier =
-    sinemaGlow(Color.Black.copy(alpha = Sinema.ShadeAlpha), Sinema.ShadeBlur, Sinema.ShadeDy, shape)
+    // PERF: blur'lu setShadowLayer yerine yerel (RenderNode) gölge; opak dolu düğmelerde kullanılır.
+    this.shadow(6.dp, shape, clip = false, ambientColor = Color.Black.copy(0.25f), spotColor = Color.Black.copy(Sinema.ShadeAlpha + 0.20f))
 
 /** Sabit başlık altı yumuşak geçiş: içeriğin üst kenarı [height] boyunca solar (sert kesik yok). */
 fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
@@ -617,38 +611,34 @@ fun Modifier.sinemaTopFade(height: Dp = 24.dp): Modifier = this
  * Üst üste binen sönük konturlar iç içe bir blur etkisi verir; seçili/aktif kart ve çiplerde `border` yerine kullanılır.
  */
 fun Modifier.sinemaSoftRing(color: Color, shape: Shape, spread: Dp = 10.dp): Modifier = this.drawWithCache {
-    // PERF: Path/Paint/BlurMaskFilter/LinearGradient boyut değişmedikçe bir kez kurulur (eskiden her karede).
+    // PERF: BlurMaskFilter (yazılım blur'u, her boyutta yeniden rasterize) kaldırıldı. Yerine şekle kırpılmış 3 kademeli
+    // saydam kontur: iç kenara doğru α azalır (ucuz GPU stroke), yön gradyanı (üst-sol parlak) aynı kalır.
     val w = size.width
     val h = size.height
     val sp = spread.toPx()
-    val inset = sp * 0.9f                         // blur'lu kalın kontur iç kenardan başlar: dış pikselde α≈0 (çizgi yok)
-    val path = shapePath(shape, size, layoutDirection, this)
-    val scaleX = ((w - 2 * inset) / w).coerceIn(0.5f, 1f)
-    val scaleY = ((h - 2 * inset) / h).coerceIn(0.5f, 1f)
-    val inner = android.graphics.Path(path.asAndroidPath()).also {
-        val m = android.graphics.Matrix()
-        m.setScale(scaleX, scaleY, w / 2f, h / 2f)
-        it.transform(m)
-    }
-    val clipP = path.asAndroidPath()
+    val clipP = shapePath(shape, size, layoutDirection, this).asAndroidPath()
     val a = color.alpha * 0.45f   // çok yumuşak / düşük α: yalnız aktif işareti
     fun argb(al: Float) = color.copy(alpha = a * al).toArgb()
-    val paint = android.graphics.Paint().apply {
-        isAntiAlias = true
-        style = android.graphics.Paint.Style.STROKE
-        strokeWidth = sp * 1.4f
-        maskFilter = android.graphics.BlurMaskFilter(sp * 1.2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-        shader = android.graphics.LinearGradient(
-            0f, 0f, w, h,
-            intArrayOf(argb(1f), argb(0.62f), argb(0.28f), argb(0.10f), argb(0.04f)),
-            floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f), android.graphics.Shader.TileMode.CLAMP
-        )
+    val shader = android.graphics.LinearGradient(
+        0f, 0f, w, h,
+        intArrayOf(argb(1f), argb(0.62f), argb(0.28f), argb(0.10f), argb(0.04f)),
+        floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f), android.graphics.Shader.TileMode.CLAMP
+    )
+    // kontur şekil kenarında ortalanır, kırpma ile yalnız içteki yarısı görünür: genişlik 2x = iç bant
+    val paints = listOf(sp * 2.0f to 0.30f, sp * 1.1f to 0.30f, sp * 0.45f to 0.32f).map { (sw, al) ->
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = sw
+            alpha = (al * 255).toInt()
+            this.shader = shader
+        }
     }
     onDrawWithContent {
         drawContent()
         drawIntoCanvas { canvas ->
             val n = canvas.nativeCanvas
-            n.save(); n.clipPath(clipP); n.drawPath(inner, paint); n.restore()
+            n.save(); n.clipPath(clipP); paints.forEach { n.drawPath(clipP, it) }; n.restore()
         }
     }
 }

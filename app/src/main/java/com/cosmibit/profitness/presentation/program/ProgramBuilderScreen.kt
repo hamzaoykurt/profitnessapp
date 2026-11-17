@@ -870,12 +870,14 @@ private fun BuilderChooseScreen(
 
     Box(Modifier.fillMaxSize()) {
     val activeProgram = userPrograms.firstOrNull { it.isActive }
+    // PERF: ilk karede yalnız kahraman bölüm; kayıtlı/hazır program kartları sekme yerleşince (+2 kare) gelir.
+    val heavyReady = com.cosmibit.profitness.presentation.components.rememberHeavyContentReady()
     androidx.compose.foundation.lazy.LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = com.cosmibit.profitness.core.theme.SinemaNavHeight + 24.dp + timerExtraPad)
     ) {
         item { ProgramsHero(active = activeProgram, today = todayInfo, onStart = onStartWorkout, onOpen = activeProgram?.let { p -> { detailProgramId = p.id } }) }
-        item {
+        if (heavyReady) item {
             Box(Modifier.offset(y = (-28).dp)) {
                 ProgramsSheet {
                     ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) })
@@ -913,7 +915,7 @@ private fun BuilderChooseScreen(
                 }
             }
         }
-        items(filtered, key = { it.title }) { prog ->
+        if (heavyReady) items(filtered, key = { it.title }) { prog ->
             Box(Modifier.offset(y = (-28).dp)) {
                         ReadyProgramCard(
                             title = prog.localizedTitle(theme),

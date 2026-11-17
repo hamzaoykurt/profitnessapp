@@ -17,6 +17,11 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import com.cosmibit.profitness.domain.challenges.ChallengeEventInfo
+import com.cosmibit.profitness.domain.challenges.mergeEventInfo
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.add
@@ -39,16 +44,25 @@ class ChallengeRepositoryImpl @Inject constructor(
                         put("p_limit", limit)
                         put("p_offset", offset)
                     }
-                ).decodeList<PublicChallengeRowDto>().map { it.toDomain() }
+                ).decodeList<PublicChallengeRowDto>().map { it.toDomain() }.onEach { cacheEvent(it) }
             }
         }
 
     override suspend fun listMyChallenges(): Result<List<ChallengeSummary>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                supabase.postgrest.rpc("list_my_challenges")
-                    .decodeList<MyChallengeRowDto>()
-                    .map { it.toDomain() }
+                val rows = supabase.postgrest.rpc("list_my_challenges").decodeList<MyChallengeRowDto>()
+                // Canlı list_my_challenges spor türünü (sport_type vb.) döndürmeyebiliyor (migration bekliyor):
+                // eksik etkinlik alanları aynı id'nin görünür liste/detay verisinden tamamlanır -> liste ve detay AYNI tür/renk.
+                coroutineScope {
+                    rows.map { row ->
+                        async {
+                            val s = row.toDomain()
+                            if (row.sport_type != null || s.event == null) s.also { cacheEvent(it) }
+                            else completeEvent(s)
+                        }
+                    }.awaitAll()
+                }
             }
         }
 
@@ -58,9 +72,33 @@ class ChallengeRepositoryImpl @Inject constructor(
                 supabase.postgrest.rpc(
                     "get_challenge_detail",
                     buildJsonObject { put("p_challenge_id", challengeId) }
-                ).decodeAs<ChallengeDetailDto>().toDomain()
+                ).decodeAs<ChallengeDetailDto>().toDomain().also { cacheEvent(it.summary) }
             }
         }
+
+    // ── Etkinlik alanı önbelleği (id -> tam etkinlik bilgisi; 10 dk) ─────────────
+    private val eventCache = java.util.concurrent.ConcurrentHashMap<String, Pair<ChallengeEventInfo, Long>>()
+
+    private fun cacheEvent(s: ChallengeSummary) {
+        s.event?.let { eventCache[s.id] = it to System.currentTimeMillis() }
+    }
+
+    private suspend fun completeEvent(s: ChallengeSummary): ChallengeSummary {
+        val ev = s.event ?: return s
+        val full = eventCache[s.id]?.takeIf { System.currentTimeMillis() - it.second < EVENT_CACHE_TTL_MS }?.first
+            ?: runCatching {
+                supabase.postgrest.rpc(
+                    "get_challenge_detail",
+                    buildJsonObject { put("p_challenge_id", s.id) }
+                ).decodeAs<ChallengeDetailDto>().toDomain().summary.event
+            }.getOrNull()?.also { eventCache[s.id] = it to System.currentTimeMillis() }
+            ?: return s   // hata: mevcut davranış
+        return s.copy(event = mergeEventInfo(ev, full))
+    }
+
+    private companion object {
+        const val EVENT_CACHE_TTL_MS = 10 * 60_000L
+    }
 
     override suspend fun createChallenge(
         title: String,
