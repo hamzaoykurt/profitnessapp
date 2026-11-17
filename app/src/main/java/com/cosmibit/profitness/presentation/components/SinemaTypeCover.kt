@@ -1,5 +1,7 @@
 package com.cosmibit.profitness.presentation.components
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
@@ -52,9 +54,21 @@ fun SinemaTypeCover(
 ) {
     val neutralTop = lerp(Sinema.Page, Color.White, 0.13f)
     val neutralBottom = lerp(Sinema.Page, Color.White, 0.05f)
+    // derin ton: aynı hue, S korunur; üst V≈%72, alt V≈%36 (neon/pastel değil, griye kaçmaz)
+    val deepTop = remember(hue) { hsvTone(hue, 0.72f) }
+    val deepBase = remember(hue) { lerp(Sinema.Page, hue, 0.12f) }                 // koyu taban: aynı hue'ya hafif çalar
+    // tüm kart boyunca sürekli azalan renk: 9 duraklı yumuşak eğri (%100 -> ~%12), plato/bant yok
+    val deepStops = remember(hue) {
+        val top = hsvTone(hue, 0.72f)
+        Array(9) { i ->
+            val t = i / 8f
+            val f = 0.12f + 0.88f * Math.pow((1f - t).toDouble(), 1.5).toFloat()
+            t to lerp(deepBase, top, f)
+        }
+    }
     val topC = lerp(Sinema.Surface, hue, 0.80f)                                 // canlı, doygun tür rengi
     val bottomC = lerp(Sinema.Surface, lerp(hue, Color.Black, 0.50f), 0.88f)    // aynı hue koyu (siyaha/griye kaçmaz)
-    val ghost = lerp(hue, Color.White, 0.30f).copy(alpha = if (underStatusBar) 0.26f else 0.30f)
+    val ghost = lerp(hue, Color.White, 0.35f).copy(alpha = if (underStatusBar) 0.26f else 0.28f)
     // 3D yumuşak blok: tek renk hue; üst açık, alt koyu, üstte yayılan yumuşak parlama, altta iç gölge (keskin hat yok)
     BoxWithConstraints(
         modifier
@@ -67,12 +81,7 @@ fun SinemaTypeCover(
                             center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, 0f), radius = 300.dp.toPx()
                         )
                     )
-                } else Modifier.background(
-                    // kart gövdesi nötr raised; tür rengi yalnız üst ~%38 bandında yumuşak söner (büyük renk bloğu yok)
-                    Brush.verticalGradient(
-                        0f to lerp(neutralTop, hue, 0.55f), 0.16f to lerp(neutralTop, hue, 0.38f), 0.38f to neutralTop, 1f to neutralBottom
-                    )
-                )
+                } else Modifier.background(Brush.verticalGradient(colorStops = deepStops))
             )
             .drawBehind {
                 if (underStatusBar) return@drawBehind
@@ -186,3 +195,12 @@ fun coverHueFor(key: String?): Color = coverTypeFor(key).hue
 
 /** Kapak hayalet ikonu (türe göre belirgin ikon). */
 fun coverIconFor(key: String?): ImageVector = coverTypeFor(key).icon()
+
+/** Aynı hue, doygunluk korunarak (en az %55) hedef parlaklığa (V) çekilmiş derin ton. */
+internal fun hsvTone(c: Color, v: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(c.toArgb(), hsv)
+    hsv[1] = maxOf(hsv[1], 0.66f).coerceAtMost(0.95f)
+    hsv[2] = v
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
