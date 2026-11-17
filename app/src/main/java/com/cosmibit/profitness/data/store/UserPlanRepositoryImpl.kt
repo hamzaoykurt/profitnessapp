@@ -73,9 +73,9 @@ class UserPlanRepositoryImpl @Inject constructor(
     override suspend fun upgradePlan(plan: UserPlan, yearly: Boolean): CheckoutResult {
         require(plan != UserPlan.FREE) { "Free plan checkout is not supported." }
         val suffix = if (yearly) "yearly" else "monthly"
+        // Premium, sunucu geçişine kadar mevcut Pro SKU'suyla satın alınır (sub_premium_* geçişte; bkz. supabase/proposals).
         val sku = when (plan) {
-            UserPlan.PRO -> "sub_pro_$suffix"
-            UserPlan.ELITE -> "sub_elite_$suffix"
+            UserPlan.PREMIUM -> "sub_pro_$suffix"
             UserPlan.FREE -> error("Unsupported plan")
         }
         return startCheckout(sku)
@@ -175,13 +175,16 @@ class UserPlanRepositoryImpl @Inject constructor(
     private data class BillingStatusDto(
         val plan: String,
         val status: String,
-        val credits: Int,
+        val credits: Int = 0,
+        /** Önerilen yeni alan (sunucu geçişinde); yoksa null. */
+        val freeAiProgramsLeft: Int? = null,
         val sandboxAvailable: Boolean = false,
         val products: List<BillingProductDto> = emptyList(),
         val recentUsage: List<BillingUsageDto> = emptyList()
     ) {
         fun toDomain(): BillingSnapshot = BillingSnapshot(
-            plan = runCatching { UserPlan.valueOf(plan) }.getOrDefault(UserPlan.FREE),
+            plan = UserPlan.fromServer(plan) ?: UserPlan.FREE,
+            freeAiProgramsLeft = freeAiProgramsLeft,
             status = status,
             credits = credits,
             isLoaded = true,
@@ -204,7 +207,7 @@ class UserPlanRepositoryImpl @Inject constructor(
         fun toDomain(): BillingProduct = BillingProduct(
             sku = sku,
             kind = kind,
-            plan = plan?.let { runCatching { UserPlan.valueOf(it) }.getOrNull() },
+            plan = UserPlan.fromServer(plan),
             creditAmount = credit_amount,
             title = title,
             priceLabel = price_label,

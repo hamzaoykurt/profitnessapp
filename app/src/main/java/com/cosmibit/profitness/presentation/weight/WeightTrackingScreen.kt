@@ -402,11 +402,11 @@ private fun AiInsightCard(
         when {
             locked -> {
                 Text(
-                    theme.t("Kilo trendinin AI analizi Pro ve Elite planlarında.", "AI weight trend analysis is part of Pro and Elite."),
+                    theme.t("Kilo trendinin AI analizi Premium'da. Kilo kaydı ve grafik ücretsiz.", "AI weight trend analysis is in Premium. Logging and charts stay free."),
                     color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
                 )
                 Spacer(Modifier.height(14.dp))
-                SinemaGoButton(label = theme.t("PRO İLE AÇ", "UNLOCK WITH PRO"), icon = Icons.Rounded.Lock, onClick = onUnlock)
+                SinemaGoButton(label = theme.t("PREMIUM İLE AÇ", "UNLOCK WITH PREMIUM"), icon = Icons.Rounded.Lock, onClick = onUnlock)
             }
             isLoading -> Row(
                 modifier              = Modifier.fillMaxWidth(),
@@ -438,12 +438,6 @@ private fun AiInsightCard(
                     SinemaGoButton(
                         label = if (insight.isBlank()) theme.t("AI İLE ANALİZ ET", "ANALYZE WITH AI") else theme.t("ANALİZİ GÜNCELLE", "REFRESH ANALYSIS"),
                         icon = Icons.Rounded.AutoAwesome, onClick = onAnalyze
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        com.cosmibit.profitness.domain.ai.AiAccessPolicy.costLine(plan, feature, credits, english),
-                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption,
-                        modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }

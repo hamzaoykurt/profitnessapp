@@ -2,10 +2,22 @@ package com.cosmibit.profitness.data.store
 
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Üyelik (2026-11 sade model): ÜCRETSİZ + PREMIUM (tek abonelik, aylık/yıllık).
+ * Sunucu geçiş bitene kadar eski "PRO"/"ELITE" adlarını dönebilir: [fromServer] ikisini de PREMIUM'a eşler.
+ */
 enum class UserPlan(val displayName: String) {
     FREE("Ücretsiz"),
-    PRO("Pro"),
-    ELITE("Elite")
+    PREMIUM("Premium");
+
+    companion object {
+        /** Sunucu plan adı -> plan. "PRO", "ELITE", "PREMIUM" -> PREMIUM; bilinmeyen -> null. */
+        fun fromServer(raw: String?): UserPlan? = when (raw?.trim()?.uppercase()) {
+            "FREE" -> FREE
+            "PREMIUM", "PRO", "ELITE" -> PREMIUM
+            else -> null
+        }
+    }
 }
 
 data class CheckoutResult(
@@ -37,6 +49,8 @@ data class BillingUsage(
 
 data class BillingSnapshot(
     val plan: UserPlan = UserPlan.FREE,
+    /** Ücretsiz planda kalan AI program oluşturma/içe aktarma hakkı (SUNUCU tutar; null = sunucu henüz dönmüyor). */
+    val freeAiProgramsLeft: Int? = null,
     val status: String = "free",
     val credits: Int = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER,
     val isLoaded: Boolean = false,
@@ -82,7 +96,10 @@ interface UserPlanRepository {
         /** Server bakiyesi gelene kadar yanıltıcı starter Enerji göstermeyelim. */
         const val INITIAL_CREDITS_PLACEHOLDER = 0
 
-        /** Yeni FREE hesaplar bu kadar Enerjiyle başlar. */
+        /** Eski Enerji modeli (kaldırılıyor); yalnız geriye uyum için. */
         const val FREE_STARTER_CREDITS = 32
+
+        /** Ücretsiz plan: hesap başına ömür boyu AI program oluşturma/içe aktarma hakkı (sunucu önerisiyle aynı sabit). */
+        const val FREE_AI_PROGRAM_GRANTS = 2
     }
 }

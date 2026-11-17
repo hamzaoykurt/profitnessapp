@@ -366,7 +366,7 @@ private fun raiseBrush(theme: AppThemeState): Brush =
 
 /** AI (kabarık vurgu) + Manuel (gömülü) blokları. */
 @Composable
-fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit, aiLocked: Boolean = false) {
+fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit, aiLocked: Boolean = false, aiNote: String? = null) {
     val theme = LocalAppTheme.current
     val shape = RoundedCornerShape(SinemaRadius.R28)
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -386,7 +386,7 @@ fun ProgramsMakeRow(onAi: () -> Unit, onManual: () -> Unit, aiLocked: Boolean = 
             }
             Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp)) {
                 Text(theme.t("AI ile\nOluştur", "Create\nwith AI"), color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, lineHeight = 1.15.em, letterSpacing = (-0.01).em)
-                Text(if (aiLocked) theme.t("Pro ile aç", "Unlock with Pro") else theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(if (aiLocked) theme.t("Premium ile aç", "Unlock with Premium") else aiNote ?: theme.t("Sana özel plan", "A plan made for you"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             }
             }
         }

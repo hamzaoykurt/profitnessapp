@@ -1,3 +1,4 @@
+-- GEÇERSİZ (2026-11-17): yerine supabase/proposals/20261117_free_premium_ai_access.sql (Ücretsiz + Premium modeli).
 -- ÖNERİ (UYGULANMADI, ONAY GEREKİYOR): Free planda AI'ı sunucuda kapat.
 -- Bugünkü durum (20260519193000_rebalance_energy_plan_hierarchy.sql, reserve_ai_usage):
 --   FREE için v_free_limit = 0 ama Enerji bakiyesi yetiyorsa İZİN VERİLİYOR (yeni hesaba 32 başlangıç Enerjisi;

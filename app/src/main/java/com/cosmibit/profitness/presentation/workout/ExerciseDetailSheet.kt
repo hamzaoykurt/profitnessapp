@@ -872,10 +872,11 @@ private fun AiProgressionSection(
     theme: AppThemeState,
     onRefresh: () -> Unit
 ) {
-    val noEnergy = isFree && credits <= 0
+    // Enerji/kredi kalktı: Free'de AI analizi Premium'da (dokununca VM kilidi paywall açar)
+    val noEnergy = false
     SinemaSectionLabel(
         theme.t("AI KOÇ", "AI COACH"),
-        trailing = if (isFree) theme.t("$credits Enerji kaldı", "$credits Energy left") else null
+        trailing = if (isFree) "Premium" else null
     )
     Column(Modifier.padding(horizontal = 20.dp)) {
         if (insight.isNotBlank() || isLoading) {
@@ -898,15 +899,16 @@ private fun AiProgressionSection(
             Spacer(Modifier.height(14.dp))
         }
         SinemaGoOrIdle(
-            label = if (insight.isBlank()) theme.t("AI ANALİZİ AL", "GET AI ANALYSIS") else theme.t("YENİLE", "REFRESH"),
+            label = if (isFree) theme.t("PREMIUM İLE AÇ", "UNLOCK WITH PREMIUM")
+                else if (insight.isBlank()) theme.t("AI ANALİZİ AL", "GET AI ANALYSIS") else theme.t("YENİLE", "REFRESH"),
             icon = Icons.Rounded.AutoAwesome,
             enabled = !isLoading && !noEnergy,
             onClick = onRefresh
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            if (noEnergy) theme.t("Enerjin bitti. AI analizi 2 Enerji harcar.", "You're out of Energy. AI analysis costs 2 Energy.")
-            else theme.t("AI analizi 2 Enerji harcar.", "AI analysis costs 2 Energy."),
+            if (isFree) theme.t("Hareket AI analizi Premium'da.", "Exercise AI analysis is in Premium.")
+            else theme.t("Sonuç burada kalır; yeni setlerden sonra yenileyebilirsin.", "The result stays here; refresh after new sets."),
             color = Sinema.textSecondary(theme),
             fontSize = SinemaType.Caption,
             modifier = Modifier.fillMaxWidth()

@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.Icons
@@ -889,27 +890,18 @@ private fun AiInsightCard(
                 Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)
                 if (isFree && !isLoading) {
                     Text(
-                        if (credits <= 0) theme.t("Enerjin bitti · Enerji yükle veya plana yükselt", "Out of energy · Get more energy or upgrade")
-                        else theme.t("2 Enerji · $credits kaldı", "2 Energy · $credits left"),
-                        color = if (credits <= 0) Sinema.text(theme) else Sinema.textSecondary(theme),
-                        fontSize = SinemaType.Caption, fontWeight = if (credits <= 0) FontWeight.Bold else FontWeight.Normal
+                        theme.t("Premium özelliği · dokununca Premium'u gör", "Premium feature · tap to see Premium"),
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
                     )
                 }
             }
             if (!isLoading) {
-                if (isFree && credits <= 0) {
-                    Box(
-                        Modifier.size(40.dp).clip(CircleShape).background(Sinema.line(theme)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.Refresh, theme.t("Enerji yok", "No energy"), tint = Sinema.textSecondary(theme).copy(0.6f), modifier = Modifier.size(18.dp))
-                    }
-                } else {
-                    SinemaCapsuleIconButton(
-                        icon = Icons.Rounded.Refresh, description = theme.t("Analiz et", "Analyze"),
-                        onClick = onRefresh, selected = true, size = 40.dp
-                    )
-                }
+                // Free: aynı düğme Premium paywall'ını açar (VM kilidi); Enerji/kredi yok
+                SinemaCapsuleIconButton(
+                    icon = if (isFree) Icons.Rounded.Lock else Icons.Rounded.Refresh,
+                    description = if (isFree) theme.t("Premium ile aç", "Unlock with Premium") else theme.t("Analiz et", "Analyze"),
+                    onClick = onRefresh, selected = true, size = 40.dp
+                )
             }
         }
         Spacer(Modifier.height(12.dp))

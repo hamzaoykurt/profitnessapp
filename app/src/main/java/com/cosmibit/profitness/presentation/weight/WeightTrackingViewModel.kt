@@ -296,7 +296,7 @@ class WeightTrackingViewModel @Inject constructor(
             if (text.isBlank()) {
                 planRepository.refundCredit()
                 updateState { it.copy(isAiLoading = false, aiInsight = previous) }
-                sendEvent(WeightTrackingEvent.ShowSnackbar("Analiz şu an yapılamadı; Enerji iade edildi. Biraz sonra tekrar dene."))
+                sendEvent(WeightTrackingEvent.ShowSnackbar("Analiz şu an yapılamadı. Biraz sonra tekrar dene."))
                 return@launch
             }
             val userId = supabase.auth.currentUserOrNull()?.id

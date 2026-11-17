@@ -1,30 +1,41 @@
-# Üyelik → AI erişimi (temel, 2026-11-17)
-Tek kaynak (istemci): `domain/ai/AiAccessPolicy.kt` (AiFeature, AiAccess, isAiLocked). Test: `AiAccessPolicyTest`.
+# Üyelik → AI erişimi (sade model, 2026-11-17)
+Ethos: uygulama ücretsiz de yararlı; para yalnız AI için. Enerji/kredi KALKTI. Tek abonelik: PREMIUM (aylık/yıllık).
+İstemci tek kaynak: `domain/ai/AiAccessPolicy.kt` (AiFeature, AiAccess, isAiLocked). Test: `AiAccessPolicyTest`.
+Plan adı: `UserPlan` = FREE / PREMIUM; `UserPlan.fromServer` sunucunun eski "PRO"/"ELITE" adlarını PREMIUM sayar.
 
-| Plan | AI | Not |
+| | ÜCRETSİZ | PREMIUM |
 |---|---|---|
-| FREE | YOK: kilo analizi, AI Koç sohbeti, AI ile Oluştur/düzenle, hareket/antrenman AI analizi, AI Koç→program | Sekmeler görünür; "Pro ile aç" → Mağaza |
-| PRO | Hepsi | Aylık plan kotası, kota bitince Enerji |
-| ELITE | Pro + kişisel profil/hafıza + öncelik | Daha yüksek kota |
+| AI-dışı her şey (antrenman, manuel program, Keşfet, paylaşma, challenge/etkinlik, Kilo kaydı + grafik, başarım, istatistik, Hareketi gör/video) | Açık | Açık |
+| AI program oluştur / içe aktar (PROGRAM_GENERATE_TEXT/_MEDIA) | Ömür boyu 2 hak (`FREE_AI_PROGRAM_GRANTS`) | Sınırsız* |
+| AI ile düzenle, AI Koç sohbeti, AI Koç→program | Kilitli | Sınırsız* |
+| Kilo / hareket / antrenman AI analizi, plan değerlendirme | Kilitli | Sınırsız* |
+| Kişisel hafıza, öncelik (eski Elite) | — | Dahil |
+*Adil kullanım: sunucuda günlük tavan + dakikada hız sınırı (öneride 200/gün, 6/dk; ayarlanabilir).
 
-AI eylemleri (sunucu aracı · kota bitince Enerji · Pro/Elite kotası):
-- AI Koç mesajı ORACLE_CHAT · 10 mesajda 1 · GÜNLÜK 250 / 10000
-- AI ile Oluştur PROGRAM_GENERATE_TEXT · 6 · 30 / 160; dosyalı PROGRAM_GENERATE_MEDIA · 10 · 12 / 90
-- AI ile düzenle PROGRAM_EDIT · 4 · 40 / 160; AI Koç→program ORACLE_TO_PROGRAM · 4 · 30 / 160
-- Kilo/Hareket/Antrenman analizi *_ANALYSIS · 2 · GÜNLÜK 20 / 10000 (diğerleri AYLIK)
-Kaynak: supabase/migrations/20260519193000_rebalance_energy_plan_hierarchy.sql (reserve_ai_usage).
+Kural: hiçbir AI çağrısı otomatik değil; yalnız kullanıcı tıklaması. Kilo analizi sonucu DiskCache'te, kayıt değişince "Analizi güncelle".
+Kilitli UI (plan yüklenmeden kilit yok):
+- Kilo kartı: kilit + "PREMIUM İLE AÇ"
+- AI Koç: mesaj çubuğu yerine kilit kartı
+- AI ile Oluştur: hak satırı ("2 ücretsiz AI program hakkın var" / "1 hakkın kaldı"), hak bitince kilit + Paywall
+- AI düzenle: "Uygula · Premium"
+- Hareket analizi: "PREMIUM İLE AÇ"
+Mağaza: tek Premium kartı (aylık/yıllık), Premium avantajları + "Ücretsiz planda da var" listesi, demo notu; Enerji sekmesi yok.
+Fiyatlar: Supabase ürünü (geçişte sub_pro_* Premium sayılır) yoksa demo ₺149/₺999; gerçek fiyat Play'den.
 
-Kural: HİÇBİR AI çağrısı ekran açılışında/otomatik yapılmaz; yalnız kullanıcı tıklaması.
-- Kilo takibi: "AI ile analiz et" düğmesi; sonuç DiskCache'te (imza = kayıt sayısı + son kayıt). Yeniden açılışta kredi yok; kayıt değişince "Analizi güncelle".
-- Hareket analizi (Hareketi gör, Hareket performansı), AI Koç, AI ile Oluştur/düzenle: zaten tıklamayla; plan kilidi eklendi.
-- Kilitli UI: Kilo kartı (kilit + PRO İLE AÇ), AI Koç (mesaj çubuğu yerine kilit kartı, öneriler önizleme), AI ile Oluştur (kilit ikonu, Paywall).
-- Plan yüklenmeden kilit gösterilmez (Elite yanlış kilitlenmesin).
+Sorumluluk: SUNUCU gerçek yetki + sayaç (reserve/complete/refund_ai_usage; ai-generate 402 + reason).
+İSTEMCİ yalnız UI kilidi; kalan hakkı billing-status'tan gösterir (`freeAiProgramsLeft`, şimdilik yok → "2 AI program hakkı").
+Sunucu önerisi (UYGULANMADI): `supabase/proposals/20261117_free_premium_ai_access.sql`. İçeriği:
+- ayarlar tablosu, PRO/ELITE→PREMIUM, Enerjisiz reserve_ai_usage, geçiş sırası ve geri alma
+- refund_ai_usage notu: güncellenmezse hata iadesi hakkı geri vermez
 
-Sorumluluk: SUNUCU gerçek yetki + kredi (reserve/complete/refund_ai_usage, ai-generate 402). İSTEMCİ yalnız UI kilidi/maliyet satırı.
-AÇIK: sunucu bugün FREE'yi reddetmiyor (Enerji ile izin; yeni hesaba 32 Enerji) → öneri: supabase/proposals/20261117_free_plan_no_ai.sql (uygulanmadı).
-AÇIK: Onboarding AI program üretimi Free kullanıcıda çalışıyor (dokunulmadı; ürün kararı).
-AÇIK: Hareket analizi sonuçları kalıcı önbellekte değil (yalnız oturum belleği); tıklamasız harcama yok.
-AÇIK: Ücretli planda kota kullanımı istemcide bilinmiyor → düğme kredi 0'da pasif yapılmadı; sunucu 402 → Paywall + iade.
+Açık kararlar:
+- Satın alınmış Enerji bakiyeleri: Premium süre mi, iade mi?
+- Adil kullanım sayıları
+- Onboarding'deki AI program üretimi ücretsiz hakkı tüketsin mi?
+- Satın alma geçişte sub_pro SKU'su ile; sub_premium_* ürünleri eklenecek
 
-Google Play Billing fazında bağlanacaklar: billing-checkout (Play satın alma token doğrulama), billing-webhook (RTDN: yenileme/iptal → user_entitlements.status),
-billing-status (plan/kota/bakiye özeti; istemci kalan kotayı da almalı), Mağaza plan metinleri ↔ AiFeature tablosu, Elite hafıza özelliğinin gerçek uygulanması.
+Play Billing fazı:
+- billing-checkout: satın alma token doğrulama
+- billing-webhook: RTDN → user_entitlements
+- billing-status: freeAiProgramsLeft
+- Premium ürün kimlikleri, iptal/yenileme

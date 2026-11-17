@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,88 +22,45 @@ import androidx.compose.ui.unit.sp
 import com.cosmibit.profitness.core.theme.*
 
 /**
- * Compact row shown on every AI feature screen for FREE users.
- * Displays cost per action and current balance.
- * No-op for paid plans.
+ * Ücretsiz planda AI program hakkı satırı ("2 ücretsiz AI program hakkın var" / "1 hakkın kaldı").
+ * Enerji/kredi modeli kalktı; Premium'da çağıran göstermez. [freeLeft] sunucudan gelir (null = bilinmiyor).
  */
 @Composable
 fun AiCreditInfoRow(
-    isFree    : Boolean,
-    credits   : Int,
-    costLabel : String = "1 Enerji",
-    theme     : AppThemeState,
-    modifier  : Modifier = Modifier
+    freeLeft : Int?,
+    theme    : AppThemeState,
+    modifier : Modifier = Modifier
 ) {
-    if (!isFree) return
-    val accent    = MaterialTheme.colorScheme.primary
-    val outOfCredits = credits == 0
-    val badgeColor = if (outOfCredits) Color(0xFFFF4444) else accent
-    val badgeText = if (outOfCredits) {
-        theme.ui("0 Enerji")
-    } else {
-        theme.ui("%d Enerji", "%d Energy").format(credits)
-    }
-
-    Column(
+    val accent = MaterialTheme.colorScheme.primary
+    val usedUp = freeLeft != null && freeLeft <= 0
+    val english = theme.language == AppLanguage.ENGLISH
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(SinemaRadius.R12))
             .background(theme.bg2)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(badgeColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Bolt, null, tint = badgeColor, modifier = Modifier.size(14.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (outOfCredits) theme.ui("Enerjin bitti!") else theme.ui(costLabel),
-                    color = badgeColor,
-                    fontSize = SinemaType.Caption,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    if (outOfCredits) theme.ui("Enerji yükle veya plana yükselt")
-                    else theme.ui("Kalan Enerji: %d", "Remaining Energy: %d").format(credits),
-                    color = theme.text2,
-                    fontSize = SinemaType.Caption,
-                    lineHeight = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            EnergyBadge(text = badgeText, color = badgeColor)
+        Box(
+            modifier = Modifier.size(28.dp).clip(CircleShape).background(accent.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(if (usedUp) Icons.Rounded.Lock else Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(14.dp))
         }
-    }
-}
-
-@Composable
-private fun EnergyBadge(text: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(SinemaRadius.R20))
-            .background(color.copy(alpha = 0.12f))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text,
-            color = color,
-            fontSize = SinemaType.Caption,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 13.sp,
-            maxLines = 1
-        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                com.cosmibit.profitness.domain.ai.AiAccessPolicy.freeGrantLine(freeLeft, english),
+                color = theme.text1, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold,
+                lineHeight = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                if (usedUp) theme.t("Sınırsız AI program için Premium'a geç.", "Go Premium for unlimited AI programs.")
+                else theme.t("Premium'da sınırsız.", "Unlimited in Premium."),
+                color = theme.text2, fontSize = SinemaType.Caption, lineHeight = 15.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

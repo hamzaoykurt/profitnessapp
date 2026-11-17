@@ -79,6 +79,8 @@ data class ProgramUiState(
     val userPlan     : UserPlan         = UserPlan.FREE,
     /** Sunucu plan özeti yüklendi mi (yüklenmeden AI kilidi gösterilmez). */
     val planLoaded   : Boolean          = false,
+    /** Ücretsiz planda kalan AI program hakkı (sunucudan; null = bilinmiyor). */
+    val freeAiProgramsLeft: Int?        = null,
     val aiCredits    : Int              = UserPlanRepository.INITIAL_CREDITS_PLACEHOLDER
 )
 
@@ -129,7 +131,7 @@ class ProgramViewModel @Inject constructor(
         viewModelScope.launch {
             planRepository.billingSnapshotFlow
                 .collect { s ->
-                    updateState { it.copy(userPlan = s.plan, aiCredits = s.credits.coerceAtLeast(0), planLoaded = s.isLoaded) }
+                    updateState { it.copy(userPlan = s.plan, aiCredits = s.credits.coerceAtLeast(0), planLoaded = s.isLoaded, freeAiProgramsLeft = s.freeAiProgramsLeft) }
                 }
         }
     }
@@ -142,7 +144,7 @@ class ProgramViewModel @Inject constructor(
     /** AI ile Oluştur girişi: plan biliniyor ve yetmiyorsa (Free) Paywall/Mağaza; aksi halde serbest (sunucu yine doğrular). */
     fun checkAiAccess(): Boolean {
         val s = uiState.value
-        if (s.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(s.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate)) {
+        if (s.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(s.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate, s.freeAiProgramsLeft)) {
             sendEvent(ProgramEvent.ShowPaywall)
             return false
         }

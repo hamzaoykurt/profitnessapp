@@ -2,75 +2,73 @@ package com.cosmibit.profitness.domain.ai
 
 import com.cosmibit.profitness.data.ai.AiToolType
 import com.cosmibit.profitness.data.store.UserPlan
+import com.cosmibit.profitness.data.store.UserPlanRepository
 import kotlinx.coroutines.flow.first
 
 /**
- * AI özellikleri: sunucudaki `reserve_ai_usage` araç adı ([tool]) ve plan kotası bittiğinde düşen Enerji ([energyCost]).
- * Maliyetler `supabase/migrations/20260519193000_rebalance_energy_plan_hierarchy.sql` ile aynıdır (değişirse ikisi birlikte).
- * AI Koç sohbetinde Enerji her 10 mesajda 1 düşer (kota bittikten sonra).
+ * AI özellikleri ve sunucudaki `reserve_ai_usage` araç adı ([tool]).
+ * [freeGrant]: Ücretsiz planda ömür boyu [UserPlanRepository.FREE_AI_PROGRAM_GRANTS] hak ile açılır
+ * (AI ile program oluşturma / rastgele bir programı yapıştırıp içe aktarma). Diğerleri yalnız Premium.
  */
-enum class AiFeature(val tool: AiToolType, val energyCost: Int, val minPlan: UserPlan) {
-    CoachChat(AiToolType.ORACLE_CHAT, 1, UserPlan.PRO),
-    CoachToProgram(AiToolType.ORACLE_TO_PROGRAM, 4, UserPlan.PRO),
-    ProgramGenerate(AiToolType.PROGRAM_GENERATE_TEXT, 6, UserPlan.PRO),
-    ProgramGenerateMedia(AiToolType.PROGRAM_GENERATE_MEDIA, 10, UserPlan.PRO),
-    ProgramEdit(AiToolType.PROGRAM_EDIT, 4, UserPlan.PRO),
-    WeightAnalysis(AiToolType.WEIGHT_TREND_ANALYSIS, 2, UserPlan.PRO),
-    ExerciseAnalysis(AiToolType.EXERCISE_PROGRESS_ANALYSIS, 2, UserPlan.PRO),
-    WorkoutAnalysis(AiToolType.WORKOUT_PROGRESS_ANALYSIS, 2, UserPlan.PRO);
+enum class AiFeature(val tool: AiToolType, val freeGrant: Boolean) {
+    CoachChat(AiToolType.ORACLE_CHAT, false),
+    CoachToProgram(AiToolType.ORACLE_TO_PROGRAM, false),
+    ProgramGenerate(AiToolType.PROGRAM_GENERATE_TEXT, true),
+    ProgramGenerateMedia(AiToolType.PROGRAM_GENERATE_MEDIA, true),
+    ProgramEdit(AiToolType.PROGRAM_EDIT, false),
+    WeightAnalysis(AiToolType.WEIGHT_TREND_ANALYSIS, false),
+    ExerciseAnalysis(AiToolType.EXERCISE_PROGRESS_ANALYSIS, false),
+    WorkoutAnalysis(AiToolType.WORKOUT_PROGRESS_ANALYSIS, false);
 }
 
-/** İstemci tarafı AI erişim kararı (yalnız UI kilidi; gerçek yetki ve harcama sunucuda). */
+/** İstemci tarafı AI erişim kararı (yalnız UI kilidi; gerçek yetki ve sayaç sunucuda). */
 sealed interface AiAccess {
-    /** Kullanılabilir. [energyCost]: plan kotası bittiğinde düşecek Enerji. */
-    data class Allowed(val energyCost: Int) : AiAccess
-    /** Plan yetmiyor: [requiredPlan] ile açılır (Mağaza'ya yönlendir). */
-    data class Locked(val requiredPlan: UserPlan) : AiAccess
+    /** Premium: açık (adil kullanım sınırı sunucuda). */
+    data object Unlimited : AiAccess
+    /** Ücretsiz hak ile açık. [left]: kalan hak (null = sunucu henüz bildirmiyor). */
+    data class FreeGrant(val left: Int?) : AiAccess
+    /** Premium gerekir (Mağaza'ya yönlendir). */
+    data object Locked : AiAccess
 }
 
 /**
- * TEK KAYNAK: plan -> AI yetkisi.
- *  - FREE: AI yok (Kilo analizi, AI Koç sohbeti, AI program üretimi/düzenleme, hareket/antrenman AI analizi kilitli).
- *  - PRO: tüm AI üretim/analiz + AI Koç; aylık plan kotası, kota bitince Enerji.
- *  - ELITE: Pro + kişisel profil/hafıza + öncelikli işlem; daha yüksek kota.
- * Sunucu (reserve_ai_usage) gerçek yetkilendirme kaynağıdır; burası onu ÖNCEDEN gösterir, asla gevşetemez.
+ * TEK KAYNAK: plan -> AI yetkisi (sade model: ÜCRETSİZ + PREMIUM, Enerji/kredi yok).
+ *  - FREE: AI-dışı her şey açık; AI'dan yalnız program oluşturma/içe aktarma, ömür boyu 2 hak. AI Koç, AI düzenleme,
+ *    Kilo/hareket/antrenman AI analizi kilitli.
+ *  - PREMIUM: tüm AI (AI Koç, sınırsız program üretimi/düzenleme, analizler, kişisel hafıza, öncelik); sunucuda adil kullanım tavanı.
+ * Sunucu gerçek yetkilendirme kaynağıdır; burası onu önceden gösterir, asla gevşetemez.
  */
 object AiAccessPolicy {
 
-    fun access(plan: UserPlan, feature: AiFeature): AiAccess =
-        if (plan.ordinal >= feature.minPlan.ordinal) AiAccess.Allowed(feature.energyCost)
-        else AiAccess.Locked(feature.minPlan)
+    fun access(plan: UserPlan, feature: AiFeature, freeProgramsLeft: Int? = null): AiAccess = when {
+        plan == UserPlan.PREMIUM -> AiAccess.Unlimited
+        feature.freeGrant && (freeProgramsLeft == null || freeProgramsLeft > 0) -> AiAccess.FreeGrant(freeProgramsLeft)
+        else -> AiAccess.Locked
+    }
 
-    fun canUse(plan: UserPlan, feature: AiFeature): Boolean = access(plan, feature) is AiAccess.Allowed
+    fun canUse(plan: UserPlan, feature: AiFeature, freeProgramsLeft: Int? = null): Boolean =
+        access(plan, feature, freeProgramsLeft) !is AiAccess.Locked
 
-    /** Free'de hiçbir AI özelliği yok. */
-    fun hasAnyAi(plan: UserPlan): Boolean = AiFeature.values().any { canUse(plan, it) }
+    /** Premium ayrıcalıkları (eski Elite özellikleri dahil, tek paket). */
+    fun hasPersonalMemory(plan: UserPlan): Boolean = plan == UserPlan.PREMIUM
+    fun hasPriority(plan: UserPlan): Boolean = plan == UserPlan.PREMIUM
 
-    /** Elite ayrıcalıkları (Mağaza metinleriyle uyumlu): kişisel profil/hafıza ve öncelik. */
-    fun hasPersonalMemory(plan: UserPlan): Boolean = plan == UserPlan.ELITE
-    fun hasPriority(plan: UserPlan): Boolean = plan == UserPlan.ELITE
-
-    /**
-     * Düğme altı maliyet satırı. Ücretli planda istemci kota kullanımını bilmez: "plan kotası, sonra N Enerji".
-     * Örn. "Plan kotasından · sonra 2 Enerji · Kalan 12".
-     */
-    fun costLine(plan: UserPlan, feature: AiFeature, credits: Int, english: Boolean): String {
-        val cost = if (feature == AiFeature.CoachChat)
-            (if (english) "1 Energy per 10 messages" else "10 mesajda 1 Enerji")
-        else (if (english) "${feature.energyCost} Energy" else "${feature.energyCost} Enerji")
-        val left = if (english) "Left $credits" else "Kalan $credits"
-        return when (access(plan, feature)) {
-            is AiAccess.Locked -> if (english) "Pro or Elite plan required" else "Pro veya Elite plan gerekir"
-            is AiAccess.Allowed -> if (english) "Plan quota · then $cost · $left" else "Plan kotasından · sonra $cost · $left"
-        }
+    /** Ücretsiz hak satırı: "2 ücretsiz AI program hakkın var" / "1 hakkın kaldı" / "Ücretsiz hakların bitti". */
+    fun freeGrantLine(left: Int?, english: Boolean): String = when {
+        left == null -> if (english) "Free plan: ${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} AI programs included"
+                        else "Ücretsiz planda ${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} AI program hakkı"
+        left <= 0 -> if (english) "Your free AI programs are used up" else "Ücretsiz AI program hakların bitti"
+        left >= UserPlanRepository.FREE_AI_PROGRAM_GRANTS ->
+            if (english) "You have $left free AI programs" else "$left ücretsiz AI program hakkın var"
+        else -> if (english) "$left free AI program left" else "$left hakkın kaldı"
     }
 }
 
 /**
  * Tıklama anında istemci kilidi: plan BİLİNİYORSA (sunucu özeti yüklendi) ve yetmiyorsa true.
- * Plan henüz yüklenmediyse kilitlemez (Elite kullanıcıyı yanlışlıkla kilitlememek için); karar sunucuya kalır.
+ * Plan henüz yüklenmediyse kilitlemez (Premium kullanıcıyı yanlışlıkla kilitlememek için); karar sunucuya kalır.
  */
-suspend fun com.cosmibit.profitness.data.store.UserPlanRepository.isAiLocked(feature: AiFeature): Boolean {
+suspend fun UserPlanRepository.isAiLocked(feature: AiFeature): Boolean {
     val s = billingSnapshotFlow.first()
-    return s.isLoaded && !AiAccessPolicy.canUse(s.plan, feature)
+    return s.isLoaded && !AiAccessPolicy.canUse(s.plan, feature, s.freeAiProgramsLeft)
 }

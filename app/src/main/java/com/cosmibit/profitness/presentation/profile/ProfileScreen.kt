@@ -534,7 +534,7 @@ private fun ProfileHeroBanner(
                 ProfileChip(theme.t("Seviye $level", "Level $level"), textMain, fill = Sinema.surface(theme))
                 val isPaid = userPlan != UserPlan.FREE
                 ProfileChip(
-                    if (isPaid) "${userPlan.displayName} · $aiCredits" else theme.t("$aiCredits Enerji", "$aiCredits Energy"),
+                    if (isPaid) userPlan.displayName else theme.t("Ücretsiz", "Free"),
                     textMain, fill = Sinema.surface(theme), onClick = onNavigateToStore
                 )
             }

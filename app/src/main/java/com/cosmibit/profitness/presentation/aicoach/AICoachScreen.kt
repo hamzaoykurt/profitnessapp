@@ -306,7 +306,7 @@ fun AICoachScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(androidx.compose.material.icons.Icons.Rounded.Lock, null, tint = theme.accentHi, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(theme.t("AI Koç Pro ve Elite'te", "AI Coach is in Pro and Elite"), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
+                            Text(theme.t("AI Koç Premium'da", "AI Coach is in Premium"), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -315,7 +315,7 @@ fun AICoachScreen(
                             color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
                         )
                         Spacer(Modifier.height(12.dp))
-                        SinemaGoButton(label = theme.t("PRO İLE AÇ", "UNLOCK WITH PRO"), icon = androidx.compose.material.icons.Icons.Rounded.Lock, onClick = onNavigateToStore)
+                        SinemaGoButton(label = theme.t("PREMIUM İLE AÇ", "UNLOCK WITH PREMIUM"), icon = androidx.compose.material.icons.Icons.Rounded.Lock, onClick = onNavigateToStore)
                     }
                 } else SanctuaryInput(
                     value         = inputText,
@@ -368,7 +368,7 @@ fun AICoachScreen(
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (hasPlan) state.userPlan.displayName
-                        else if (state.isBillingLoaded) theme.t("${state.aiCredits} kredi", "${state.aiCredits} credits") else "…",
+                        else if (state.isBillingLoaded) theme.t("Premium'a geç", "Go Premium") else "…",
                         color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold, maxLines = 1
                     )
                 }

@@ -697,7 +697,9 @@ fun ProgramBuilderScreen(
                     userPrograms     = uiState.userPrograms.filterNot { it.id in uiState.deletingProgramIds },
                     isLoading        = uiState.isLoading,
                     applyingTemplateKey = uiState.applyingTemplateKey,
-                    aiLocked         = uiState.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(uiState.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate),
+                    aiLocked         = uiState.planLoaded && !com.cosmibit.profitness.domain.ai.AiAccessPolicy.canUse(uiState.userPlan, com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate, uiState.freeAiProgramsLeft),
+                    aiFreeNote       = if (uiState.planLoaded && uiState.userPlan == UserPlan.FREE)
+                        com.cosmibit.profitness.domain.ai.AiAccessPolicy.freeGrantLine(uiState.freeAiProgramsLeft, theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) else null,
                     onMode           = { newMode ->
                         // AI Builder → ViewModel'in checkAiAccess'ini çağır;
                         // yetersizse ProgramEvent.ShowPaywall fırlatır.
@@ -784,6 +786,7 @@ private fun BuilderChooseScreen(
     applyingTemplateKey: String?,
     onMode         : (BuilderMode) -> Unit,
     aiLocked       : Boolean = false,
+    aiFreeNote     : String? = null,
     onSelectTemplate: (String) -> Unit,
     onSetActive    : (String) -> Unit,
     onDeleteProgram: (String) -> Unit,
@@ -882,7 +885,7 @@ private fun BuilderChooseScreen(
         if (heavyReady) item {
             Box(Modifier.offset(y = (-28).dp)) {
                 ProgramsSheet {
-                    ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) }, aiLocked = aiLocked)
+                    ProgramsMakeRow(onAi = { onMode(BuilderMode.AI) }, onManual = { onMode(BuilderMode.Manual) }, aiLocked = aiLocked, aiNote = aiFreeNote)
                     if (isLoading) {
                         Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
@@ -1316,15 +1319,10 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
             }
             Spacer(Modifier.height(28.dp))
 
-            // Enerji bilgisi
-            AiCreditInfoRow(
-                isFree  = uiState.userPlan == UserPlan.FREE,
-                credits = uiState.aiCredits,
-                costLabel = aiTheme.t(
-                    "6 Enerji / metin · 10 Enerji / dosya",
-                    "6 Energy / text · 10 Energy / file"
-                ),
-                theme   = aiTheme,
+            // Ücretsiz hak bilgisi (Premium'da gösterilmez; Enerji/kredi kalktı)
+            if (uiState.planLoaded && uiState.userPlan == UserPlan.FREE) AiCreditInfoRow(
+                freeLeft = uiState.freeAiProgramsLeft,
+                theme    = aiTheme,
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
 
@@ -1499,11 +1497,11 @@ private fun AIBuilderScreen(viewModel: ProgramViewModel, onBack: () -> Unit, tim
                     modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    SinemaPill {
-                        Icon(Icons.Rounded.Bolt, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    if (uiState.userPlan == UserPlan.FREE) SinemaPill {
+                        Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(12.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            aiTheme.t("6-10 Enerji · Kalan ${uiState.aiCredits}", "6-10 Energy · ${uiState.aiCredits} left"),
+                            com.cosmibit.profitness.domain.ai.AiAccessPolicy.freeGrantLine(uiState.freeAiProgramsLeft, aiTheme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH),
                             color = Color.White, fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1
                         )
                     }
@@ -1775,7 +1773,7 @@ private fun EditProgramScreen(
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                editTheme.t("${uiState.aiCredits} Enerji", "${uiState.aiCredits} Energy"),
+                                "Premium",
                                 color = Sinema.text(editTheme), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold
                             )
                         }
@@ -1847,7 +1845,7 @@ private fun EditProgramScreen(
                     }
                     SinemaGoOrIdle(
                         label = if (uiState.aiEditLoading) editTheme.t("Uygulanıyor…", "Applying…")
-                        else if (uiState.userPlan == UserPlan.FREE) editTheme.t("Uygula · $AI_EDIT_ENERGY_COST Enerji", "Apply · $AI_EDIT_ENERGY_COST Energy")
+                        else if (uiState.userPlan == UserPlan.FREE) editTheme.t("Uygula · Premium", "Apply · Premium")
                         else editTheme.t("Uygula", "Apply"),
                         icon = Icons.Rounded.AutoAwesome,
                         enabled = aiPrompt.isNotBlank() && !uiState.aiEditLoading,

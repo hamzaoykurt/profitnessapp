@@ -34,6 +34,7 @@ import com.cosmibit.profitness.core.ui.SinemaFitText
 import com.cosmibit.profitness.core.ui.SinemaLayout
 import com.cosmibit.profitness.data.store.BillingProduct
 import com.cosmibit.profitness.data.store.UserPlan
+import com.cosmibit.profitness.data.store.UserPlanRepository
 import com.cosmibit.profitness.presentation.components.LocalFloatingTimerReserve
 import com.cosmibit.profitness.presentation.components.SinemaGlassField
 import com.cosmibit.profitness.presentation.components.SinemaGoOrIdle
@@ -41,145 +42,37 @@ import com.cosmibit.profitness.presentation.components.SinemaSegmentRow
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
-private data class PlanTier(
-    val plan          : UserPlan,
-    val label         : String,
+/** Tek abonelik (Premium) fiyatı. Şimdilik Supabase/DEMO değerleri; gerçek fiyat Google Play'den gelecek. */
+private data class PremiumPrice(
     val monthlyPrice  : String,
     val yearlyPrice   : String,
     val yearlyPerMonth: String,
-    val discountBadge : String,
-    val accentColor   : Color,
-    val badge         : String?
+    val discountBadge : String
 )
-
-private data class EnergyPackage(
-    val amount     : Int,
-    val price      : String,
-    val perEnergy  : String,
-    val badge      : String?,
-    val accentColor: Color
-)
-
-// Plan sıralaması: FREE < PRO < ELITE
-private fun UserPlan.ordinal() = when (this) {
-    UserPlan.FREE  -> 0
-    UserPlan.PRO   -> 1
-    UserPlan.ELITE -> 2
-}
 
 private fun UserPlan.localizedDisplayName(theme: AppThemeState): String = when (this) {
     UserPlan.FREE -> theme.t("Ücretsiz", "Free")
-    UserPlan.PRO -> "Pro"
-    UserPlan.ELITE -> "Elite"
+    UserPlan.PREMIUM -> "Premium"
 }
 
-private fun PlanTier.localizedLabel(theme: AppThemeState): String = when (plan) {
-    UserPlan.FREE -> theme.t("Ücretsiz", "Free")
-    UserPlan.PRO -> label
-    UserPlan.ELITE -> label
-}
-
-private fun PlanTier.localizedBadge(theme: AppThemeState): String? = when (badge) {
-    "POPÜLER" -> theme.t("POPÜLER", "POPULAR")
-    "EN İYİ" -> theme.t("EN İYİ", "BEST")
-    else -> badge
-}
-
-private fun EnergyPackage.localizedBadge(theme: AppThemeState): String? = when (badge) {
-    "EN POPÜLER" -> theme.t("EN POPÜLER", "MOST POPULAR")
-    else -> badge
-}
-
-private fun EnergyPackage.localizedPerEnergy(theme: AppThemeState): String =
-    if (perEnergy == "Güvenli checkout") theme.t("Güvenli checkout", "Secure checkout") else perEnergy
-
-private fun energyLabel(amount: Int, theme: AppThemeState): String =
-    theme.t("$amount Enerji", "$amount Energy")
-
-private val PLANS = listOf(
-    PlanTier(
-        plan          = UserPlan.FREE,
-        label         = "Ücretsiz",
-        monthlyPrice  = "₺0",
-        yearlyPrice   = "₺0",
-        yearlyPerMonth= "",
-        discountBadge = "",
-        accentColor   = TextSecondary,
-        badge         = null
-    ),
-    PlanTier(
-        plan          = UserPlan.PRO,
-        label         = "Pro",
-        monthlyPrice  = "₺149",
-        yearlyPrice   = "₺999",
-        yearlyPerMonth= "≈₺83/ay",
-        discountBadge = "%44 indirim",
-        accentColor   = TextSecondary,
-        badge         = "POPÜLER"
-    ),
-    PlanTier(
-        plan          = UserPlan.ELITE,
-        label         = "Elite",
-        monthlyPrice  = "₺249",
-        yearlyPrice   = "₺1.799",
-        yearlyPerMonth= "≈₺150/ay",
-        discountBadge = "%40 indirim",
-        accentColor   = TextSecondary,
-        badge         = "EN İYİ"
-    )
-)
-
-private val MAX_YEARLY_DISCOUNT_PCT: Int =
-    PLANS.mapNotNull { it.discountBadge.filter(Char::isDigit).toIntOrNull() }.maxOrNull() ?: 0
-
-private val ENERGY_PACKAGES = listOf(
-    EnergyPackage(10,  "₺29",  "Kısa AI hamleleri", null,         TextSecondary),
-    EnergyPackage(25,  "₺59",  "Hafif kullanım",     null,         TextSecondary),
-    EnergyPackage(50,  "₺99",  "Dengeli kullanım", "EN POPÜLER", TextSecondary),
-    EnergyPackage(100, "₺169", "Avantajlı rezerv",  null,         TextSecondary),
-    EnergyPackage(200, "₺299", "Yoğun AI rezervi",  null,         TextSecondary),
-    EnergyPackage(500, "₺649", "Maksimum rezerv",   null,         TextSecondary)
+private val DEMO_PREMIUM_PRICE = PremiumPrice(
+    monthlyPrice   = "₺149",
+    yearlyPrice    = "₺999",
+    yearlyPerMonth = "≈₺83/ay",
+    discountBadge  = "%44"
 )
 
 private fun cleanPrice(label: String): String = label.substringBefore("/").trim()
 
-private fun planTiersFrom(products: List<BillingProduct>): List<PlanTier> {
-    if (products.isEmpty()) return PLANS
-    fun product(plan: UserPlan, period: String) =
-        products.firstOrNull { it.kind == "subscription" && it.plan == plan && it.billingPeriod == period }
-
-    return PLANS.map { tier ->
-        when (tier.plan) {
-            UserPlan.FREE -> tier
-            else -> {
-                val monthly = product(tier.plan, "month")
-                val yearly = product(tier.plan, "year")
-                tier.copy(
-                    monthlyPrice = monthly?.priceLabel?.let(::cleanPrice) ?: tier.monthlyPrice,
-                    yearlyPrice = yearly?.priceLabel?.let(::cleanPrice) ?: tier.yearlyPrice
-                )
-            }
-        }
-    }
-}
-
-private fun energyPackagesFrom(products: List<BillingProduct>): List<EnergyPackage> {
-    val creditProducts = products.filter { it.kind == "credit_pack" && it.creditAmount > 0 }
-    if (creditProducts.isEmpty()) return ENERGY_PACKAGES
-    val packagesByAmount = ENERGY_PACKAGES.associateBy { it.amount }.toMutableMap()
-    creditProducts.map { product ->
-        val fallback = packagesByAmount[product.creditAmount]
-        EnergyPackage(
-            amount = product.creditAmount,
-            price = product.priceLabel,
-            perEnergy = fallback?.perEnergy.orEmpty(),
-            badge = product.badge ?: fallback?.badge,
-            accentColor = TextSecondary
-        )
-    }.forEach { pkg ->
-        packagesByAmount[pkg.amount] = pkg
-    }
-    return packagesByAmount.values.sortedBy { it.amount }
+/** Sunucu ürünlerinden Premium fiyatı (geçişte Pro SKU'su Premium sayılır; yoksa demo değer). */
+private fun premiumPriceFrom(products: List<BillingProduct>): PremiumPrice {
+    fun product(period: String) = products
+        .filter { it.kind == "subscription" && it.plan == UserPlan.PREMIUM && it.billingPeriod == period }
+        .let { list -> list.firstOrNull { "premium" in it.sku } ?: list.firstOrNull { "pro" in it.sku } ?: list.firstOrNull() }
+    return DEMO_PREMIUM_PRICE.copy(
+        monthlyPrice = product("month")?.priceLabel?.let(::cleanPrice) ?: DEMO_PREMIUM_PRICE.monthlyPrice,
+        yearlyPrice = product("year")?.priceLabel?.let(::cleanPrice) ?: DEMO_PREMIUM_PRICE.yearlyPrice
+    )
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -194,8 +87,6 @@ fun StoreScreen(
     val haptic   = LocalHapticFeedback.current
 
     var toastMsg     by remember { mutableStateOf<String?>(null) }
-    var activeTab    by remember { mutableIntStateOf(0) }
-    var selectedPlan by remember { mutableStateOf(UserPlan.PRO) }
     var showCancelDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -206,16 +97,8 @@ fun StoreScreen(
         }
     }
 
-    LaunchedEffect(state.plan) {
-        if (state.plan != UserPlan.FREE) selectedPlan = state.plan
-    }
-
-    val plans = remember(state.products) { planTiersFrom(state.products) }
-    val energyPackages = remember(state.products) { energyPackagesFrom(state.products) }
-    val hasPaidPlan  = state.plan != UserPlan.FREE
-    var selectedAmount by remember { mutableIntStateOf(0) }
-    val effectiveAmount = energyPackages.firstOrNull { it.amount == selectedAmount }?.amount
-        ?: (energyPackages.firstOrNull { it.badge != null } ?: energyPackages.firstOrNull())?.amount ?: 0
+    val price = remember(state.products) { premiumPriceFrom(state.products) }
+    val isPremium = state.plan == UserPlan.PREMIUM
 
     Box(
         modifier = Modifier
@@ -225,107 +108,45 @@ fun StoreScreen(
         SinemaBackdrop(Modifier.fillMaxSize())
         Column(modifier = Modifier.fillMaxSize()) {
 
-            StoreTopBar(
-                theme       = theme,
-                activeTab   = activeTab,
-                onBack      = onBack,
-                onTabChange = { activeTab = it }
-            )
+            StoreTopBar(theme = theme, onBack = onBack)
 
-            AnimatedContent(
-                targetState = activeTab,
-                transitionSpec = {
-                    val dir = if (targetState > initialState) 1 else -1
-                    (slideInHorizontally(tween(SinemaMotion.Standard)) { dir * it / 3 } + fadeIn(tween(SinemaMotion.Standard))) togetherWith
-                    (slideOutHorizontally(tween(SinemaMotion.Standard)) { -dir * it / 4 } + fadeOut(tween(SinemaMotion.Quick)))
-                },
-                modifier = Modifier
+            Box(
+                Modifier
                     .align(Alignment.CenterHorizontally)
                     .widthIn(max = SinemaLayout.ContentMaxList)
-                    .fillMaxSize(),
-                label    = "store_tab"
-            ) { tab ->
-                when (tab) {
-                    0 -> SubscriptionTab(
-                        theme           = theme,
-                        haptic          = haptic,
-                        state           = state,
-                        selectedPlan    = selectedPlan,
-                        hasPaidPlan     = hasPaidPlan,
-                        onSelectPlan    = { selectedPlan = it },
-                        onYearlyChange  = viewModel::setYearly,
-                        plans           = plans,
-                        onCancelPlan    = { showCancelDialog = true }
-                    )
-                    else -> EnergyTab(
-                        theme          = theme,
-                        haptic         = haptic,
-                        state          = state,
-                        packages       = energyPackages,
-                        selectedAmount = effectiveAmount,
-                        onSelectAmount = { selectedAmount = it }
-                    )
-                }
+                    .fillMaxSize()
+            ) {
+                PremiumTab(
+                    theme          = theme,
+                    state          = state,
+                    price          = price,
+                    onYearlyChange = viewModel::setYearly,
+                    onCancelPlan   = { showCancelDialog = true }
+                )
             }
         }
 
         // Alt sabit dock: tek birincil düğme
         StoreDock(Modifier.align(Alignment.BottomCenter)) {
             Box(Modifier.widthIn(max = SinemaLayout.ContentMaxList).fillMaxWidth().align(Alignment.Center)) {
-                if (activeTab == 0) {
-                    val tier = plans.first { it.plan == selectedPlan }
-                    val isCurrent = state.plan == selectedPlan
-                    val yearly = state.isYearly && tier.discountBadge.isNotEmpty()
-                    val price = if (yearly) tier.yearlyPrice else tier.monthlyPrice
-                    val per = if (yearly) theme.t("/yıl", "/yr") else theme.t("/ay", "/mo")
-                    when {
-                        isCurrent -> SinemaGoOrIdle(
-                            label = theme.t("Aktif mod", "Current mode"),
-                            icon = Icons.Rounded.WorkspacePremium,
-                            enabled = false,
-                            onClick = {}
-                        )
-                        selectedPlan == UserPlan.FREE -> SinemaCapsule(
-                            modifier = Modifier.fillMaxWidth().alpha(if (state.isLoading) 0.5f else 1f),
-                            height = 56.dp,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                showCancelDialog = true
-                            },
-                            enabled = !state.isLoading,
-                            horizontalArrangement = Arrangement.Center
-                        ) { fg ->
-                            Text(theme.t("Ücretsiz moda dön", "Return to Free mode"), color = fg, fontSize = SinemaType.BodyLg, fontWeight = FontWeight.Bold, maxLines = 1)
-                        }
-                        else -> StoreGoButton(
-                            label = theme.t(
-                                "${tier.localizedLabel(theme)} modunu aç · $price$per",
-                                "Unlock ${tier.localizedLabel(theme)} mode · $price$per"
-                            ),
-                            icon = Icons.Rounded.WorkspacePremium,
-                            enabled = !state.isLoading,
-                            loading = state.isLoading,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.purchasePlan(selectedPlan)
-                            }
-                        )
+                val yearly = state.isYearly
+                val shownPrice = if (yearly) price.yearlyPrice else price.monthlyPrice
+                val per = if (yearly) theme.t("/yıl", "/yr") else theme.t("/ay", "/mo")
+                if (isPremium) SinemaGoOrIdle(
+                    label = theme.t("Premium aktif", "Premium active"),
+                    icon = Icons.Rounded.WorkspacePremium,
+                    enabled = false,
+                    onClick = {}
+                ) else StoreGoButton(
+                    label = theme.t("Premium'a geç · $shownPrice$per", "Go Premium · $shownPrice$per"),
+                    icon = Icons.Rounded.WorkspacePremium,
+                    enabled = !state.isLoading,
+                    loading = state.isLoading,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.purchasePlan(UserPlan.PREMIUM)
                     }
-                } else {
-                    val pkg = energyPackages.firstOrNull { it.amount == effectiveAmount }
-                    if (pkg != null) {
-                        StoreGoButton(
-                            label = theme.t("${pkg.amount} Enerji al · ${pkg.price}", "Get ${pkg.amount} Energy · ${pkg.price}"),
-                            icon = Icons.Rounded.Bolt,
-                            enabled = !state.isLoading,
-                            loading = state.isLoading,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.purchaseCredits(pkg.amount)
-                            }
-                        )
-                    }
-                }
+                )
             }
         }
 
@@ -533,37 +354,27 @@ private fun DemoField(
 
 @Composable
 private fun StoreTopBar(
-    theme      : AppThemeState,
-    activeTab  : Int,
-    onBack     : () -> Unit,
-    onTabChange: (Int) -> Unit
+    theme : AppThemeState,
+    onBack: () -> Unit
 ) {
     val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
-    Column(
-        modifier = Modifier
+    Box(
+        Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = gutter, end = gutter, top = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(start = gutter, end = gutter, top = 10.dp)
+            .height(48.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
-            SinemaCapsuleIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                description = theme.t("Geri", "Back"),
-                onClick = onBack,
-                selected = false,
-                size = 48.dp,
-                modifier = Modifier.align(Alignment.CenterStart)
-            )
-            Text(theme.t("Mağaza", "Store"), color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.Bold)
-        }
-        SinemaSegmentRow(
-            options = listOf(0, 1),
-            selected = activeTab,
-            label = { idx -> if (idx == 0) theme.t("Üyelik", "Membership") else theme.t("Enerji", "Energy") },
-            onSelect = onTabChange,
-            height = 48.dp
+        SinemaCapsuleIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            description = theme.t("Geri", "Back"),
+            onClick = onBack,
+            selected = false,
+            size = 48.dp,
+            modifier = Modifier.align(Alignment.CenterStart)
         )
+        Text("Premium", color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -586,25 +397,22 @@ private fun StoreDock(modifier: Modifier = Modifier, content: @Composable () -> 
     ) { content() }
 }
 
-// ── Subscription Tab ──────────────────────────────────────────────────────────
+// ── Premium ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SubscriptionTab(
+private fun PremiumTab(
     theme         : AppThemeState,
-    haptic        : androidx.compose.ui.hapticfeedback.HapticFeedback,
     state         : StoreState,
-    selectedPlan  : UserPlan,
-    hasPaidPlan   : Boolean,
-    onSelectPlan  : (UserPlan) -> Unit,
+    price         : PremiumPrice,
     onYearlyChange: (Boolean) -> Unit,
-    plans         : List<PlanTier>,
     onCancelPlan  : () -> Unit
 ) {
     val textSub = Sinema.textSecondary(theme)
     val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
+    val isPremium = state.plan == UserPlan.PREMIUM
     LazyColumn(
         modifier = Modifier.fillMaxSize().sinemaTopFade(),
-        contentPadding = PaddingValues(start = gutter, end = gutter, top = 24.dp, bottom = storeListBottomPadding()),
+        contentPadding = PaddingValues(start = gutter, end = gutter, top = 20.dp, bottom = storeListBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
@@ -613,57 +421,22 @@ private fun SubscriptionTab(
                 Text(state.plan.localizedDisplayName(theme), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold)
             }
         }
+        if (!isPremium) item { BillingCycleSelector(isYearly = state.isYearly, onToggle = onYearlyChange, discount = price.discountBadge, theme = theme) }
+        item { PremiumOfferCard(price = price, isYearly = state.isYearly, isCurrent = isPremium, theme = theme) }
 
-        item {
-            BillingCycleSelector(isYearly = state.isYearly, onToggle = onYearlyChange, theme = theme)
-        }
+        item { StoreSectionLabel(theme.t("PREMIUM İLE", "WITH PREMIUM"), theme) }
+        val premium = premiumHighlights(theme)
+        items(premium.size) { i -> StoreFeatureRow(premium[i].first, premium[i].second, theme, included = true) }
 
-        items(plans.size) { index ->
-            val tier = plans[index]
-            PlanOfferCard(
-                tier = tier,
-                isCurrent = state.plan == tier.plan,
-                selected = selectedPlan == tier.plan,
-                isYearly = state.isYearly,
-                theme = theme,
-                onSelect = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onSelectPlan(tier.plan)
-                }
-            )
-        }
-
-        item {
-            val name = selectedPlan.localizedDisplayName(theme)
-            Row(Modifier.padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                com.cosmibit.profitness.core.theme.SinemaLabelDot()
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    theme.t("$name İLE AÇILANLAR", "UNLOCKED WITH $name").sinemaUpper(theme),
-                    color = textSub, style = Sinema.Label.copy(fontSize = 12.sp)
-                )
-            }
-        }
-        val features = planHighlights(selectedPlan, theme)
-        items(features.size) { i ->
-            val (icon, text) = features[i]
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini)
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(icon, null, tint = theme.accentHi, modifier = Modifier.size(20.dp))
-                Text(text, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, lineHeight = 20.sp, modifier = Modifier.weight(1f))
-            }
-        }
+        item { StoreSectionLabel(theme.t("ÜCRETSİZ PLANDA DA VAR", "ALSO IN FREE"), theme) }
+        val free = freeHighlights(theme)
+        items(free.size) { i -> StoreFeatureRow(free[i].first, free[i].second, theme, included = false) }
 
         if (state.billingSandboxAvailable) {
             item { DemoNote(theme) }
         }
 
-        if (hasPaidPlan) {
+        if (isPremium) {
             item {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Box(
@@ -681,6 +454,30 @@ private fun SubscriptionTab(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StoreSectionLabel(text: String, theme: AppThemeState) {
+    Row(Modifier.padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        com.cosmibit.profitness.core.theme.SinemaLabelDot()
+        Spacer(Modifier.width(8.dp))
+        Text(text.sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label.copy(fontSize = 12.sp))
+    }
+}
+
+/** Avantaj satırı: Premium = vurgulu ikon; Ücretsiz = nötr ikon. */
+@Composable
+private fun StoreFeatureRow(icon: ImageVector, text: String, theme: AppThemeState, included: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), SinemaRaise.Mini)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(icon, null, tint = if (included) theme.accentHi else Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
+        Text(text, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Medium, lineHeight = 20.sp, modifier = Modifier.weight(1f))
     }
 }
 
@@ -705,6 +502,7 @@ private fun DemoNote(theme: AppThemeState) {
 private fun BillingCycleSelector(
     isYearly: Boolean,
     onToggle: (Boolean) -> Unit,
+    discount: String,
     theme: AppThemeState
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -719,7 +517,7 @@ private fun BillingCycleSelector(
         )
         if (isYearly) {
             Text(
-                theme.t("%${MAX_YEARLY_DISCOUNT_PCT}'e varan indirim", "Up to $MAX_YEARLY_DISCOUNT_PCT% off"),
+                theme.t("$discount indirim", "${discount.removePrefix("%")}% off"),
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, maxLines = 2,
                 modifier = Modifier.weight(0.8f)
             )
@@ -727,70 +525,36 @@ private fun BillingCycleSelector(
     }
 }
 
-/** Seçilebilir radyo kart (96dp, eşit boy): seçili = soft zemin + ince c1 kenar; glow/boyut sıçraması yok. */
+/** Tek Premium teklif kartı (dolu vurgu zemin): fiyat + dönem. */
 @Composable
-private fun SelectableStoreCard(
-    selected: Boolean,
-    theme: AppThemeState,
-    enabled: Boolean = true,
-    onSelect: () -> Unit,
-    content: @Composable RowScope.() -> Unit
-) {
-    val shape = RoundedCornerShape(SinemaRadius.R20)
-    val accent = theme.effectiveAccentColor
-    val base = Modifier
-        .fillMaxWidth()
-        .height(96.dp)
-        .alpha(if (enabled) 1f else 0.5f)
-        .sinemaClickable(onClick = onSelect, enabled = enabled, scale = 0.98f, role = androidx.compose.ui.semantics.Role.RadioButton)
+private fun PremiumOfferCard(price: PremiumPrice, isYearly: Boolean, isCurrent: Boolean, theme: AppThemeState) {
+    val fg = theme.effectiveOnAccentColor
+    val shown = if (isYearly) price.yearlyPrice else price.monthlyPrice
+    val period = if (isYearly) theme.t("/yıl", "/yr") else theme.t("/ay", "/mo")
     Row(
-        modifier = (if (selected) base.sinemaRaised(shape, SinemaRaise.Card, fill = theme.accentHi)
-        else base.sinemaCard(theme, shape)).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().heightIn(min = 104.dp)
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R24), SinemaRaise.Card, fill = theme.accentHi)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            Modifier.size(20.dp).border(1.5.dp, if (selected) theme.effectiveOnAccentColor else Sinema.textSecondary(theme), CircleShape),
-            contentAlignment = Alignment.Center
-        ) { if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(theme.effectiveOnAccentColor)) }
-        content()
-    }
-}
-
-@Composable
-private fun PlanOfferCard(
-    tier: PlanTier,
-    isCurrent: Boolean,
-    selected: Boolean,
-    isYearly: Boolean,
-    theme: AppThemeState,
-    onSelect: () -> Unit
-) {
-    val textMain = if (selected) theme.effectiveOnAccentColor else Sinema.text(theme)   // seçili = dolu mercan zemin: koyu metin
-    val textSub = if (selected) theme.effectiveOnAccentColor.copy(0.72f) else Sinema.textSecondary(theme)
-    val yearly = isYearly && tier.discountBadge.isNotEmpty()
-    val price = if (yearly) tier.yearlyPrice else tier.monthlyPrice
-    val period = when {
-        tier.plan == UserPlan.FREE -> ""
-        isYearly -> theme.t("/yıl", "/yr")
-        else -> theme.t("/ay", "/mo")
-    }
-    SelectableStoreCard(selected = selected, theme = theme, onSelect = onSelect) {
+        Icon(Icons.Rounded.WorkspacePremium, null, tint = fg, modifier = Modifier.size(28.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(tier.localizedLabel(theme), color = textMain, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
-                if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme, onFill = selected)
-                else tier.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme, onFill = selected) }
-                if (yearly) StoreChip(tier.discountBadge.substringBefore(" ").replace("%", "-%"), theme = theme, hi = false, onFill = selected)
+                Text("Premium", color = fg, fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
+                if (isCurrent) StoreChip(theme.t("Aktif", "Active"), theme = theme, onFill = true)
             }
-            Text(planOneLiner(tier.plan, theme), color = textSub, fontSize = SinemaType.BodySm, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(
+                theme.t("AI Koç, sınırsız AI program ve AI analizler.", "AI Coach, unlimited AI programs and AI analysis."),
+                color = fg.copy(0.72f), fontSize = SinemaType.BodySm, maxLines = 2
+            )
         }
-        Column(horizontalAlignment = Alignment.End) {
+        if (!isCurrent) Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(price, color = textMain, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, maxLines = 1)
-                if (period.isNotEmpty()) Text(period, color = textSub, fontSize = SinemaType.BodySm, modifier = Modifier.padding(start = 2.dp, bottom = 3.dp))
+                Text(shown, color = fg, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, maxLines = 1)
+                Text(period, color = fg.copy(0.72f), fontSize = SinemaType.BodySm, modifier = Modifier.padding(start = 2.dp, bottom = 3.dp))
             }
-            if (yearly) Text(tier.yearlyPerMonth.replace("≈", "≈ "), color = textSub, fontSize = SinemaType.Caption, maxLines = 1)
+            if (isYearly) Text(price.yearlyPerMonth.replace("≈", "≈ "), color = fg.copy(0.72f), fontSize = SinemaType.Caption, maxLines = 1)
         }
     }
 }
@@ -824,94 +588,22 @@ private fun StoreGoButton(
     }
 }
 
-private fun planOneLiner(plan: UserPlan, theme: AppThemeState): String = when (plan) {
-    UserPlan.FREE -> theme.t("Temel takip; AI hakları dahil değildir.", "Basic tracking; AI allowance is not included.")
-    UserPlan.PRO -> theme.t("AI üretim, analiz ve AI Koç akışı açılır.", "Unlock AI creation, analysis, and AI Coach flow.")
-    UserPlan.ELITE -> theme.t("Pro'nun üstüne kişisel koç, öncelik ve üst limitler.", "Pro plus personal coaching, priority, and higher limits.")
-}
+private fun premiumHighlights(theme: AppThemeState): List<Pair<ImageVector, String>> = listOf(
+    Icons.Rounded.ChatBubbleOutline to theme.t("AI Koç: kişisel antrenman soruları, cevaptan programa.", "AI Coach: personal training questions, answers into programs."),
+    Icons.Rounded.AutoAwesome to theme.t("Sınırsız AI program oluşturma, içe aktarma ve düzenleme.", "Unlimited AI program creation, import and editing."),
+    Icons.AutoMirrored.Rounded.TrendingUp to theme.t("AI analizler: kilo trendi, hareket gelişimi, plan değerlendirme.", "AI analysis: weight trend, exercise progress, plan review."),
+    Icons.Rounded.Psychology to theme.t("Gelişmiş içgörüler, koç hafızası ve öncelikli işlem.", "Advanced insights, coach memory and priority processing."),
+)
 
-// ── Energy Tab ────────────────────────────────────────────────────────────────
-
-@Composable
-private fun EnergyTab(
-    theme         : AppThemeState,
-    haptic        : androidx.compose.ui.hapticfeedback.HapticFeedback,
-    state         : StoreState,
-    packages      : List<EnergyPackage>,
-    selectedAmount: Int,
-    onSelectAmount: (Int) -> Unit
-) {
-    val gutter = SinemaLayout.gutter(LocalWindowClass.current.widthDp)
-    LazyColumn(
-        modifier            = Modifier.fillMaxSize(),
-        contentPadding      = PaddingValues(start = gutter, end = gutter, top = 12.dp, bottom = storeListBottomPadding()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Rounded.Bolt, null, tint = theme.rewardGold, modifier = Modifier.size(24.dp))
-                    Text(theme.t("Enerji", "Energy").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label.copy(fontSize = 12.sp))
-                }
-                SinemaFitText(
-                    text = state.credits.toString(),
-                    style = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em),
-                    color = Sinema.text(theme),
-                    baseSp = 64f
-                )
-            }
-        }
-
-        items(packages.size) { idx ->
-            val pkg = packages[idx]
-            SelectableStoreCard(
-                selected = pkg.amount == selectedAmount,
-                theme = theme,
-                enabled = !state.isLoading,
-                onSelect = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onSelectAmount(pkg.amount)
-                }
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(energyLabel(pkg.amount, theme), color = Sinema.text(theme), fontSize = SinemaType.Title, fontWeight = FontWeight.Bold, maxLines = 1)
-                        pkg.localizedBadge(theme)?.let { StoreChip(sentenceCase(it), theme = theme) }
-                    }
-                    if (pkg.perEnergy.isNotBlank()) {
-                        Text(pkg.localizedPerEnergy(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, maxLines = 1)
-                    }
-                }
-                Text(pkg.price, color = Sinema.text(theme), fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, maxLines = 1)
-            }
-        }
-
-        if (state.billingSandboxAvailable) {
-            item { DemoNote(theme) }
-        }
-    }
-}
-
-
-private fun planHighlights(plan: UserPlan, theme: AppThemeState): List<Pair<ImageVector, String>> = when (plan) {
-    UserPlan.FREE -> listOf(
-        Icons.Rounded.FitnessCenter to theme.t("Manuel antrenman takibi.", "Manual workout tracking."),
-        Icons.Rounded.SelfImprovement to theme.t("Programını kendin oluşturma.", "Build your own program."),
-        Icons.Rounded.BarChart to theme.t("Temel gelişim ve profil özeti.", "Basic progress and profile summary."),
-    )
-    UserPlan.PRO -> listOf(
-        Icons.Rounded.ChatBubbleOutline to theme.t("AI Koç sohbet paketleri dahil.", "AI Coach chat bundles included."),
-        Icons.Rounded.AutoAwesome to theme.t("AI program üretimi ve düzenleme.", "AI program generation and editing."),
-        Icons.AutoMirrored.Rounded.TrendingUp to theme.t("Antrenman, kilo ve egzersiz AI analizleri.", "Workout, weight, and exercise AI analysis."),
-        Icons.AutoMirrored.Rounded.ShowChart to theme.t("Gelişim grafiklerinde Pro içgörüler.", "Pro insights in progression charts."),
-    )
-    UserPlan.ELITE -> listOf(
-        Icons.Rounded.Person to theme.t("Kişisel AI antrenör profili.", "Personal AI coach profile."),
-        Icons.Rounded.Psychology to theme.t("Koç hafızası ve daha uzun bağlam.", "Coach memory and longer context."),
-        Icons.Rounded.Diamond to theme.t("Pro limitlerinin üstünde Elite akış.", "Elite flow above Pro limits."),
-        Icons.Rounded.Support to theme.t("Öncelikli destek ve erken erişim.", "Priority support and early access."),
-    )
-}
+private fun freeHighlights(theme: AppThemeState): List<Pair<ImageVector, String>> = listOf(
+    Icons.Rounded.FitnessCenter to theme.t("Antrenman takibi, manuel program oluşturma ve düzenleme.", "Workout tracking, manual program building and editing."),
+    Icons.Rounded.AutoAwesome to theme.t(
+        "${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} AI program oluşturma / içe aktarma hakkı.",
+        "${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} AI program creations / imports."
+    ),
+    Icons.Rounded.SelfImprovement to theme.t("Keşfet, paylaşma, challenge ve etkinlikler.", "Discover, sharing, challenges and events."),
+    Icons.Rounded.BarChart to theme.t("Kilo kaydı, başarımlar, istatistik grafikleri, hareket videoları.", "Weight log, achievements, stat charts, exercise videos."),
+)
 
 // ── Cancel Plan Dialog ────────────────────────────────────────────────────────
 
@@ -969,12 +661,12 @@ fun PaywallDialog(
     val theme = LocalAppTheme.current
     com.cosmibit.profitness.presentation.components.SinemaDialog(
         onDismiss = onDismiss,
-        title = theme.t("AI Enerji Gerekli", "AI Energy Required"),
+        title = theme.t("Premium özelliği", "Premium feature"),
         body = theme.t(
-            "Bu özelliği kullanmak için Enerjin bitmiş.\nPremium'a geç veya Enerji yükle.",
-            "You are out of Energy for this feature.\nUpgrade to Premium or top up Energy."
+            "Bu AI özelliği Premium'da. Ücretsiz planda AI ile ${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} program oluşturabilirsin; diğer her şey ücretsiz.",
+            "This AI feature is in Premium. On Free you can create ${UserPlanRepository.FREE_AI_PROGRAM_GRANTS} programs with AI; everything else is free."
         ),
-        confirmLabel = theme.t("Planları gör", "View plans"),
+        confirmLabel = theme.t("Premium'u gör", "See Premium"),
         confirmIcon = Icons.Rounded.WorkspacePremium,
         onConfirm = onGoToStore,
         dismissLabel = theme.t("Vazgeç", "Cancel")
