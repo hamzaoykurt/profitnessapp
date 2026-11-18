@@ -38,13 +38,8 @@ fun buildAvatarDisplayUrl(avatarUrl: String?, updatedAt: Long?): String {
     return if (updatedAt != null) "$avatarUrl?t=$updatedAt" else avatarUrl
 }
 
-fun computeRank(xp: Int): String = when {
-    xp >= 50000 -> "Diamond"
-    xp >= 15000 -> "Platinum"
-    xp >= 5000  -> "Gold"
-    xp >= 1000  -> "Silver"
-    else        -> "Bronze"
-}
+/** Eşikler tek kaynakta: [com.cosmibit.profitness.domain.progress.RankTiers] (sonuç aynı). */
+fun computeRank(xp: Int): String = com.cosmibit.profitness.domain.progress.RankTiers.rankFor(xp)
 
 // ── Achievement Modeli (UI için) ──────────────────────────────────────────────
 
@@ -73,6 +68,9 @@ data class ProfileState(
     val longestStreak        : Int                  = 0,
     val streakRankPosition   : Long                 = 0L,
     val streakRankTotalUsers : Long                 = 0L,
+    /** Genel XP sıralamasındaki yerin (0 = veri yok). */
+    val xpRankPosition       : Long                 = 0L,
+    val xpRankTotalUsers     : Long                 = 0L,
     val totalWorkouts        : Int                  = 0,
     val totalExercises       : Int                  = 0,
     val totalDurationSeconds : Int                  = 0,
@@ -235,6 +233,7 @@ class ProfileViewModel @Inject constructor(
             val longestStreak    = maxOf(stats?.longest_streak ?: 0, currentStreak)
             val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
             val streakRank       = leaderboardRepository.getMyStreakRank().getOrNull()
+            val xpRank           = leaderboardRepository.getMyXpRank().getOrNull()   // yalnız gösterim (Profil rank kartı)
 
             // Bu haftanın aktif günleri — her gün için orantılı tamamlanma (0.0 – 1.0)
             // workout_logs.program_day_id üzerinden hesaplanıyor, aktif program seçimine bağlı değil
@@ -301,6 +300,8 @@ class ProfileViewModel @Inject constructor(
                 longestStreak       = longestStreak,
                 streakRankPosition  = streakRank?.rank_position ?: 0L,
                 streakRankTotalUsers= streakRank?.total_users ?: 0L,
+                xpRankPosition      = xpRank?.rank_position ?: 0L,
+                xpRankTotalUsers    = xpRank?.total_users ?: 0L,
                 totalWorkouts       = totalWorkouts,
                 totalExercises      = totalExercises,
                 totalDurationSeconds= totalDurationSeconds,

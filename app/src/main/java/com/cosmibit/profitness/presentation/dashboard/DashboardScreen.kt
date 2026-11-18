@@ -417,7 +417,11 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 DashboardTab.Discover -> DiscoverScreen(
                     bottomPadding         = contentPadWithTimer,
                     timerExtraPad         = 0.dp,
-                    externalRefreshSignal = discoverRefreshSignal
+                    externalRefreshSignal = discoverRefreshSignal,
+                    onOpenLeaderboard     = {
+                        leaderboardInitialTab = com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp
+                        showLeaderboard = true
+                    }
                 )
                 DashboardTab.Profile -> ProfileScreen(
                     onThemeChange                   = onThemeChange,

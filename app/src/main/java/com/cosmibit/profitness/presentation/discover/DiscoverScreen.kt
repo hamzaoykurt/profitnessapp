@@ -136,7 +136,8 @@ private enum class ProgramsSubTab { Community, Saved, Mine }
 fun DiscoverScreen(
     bottomPadding: Dp,
     timerExtraPad: Dp = 0.dp,
-    externalRefreshSignal: Int = 0
+    externalRefreshSignal: Int = 0,
+    onOpenLeaderboard: () -> Unit = {}
 ) {
     var selected by rememberSaveable { mutableStateOf(DiscoverTab.Programs) }
     var programsSub by rememberSaveable { mutableStateOf(ProgramsSubTab.Community) }
@@ -299,11 +300,22 @@ fun DiscoverScreen(
                         )
                     }
                 }
-                DiscoverTab.Friends -> Box(Modifier.fillMaxSize()) {
-                    com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp, topPadding = controlsTop + 54.dp + 12.dp)
+                // "Senin sıran" ince şeridi (≈56dp) Topluluk ve Challenge üstünde -> Sıralama
+                DiscoverTab.Friends -> Column(Modifier.fillMaxSize().padding(top = controlsTop + 54.dp + 12.dp)) {
+                    com.cosmibit.profitness.presentation.leaderboard.MyRankStrip(
+                        onOpen = onOpenLeaderboard, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+                    )
+                    Box(Modifier.weight(1f)) {
+                        com.cosmibit.profitness.presentation.friends.FriendsTab(bottomPadding = bottomPadding, timerExtraPad = 0.dp, topPadding = 0.dp)
+                    }
                 }
-                DiscoverTab.Challenges -> Box(Modifier.fillMaxSize().padding(top = controlsTop + 54.dp + 12.dp)) {
-                    com.cosmibit.profitness.presentation.challenges.ChallengesTab(bottomPadding = bottomPadding, sort = state.sort, timerExtraPad = 0.dp)
+                DiscoverTab.Challenges -> Column(Modifier.fillMaxSize().padding(top = controlsTop + 54.dp + 12.dp)) {
+                    com.cosmibit.profitness.presentation.leaderboard.MyRankStrip(
+                        onOpen = onOpenLeaderboard, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+                    )
+                    Box(Modifier.weight(1f)) {
+                        com.cosmibit.profitness.presentation.challenges.ChallengesTab(bottomPadding = bottomPadding, sort = state.sort, timerExtraPad = 0.dp)
+                    }
                 }
             }
             DiscoverTopControls(

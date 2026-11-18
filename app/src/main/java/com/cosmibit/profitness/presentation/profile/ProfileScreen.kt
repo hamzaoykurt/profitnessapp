@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -150,26 +151,18 @@ fun ProfileScreen(
                     onNavigateToStore = onNavigateToStore,
                     onOpenXpRanking   = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp) },
                     onOpenRankRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Achievements) },
-                    onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) }
+                    onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) },
+                    onEditProfile     = onEditProfile,
+                    isPremium         = state.planLoaded && state.userPlan == UserPlan.PREMIUM
                 )
             }
-            // Üyelik kartı: Mağaza'ya görünür, sakin giriş (banner değil; yalnız Profil'de)
-            if (state.planLoaded) item {
-                ProfileMembershipCard(
-                    plan     = state.userPlan,
-                    status   = state.planStatus,
-                    freeLeft = state.freeAiProgramsLeft,
-                    theme    = theme,
-                    onOpen   = onNavigateToStore
-                )
-            }
-            if (heavyReady) item {
-                TrophyGallery(
-                    accent       = accent,
-                    theme        = theme,
-                    strings      = strings,
-                    achievements = state.achievements,
-                    onSeeAll     = onNavigateToAchievements
+            item {
+                RankLevelStrip(
+                    xp            = state.xp,
+                    level         = state.level,
+                    rank          = state.rank,
+                    theme         = theme,
+                    onOpenRoadmap = onNavigateToAchievements
                 )
             }
             if (heavyReady) item {
@@ -183,6 +176,25 @@ fun ProfileScreen(
                     totalDurationSeconds = state.totalDurationSeconds,
                     totalDistanceMeters  = state.totalDistanceMeters,
                     onNavigateToDetail = onNavigateToPerformance
+                )
+            }
+            // SIRALAMA kompakt satırı (Performans'ın hemen altında; Başarımlar'dan önce)
+            if (heavyReady) item {
+                RankingRow(
+                    rank       = state.rank,
+                    position   = state.xpRankPosition,
+                    totalUsers = state.xpRankTotalUsers,
+                    theme      = theme,
+                    onOpen     = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp) }
+                )
+            }
+            if (heavyReady) item {
+                TrophyGallery(
+                    accent       = accent,
+                    theme        = theme,
+                    strings      = strings,
+                    achievements = state.achievements,
+                    onSeeAll     = onNavigateToAchievements
                 )
             }
             if (heavyReady) item {
@@ -214,6 +226,16 @@ fun ProfileScreen(
                     isTransferring       = state.isTransferring,
                     displayName          = state.displayName.ifBlank { theme.t("Kullanıcı", "User") },
                     avatar               = state.avatar
+                )
+            }
+            // EN ALTTA: Ücretsiz'de Premium kartı (sakin giriş; Premium'da yalnız ad yanı rozet + Ayarlar > Üyelik)
+            if (heavyReady && state.planLoaded && state.userPlan == UserPlan.FREE) item {
+                ProfileMembershipCard(
+                    plan     = state.userPlan,
+                    status   = state.planStatus,
+                    freeLeft = state.freeAiProgramsLeft,
+                    theme    = theme,
+                    onOpen   = onNavigateToStore
                 )
             }
         }
@@ -428,7 +450,9 @@ private fun ProfileHeroBanner(
     onNavigateToStore: () -> Unit = {},
     onOpenXpRanking : () -> Unit = {},
     onOpenRankRanking: () -> Unit = {},
-    onOpenStreakRanking: () -> Unit = {}
+    onOpenStreakRanking: () -> Unit = {},
+    onEditProfile   : () -> Unit = {},
+    isPremium       : Boolean = false
 ) {
     val page = Sinema.page(theme)
     val textMain = Sinema.text(theme)
@@ -436,11 +460,6 @@ private fun ProfileHeroBanner(
     val wc = LocalWindowClass.current
     val gutter = SinemaLayout.gutter(wc.widthDp)
     val coverH = SinemaLayout.cover(wc.heightDp, 0.40f, 240.dp, 360.dp)
-    val xpInLevel = if (xpPerLevel > 0) xp % xpPerLevel else xp
-    val xpProgress = if (xpPerLevel > 0) xpInLevel.toFloat() / xpPerLevel else 0f
-    val xpLeft = (xpPerLevel - xpInLevel).coerceAtLeast(0)
-    val fill = remember { Animatable(0f) }
-    LaunchedEffect(xpProgress) { fill.animateTo(xpProgress.coerceIn(0f, 1f), tween(900, easing = SinemaMotion.EaseStandard)) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
@@ -464,36 +483,6 @@ private fun ProfileHeroBanner(
                 )
             }
 
-            // XP satırı (çizim `.xpb`: üstten 206dp)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = gutter, end = gutter, top = coverH - 114.dp)
-            ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$xpInLevel / $xpPerLevel XP",
-                        color = Sinema.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        if (xpLeft == 0) theme.t("hazır", "ready") else theme.t("$xpLeft kaldı", "$xpLeft left"),
-                        color = Sinema.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Sinema.White.copy(0.28f))
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(fill.value)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(accent)
-                    )
-                }
-            }
         }
 
         // ── Sheet (çizim `.sheet`: üstten 300dp, r28, üstte 1dp çizgi) ───────────────
@@ -503,52 +492,53 @@ private fun ProfileHeroBanner(
                 .fillMaxWidth()
                 .padding(top = coverH - 20.dp)
         ) {
-            // Avatar (96dp, 4dp sayfa renginde halka, vurgu dolgusu) + ad (sol 128dp, üst 14dp)
+            // Avatar + ad: dokununca Profil düzenle (≥48dp). Avatarda küçük kalem, adın yanında ince ok; Premium'da altın rozet.
             Box(Modifier.fillMaxWidth().padding(horizontal = gutter).height(62.dp)) {
                 Box(
                     Modifier
-                        .offset(y = (-48 + (96 - 62) / 2).dp) // requiredSize 62dp satırda ortalanır; avatar üstü sheet üstünden 48dp yukarıda
+                        .offset(y = (-48 + (96 - 62) / 2).dp)
                         .requiredSize(96.dp)
-                        .clip(CircleShape)
-                        .background(page)
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .sinemaSolid(accent),
-                    contentAlignment = Alignment.Center
+                        .sinemaClickable(onClick = onEditProfile, role = androidx.compose.ui.semantics.Role.Button)
+                        .semantics { contentDescription = theme.t("Profili düzenle", "Edit profile") }
                 ) {
-                    if (avatar.startsWith("http")) {
-                        AsyncImage(
-                            model = LocalContext.current.let { ctx -> remember(avatar) { ImageRequest.Builder(ctx).data(avatar).crossfade(true).build() } },
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape)
-                        )
-                    } else {
-                        Text(avatar, fontSize = 40.sp, color = theme.effectiveOnAccentColor)
+                    Box(
+                        Modifier.fillMaxSize().clip(CircleShape).background(page).padding(4.dp).clip(CircleShape).sinemaSolid(accent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (avatar.startsWith("http")) {
+                            AsyncImage(
+                                model = LocalContext.current.let { ctx -> remember(avatar) { ImageRequest.Builder(ctx).data(avatar).crossfade(true).build() } },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape)
+                            )
+                        } else {
+                            Text(avatar, fontSize = 40.sp, color = theme.effectiveOnAccentColor)
+                        }
+                    }
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).size(28.dp).clip(CircleShape).background(page).padding(3.dp)
+                            .clip(CircleShape).background(Sinema.surface(theme)),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Rounded.Edit, null, tint = textMain, modifier = Modifier.size(14.dp)) }
+                }
+                Row(
+                    Modifier.padding(start = 112.dp).heightIn(min = 48.dp).padding(top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        Modifier.weight(1f, fill = false).heightIn(min = 48.dp)
+                            .sinemaClickable(onClick = onEditProfile, role = androidx.compose.ui.semantics.Role.Button),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(name, color = textMain, style = Sinema.Title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        Icon(Icons.Rounded.ChevronRight, theme.t("Profili düzenle", "Edit profile"), tint = textSub, modifier = Modifier.size(20.dp))
+                    }
+                    if (isPremium) {
+                        Spacer(Modifier.width(6.dp))
+                        PremiumBadge(theme = theme, onClick = onNavigateToStore)
                     }
                 }
-                Text(
-                    name,
-                    color = textMain, style = Sinema.Title,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 112.dp, top = 14.dp)
-                )
-            }
-
-            // Çipler (sol 16dp, üstten 62dp): rütbe (metal) · seviye · plan/enerji
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = gutter),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ProfileChip(
-                    rank.uppercase(), Color(0xFF0A0A0B), brush = rankBrush(rank), onClick = onOpenRankRanking
-                )
-                ProfileChip(theme.t("Seviye $level", "Level $level"), textMain, fill = Sinema.surface(theme))
-                val isPaid = userPlan != UserPlan.FREE
-                ProfileChip(
-                    if (isPaid) userPlan.displayName else theme.t("Ücretsiz", "Free"),
-                    textMain, fill = Sinema.surface(theme), onClick = onNavigateToStore
-                )
             }
 
             // 3 metrik (üstten 118dp; 28dp aralık → 78dp yükseklik: 196'daki XP çizgisine kadar)
@@ -562,27 +552,6 @@ private fun ProfileHeroBanner(
                 HeroMetric(totalExercises.toString(), theme.t("Egzersiz", "Exercises"), theme, Modifier.weight(1f))
             }
 
-            // Toplam XP (çizim `.tot`: üst çizgi, 14dp iç boşluk, 30sp rakam); sonraki bölüm 284dp çevresinden başlar
-            Box(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = gutter)) {
-                Box(Modifier.fillMaxWidth().height(1.dp).background(lineColor))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 1.dp).sinemaClickable(onClick = onOpenXpRanking, scale = 0.98f)
-                        .padding(vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        theme.t("TOPLAM XP", "TOTAL XP"), color = textSub, style = Sinema.Label.copy(fontSize = 12.sp),
-                        modifier = Modifier.alignByBaseline()
-                    )
-                    Text(
-                        "$xp", color = textMain,
-                        style = Sinema.Title.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.03).em),
-                        maxLines = 1, modifier = Modifier.alignByBaseline()
-                    )
-                }
-            }
         }
     }
 }
@@ -915,46 +884,6 @@ private fun SettingsSection(
     }
 
     SinemaSection(theme = theme, title = strings.accountSettings) {
-        Column(
-            modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth().sinemaClickable(onClick = onEditProfile, scale = 0.98f)
-                    .heightIn(min = 72.dp)
-                    .padding(horizontal = sinemaGutter()),
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(Sinema.page(theme)).border(2.dp, accent, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (avatar.startsWith("http")) {
-                        AsyncImage(
-                            model = LocalContext.current.let { ctx -> remember(avatar) { ImageRequest.Builder(ctx).data(avatar).crossfade(true).build() } },
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape)
-                        )
-                    } else {
-                        Text(avatar, fontSize = SinemaType.Title)
-                    }
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        displayName.ifBlank { theme.t("Kullanıcı", "User") }.uppercase(),
-                        color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                    Text(strings.editProfileHint, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Icon(Icons.Rounded.Edit, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
         Column(
             modifier = Modifier.padding(horizontal = sinemaGutter()).fillMaxWidth().clip(groupShape).background(surface)
         ) {
@@ -1874,3 +1803,155 @@ private fun membershipStatusText(status: String, theme: AppThemeState): String =
     "past_due" -> theme.t("Ödeme bekleniyor", "Payment pending")
     else -> theme.t("Abonelik aktif", "Subscription active")
 }
+
+
+/** Premium altın rozeti (ad yanında, küçük ve canlı): taç ikonu + "Premium", dokununca Mağaza/üyelik. */
+@Composable
+private fun PremiumBadge(theme: AppThemeState, onClick: () -> Unit) {
+    val gold = Brush.linearGradient(listOf(Color(0xFFF7D774), Color(0xFFD9A441), Color(0xFFB07A22)))
+    Box(
+        Modifier
+            .heightIn(min = 48.dp)
+            .sinemaClickable(onClick = onClick, role = androidx.compose.ui.semantics.Role.Button)
+            .semantics { contentDescription = theme.t("Premium üyelik, yönet", "Premium membership, manage") },
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            Modifier.height(28.dp).clip(CircleShape).background(gold).padding(horizontal = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Rounded.WorkspacePremium, null, tint = Color(0xFF3A2606), modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Premium", color = Color(0xFF3A2606), fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * RANK & SEVİYE şeridi (kompakt, ~64dp, kart değil): mini metalik rank rozeti + "Seviye N", ince ana çubuk
+ * (sonraki rank'a ilerleme) + "Gold'a 2.900 XP", ok. Dokununca Başarımlar/rank yol haritası; (i) kısa açıklama.
+ */
+@Composable
+private fun RankLevelStrip(
+    xp: Int,
+    level: Int,
+    rank: String,
+    theme: AppThemeState,
+    onOpenRoadmap: () -> Unit
+) {
+    val tiers = com.cosmibit.profitness.domain.progress.RankTiers
+    val next = tiers.nextTier(xp)
+    val progress = tiers.progressToNext(xp)
+    val fmt = profileNumberFormat(theme)
+    var showInfo by remember { mutableStateOf(false) }
+    val fill = remember { Animatable(0f) }
+    LaunchedEffect(progress) { fill.animateTo(progress, tween(900, easing = SinemaMotion.EaseStandard)) }
+    val nextLine = if (next != null) theme.t("${next.name}'a ${fmt.format(next.minXp - xp)} XP", "${fmt.format(next.minXp - xp)} XP to ${next.name}")
+                   else theme.t("En üst rank", "Top rank")
+
+    Row(
+        Modifier
+            .padding(horizontal = sinemaGutter(), vertical = 4.dp)
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .sinemaClickable(onClick = onOpenRoadmap, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
+            .semantics {
+                contentDescription = theme.t(
+                    "$rank rank, Seviye $level, $nextLine. Rank yol haritasını aç",
+                    "$rank rank, Level $level, $nextLine. Open rank roadmap"
+                )
+            },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Mini metalik rank rozeti (3D: gradyan + üst parlama)
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(rankBrush(rank))
+                .drawWithCache {
+                    val glow = Brush.verticalGradient(0f to Color.White.copy(0.35f), 0.5f to Color.Transparent)
+                    onDrawWithContent { drawContent(); drawRect(glow) }
+                },
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.MilitaryTech, null, tint = Color(0xFF1A1B1F), modifier = Modifier.size(22.dp)) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(rank, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(" · " + theme.t("Seviye $level", "Level $level"), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                Text(nextLine, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1)
+            }
+            Text(
+                theme.t("Toplam ${fmt.format(xp)} XP", "Total ${fmt.format(xp)} XP"),
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Sinema.line(theme))) {
+                Box(Modifier.fillMaxWidth(fill.value).fillMaxHeight().clip(CircleShape).background(rankBrush(next?.name ?: rank)))
+            }
+        }
+        Box(
+            Modifier.size(48.dp).sinemaClickable(onClick = { showInfo = true }, role = androidx.compose.ui.semantics.Role.Button),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.Info, theme.t("Seviye ve rank nedir", "What are level and rank"), tint = Sinema.textSecondary(theme), modifier = Modifier.size(18.dp)) }
+        Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
+    }
+
+    if (showInfo) {
+        com.cosmibit.profitness.presentation.components.SinemaDialog(
+            onDismiss = { showInfo = false },
+            title = theme.t("Seviye ve Rank", "Level and Rank"),
+            body = rankLevelExplainer(theme),
+            confirmLabel = theme.t("Tamam", "OK"),
+            confirmIcon = Icons.Rounded.Check,
+            onConfirm = { showInfo = false },
+            dismissLabel = theme.t("Kapat", "Close")
+        )
+    }
+}
+
+/** SIRALAMA kompakt satırı: rank rozeti + "Sıralaman #N · Genel"; veri yoksa boş durum. Dokununca Sıralama. */
+@Composable
+private fun RankingRow(rank: String, position: Long, totalUsers: Long, theme: AppThemeState, onOpen: () -> Unit) {
+    val fmt = profileNumberFormat(theme)
+    Row(
+        Modifier
+            .padding(horizontal = sinemaGutter(), vertical = 6.dp)
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .sinemaClickable(onClick = onOpen, scale = 0.98f, role = androidx.compose.ui.semantics.Role.Button)
+            .sinemaRaised(RoundedCornerShape(SinemaRadius.R20), com.cosmibit.profitness.core.theme.SinemaRaise.Mini)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(rankBrush(rank)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Leaderboard, null, tint = Color(0xFF1A1B1F), modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (position > 0) theme.t("Sıralaman #${fmt.format(position)} · Genel", "Your ranking #${fmt.format(position)} · Global")
+                else theme.t("Sıralamaya gir", "Join the ranking"),
+                color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1
+            )
+            Text(
+                if (position > 0 && totalUsers > 0) theme.t("${fmt.format(totalUsers)} sporcu arasında · arkadaş ve seri sıralaması da var", "Among ${fmt.format(totalUsers)} athletes · friends and streak boards too")
+                else theme.t("Arkadaş ekle, antrenman yap, sıralamada yerini gör.", "Add friends, train, and see your place."),
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(theme.t("Gör", "View"), color = theme.accentHi, fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
+        Icon(Icons.Rounded.ChevronRight, null, tint = Sinema.textSecondary(theme), modifier = Modifier.size(20.dp))
+    }
+}
+
+private fun profileNumberFormat(theme: AppThemeState): java.text.NumberFormat =
+    java.text.NumberFormat.getIntegerInstance(
+        if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+        else java.util.Locale.forLanguageTag("tr-TR")
+    )
+
+/** Seviye/Rank açıklaması (Profil ve Başarımlar aynı metni kullanır). */
+internal fun rankLevelExplainer(theme: AppThemeState): String = theme.t(
+    "Seviye her ${com.cosmibit.profitness.domain.progress.RankTiers.LEVEL_XP} XP'de yükselir.\nRank ise uzun vadeli ligin: Bronze → Silver → Gold → Platinum → Diamond.\nİkisi de aynı toplam XP'den gelir.",
+    "Level goes up every ${com.cosmibit.profitness.domain.progress.RankTiers.LEVEL_XP} XP.\nRank is your long-term league: Bronze → Silver → Gold → Platinum → Diamond.\nBoth come from the same total XP."
+)

@@ -28,13 +28,17 @@ import com.cosmibit.profitness.presentation.components.SinemaSectionLabel
 
 // ── Rank tanımları ──────────────────────────────────────────────────────────────
 
-private val RANKS = listOf(
-    Triple("Bronze",   0,     Color(0xFFCD7F32)),
-    Triple("Silver",   1000,  Color(0xFFC9CDD4)),
-    Triple("Gold",     5000,  Color(0xFFF2C23F)),
-    Triple("Platinum", 15000, Color(0xFF7DD3FC)),
-    Triple("Diamond",  50000, Color(0xFF67E8F9))
+// Eşikler tek kaynaktan (RankTiers); burada yalnız renkler
+private val RANK_COLORS = mapOf(
+    "Bronze" to Color(0xFFCD7F32),
+    "Silver" to Color(0xFFC9CDD4),
+    "Gold" to Color(0xFFF2C23F),
+    "Platinum" to Color(0xFF7DD3FC),
+    "Diamond" to Color(0xFF67E8F9)
 )
+private val RANKS = com.cosmibit.profitness.domain.progress.RankTiers.tiers.map {
+    Triple(it.name, it.minXp, RANK_COLORS[it.name] ?: Color(0xFFC9CDD4))
+}
 
 private val CATEGORY_ORDER = listOf("streak", "volume", "xp", "milestone", "total_exercises", "level")
 
@@ -193,13 +197,7 @@ private fun XpProgressCard(
     val xpInLevel = xp % xpPerLevel.coerceAtLeast(1)
     val progress  = xpInLevel.toFloat() / xpPerLevel.coerceAtLeast(1)
 
-    val nextRankXp = when (rank) {
-        "Bronze"   -> 1000
-        "Silver"   -> 5000
-        "Gold"     -> 15000
-        "Platinum" -> 50000
-        else       -> xp
-    }
+    val nextRankXp = com.cosmibit.profitness.domain.progress.RankTiers.nextTier(xp)?.minXp ?: xp
     val rankProgress = if (nextRankXp > 0) (xp.toFloat() / nextRankXp).coerceIn(0f, 1f) else 1f
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -225,12 +223,17 @@ private fun XpProgressCard(
             }
             Column {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(theme.t("SONRAKİ RANK", "NEXT RANK").sinemaUpper(theme), color = Sinema.textSecondary(theme), style = Sinema.Label)
+                    Text(
+                        (com.cosmibit.profitness.domain.progress.RankTiers.nextTier(xp)?.let { theme.t("${it.name}'A İLERLEME", "TO ${it.name}") } ?: theme.t("EN ÜST RANK", "TOP RANK")).sinemaUpper(theme),
+                        color = Sinema.textSecondary(theme), style = Sinema.Label
+                    )
                     Text("$xp / $nextRankXp XP", color = Sinema.text(theme), fontSize = SinemaType.Caption, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(10.dp))
                 SinemaGlowBar(rankProgress, color = theme.accentHi, color2 = theme.accentHi)   // rank: mercan -> pembe
             }
+            // Profil ile aynı dil: seviye kısa vadeli, rank uzun vadeli lig
+            Text(rankLevelExplainer(theme), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, lineHeight = 18.sp)
         }
     }
 }
