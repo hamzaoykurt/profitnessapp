@@ -90,15 +90,18 @@ class StoreViewModel @Inject constructor(
     }
 
     fun cancelPlan() {
+        if (uiState.value.isLoading) return   // çift tıklama koruması
+        updateState { it.copy(isLoading = true) }
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true) }
-            runCatching { planRepository.downgradeFree() }
-                .onSuccess {
-                    sendEvent(StoreEvent.ShowToast("İptal işlemi ödeme sağlayıcısı bağlanınca yönetilecek."))
-                }
-                .onFailure {
-                    sendEvent(StoreEvent.ShowToast(it.message ?: "Bir hata oluştu, tekrar dene."))
-                }
+            val message = when (val r = planRepository.cancelPlan()) {
+                is com.cosmibit.profitness.data.store.CancelPlanResult.Canceled ->
+                    "Demo aboneliği iptal edildi. Ücretsiz plana geçtin."
+                com.cosmibit.profitness.data.store.CancelPlanResult.ManageInStore ->
+                    "Aboneliğini Google Play'den yönetebilirsin."
+                is com.cosmibit.profitness.data.store.CancelPlanResult.Failed ->
+                    "İptal şu an yapılamadı. Bağlantını kontrol edip tekrar dene."
+            }
+            sendEvent(StoreEvent.ShowToast(message))
             updateState { it.copy(isLoading = false) }
         }
     }

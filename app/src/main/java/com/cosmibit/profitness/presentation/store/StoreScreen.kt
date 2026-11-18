@@ -626,8 +626,8 @@ private fun CancelPlanDialog(
             Spacer(Modifier.height(8.dp))
             Text(
                 theme.t(
-                    "$planName aboneliğini iptal etmek istediğine emin misin?\nMevcut dönem sonunda ücretsiz plana geçilecek.",
-                    "Are you sure you want to cancel your $planName subscription?\nYou will move to the free plan at the end of the current period."
+                    "Demo $planName aboneliği hemen iptal edilir ve Ücretsiz plana geçersin.\nPremium'a istediğin zaman tekrar geçebilirsin.",
+                    "Your demo $planName subscription is canceled right away and you move to Free.\nYou can go Premium again any time."
                 ),
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.Body, lineHeight = 20.sp
             )

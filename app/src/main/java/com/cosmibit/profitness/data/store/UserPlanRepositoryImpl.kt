@@ -5,6 +5,8 @@ import com.cosmibit.profitness.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -81,8 +83,18 @@ class UserPlanRepositoryImpl @Inject constructor(
         return startCheckout(sku)
     }
 
-    override suspend fun downgradeFree() {
-        refresh()
+    override suspend fun cancelPlan(): CancelPlanResult {
+        val result = runCatching {
+            CancelPlanResult.parse(
+                supabase.postgrest.rpc("cancel_sandbox_plan").decodeAs<kotlinx.serialization.json.JsonObject>()
+            )
+        }.getOrElse { CancelPlanResult.Failed(it.message ?: "rpc_failed") }
+        if (result is CancelPlanResult.Canceled) {
+            // Tek kaynak: plan akışını hemen Ücretsiz yap (Mağaza, Profil rozeti, AI kilitleri, AI Koç aynı anda güncellenir)
+            statusState.value = statusState.value.copy(plan = UserPlan.FREE, status = "free")
+        }
+        runCatching { refresh() }
+        return result
     }
 
     override suspend fun addCredits(amount: Int): CheckoutResult {
@@ -176,6 +188,7 @@ class UserPlanRepositoryImpl @Inject constructor(
         val plan: String,
         val status: String,
         val credits: Int = 0,
+        val currentPeriodEnd: String? = null,
         /** Önerilen yeni alan (sunucu geçişinde); yoksa null. */
         val freeAiProgramsLeft: Int? = null,
         val sandboxAvailable: Boolean = false,
@@ -183,9 +196,10 @@ class UserPlanRepositoryImpl @Inject constructor(
         val recentUsage: List<BillingUsageDto> = emptyList()
     ) {
         fun toDomain(): BillingSnapshot = BillingSnapshot(
-            plan = UserPlan.fromServer(plan) ?: UserPlan.FREE,
+            // Savunma: süresi geçmiş / pasif abonelik Ücretsiz sayılır (sunucu düzeltmesi önerisi: proposals/20261118_entitlement_expiry.sql)
+            plan = PlanResolver.effectivePlan(plan, status, currentPeriodEnd),
             freeAiProgramsLeft = freeAiProgramsLeft,
-            status = status,
+            status = PlanResolver.effectiveStatus(status, currentPeriodEnd),
             credits = credits,
             isLoaded = true,
             sandboxAvailable = sandboxAvailable,

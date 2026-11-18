@@ -39,3 +39,7 @@ Play Billing fazı:
 - billing-webhook: RTDN → user_entitlements
 - billing-status: freeAiProgramsLeft
 - Premium ürün kimlikleri, iptal/yenileme
+
+İptal akışı (2026-11-18):
+- Mağaza "Aboneliği iptal et" → onay ("Demo aboneliği hemen iptal edilir") → RPC `cancel_sandbox_plan` (migration 20261118120000, Hamza uygular). source=sandbox ise FREE; değilse `manage_in_store` ("Google Play'den yönet").
+- Başarıda plan StateFlow'u hemen FREE → Mağaza, Profil rozeti/kart, AI kilitleri, AI Koç aynı anda; sonra billing-status ile yenilenir. Etkin plan: süresi geçmiş (current_period_end < now) ya da pasif status = FREE (istemci PlanResolver; sunucu önerisi proposals/20261118_entitlement_expiry.sql).

@@ -74,8 +74,11 @@ interface UserPlanRepository {
     /** Plan checkout kaydı oluşturur; ödeme doğrulanmadan planı hesaba yazmaz. */
     suspend fun upgradePlan(plan: UserPlan, yearly: Boolean = false): CheckoutResult
 
-    /** Ödeme sağlayıcısı bağlanana kadar client tarafında iptal mutasyonu yapılmaz. */
-    suspend fun downgradeFree()
+    /**
+     * Aboneliği iptal eder: demo (sandbox) abonelik sunucuda hemen Ücretsiz'e döner (RPC cancel_sandbox_plan);
+     * gerçek abonelik -> [CancelPlanResult.ManageInStore]. Başarıda plan akışı (tek kaynak StateFlow) hemen güncellenir.
+     */
+    suspend fun cancelPlan(): CancelPlanResult
 
     /** Enerji checkout kaydı oluşturur; ödeme doğrulanmadan bakiye eklemez. */
     suspend fun addCredits(amount: Int): CheckoutResult
