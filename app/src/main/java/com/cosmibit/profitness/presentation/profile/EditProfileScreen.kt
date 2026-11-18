@@ -305,6 +305,9 @@ fun EditProfileScreen(
     val formMax = SinemaLayout.ContentMaxForm
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
+        val coverViewModel: ProfileCoverViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+        var showCoverPicker by remember { mutableStateOf(false) }
+        if (showCoverPicker) CoverPickerSheet(coverViewModel, onDismiss = { showCoverPicker = false })
         LazyColumn(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             // ── Kapak: foto (yoksa Sinema sahnesi) + avatar halkası ─────────
             item {
@@ -375,6 +378,10 @@ fun EditProfileScreen(
                         SinemaCapsule(onClick = { photoPickerLauncher.launch("image/*") }, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
                             Text(theme.t("Fotoğraf Yükle", "Upload Photo"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
                         }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    SinemaCapsule(onClick = { showCoverPicker = true }, height = 48.dp, contentPadding = PaddingValues(horizontal = 16.dp)) { fg ->
+                        Text(theme.t("Kapağı değiştir", "Change cover"), color = fg, fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
                     }
                     avatarError?.let {
                         Spacer(Modifier.height(8.dp))

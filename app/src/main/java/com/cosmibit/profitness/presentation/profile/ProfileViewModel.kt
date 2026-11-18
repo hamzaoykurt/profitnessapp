@@ -75,6 +75,10 @@ data class ProfileState(
     val totalExercises       : Int                  = 0,
     val totalDurationSeconds : Int                  = 0,
     val totalDistanceMeters  : Float                = 0f,
+    /** Hareket performansı özetlerinden (yeni sorgu yok): toplam kaldırılan hacim (kg) ve en ağır kaldırış. */
+    val totalVolumeKg        : Double               = 0.0,
+    val topLiftName          : String               = "",
+    val topLiftKg            : Float                = 0f,
     /** 7 eleman — Pazartesi=0 … Pazar=6; 0.0–1.0 oranında tamamlanma */
     val weeklyActivity       : ImmutableList<Float>  = List(7) { 0f }.toImmutableList(),
     /** Son 13 haftalık antrenman sayıları (grafik için, en eskiden en yeniye) */
@@ -266,6 +270,8 @@ class ProfileViewModel @Inject constructor(
             val totalExercises= stats?.total_exercises ?: 0
             val totalDurationSeconds = trackedSummaries.sumOf { it.totalDurationSeconds }
             val totalDistanceMeters = trackedSummaries.sumOf { it.totalDistanceMeters.toDouble() }.toFloat()
+            val totalVolumeKg   = trackedSummaries.sumOf { it.totalVolume.toDouble() }
+            val topLift         = trackedSummaries.filter { it.maxWeight > 0f }.maxByOrNull { it.maxWeight }
             val currentXp    = stats?.xp ?: 0
 
             // BMI ve vücut yağı hesapla
@@ -306,6 +312,9 @@ class ProfileViewModel @Inject constructor(
                 totalExercises      = totalExercises,
                 totalDurationSeconds= totalDurationSeconds,
                 totalDistanceMeters = totalDistanceMeters,
+                totalVolumeKg       = totalVolumeKg,
+                topLiftName         = topLift?.name.orEmpty(),
+                topLiftKg           = topLift?.maxWeight ?: 0f,
                 fitnessGoal         = profile?.fitness_goal.orEmpty(),
                 heightCm            = profile?.height_cm ?: 0.0,
                 weightKg            = profile?.weight_kg ?: 0.0,

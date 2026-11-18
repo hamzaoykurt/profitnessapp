@@ -120,6 +120,11 @@ fun ProfileScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val coverViewModel: ProfileCoverViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val cover by coverViewModel.cover.collectAsStateWithLifecycle()
+    var showCoverPicker by remember { mutableStateOf(false) }
+    if (showCoverPicker) CoverPickerSheet(coverViewModel, onDismiss = { showCoverPicker = false })
+
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
         val profileListState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -153,7 +158,9 @@ fun ProfileScreen(
                     onOpenRankRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Achievements) },
                     onOpenStreakRanking = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Streak) },
                     onEditProfile     = onEditProfile,
-                    isPremium         = state.planLoaded && state.userPlan == UserPlan.PREMIUM
+                    isPremium         = state.planLoaded && state.userPlan == UserPlan.PREMIUM,
+                    cover             = cover,
+                    onChangeCover     = { showCoverPicker = true }
                 )
             }
             item {
@@ -175,6 +182,11 @@ fun ProfileScreen(
                     totalExercises     = state.totalExercises,
                     totalDurationSeconds = state.totalDurationSeconds,
                     totalDistanceMeters  = state.totalDistanceMeters,
+                    weekWorkouts       = state.weeklyWorkoutCounts.lastOrNull() ?: 0,
+                    totalWorkouts      = state.totalWorkouts,
+                    totalVolumeKg      = state.totalVolumeKg,
+                    topLiftName        = state.topLiftName,
+                    topLiftKg          = state.topLiftKg,
                     onNavigateToDetail = onNavigateToPerformance
                 )
             }
@@ -452,28 +464,26 @@ private fun ProfileHeroBanner(
     onOpenRankRanking: () -> Unit = {},
     onOpenStreakRanking: () -> Unit = {},
     onEditProfile   : () -> Unit = {},
-    isPremium       : Boolean = false
+    isPremium       : Boolean = false,
+    cover           : com.cosmibit.profitness.data.profile.ProfileCover = com.cosmibit.profitness.data.profile.ProfileCover(),
+    onChangeCover   : () -> Unit = {}
 ) {
     val page = Sinema.page(theme)
     val textMain = Sinema.text(theme)
     val textSub = Sinema.textSecondary(theme)
     val wc = LocalWindowClass.current
     val gutter = SinemaLayout.gutter(wc.widthDp)
-    val coverH = SinemaLayout.cover(wc.heightDp, 0.40f, 240.dp, 360.dp)
+    // Kapak biraz küçüldü (≈%34, en çok 300dp): Performans ve Sıralama ilk ekrana sığsın
+    val coverH = SinemaLayout.cover(wc.heightDp, 0.34f, 220.dp, 300.dp)
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // ── Kapak 320dp (çizim `.cover`): foto + 3 duraklı karartma (.5 → 0 @%40 → .75) ──
         Box(Modifier.fillMaxWidth().height(coverH).clipToBounds()) {
             // Foto + karartma: alt 200dp maske ile sayfa zeminine (SinemaBackdrop) söner
             Box(Modifier.fillMaxSize().photoFadeToBackdrop()) {
-                SceneImage(
-                    url = categoryImageUrl(""),
-                    modifier = Modifier.fillMaxSize().graphicsLayer {
-                        translationY = scrollOffset() * 0.5f
-                    },
-                    requestWidthPx = 1080, requestHeightPx = 960, // olculen boyut kullanilir (SceneImage)
-                    fallbackGradient = true
-                )
+                // Kullanıcı kapağı (yerel foto / hazır kapak / varsayılan salon fotoğrafı)
+                ProfileCoverImage(cover, Modifier.fillMaxSize(), parallax = { scrollOffset() * 0.5f })
+                // Okunurluk: üst (durum çubuğu) + alt (isim) karartma her kapakta korunur
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
@@ -481,6 +491,21 @@ private fun ProfileHeroBanner(
                         )
                     )
                 )
+            }
+            // Kapağı değiştir (48dp, durum çubuğunun altında sağ üst)
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 8.dp, end = gutter - 8.dp)
+                    .size(48.dp)
+                    .sinemaClickable(onClick = onChangeCover, role = androidx.compose.ui.semantics.Role.Button)
+                    .semantics { contentDescription = theme.t("Kapağı değiştir", "Change cover") },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(Modifier.size(36.dp).clip(CircleShape).background(Sinema.scrim(0.45f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.AddPhotoAlternate, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
             }
 
         }
@@ -640,25 +665,30 @@ private fun PerformanceMetricsSection(
     totalExercises    : Int,
     totalDurationSeconds: Int,
     totalDistanceMeters : Float,
+    weekWorkouts      : Int = 0,
+    totalWorkouts     : Int = 0,
+    totalVolumeKg     : Double = 0.0,
+    topLiftName       : String = "",
+    topLiftKg         : Float = 0f,
     onNavigateToDetail: () -> Unit
 ) {
-    val metrics = buildList {
-        add(PerformanceMetric(currentStreak.toString(),  strings.unitStreak, strings.dailyStreakLabel,  Icons.Rounded.LocalFireDepartment, theme.rewardGold))
-        add(PerformanceMetric(longestStreak.toString(),  strings.unitStreak, theme.t("En uzun seri", "Longest streak"), Icons.Rounded.EmojiEvents, theme.supportReward))
-        if (totalDurationSeconds > 0) {
-            add(PerformanceMetric(formatProfileDurationValue(totalDurationSeconds), theme.t("dk", "min"), theme.t("Toplam süre", "Total duration"), Icons.Rounded.Timer, theme.accentHi))
-        }
-        if (totalDistanceMeters > 0f) {
-            add(PerformanceMetric(formatProfileDistanceValue(totalDistanceMeters), formatProfileDistanceUnit(totalDistanceMeters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.accentHi))
-        }
-    }
+    // Seri bilgisi üstteki istatistik satırında; burada TEKRAR YOK. Mevcut verilerden (yeni sorgu yok) en değerli üç değer.
+    val metrics = performanceMetricsFor(
+        theme, weekWorkouts, totalWorkouts, totalVolumeKg, topLiftName, topLiftKg, totalDurationSeconds, totalDistanceMeters
+    )
 
     SinemaSection(
         theme = theme,
         title = theme.t("Performans", "Performance"),
         trailing = { SeeAllLink(theme, strings.seeAll, onNavigateToDetail) }
     ) {
-        LazyRow(
+        if (metrics.isEmpty()) {
+            Text(
+                theme.t("İlk antrenmanını tamamla; hacim, rekor ve süre burada görünür.", "Finish your first workout; volume, records and time show up here."),
+                color = Sinema.textSecondary(theme), fontSize = SinemaType.Body,
+                modifier = Modifier.padding(horizontal = sinemaGutter(), vertical = 8.dp)
+            )
+        } else LazyRow(
             contentPadding        = PaddingValues(horizontal = sinemaGutter()),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -1955,3 +1985,48 @@ internal fun rankLevelExplainer(theme: AppThemeState): String = theme.t(
     "Seviye her ${com.cosmibit.profitness.domain.progress.RankTiers.LEVEL_XP} XP'de yükselir.\nRank ise uzun vadeli ligin: Bronze → Silver → Gold → Platinum → Diamond.\nİkisi de aynı toplam XP'den gelir.",
     "Level goes up every ${com.cosmibit.profitness.domain.progress.RankTiers.LEVEL_XP} XP.\nRank is your long-term league: Bronze → Silver → Gold → Platinum → Diamond.\nBoth come from the same total XP."
 )
+
+
+/**
+ * Performans değerleri (saf, testli mantık [performanceValues] ile): Bu hafta antrenman, Toplam hacim, Rekor
+ * (en ağır kaldırış + hareket adı); hacim/rekor yoksa Toplam antrenman / Toplam süre / Mesafe ile tamamlanır. En çok 3.
+ */
+private fun performanceMetricsFor(
+    theme: AppThemeState, weekWorkouts: Int, totalWorkouts: Int, totalVolumeKg: Double,
+    topLiftName: String, topLiftKg: Float, totalDurationSeconds: Int, totalDistanceMeters: Float
+): List<PerformanceMetric> = performanceValues(weekWorkouts, totalWorkouts, totalVolumeKg, topLiftName, topLiftKg, totalDurationSeconds, totalDistanceMeters)
+    .map { v ->
+        val en = theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH
+        when (v) {
+            is PerfValue.Week -> PerformanceMetric(v.count.toString(), theme.t("antr.", "wkt"), theme.t("Bu hafta", "This week"), Icons.Rounded.CalendarMonth, theme.accentColor)
+            is PerfValue.Volume -> PerformanceMetric(formatVolume(v.kg, en).first, formatVolume(v.kg, en).second, theme.t("Toplam hacim", "Total volume"), Icons.Rounded.FitnessCenter, theme.accentHi)
+            is PerfValue.TopLift -> PerformanceMetric(
+                com.cosmibit.profitness.presentation.workout.formatWeightNumber(v.kg, if (en) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")),
+                "kg", theme.t("Rekor · ${v.name}", "Record · ${v.name}"), Icons.Rounded.EmojiEvents, theme.rewardGold
+            )
+            is PerfValue.Workouts -> PerformanceMetric(v.count.toString(), theme.t("antr.", "wkt"), theme.t("Toplam antrenman", "Total workouts"), Icons.Rounded.Timer, theme.supportReward)
+            is PerfValue.Duration -> {
+                val (value, unit) = splitHoursMinutes(v.seconds, en)
+                PerformanceMetric(value, unit, theme.t("Toplam süre", "Total time"), Icons.Rounded.Timer, theme.accentHi)
+            }
+            is PerfValue.Distance -> PerformanceMetric(formatProfileDistanceValue(v.meters), formatProfileDistanceUnit(v.meters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.accentHi)
+        }
+    }
+
+/** "12,4 t" / "860 kg" (TR virgül). */
+private fun formatVolume(kg: Double, english: Boolean): Pair<String, String> {
+    val loc = if (english) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+    return if (kg >= 1000) String.format(loc, "%.1f", kg / 1000) to "t" else String.format(loc, "%.0f", kg) to "kg"
+}
+
+/** Büyük rakam + birim: 6300 sn -> ("1", "sa 45 dk"); 2700 -> ("45", "dk"); 7200 -> ("2", "sa"). */
+internal fun splitHoursMinutes(seconds: Int, english: Boolean): Pair<String, String> {
+    val m = seconds / 60
+    val h = m / 60
+    val mm = m % 60
+    return when {
+        h == 0 -> mm.toString() to (if (english) "min" else "dk")
+        mm == 0 -> h.toString() to (if (english) "h" else "sa")
+        else -> h.toString() to (if (english) "h $mm min" else "sa $mm dk")
+    }
+}
