@@ -1243,6 +1243,8 @@ private fun SinemaTopBar(
                     }
                 }
             }
+        } else {
+            Spacer(Modifier.height(12.dp))
         }
         Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
             if (closedToday) {

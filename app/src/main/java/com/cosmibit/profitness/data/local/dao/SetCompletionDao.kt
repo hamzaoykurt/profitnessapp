@@ -357,7 +357,12 @@ interface SetCompletionDao {
         WHERE user_id = :userId AND exercise_id = :exerciseId
           AND date >= :since
           AND deleted = 0
-          AND (weight_kg IS NOT NULL OR duration_seconds IS NOT NULL OR distance_meters IS NOT NULL)
+          AND (
+              weight_kg IS NOT NULL
+              OR (reps_actual IS NOT NULL AND reps_actual > 0)
+              OR duration_seconds IS NOT NULL
+              OR distance_meters IS NOT NULL
+          )
         ORDER BY date ASC, set_index ASC
     """)
     suspend fun getHistoryForExercise(userId: String, exerciseId: String, since: String): List<SetCompletionEntity>

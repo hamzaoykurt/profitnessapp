@@ -30,4 +30,26 @@ class OracleTrainingSummaryTest {
         )
         assertEquals(OracleTrainingSummary(1, 2, 1), summarizeOracleTraining(days, true, false))
     }
+
+    @Test fun `selectedDayIdx isolates workout day and rest day stats cleanly`() {
+        val days = listOf(
+            WorkoutDayState(
+                WorkoutDay("Mon", "Göğüs & Triceps", persistentListOf(exercise("a"), exercise("b"), exercise("c"))),
+                persistentSetOf("a", "b")
+            ),
+            WorkoutDayState(WorkoutDay("Tue", "Dinlenme", persistentListOf(), isRestDay = true))
+        )
+
+        val workoutSummary = summarizeOracleTraining(days, true, false, selectedDayIdx = 0)
+        assertEquals(1, workoutSummary?.trainingDays)
+        assertEquals(3, workoutSummary?.todayExercises)
+        assertEquals(2, workoutSummary?.todayCompleted)
+        assertEquals(false, workoutSummary?.todayIsRest)
+        assertEquals("Göğüs & Triceps", workoutSummary?.todayTitle)
+
+        val restSummary = summarizeOracleTraining(days, true, false, selectedDayIdx = 1)
+        assertEquals(0, restSummary?.todayExercises)
+        assertEquals(true, restSummary?.todayIsRest)
+        assertEquals("Dinlenme", restSummary?.todayTitle)
+    }
 }

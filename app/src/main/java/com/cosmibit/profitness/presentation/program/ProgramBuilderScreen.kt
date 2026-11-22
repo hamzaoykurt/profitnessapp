@@ -324,7 +324,7 @@ private fun ReadyProgram.localizedSchedule(theme: AppThemeState): String =
             .replace("yoğun", "heavy")
     } else schedule
 
-private val READY_PROGRAMS = listOf(
+internal val READY_PROGRAMS = listOf(
     // ── KAS GELİŞİMİ ─────────────────────────────────────────────────────────
     ReadyProgram(
         "Push / Pull / Legs",

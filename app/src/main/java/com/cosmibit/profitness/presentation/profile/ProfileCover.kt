@@ -110,7 +110,7 @@ class ProfileCoverViewModel @Inject constructor(
     var saving by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
 
-    private fun uid() = supabase.auth.currentUserOrNull()?.id
+    private fun uid() = supabase.auth.currentSessionOrNull()?.user?.id ?: supabase.auth.currentUserOrNull()?.id
 
     init { viewModelScope.launch { uid()?.let { store.load(it) } } }
 
@@ -226,7 +226,7 @@ fun CoverPickerSheet(viewModel: ProfileCoverViewModel, onDismiss: () -> Unit) {
                 else Icon(Icons.Rounded.AddPhotoAlternate, null, tint = theme.accentHi, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(12.dp))
                 Text(theme.t("Kendi fotoğrafın", "Your own photo"), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (cover.customPath != null) Icon(Icons.Rounded.Check, theme.t("Seçili", "Selected"), tint = theme.accentHi, modifier = Modifier.size(20.dp))
+                if (cover.customPath != null || !cover.remoteUrl.isNullOrBlank()) Icon(Icons.Rounded.Check, theme.t("Seçili", "Selected"), tint = theme.accentHi, modifier = Modifier.size(20.dp))
             }
             viewModel.error?.let {
                 Spacer(Modifier.height(6.dp))

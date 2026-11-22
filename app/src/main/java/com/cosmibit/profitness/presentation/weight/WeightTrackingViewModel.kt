@@ -7,7 +7,9 @@ import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiAnalysisPrompts
 import com.cosmibit.profitness.data.ai.AiToolType
 import com.cosmibit.profitness.data.ai.GeminiRepository
+import com.cosmibit.profitness.data.ai.WeightProfileContext
 import com.cosmibit.profitness.data.local.entity.WeightLogEntity
+import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.weight.WeightRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.Period
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
@@ -80,7 +83,8 @@ sealed class WeightTrackingEvent {
 
 @HiltViewModel
 class WeightTrackingViewModel @Inject constructor(
-    private val weightRepository: WeightRepository,
+    private val weightRepository : WeightRepository,
+    private val profileRepository: ProfileRepository,
     private val geminiRepository : GeminiRepository,
     private val planRepository   : com.cosmibit.profitness.data.store.UserPlanRepository,
     private val supabase         : SupabaseClient,
@@ -98,6 +102,9 @@ class WeightTrackingViewModel @Inject constructor(
     private var observeJob   : Job? = null
     private var aiInsightJob : Job? = null
 
+    private fun currentUserId(): String? =
+        supabase.auth.currentSessionOrNull()?.user?.id ?: supabase.auth.currentUserOrNull()?.id
+
     init {
         loadData()
         viewModelScope.launch {
@@ -110,7 +117,7 @@ class WeightTrackingViewModel @Inject constructor(
 
     fun loadData() {
         viewModelScope.launch {
-            val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+            val userId = currentUserId() ?: run {
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
@@ -202,7 +209,7 @@ class WeightTrackingViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val userId = supabase.auth.currentUserOrNull()?.id ?: return@launch
+            val userId = currentUserId() ?: return@launch
             updateState { it.copy(isSaving = true) }
 
             val now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
@@ -238,7 +245,7 @@ class WeightTrackingViewModel @Inject constructor(
 
     fun deleteEntry(entry: WeightLogEntity) {
         viewModelScope.launch {
-            val userId = supabase.auth.currentUserOrNull()?.id ?: return@launch
+            val userId = currentUserId() ?: return@launch
             val result = weightRepository.deleteEntry(entry.id, userId)
             if (result.isSuccess) {
                 sendEvent(WeightTrackingEvent.ShowSnackbar("Kayıt silindi"))
@@ -252,12 +259,14 @@ class WeightTrackingViewModel @Inject constructor(
 
     /**
      * Gemini'den kilo trendine göre kısa, kişisel analiz üretir.
-     * Sonuç state'e yazılır; ViewModel hayatta olduğu sürece cache'lenir.
+     * Sonuç state ve [DiskCache]'e yazılır; sunucu tarafı `reserve_ai_usage` ile yetkilendirilir.
      */
-    fun generateAiInsight(entries: List<WeightLogEntity> = uiState.value.entries) {
+    fun generateAiInsight(
+        entries: List<WeightLogEntity> = uiState.value.entries,
+        isEnglish: Boolean = false
+    ) {
         if (entries.size < 2) return
         if (uiState.value.isAiLoading) return
-        // Plan kilidi (istemci): Free'de AI yok -> Mağaza. Sunucu yine de reddeder; burası kredi/istek harcamasın diye.
         val previous = uiState.value.aiInsight
         updateState { it.copy(isAiLoading = true) }
         aiInsightJob = viewModelScope.launch {
@@ -266,15 +275,33 @@ class WeightTrackingViewModel @Inject constructor(
                 sendEvent(WeightTrackingEvent.ShowPaywall)
                 return@launch
             }
-            val prompt = AiAnalysisPrompts.weightTrend(entries)
-            if (prompt == null) {
-                updateState { it.copy(isAiLoading = false, aiInsight = "Trend analizi için en az iki geçerli kilo kaydı gerekiyor.") }
-                return@launch
+
+            val userId = currentUserId()
+            val profileContext = userId?.let { uid ->
+                profileRepository.getProfile(uid).getOrNull()?.let { dto ->
+                    val age = runCatching {
+                        dto.birth_date?.takeIf { it.length >= 10 }?.let {
+                            Period.between(LocalDate.parse(it.take(10)), LocalDate.now()).years.takeIf { y -> y in 8..100 }
+                        }
+                    }.getOrNull()
+                    WeightProfileContext(
+                        heightCm = dto.height_cm ?: 0.0,
+                        fitnessGoal = dto.fitness_goal.orEmpty(),
+                        gender = dto.gender.orEmpty(),
+                        age = age
+                    )
+                }
             }
 
-            if (!planRepository.consumeCredit()) {
-                updateState { it.copy(isAiLoading = false) }
-                sendEvent(WeightTrackingEvent.ShowPaywall)
+            val prompt = AiAnalysisPrompts.weightTrend(entries, profileContext, isEnglish)
+            if (prompt == null) {
+                updateState {
+                    it.copy(
+                        isAiLoading = false,
+                        aiInsight = if (isEnglish) "At least two valid weight entries are required for trend analysis."
+                        else "Trend analizi için en az iki geçerli kilo kaydı gerekiyor."
+                    )
+                }
                 return@launch
             }
 
@@ -285,21 +312,29 @@ class WeightTrackingViewModel @Inject constructor(
                 tool         = AiToolType.WEIGHT_TREND_ANALYSIS
             )
 
-            if (result.exceptionOrNull() is AiAccessException) {
-                updateState { it.copy(isAiLoading = false) }
-                sendEvent(WeightTrackingEvent.ShowPaywall)
+            val err = result.exceptionOrNull()
+            if (err is AiAccessException) {
+                updateState { it.copy(isAiLoading = false, aiInsight = previous) }
+                if (err.requiresPaywall) {
+                    sendEvent(WeightTrackingEvent.ShowPaywall)
+                } else {
+                    sendEvent(WeightTrackingEvent.ShowSnackbar(err.message.ifBlank {
+                        if (isEnglish) "AI limit reached. Please try again shortly."
+                        else "AI limitine ulaşıldı. Lütfen biraz sonra tekrar dene."
+                    }))
+                }
                 return@launch
             }
-            planRepository.refresh()
 
             val text = result.getOrNull()?.trim().orEmpty()
             if (text.isBlank()) {
-                planRepository.refundCredit()
                 updateState { it.copy(isAiLoading = false, aiInsight = previous) }
-                sendEvent(WeightTrackingEvent.ShowSnackbar("Analiz şu an yapılamadı. Biraz sonra tekrar dene."))
+                sendEvent(WeightTrackingEvent.ShowSnackbar(
+                    if (isEnglish) "Analysis could not be completed right now. Please try again."
+                    else "Analiz şu an yapılamadı. Biraz sonra tekrar dene."
+                ))
                 return@launch
             }
-            val userId = supabase.auth.currentUserOrNull()?.id
             val saved = CachedInsight(insightSignature(entries), text)
             cachedInsight = saved
             if (userId != null) runCatching { disk.putOnIo(insightKey(userId), saved) }
@@ -350,8 +385,8 @@ class WeightTrackingViewModel @Inject constructor(
 
 }
 
-/** Analiz geçerlilik imzası: kayıt sayısı + en son kaydın kimliği/değeri/zamanı. */
-internal fun insightSignature(entries: List<WeightLogEntity>): String {
-    val latest = entries.maxByOrNull { it.recordedAt }
-    return "${entries.size}|${latest?.id}|${latest?.weightKg}|${latest?.recordedAt}"
-}
+/** Analiz geçerlilik imzası: tüm kayıtların sıralı id, değer, zaman ve not özeti. */
+internal fun insightSignature(entries: List<WeightLogEntity>): String =
+    entries
+        .sortedWith(compareBy<WeightLogEntity> { it.recordedAt }.thenBy { it.id })
+        .joinToString(";") { "${it.id}|${it.weightKg}|${it.recordedAt}|${it.note.trim()}" }

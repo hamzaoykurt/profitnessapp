@@ -8,10 +8,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -22,15 +26,16 @@ import javax.inject.Singleton
  * Profil kapağı seçimi.
  *  - [preset]: hazır kapak kimliği (bkz. presentation CoverPresets) ya da null.
  *  - [customPath]: kullanıcının kendi fotoğrafı (yerel dosya, kırpılmış ≤1080px JPEG).
- *  - [remoteUrl]: sunucudaki kapak (migration uygulanınca; şimdilik null).
+ *  - [remoteUrl]: sunucudaki kapak URL'si (`profiles.cover_url`).
  */
 data class ProfileCover(val preset: String? = null, val customPath: String? = null, val remoteUrl: String? = null) {
     val isDefault get() = preset == null && customPath == null && remoteUrl == null
 }
 
 /**
- * Kapak seçimi YEREL kalıcı (SharedPreferences + dosya; kullanıcı başına). Sunucu eşitlemesi önerisi:
- * supabase/proposals/20261118_profile_cover.sql — sütunlar yoksa [loadRemote] sessizce null döner.
+ * Kapak seçimi YEREL kalıcı (SharedPreferences + dosya; kullanıcı başına) ve sunucu ile eşitlenir
+ * (`profiles.cover_url`, `profiles.cover_preset`, `profile-photos/covers/<uid>/cover.jpg`).
+ * Çevrimdışı durumda yerel yazım her zaman anında uygulanır.
  */
 @Singleton
 class ProfileCoverStore @Inject constructor(
@@ -38,31 +43,70 @@ class ProfileCoverStore @Inject constructor(
     private val supabase: SupabaseClient
 ) {
     private val prefs = context.getSharedPreferences("profile_cover", Context.MODE_PRIVATE)
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _cover = MutableStateFlow(ProfileCover())
     val cover: StateFlow<ProfileCover> = _cover.asStateFlow()
     private var loadedFor: String? = null
 
-    /** Kullanıcının yerel seçimini yükler (ilk çağrıda); sonra sunucu alanlarını (varsa) bir kez dener. */
+    /** Çıkışta veya hesap değişiminde bellek önbelleğini sıfırlar. */
+    fun resetSession() {
+        loadedFor = null
+        _cover.value = ProfileCover()
+    }
+
+    /** Kullanıcının yerel seçimini yükler (ilk çağrıda); sonra sunucu alanlarını (varsa) dener. */
     suspend fun load(userId: String) {
         if (loadedFor == userId) return
         loadedFor = userId
         val local = withContext(Dispatchers.IO) {
             ProfileCover(
                 preset = prefs.getString("preset_$userId", null),
-                customPath = prefs.getString("custom_$userId", null)?.takeIf { File(it).exists() }
+                customPath = prefs.getString("custom_$userId", null)?.takeIf { File(it).exists() },
+                remoteUrl = prefs.getString("remote_$userId", null)?.takeIf { it.isNotBlank() }
             )
         }
         _cover.value = local
-        if (local.isDefault) loadRemote(userId)?.let { remote -> _cover.value = remote }
+        if (local.isDefault) {
+            loadRemote(userId)?.let { remote ->
+                when {
+                    !remote.remoteUrl.isNullOrBlank() -> {
+                        withContext(Dispatchers.IO) {
+                            prefs.edit().putString("remote_$userId", remote.remoteUrl).apply()
+                        }
+                        _cover.value = ProfileCover(remoteUrl = remote.remoteUrl)
+                    }
+                    !remote.preset.isNullOrBlank() -> {
+                        val normalizedPreset = remote.preset.takeIf { it != "photo" }
+                        withContext(Dispatchers.IO) {
+                            prefs.edit().putString("preset_$userId", normalizedPreset).apply()
+                        }
+                        _cover.value = ProfileCover(preset = normalizedPreset)
+                    }
+                }
+            }
+        }
     }
 
     fun selectPreset(userId: String, presetId: String?) {
-        prefs.edit().putString("preset_$userId", presetId).remove("custom_$userId").apply()
+        val normalized = presetId?.takeIf { it != "photo" }
+        prefs.edit().putString("preset_$userId", normalized).remove("custom_$userId").remove("remote_$userId").apply()
         File(context.filesDir, fileName(userId)).delete()
-        _cover.value = ProfileCover(preset = presetId)
+        _cover.value = ProfileCover(preset = normalized)
+        syncScope.launch {
+            runCatching {
+                supabase.from("profiles").update(
+                    {
+                        set("cover_preset", normalized ?: "photo")
+                        set("cover_url", null as String?)
+                    }
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            }
+        }
     }
 
-    /** Seçilen fotoğrafı kapak oranında ortadan kırpar, ≤1080px'e küçültür, JPEG ~80 kaydeder. */
+    /** Seçilen fotoğrafı kapak oranında ortadan kırpar, ≤1080px'e küçültür, JPEG ~80 kaydeder ve Storage'a eşitler. */
     suspend fun saveCustom(userId: String, uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val resolver = context.contentResolver
@@ -86,6 +130,25 @@ class ProfileCoverStore @Inject constructor(
             prefs.edit().putString("custom_$userId", file.absolutePath).remove("preset_$userId").apply()
             // Aynı yol: görüntü önbelleği yenilensin diye sürüm parametresi Coil tarafında dosya değişim zamanından gelir
             _cover.value = ProfileCover(customPath = file.absolutePath)
+
+            // Sunucu eşitlemesi: hata yerel özel kapağı bozmaz (çevrimdışı güvenli)
+            runCatching {
+                val storagePath = "covers/$userId/cover.jpg"
+                val bytes = file.readBytes()
+                supabase.storage.from("profile-photos").upload(storagePath, bytes, upsert = true)
+                val publicUrl = "${supabase.storage.from("profile-photos").publicUrl(storagePath)}?v=${System.currentTimeMillis()}"
+                supabase.from("profiles").update(
+                    {
+                        set("cover_url", publicUrl)
+                        set("cover_preset", null as String?)
+                    }
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+                prefs.edit().putString("remote_$userId", publicUrl).apply()
+                _cover.value = ProfileCover(customPath = file.absolutePath, remoteUrl = publicUrl)
+            }
+            Unit
         }
     }
 

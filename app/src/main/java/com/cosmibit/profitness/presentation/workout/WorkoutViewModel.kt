@@ -12,6 +12,7 @@ import com.cosmibit.profitness.core.notification.WorkoutNotificationManager
 import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiAnalysisPrompts
 import com.cosmibit.profitness.data.ai.AiToolType
+import com.cosmibit.profitness.data.ai.ExercisePlanContext
 import com.cosmibit.profitness.data.ai.GeminiRepository
 import com.cosmibit.profitness.data.challenges.ChallengeRepository
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
@@ -50,6 +51,7 @@ import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import javax.inject.Inject
 
 enum class TimerPurpose { Rest, Activity, TimedSet }
@@ -126,6 +128,7 @@ data class WorkoutScreenState(
 
 sealed class WorkoutEvent {
     data object ShowPaywall : WorkoutEvent()
+    data class ShowSnackbar(val message: String) : WorkoutEvent()
 }
 
 @Stable
@@ -1287,8 +1290,10 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    fun analyzeProgression(exerciseId: String, exerciseName: String) {
-        val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return
+    fun analyzeProgression(exerciseId: String, exerciseName: String, isEnglish: Boolean = false) {
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id
+            ?: supabase.auth.currentUserOrNull()?.id
+            ?: return
         if (exerciseId in uiState.value.exerciseAiLoading) return
         updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading + exerciseId) }
 
@@ -1301,32 +1306,50 @@ class WorkoutViewModel @Inject constructor(
                     ?.exerciseTableId
                     ?.ifBlank { exerciseId }
                     ?: exerciseId
-                workoutRepository.getExerciseWeightHistory(userId, dbExerciseId)
+                val fetched = workoutRepository.getExerciseWeightHistory(userId, dbExerciseId, weeks = ALL_HISTORY_WEEKS)
                     .getOrNull() ?: emptyList()
+                updateState { it.copy(exerciseHistory = it.exerciseHistory + (exerciseId to fetched)) }
+                fetched
             }
 
             val exercise = uiState.value.dayStates
                 .flatMap { it.day.exercises }
                 .find { it.id == exerciseId }
+            val planContext = exercise?.let { ex ->
+                ExercisePlanContext(
+                    plannedSets = ex.sets,
+                    plannedReps = ex.reps,
+                    restSeconds = ex.restSeconds,
+                    isBodyweight = ex.trackingMode == "reps_only" || ex.sportType == "bodyweight" ||
+                        (history.isNotEmpty() && history.all { (it.weightKg ?: 0f) <= 0f } && history.any { (it.repsActual ?: 0) > 0 })
+                )
+            }
             val prompt = AiAnalysisPrompts.exerciseProgression(
                 exerciseName = exerciseName,
                 targetMuscle = listOfNotNull(exercise?.target, exercise?.category)
                     .filter { it.isNotBlank() }
                     .joinToString(" / "),
-                history = history
+                history = history,
+                planContext = planContext,
+                isEnglish = isEnglish
             )
 
             if (prompt == null) {
+                val emptyMsg = if (isEnglish) {
+                    "There is not enough weight, duration or distance data to analyze this exercise yet. After logging 1-2 sessions I can set a clearer target."
+                } else {
+                    "Bu hareket için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. 1-2 seans veri girdikten sonra net bir hedef çıkarabilirim."
+                }
                 updateState {
                     it.copy(
-                        exerciseAiInsight = it.exerciseAiInsight + (exerciseId to "Bu hareket için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. 1-2 seans veri girdikten sonra net bir hedef çıkarabilirim."),
+                        exerciseAiInsight = it.exerciseAiInsight + (exerciseId to emptyMsg),
                         exerciseAiLoading = it.exerciseAiLoading - exerciseId
                     )
                 }
                 return@launch
             }
 
-            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis) || !planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis)) {
                 updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
                 sendEvent(WorkoutEvent.ShowPaywall)
                 return@launch
@@ -1338,27 +1361,47 @@ class WorkoutViewModel @Inject constructor(
                 prompt.systemPrompt,
                 AiToolType.WORKOUT_PROGRESS_ANALYSIS
             )
-            if (result.exceptionOrNull() is AiAccessException) {
+            val accessErr = result.exceptionOrNull() as? AiAccessException
+            if (accessErr != null) {
                 updateState { it.copy(exerciseAiLoading = it.exerciseAiLoading - exerciseId) }
-                sendEvent(WorkoutEvent.ShowPaywall)
+                if (accessErr.requiresPaywall) {
+                    sendEvent(WorkoutEvent.ShowPaywall)
+                } else {
+                    val msg = accessErr.message ?: if (isEnglish) {
+                        "AI analysis limit reached temporarily. Please try again shortly."
+                    } else {
+                        "AI analiz limiti geçici olarak doldu. Kısa süre sonra tekrar dene."
+                    }
+                    sendEvent(WorkoutEvent.ShowSnackbar(msg))
+                }
                 return@launch
             }
             result.onSuccess { response ->
-                viewModelScope.launch { planRepository.refresh() }
-                updateState { state ->
-                    state.copy(
-                        exerciseAiInsight = state.exerciseAiInsight + (exerciseId to response),
-                        exerciseAiLoading = state.exerciseAiLoading - exerciseId
+                val clean = response.trim()
+                if (clean.isBlank()) {
+                    updateState { state -> state.copy(exerciseAiLoading = state.exerciseAiLoading - exerciseId) }
+                    sendEvent(
+                        WorkoutEvent.ShowSnackbar(
+                            if (isEnglish) "Could not load analysis. Please try again." else "Analiz yüklenemedi. Tekrar deneyin."
+                        )
                     )
+                } else {
+                    updateState { state ->
+                        state.copy(
+                            exerciseAiInsight = state.exerciseAiInsight + (exerciseId to clean),
+                            exerciseAiLoading = state.exerciseAiLoading - exerciseId
+                        )
+                    }
                 }
             }.onFailure {
-                planRepository.refundCredit()
                 updateState { state ->
-                    state.copy(
-                        exerciseAiInsight = state.exerciseAiInsight + (exerciseId to "Analiz yüklenemedi. Tekrar deneyin."),
-                        exerciseAiLoading = state.exerciseAiLoading - exerciseId
-                    )
+                    state.copy(exerciseAiLoading = state.exerciseAiLoading - exerciseId)
                 }
+                sendEvent(
+                    WorkoutEvent.ShowSnackbar(
+                        if (isEnglish) "Could not load analysis. Please try again." else "Analiz yüklenemedi. Tekrar deneyin."
+                    )
+                )
             }
         }
     }
@@ -2170,7 +2213,7 @@ class WorkoutViewModel @Inject constructor(
         toFloatInputOrNull()?.let { (it * 60f).toInt().coerceAtLeast(1) }
 
     private fun Float.trimmedString(): String =
-        if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+        if (this % 1f == 0f) toInt().toString() else String.format(Locale.US, "%.1f", this)
 
     private fun loadProfileWeight(userId: String) {
         viewModelScope.launch {

@@ -44,7 +44,6 @@ const MAX_REQUEST_BYTES = Number(Deno.env.get("AI_MAX_REQUEST_BYTES") ?? "150000
 const MAX_TEXT_CHARS = Number(Deno.env.get("AI_MAX_TEXT_CHARS") ?? "30000");
 const MAX_INLINE_BYTES = Number(Deno.env.get("AI_MAX_INLINE_BYTES") ?? "1200000");
 const MAX_IDEMPOTENCY_KEY_CHARS = 120;
-const DEFAULT_ENERGY_ENTITLEMENT_MESSAGE = "Bu işlem için Enerji veya abonelik gerekiyor.";
 
 const ALLOWED_INLINE_MIME = new Set([
   "image/jpeg",
@@ -78,14 +77,6 @@ function configuredModels(tool?: string): string[] {
   return models.sort((left, right) => Number(left.includes("flash-lite")) - Number(right.includes("flash-lite")));
 }
 
-function energyEntitlementMessage(message?: string | null): string {
-  if (!message) return DEFAULT_ENERGY_ENTITLEMENT_MESSAGE;
-  return message
-    .replaceAll("kredi veya abonelik hakkı", "Enerji veya abonelik")
-    .replaceAll("kredi veya abonelik", "Enerji veya abonelik")
-    .replaceAll("kredi", "Enerji")
-    .replaceAll("Kredi", "Enerji");
-}
 
 function cleanTool(value: unknown): string {
   if (typeof value !== "string") throw new Error("invalid_tool");
@@ -229,9 +220,16 @@ Deno.serve(async (req: Request) => {
           message: reservation.message ?? "Bu idempotency anahtarı için istek zaten işlendi veya işleniyor.",
         });
       }
+      if (reservation?.reason === "rate_limited") {
+        return jsonResponse(429, {
+          code: "rate_limited",
+          message: reservation?.message ?? "Çok hızlı istek gönderildi. Biraz sonra tekrar dene.",
+        });
+      }
       return jsonResponse(402, {
-        code: reservation?.reason ?? "insufficient_entitlement",
-        message: energyEntitlementMessage(reservation?.message),
+        code: reservation?.reason ?? "premium_required",
+        message: reservation?.message ?? "Bu AI özelliği Premium'da.",
+        freeAiProgramsLeft: reservation?.free_ai_programs_left ?? null,
         requiredCredits: reservation?.required_credits ?? null,
         remainingCredits: reservation?.remaining_credits ?? null,
       });

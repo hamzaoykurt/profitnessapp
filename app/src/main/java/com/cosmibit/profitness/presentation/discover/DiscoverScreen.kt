@@ -1104,7 +1104,7 @@ private fun DiscoverTopControls(
     ) {
         BoxWithConstraints(
             Modifier.weight(1f).height(54.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceIn(1f, 1.3f))
-                .sinemaCapsuleGlass(RoundedCornerShape(SinemaRadius.R28), blur = 16.dp)
+                .sinemaRaised(RoundedCornerShape(SinemaRadius.R28), SinemaRaise.Mini)
                 .padding(3.dp)
         ) {
             val tabW = maxWidth / 3

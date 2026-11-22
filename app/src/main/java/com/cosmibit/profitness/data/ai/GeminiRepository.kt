@@ -40,4 +40,8 @@ enum class AiToolType {
 class AiAccessException(
     val code: String,
     override val message: String
-) : Exception(message)
+) : Exception(message) {
+    /** Yalnız üyelik/ücretsiz hak yetersizliğinde paywall aç; hız/adil-kullanım/kota limitinde hata mesajı göster. */
+    val requiresPaywall: Boolean
+        get() = code in setOf("premium_required", "free_grants_used", "insufficient_entitlement")
+}

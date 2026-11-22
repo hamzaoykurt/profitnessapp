@@ -102,6 +102,12 @@ class DiskCache @Inject constructor(
         withContext(Dispatchers.IO) { removeByPrefix(prefix) }
     }
 
+    suspend fun clearAllOnIo() {
+        withContext(Dispatchers.IO) {
+            readyDir()?.listFiles()?.forEach { it.delete() }
+        }
+    }
+
     fun removeByPrefixAsync(prefix: String) {
         ioScope.launch { removeByPrefix(prefix) }
     }

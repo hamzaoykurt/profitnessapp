@@ -1,7 +1,9 @@
 package com.cosmibit.profitness.presentation.components
 
+import com.cosmibit.profitness.presentation.program.READY_PROGRAMS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Kapak türü eşlemesi: spor adı > kategori > fitness varsayılanı (hash yok). */
@@ -64,5 +66,18 @@ class CoverTypeTest {
         assertNotEquals(CoverType.Strength.hue, CoverType.Run.hue)
         assertNotEquals(CoverType.Tennis.hue, CoverType.Rowing.hue)
         assertEquals(CoverType.Strength.hue, coverHueFor("Hibrit"))
+    }
+
+    @Test fun readyProgramsAllHaveNonBlankMuscleLabelsAndConsistentCovers() {
+        assertTrue("Expected ready program catalog entries", READY_PROGRAMS.size >= 20)
+        READY_PROGRAMS.forEach { p ->
+            assertTrue("${p.title}: muscleLabels must not be empty", p.muscleLabels.isNotEmpty())
+            assertTrue("${p.title}: primary muscle label must be non-blank", p.muscleLabels.first().isNotBlank())
+            assertTrue("${p.title}: muscleLabels and fractions align", p.muscleLabels.size == p.muscleFractions.size)
+            val categoryKey = "${p.title} ${p.category.trLabel} ${p.goal} ${p.muscleLabels.firstOrNull().orEmpty()}"
+            val resolvedFromCard = coverTypeFor(categoryKey)
+            val resolvedFromDialog = coverTypeFor("${p.title} ${p.category.trLabel} ${p.goal} ${p.muscleLabels.firstOrNull().orEmpty()}")
+            assertEquals("${p.title}: card and detail dialog cover must match", resolvedFromCard, resolvedFromDialog)
+        }
     }
 }

@@ -772,13 +772,14 @@ private fun StepBodyMetrics(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                SinemaBigStat(value = "%.1f".format(bmi), label = theme.t("BMI / VKİ", "BMI"), size = 44)
+                val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+                SinemaBigStat(value = String.format(loc, "%.1f", bmi), label = theme.t("BMI / VKİ", "BMI"), size = 44)
                 Column(horizontalAlignment = Alignment.End) {
                     Text(bmiLabel, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold)
                     if (bodyFat > 0) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%").format(bodyFat),
+                            String.format(loc, theme.t("Tahmini yağ: %.1f%%", "Estimated fat: %.1f%%"), bodyFat),
                             color = Sinema.textSecondary(theme),
                             fontSize = SinemaType.Caption,
                             fontWeight = FontWeight.SemiBold
@@ -857,8 +858,9 @@ private fun StepPersonalProgram(
     val loading = state.isSaving || state.isGeneratingProgram
     val bmi = vm.bmi
     val bodyFat = vm.bodyFatPct
-    val bmiText = if (bmi > 0) "%.1f".format(bmi) else theme.t("Eksik", "Missing")
-    val fatText = if (bodyFat > 0) "%.1f%%".format(bodyFat) else theme.t("Eksik", "Missing")
+    val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+    val bmiText = if (bmi > 0) String.format(loc, "%.1f", bmi) else theme.t("Eksik", "Missing")
+    val fatText = if (bodyFat > 0) String.format(loc, "%.1f%%", bodyFat) else theme.t("Eksik", "Missing")
 
     StepScaffold(
         nav = {

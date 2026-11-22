@@ -9,6 +9,7 @@ import com.cosmibit.profitness.data.cache.DiskCache
 import com.cosmibit.profitness.data.leaderboard.LeaderboardRepository
 import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.profile.dto.AchievementDto
+import com.cosmibit.profitness.data.social.SocialRepository
 import com.cosmibit.profitness.data.store.UserPlan
 import com.cosmibit.profitness.data.store.UserPlanRepository
 import com.cosmibit.profitness.data.transfer.DataTransferRepository
@@ -71,6 +72,8 @@ data class ProfileState(
     /** Genel XP sıralamasındaki yerin (0 = veri yok). */
     val xpRankPosition       : Long                 = 0L,
     val xpRankTotalUsers     : Long                 = 0L,
+    val friendXpRankPosition : Int                  = 0,
+    val friendXpRankTotal    : Int                  = 0,
     val totalWorkouts        : Int                  = 0,
     val totalExercises       : Int                  = 0,
     val totalDurationSeconds : Int                  = 0,
@@ -121,6 +124,7 @@ sealed class ProfileEvent {
 class ProfileViewModel @Inject constructor(
     private val profileRepository : ProfileRepository,
     private val leaderboardRepository: LeaderboardRepository,
+    private val socialRepository  : SocialRepository,
     private val planRepository    : UserPlanRepository,
     private val workoutRepository : WorkoutRepository,
     private val dataTransferRepository: DataTransferRepository,
@@ -225,6 +229,7 @@ class ProfileViewModel @Inject constructor(
             val unlockedAchDef  = async { profileRepository.getUnlockedAchievementKeys(userId) }
             val localStreakDef   = async { workoutRepository.getStreak(userId) }
             val trackedDef       = async { workoutRepository.getTrackedExerciseSummaries(userId) }
+            val friendXpDef      = async { socialRepository.getFriendLeaderboardXp(100) }
 
             val profile          = profileDef.await().getOrNull()
             val stats            = statsDef.await().getOrNull()
@@ -236,6 +241,8 @@ class ProfileViewModel @Inject constructor(
             val currentStreak    = maxOf(localStreak, stats?.current_streak ?: 0)
             val longestStreak    = maxOf(stats?.longest_streak ?: 0, currentStreak)
             val trackedSummaries = trackedDef.await().getOrNull().orEmpty()
+            val friendXpRows     = friendXpDef.await().getOrNull().orEmpty()
+            val myFriendXpRow    = if (friendXpRows.size >= 2) friendXpRows.firstOrNull { it.isMe } else null
             val streakRank       = leaderboardRepository.getMyStreakRank().getOrNull()
             val xpRank           = leaderboardRepository.getMyXpRank().getOrNull()   // yalnız gösterim (Profil rank kartı)
 
@@ -308,6 +315,8 @@ class ProfileViewModel @Inject constructor(
                 streakRankTotalUsers= streakRank?.total_users ?: 0L,
                 xpRankPosition      = xpRank?.rank_position ?: 0L,
                 xpRankTotalUsers    = xpRank?.total_users ?: 0L,
+                friendXpRankPosition= myFriendXpRow?.rankPosition ?: 0,
+                friendXpRankTotal   = friendXpRows.takeIf { it.size >= 2 }?.size ?: 0,
                 totalWorkouts       = totalWorkouts,
                 totalExercises      = totalExercises,
                 totalDurationSeconds= totalDurationSeconds,

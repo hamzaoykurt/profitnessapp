@@ -95,6 +95,9 @@ interface UserPlanRepository {
     /** Gerçek iade server tarafında yapılır; client no-op. */
     suspend fun refundCredit()
 
+    /** Çıkışta hesaplar arası önbellek sızıntısını önlemek için bellek durumunu sıfırlar. */
+    fun resetSession()
+
     companion object {
         /** Server bakiyesi gelene kadar yanıltıcı starter Enerji göstermeyelim. */
         const val INITIAL_CREDITS_PLACEHOLDER = 0

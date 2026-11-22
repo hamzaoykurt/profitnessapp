@@ -8,7 +8,7 @@ returns jsonb
 language plpgsql
 volatile
 security definer
-set search_path to 'public'
+set search_path to 'public', 'pg_temp'
 as $function$
 declare
   me uuid := auth.uid();

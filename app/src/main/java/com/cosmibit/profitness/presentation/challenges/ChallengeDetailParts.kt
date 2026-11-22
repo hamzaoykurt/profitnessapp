@@ -260,7 +260,12 @@ internal fun DetailAvatar(avatar: String?, name: String, size: Dp) {
 @Composable
 internal fun ChallengeProgressCard(c: ChallengeSummary, unit: String, hue: Color) {
     val theme = LocalAppTheme.current
-    val numFmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr")) }
+    val numFmt = remember(theme.language) {
+        java.text.NumberFormat.getIntegerInstance(
+            if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+            else java.util.Locale.forLanguageTag("tr-TR")
+        )
+    }
     val phase = challengePhaseOf(c)
     val joined = c.isJoined || c.isCompleted
     val pct = if (c.isCompleted) 1f else c.progressPct.coerceIn(0f, 1f)
@@ -393,11 +398,12 @@ private fun StatBlock(icon: ImageVector, value: String, label: String, tint: Col
 /** Yuvarlak ikon diski (mini yükseltilmiş, isteğe bağlı tint). */
 @Composable
 internal fun IconDisk(icon: ImageVector, tint: Color?, size: Dp = 40.dp) {
+    val theme = LocalAppTheme.current
     Box(
         Modifier.size(size).sinemaRaised(CircleShape, SinemaRaise.Mini, tint = tint),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = tint?.cdOnTint() ?: Sinema.Text, modifier = Modifier.size(size * 0.5f))
+        Icon(icon, null, tint = tint?.cdOnTint() ?: Sinema.text(theme), modifier = Modifier.size(size * 0.5f))
     }
 }
 
@@ -470,7 +476,12 @@ internal fun LeaderboardRowV2(
     hue: Color
 ) {
     val theme = LocalAppTheme.current
-    val numFmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale("tr")) }
+    val numFmt = remember(theme.language) {
+        java.text.NumberFormat.getIntegerInstance(
+            if (theme.language == com.cosmibit.profitness.core.theme.AppLanguage.ENGLISH) java.util.Locale.ENGLISH
+            else java.util.Locale.forLanguageTag("tr-TR")
+        )
+    }
     val me = entry.isMe
     val meTint = theme.accentColor
     val nameIsSen = entry.displayName.isBlank() || entry.displayName == "Sen"

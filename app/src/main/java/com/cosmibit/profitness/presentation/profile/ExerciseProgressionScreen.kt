@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
@@ -57,9 +58,11 @@ import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiAnalysisPrompts
 import com.cosmibit.profitness.data.ai.AiToolType
 import com.cosmibit.profitness.data.ai.GeminiRepository
+import com.cosmibit.profitness.data.cache.DiskCache
 import com.cosmibit.profitness.data.local.dao.ExerciseProgressSummary
 import com.cosmibit.profitness.data.local.entity.SetCompletionEntity
 import com.cosmibit.profitness.data.workout.WorkoutRepository
+import com.cosmibit.profitness.presentation.workout.formatWeightNumber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -67,16 +70,38 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 // ── State & ViewModel ─────────────────────────────────────────────────────────
+
+private const val ALL_HISTORY_WEEKS = 520
+
+@Serializable
+private data class CachedExerciseInsight(
+    val signature: String,
+    val insight: String,
+    val isEnglish: Boolean = false
+)
+
+private fun historySignature(history: List<SetCompletionEntity>): String =
+    history.filter { !it.deleted }
+        .sortedWith(compareBy<SetCompletionEntity> { it.date }.thenBy { it.setIndex })
+        .joinToString("|") { s ->
+            "${s.date}:${s.setIndex}:${s.weightKg ?: ""}:${s.repsActual ?: ""}:${s.durationSeconds ?: ""}:${s.distanceMeters ?: ""}"
+        }
 
 data class ExerciseProgressionState(
     val summaries       : List<ExerciseProgressSummary>  = emptyList(),
     val historyMap      : Map<String, List<SetCompletionEntity>> = emptyMap(),
+    val loadedHistoryIds: Set<String>                     = emptySet(),
     val aiInsightMap    : Map<String, String>             = emptyMap(),
+    val aiStaleSet      : Set<String>                     = emptySet(),
     val aiLoadingSet    : Set<String>                     = emptySet(),
     val isLoading       : Boolean                         = true,
     val userPlan        : com.cosmibit.profitness.data.store.UserPlan = com.cosmibit.profitness.data.store.UserPlan.FREE,
@@ -85,6 +110,7 @@ data class ExerciseProgressionState(
 
 sealed class ExerciseProgressionEvent {
     data object ShowPaywall : ExerciseProgressionEvent()
+    data class ShowSnackbar(val message: String) : ExerciseProgressionEvent()
 }
 
 @HiltViewModel
@@ -92,6 +118,7 @@ class ExerciseProgressionViewModel @Inject constructor(
     private val workoutRepository : WorkoutRepository,
     private val geminiRepository  : GeminiRepository,
     private val planRepository    : com.cosmibit.profitness.data.store.UserPlanRepository,
+    private val disk              : DiskCache,
     private val supabase          : SupabaseClient
 ) : BaseViewModel<ExerciseProgressionState, ExerciseProgressionEvent>(ExerciseProgressionState()) {
 
@@ -106,12 +133,15 @@ class ExerciseProgressionViewModel @Inject constructor(
 
     private var lastLoadMs = 0L
 
+    private fun currentUserId(): String? =
+        supabase.auth.currentSessionOrNull()?.user?.id ?: supabase.auth.currentUserOrNull()?.id
+
     fun load() {
         if (loadJob?.isActive == true) return
         // Tekrar girişte (5 dk içinde, veri varsa) yeniden yükleme yok: VM dashboard kapsamında canlı.
         if (com.cosmibit.profitness.core.ui.isCacheFresh(uiState.value.summaries.isNotEmpty(), lastLoadMs, System.currentTimeMillis())) return
         loadJob = viewModelScope.launch {
-            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: run {
+            val userId = currentUserId() ?: run {
                 updateState { it.copy(isLoading = false) }
                 return@launch
             }
@@ -131,45 +161,77 @@ class ExerciseProgressionViewModel @Inject constructor(
         }
     }
 
-    fun loadHistory(exerciseId: String) {
-        if (uiState.value.historyMap.containsKey(exerciseId)) return
+    fun loadHistory(exerciseId: String, isEnglish: Boolean = false) {
+        if (exerciseId in uiState.value.loadedHistoryIds) return
         viewModelScope.launch {
-            val userId = supabase.auth.currentSessionOrNull()?.user?.id ?: return@launch
-            val history = workoutRepository.getExerciseWeightHistory(userId, exerciseId, weeks = 12)
+            val userId = currentUserId() ?: return@launch
+            val history = workoutRepository.getExerciseWeightHistory(userId, exerciseId, weeks = ALL_HISTORY_WEEKS)
                 .getOrElse { emptyList() }
-            updateState { it.copy(historyMap = it.historyMap + (exerciseId to history)) }
+            val cached = disk.getOnIo<CachedExerciseInsight>("ex_ai_insight_${userId}_${exerciseId}")
+                ?.takeIf { it.isEnglish == isEnglish && it.insight.isNotBlank() }
+            val currentSig = historySignature(history)
+            val isStale = cached != null && cached.signature != currentSig
+            updateState { state ->
+                state.copy(
+                    historyMap = state.historyMap + (exerciseId to history),
+                    loadedHistoryIds = state.loadedHistoryIds + exerciseId,
+                    aiInsightMap = if (cached != null && !state.aiInsightMap.containsKey(exerciseId)) {
+                        state.aiInsightMap + (exerciseId to cached.insight)
+                    } else state.aiInsightMap,
+                    aiStaleSet = if (isStale) state.aiStaleSet + exerciseId else state.aiStaleSet - exerciseId
+                )
+            }
         }
     }
 
-    fun analyzeProgression(exerciseId: String, exerciseName: String, targetMuscle: String) {
+    fun analyzeProgression(
+        exerciseId: String,
+        exerciseName: String,
+        targetMuscle: String,
+        isEnglish: Boolean = false
+    ) {
         if (uiState.value.aiLoadingSet.contains(exerciseId)) return
         updateState { it.copy(aiLoadingSet = it.aiLoadingSet + exerciseId) }
 
         viewModelScope.launch {
-            val userId = supabase.auth.currentSessionOrNull()?.user?.id
+            val userId = currentUserId()
             val history = uiState.value.historyMap[exerciseId]
                 ?: userId?.let {
-                    workoutRepository.getExerciseWeightHistory(it, exerciseId, weeks = 12)
+                    workoutRepository.getExerciseWeightHistory(it, exerciseId, weeks = ALL_HISTORY_WEEKS)
                         .getOrElse { emptyList() }
                 }
                 ?: emptyList()
 
+            updateState {
+                it.copy(
+                    historyMap = it.historyMap + (exerciseId to history),
+                    loadedHistoryIds = it.loadedHistoryIds + exerciseId
+                )
+            }
+
             val prompt = AiAnalysisPrompts.exerciseProgression(
                 exerciseName = exerciseName,
                 targetMuscle = targetMuscle,
-                history = history
+                history = history,
+                isEnglish = isEnglish
             )
             if (prompt == null) {
+                val emptyMsg = if (isEnglish) {
+                    "There is not enough weight, duration or distance data to analyze this exercise yet. After 1-2 logged sessions, I can give a clearer read."
+                } else {
+                    "Bu egzersiz için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. En az 1-2 seansı kaydettikten sonra daha net yorum yapabilirim."
+                }
                 updateState {
                     it.copy(
-                        aiInsightMap = it.aiInsightMap + (exerciseId to "Bu egzersiz için henüz analiz yapacak kadar ağırlık, süre veya mesafe verisi yok. En az 1-2 seansı kaydettikten sonra daha net yorum yapabilirim."),
+                        aiInsightMap = it.aiInsightMap + (exerciseId to emptyMsg),
+                        aiStaleSet = it.aiStaleSet - exerciseId,
                         aiLoadingSet = it.aiLoadingSet - exerciseId
                     )
                 }
                 return@launch
             }
 
-            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis) || !planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ExerciseAnalysis)) {
                 updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
                 sendEvent(ExerciseProgressionEvent.ShowPaywall)
                 return@launch
@@ -181,16 +243,58 @@ class ExerciseProgressionViewModel @Inject constructor(
                 prompt.systemPrompt,
                 AiToolType.EXERCISE_PROGRESS_ANALYSIS
             )
-            if (result.exceptionOrNull() is AiAccessException) {
+            val accessErr = result.exceptionOrNull() as? AiAccessException
+            if (accessErr != null) {
                 updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
-                sendEvent(ExerciseProgressionEvent.ShowPaywall)
+                if (accessErr.requiresPaywall) {
+                    sendEvent(ExerciseProgressionEvent.ShowPaywall)
+                } else {
+                    val msg = accessErr.message ?: if (isEnglish) {
+                        "AI analysis limit reached temporarily. Please try again shortly."
+                    } else {
+                        "AI analiz limiti geçici olarak doldu. Kısa süre sonra tekrar dene."
+                    }
+                    sendEvent(ExerciseProgressionEvent.ShowSnackbar(msg))
+                }
                 return@launch
             }
-            planRepository.refresh()
-            val insight = result.getOrElse { planRepository.refundCredit(); "Analiz yapılamadı." }
+
+            val err = result.exceptionOrNull()
+            if (err != null) {
+                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
+                sendEvent(
+                    ExerciseProgressionEvent.ShowSnackbar(
+                        if (isEnglish) "Analysis could not be completed." else "Analiz yapılamadı."
+                    )
+                )
+                return@launch
+            }
+
+            val insight = result.getOrNull().orEmpty().trim()
+            if (insight.isBlank()) {
+                updateState { it.copy(aiLoadingSet = it.aiLoadingSet - exerciseId) }
+                sendEvent(
+                    ExerciseProgressionEvent.ShowSnackbar(
+                        if (isEnglish) "Analysis could not be completed." else "Analiz yapılamadı."
+                    )
+                )
+                return@launch
+            }
+
+            if (userId != null) {
+                disk.putOnIo(
+                    "ex_ai_insight_${userId}_${exerciseId}",
+                    CachedExerciseInsight(
+                        signature = historySignature(history),
+                        insight = insight,
+                        isEnglish = isEnglish
+                    )
+                )
+            }
             updateState {
                 it.copy(
                     aiInsightMap = it.aiInsightMap + (exerciseId to insight),
+                    aiStaleSet   = it.aiStaleSet - exerciseId,
                     aiLoadingSet = it.aiLoadingSet - exerciseId
                 )
             }
@@ -200,7 +304,11 @@ class ExerciseProgressionViewModel @Inject constructor(
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-private val SHORT_DATE_FMT = DateTimeFormatter.ofPattern("d MMM")
+private fun progressionLocale(theme: AppThemeState): Locale =
+    if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale.forLanguageTag("tr-TR")
+
+private fun shortDateFormatter(theme: AppThemeState): DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM", progressionLocale(theme))
 
 @Composable
 fun ExerciseProgressionScreen(
@@ -210,8 +318,11 @@ fun ExerciseProgressionScreen(
 ) {
     val theme   = LocalAppTheme.current
     val accent  = theme.effectiveAccentColor
+    val isEnglish = theme.language == AppLanguage.ENGLISH
     val state   by viewModel.uiState.collectAsStateWithLifecycle()
     var showPaywall by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LaunchedEffect(Unit) {
@@ -219,6 +330,7 @@ fun ExerciseProgressionScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is ExerciseProgressionEvent.ShowPaywall -> showPaywall = true
+                is ExerciseProgressionEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }
@@ -278,6 +390,7 @@ fun ExerciseProgressionScreen(
                         }
                     }
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize().sinemaTopFade(),
                         contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = SinemaNavHeight + 24.dp + navBarBottom),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -302,21 +415,32 @@ fun ExerciseProgressionScreen(
                         }
                         items(shown, key = { it.exerciseId }, contentType = { "exercise" }) { summary ->
                             ExerciseProgressionCard(
-                                summary      = summary,
-                                history      = state.historyMap[summary.exerciseId] ?: emptyList(),
-                                aiInsight    = state.aiInsightMap[summary.exerciseId] ?: "",
-                                isAiLoading  = summary.exerciseId in state.aiLoadingSet,
-                                theme        = theme,
-                                isFree       = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
-                                aiCredits    = state.aiCredits,
-                                onExpand     = { viewModel.loadHistory(summary.exerciseId) },
-                                onRequestAi  = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle) }
+                                summary         = summary,
+                                history         = state.historyMap[summary.exerciseId] ?: emptyList(),
+                                isHistoryLoaded = summary.exerciseId in state.loadedHistoryIds,
+                                aiInsight       = state.aiInsightMap[summary.exerciseId] ?: "",
+                                isAiStale       = summary.exerciseId in state.aiStaleSet,
+                                isAiLoading     = summary.exerciseId in state.aiLoadingSet,
+                                theme           = theme,
+                                isFree          = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
+                                aiCredits       = state.aiCredits,
+                                onExpand        = { viewModel.loadHistory(summary.exerciseId, isEnglish) },
+                                onRequestAi     = { viewModel.analyzeProgression(summary.exerciseId, summary.name, summary.targetMuscle, isEnglish) }
                             )
                         }
                     }
                 }
             }
         }
+        if (listState.canScrollBackward) Box(
+            Modifier.fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
+                .background(Brush.verticalGradient(listOf(Sinema.page(theme).copy(0.94f), Sinema.page(theme).copy(0.94f), Color.Transparent)))
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = navBarBottom + 16.dp)
+        )
     }
 }
 
@@ -498,17 +622,21 @@ private fun EmptyProgressionState(
 
 @Composable
 private fun ExerciseProgressionCard(
-    summary     : ExerciseProgressSummary,
-    history     : List<SetCompletionEntity>,
-    aiInsight   : String,
-    isAiLoading : Boolean,
-    theme       : AppThemeState,
-    isFree      : Boolean = true,
-    aiCredits   : Int = 0,
-    onExpand    : () -> Unit,
-    onRequestAi : () -> Unit
+    summary         : ExerciseProgressSummary,
+    history         : List<SetCompletionEntity>,
+    isHistoryLoaded : Boolean,
+    aiInsight       : String,
+    isAiStale       : Boolean,
+    isAiLoading     : Boolean,
+    theme           : AppThemeState,
+    isFree          : Boolean = true,
+    aiCredits       : Int = 0,
+    onExpand        : () -> Unit,
+    onRequestAi     : () -> Unit
 ) {
     val accent = theme.effectiveAccentColor
+    val locale = remember(theme.language) { progressionLocale(theme) }
+    val dateFmt = remember(theme.language) { shortDateFormatter(theme) }
     var isExpanded by remember { mutableStateOf(false) }
     val chartData  = remember(history) { buildChartData(history) }
     val hasWeight = summary.maxWeight > 0f || summary.totalVolume > 0f
@@ -525,8 +653,8 @@ private fun ExerciseProgressionCard(
         // ── Header row ────────────────────────────────────────────────�
         val (muscleIcon, muscleHue) = remember(summary.targetMuscle, summary.name, theme) { muscleStyle(summary.targetMuscle, summary.name, theme) }
         val isRecord = hasWeight && summary.lastWeight >= summary.maxWeight && summary.maxWeight > 0f
-        val lastText = remember(summary.lastDate) {
-            summary.lastDate?.let { d -> runCatching { LocalDate.parse(d.take(10)).format(SHORT_DATE_FMT) }.getOrNull() }
+        val lastText = remember(summary.lastDate, theme.language) {
+            summary.lastDate?.let { d -> runCatching { LocalDate.parse(d.take(10)).format(dateFmt) }.getOrNull() }
         }
         Row(
             modifier = Modifier
@@ -568,11 +696,11 @@ private fun ExerciseProgressionCard(
 
             Spacer(Modifier.width(10.dp))
 
-            // Sağda büyük ana metrik + küçük "son" / rekor rozeti
+            // Sağda büyük ana metrik (rekor / toplam) + "son" ayrımı
             Column(horizontalAlignment = Alignment.End) {
                 val main = when {
-                    hasWeight -> "${"%.1f".format(summary.maxWeight).removeSuffix(".0")} kg"
-                    hasDistance -> formatDistance(summary.totalDistanceMeters)
+                    hasWeight -> "${formatWeightNumber(summary.maxWeight, locale)} kg"
+                    hasDistance -> formatDistance(summary.totalDistanceMeters, locale)
                     hasDuration -> formatDuration(summary.totalDurationSeconds, theme)
                     else -> "${summary.sessionCount}"
                 }
@@ -589,8 +717,17 @@ private fun ExerciseProgressionCard(
                         modifier = Modifier.clip(CircleShape).background(androidx.compose.ui.graphics.lerp(Sinema.Surface, theme.accentHi, 0.45f)).padding(horizontal = 8.dp, vertical = 1.dp)
                     )
                 } else {
+                    val subtitle = when {
+                        hasWeight && summary.lastWeight > 0f && summary.lastWeight != summary.maxWeight ->
+                            theme.t(
+                                "rekor · son ${formatWeightNumber(summary.lastWeight, locale)} kg",
+                                "best · last ${formatWeightNumber(summary.lastWeight, locale)} kg"
+                            )
+                        lastText != null -> "$mainLabel · $lastText"
+                        else -> mainLabel
+                    }
                     Text(
-                        if (lastText != null) theme.t("son: $lastText", "last: $lastText") else mainLabel,
+                        subtitle,
                         color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1
                     )
                 }
@@ -617,7 +754,7 @@ private fun ExerciseProgressionCard(
                 if (hasWeight && chartData.size >= 2) {
                     ProgressionChartSection(chartData = chartData, theme = theme)
                     Spacer(Modifier.height(20.dp))
-                } else if (hasWeight && history.isEmpty()) {
+                } else if (hasWeight && !isHistoryLoaded) {
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
@@ -642,6 +779,7 @@ private fun ExerciseProgressionCard(
 
                 AiInsightCard(
                     insight     = aiInsight,
+                    isStale     = isAiStale,
                     isLoading   = isAiLoading,
                     theme       = theme,
                     isFree      = isFree,
@@ -660,13 +798,16 @@ private fun StatsGrid(
     summary : ExerciseProgressSummary,
     theme   : AppThemeState
 ) {
+    val locale = remember(theme.language) { progressionLocale(theme) }
+    val numFmt = remember(theme.language) { NumberFormat.getIntegerInstance(locale) }
+    val dateFmt = remember(theme.language) { shortDateFormatter(theme) }
     val stats = buildList {
-        if (summary.totalVolume > 0f) add(theme.t("TOPLAM HACİM", "TOTAL VOLUME") to "${"%.0f".format(summary.totalVolume)} kg")
-        if (summary.totalDistanceMeters > 0f) add(theme.t("TOPLAM MESAFE", "TOTAL DISTANCE") to formatDistance(summary.totalDistanceMeters))
+        if (summary.totalVolume > 0f) add(theme.t("TOPLAM HACİM", "TOTAL VOLUME") to "${numFmt.format(summary.totalVolume.roundToInt())} kg")
+        if (summary.totalDistanceMeters > 0f) add(theme.t("TOPLAM MESAFE", "TOTAL DISTANCE") to formatDistance(summary.totalDistanceMeters, locale))
         if (summary.totalDurationSeconds > 0) add(theme.t("TOPLAM SÜRE", "TOTAL TIME") to formatDuration(summary.totalDurationSeconds, theme))
-        if (summary.totalReps > 0) add(theme.t("TOPLAM TEKRAR", "TOTAL REPS") to "${summary.totalReps}")
-        if (summary.totalSets > 0) add(theme.t("KAYIT", "SETS") to "${summary.totalSets}")
-        add(theme.t("SEANS", "SESSIONS") to "${summary.sessionCount}")
+        if (summary.totalReps > 0) add(theme.t("TOPLAM TEKRAR", "TOTAL REPS") to numFmt.format(summary.totalReps))
+        if (summary.totalSets > 0) add(theme.t("KAYIT", "SETS") to numFmt.format(summary.totalSets))
+        add(theme.t("SEANS", "SESSIONS") to numFmt.format(summary.sessionCount))
     }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         stats.chunked(2).forEach { row ->
@@ -679,7 +820,7 @@ private fun StatsGrid(
         }
         if (!summary.lastDate.isNullOrBlank()) {
             Text(
-                text = theme.t("Son antrenman", "Last workout") + ": ${runCatching { LocalDate.parse(summary.lastDate).format(SHORT_DATE_FMT) }.getOrElse { summary.lastDate!! }}",
+                text = theme.t("Son antrenman", "Last workout") + ": ${runCatching { LocalDate.parse(summary.lastDate.take(10)).format(dateFmt) }.getOrElse { summary.lastDate!! }}",
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
             )
         }
@@ -694,21 +835,25 @@ private fun LastSessionBreakdown(
     theme   : AppThemeState
 ) {
     val accent = theme.accentHi
+    val locale = remember(theme.language) { progressionLocale(theme) }
+    val numFmt = remember(theme.language) { NumberFormat.getIntegerInstance(locale) }
     val lastDate = history.mapNotNull { it.date }.maxOrNull() ?: return
     val lastSets = history
         .filter { it.date == lastDate }
         .sortedBy { it.setIndex }
     if (lastSets.isEmpty()) return
 
-    val weightSum = lastSets.mapNotNull { it.weightKg }.sum()
-    val weightCnt = lastSets.count { it.weightKg != null }
+    val weightSum = lastSets.mapNotNull { it.weightKg?.takeIf { w -> w > 0f } }.sum()
+    val weightCnt = lastSets.count { (it.weightKg ?: 0f) > 0f }
     val avgWeight = if (weightCnt > 0) weightSum / weightCnt else 0f
     val durationSeconds = lastSets.sumOf { it.durationSeconds ?: 0 }
     val distanceMeters = lastSets.mapNotNull { it.distanceMeters }.sum()
+    val totalReps = lastSets.sumOf { it.repsActual ?: 0 }
     val sessionSummary = when {
-        weightCnt > 0 -> theme.t("ORT", "AVG") + " ${"%.1f".format(avgWeight)} kg"
-        distanceMeters > 0f -> formatDistance(distanceMeters)
+        weightCnt > 0 -> theme.t("ORT", "AVG") + " ${formatWeightNumber(avgWeight, locale)} kg"
+        distanceMeters > 0f -> formatDistance(distanceMeters, locale)
         durationSeconds > 0 -> formatDuration(durationSeconds, theme)
+        totalReps > 0 -> "$totalReps ${theme.t("tekrar", "reps")}"
         else -> ""
     }
 
@@ -727,6 +872,10 @@ private fun LastSessionBreakdown(
         Spacer(Modifier.height(8.dp))
 
         lastSets.forEach { set ->
+            val positiveWeight = set.weightKg?.takeIf { it > 0f }
+            val positiveReps = set.repsActual?.takeIf { it > 0 }
+            val positiveDistance = set.distanceMeters?.takeIf { it > 0f }
+            val positiveDuration = set.durationSeconds?.takeIf { it > 0 }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -739,27 +888,29 @@ private fun LastSessionBreakdown(
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = set.weightKg?.let { "${"%.1f".format(it)} kg" }
-                        ?: set.distanceMeters?.takeIf { it > 0f }?.let { formatDistance(it) }
-                        ?: set.durationSeconds?.takeIf { it > 0 }?.let { formatDuration(it, theme) }
+                    text = positiveWeight?.let { "${formatWeightNumber(it, locale)} kg" }
+                        ?: positiveDistance?.let { formatDistance(it, locale) }
+                        ?: positiveDuration?.let { formatDuration(it, theme) }
+                        ?: positiveReps?.let { "$it ${theme.t("tekrar", "reps")}" }
                         ?: "-",
                     color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = when {
-                        set.weightKg != null -> set.repsActual?.let { "× $it ${theme.t("tekrar", "reps")}" } ?: theme.t("taslak", "draft")
-                        set.distanceMeters != null && set.durationSeconds != null -> set.durationSeconds?.let { formatDuration(it, theme) } ?: theme.t("süre", "time")
-                        set.durationSeconds != null -> theme.t("süre", "time")
-                        set.distanceMeters != null -> theme.t("mesafe", "distance")
+                        positiveWeight != null -> positiveReps?.let { "× $it ${theme.t("tekrar", "reps")}" } ?: theme.t("ağırlık", "weight")
+                        positiveDistance != null && positiveDuration != null -> formatDuration(positiveDuration, theme)
+                        positiveDuration != null -> theme.t("süre", "time")
+                        positiveDistance != null -> theme.t("mesafe", "distance")
+                        positiveReps != null -> theme.t("vücut ağırlığı", "bodyweight")
                         else -> theme.t("taslak", "draft")
                     },
                     color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
                 )
-                if (set.weightKg != null && set.repsActual != null) {
+                if (positiveWeight != null && positiveReps != null) {
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        text = "= ${"%.0f".format(set.weightKg!! * set.repsActual!!)}",
+                        text = "= ${numFmt.format((positiveWeight * positiveReps).roundToInt())}",
                         color = accent, fontSize = SinemaType.BodySm, fontWeight = FontWeight.ExtraBold
                     )
                 }
@@ -774,8 +925,8 @@ private data class ProgressPoint(val date: LocalDate, val maxKg: Float)
 
 private fun buildChartData(history: List<SetCompletionEntity>): List<ProgressPoint> =
     history
-        .filter { it.weightKg != null }
-        .groupBy { it.date }
+        .filter { (it.weightKg ?: 0f) > 0f }
+        .groupBy { it.date.take(10) }
         .map { (date, sets) ->
             ProgressPoint(
                 date  = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() },
@@ -791,6 +942,8 @@ private fun ProgressionChartSection(
 ) {
     val accent = theme.accentHi
     val record = theme.rewardGold
+    val locale = remember(theme.language) { progressionLocale(theme) }
+    val dateFmt = remember(theme.language) { shortDateFormatter(theme) }
     val gridColor = Sinema.line(theme)
     val firstKg = chartData.first().maxKg
     val lastKg  = chartData.last().maxKg
@@ -805,14 +958,14 @@ private fun ProgressionChartSection(
                 theme.t("İLERLEME", "PROGRESS"),
                 color = Sinema.textSecondary(theme), style = Sinema.Label, modifier = Modifier.weight(1f)
             )
-            val sign = if (isGain) "+" else ""
+            val sign = if (isGain) "+" else "-"
             SinemaCapsule(height = 30.dp, contentPadding = PaddingValues(horizontal = 12.dp)) { fg ->
                 Icon(
                     if (isGain) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
                     null, tint = fg, modifier = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(5.dp))
-                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
+                Text("$sign${formatWeightNumber(kotlin.math.abs(delta), locale)} kg", color = fg, fontSize = SinemaType.Caption, fontWeight = FontWeight.ExtraBold)
             }
         }
 
@@ -857,9 +1010,9 @@ private fun ProgressionChartSection(
         }
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-            Text(chartData.first().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+            Text(chartData.first().date.format(dateFmt), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
             Spacer(Modifier.weight(1f))
-            Text(chartData.last().date.format(SHORT_DATE_FMT), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+            Text(chartData.last().date.format(dateFmt), color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -869,6 +1022,7 @@ private fun ProgressionChartSection(
 @Composable
 private fun AiInsightCard(
     insight   : String,
+    isStale   : Boolean = false,
     isLoading : Boolean,
     theme     : AppThemeState,
     isFree    : Boolean = true,
@@ -888,10 +1042,14 @@ private fun AiInsightCard(
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(theme.t("AI KOÇ", "AI COACH"), color = Sinema.text(theme), style = Sinema.Label)
-                if (isFree && !isLoading) {
-                    Text(
+                when {
+                    isFree && !isLoading -> Text(
                         theme.t("Premium özelliği · dokununca Premium'u gör", "Premium feature · tap to see Premium"),
                         color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
+                    )
+                    isStale && insight.isNotBlank() && !isLoading -> Text(
+                        theme.t("Yeni kayıtlar var · dokunup yenile", "New logs available · tap to refresh"),
+                        color = theme.accentHi, fontSize = SinemaType.Caption
                     )
                 }
             }
@@ -919,7 +1077,18 @@ private fun AiInsightCard(
                 theme.t("AI koçtan gelişim analizi al", "Get progression analysis from AI coach"),
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, lineHeight = 18.sp
             )
-            else -> Text(localizedProgressionMessage(insight, theme), color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 19.sp)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(localizedProgressionMessage(insight, theme), color = Sinema.text(theme), fontSize = SinemaType.BodySm, lineHeight = 19.sp)
+                Text(
+                    theme.t(
+                        "Bilgilendirme amaçlıdır; ağrı veya sakatlıkta uzmana danış.",
+                        "For informational coaching only; consult a specialist for pain or injury."
+                    ),
+                    color = Sinema.textSecondary(theme),
+                    fontSize = SinemaType.Caption,
+                    lineHeight = 15.sp
+                )
+            }
         }
     }
 }
@@ -968,5 +1137,5 @@ private fun formatDuration(totalSeconds: Int, theme: AppThemeState): String {
     }
 }
 
-private fun formatDistance(meters: Float): String =
-    if (meters >= 1000f) "${"%.1f".format(meters / 1000f)} km" else "${meters.toInt()} m"
+private fun formatDistance(meters: Float, locale: Locale = Locale.forLanguageTag("tr-TR")): String =
+    if (meters >= 1000f) String.format(locale, "%.1f km", meters / 1000f) else "${meters.toInt()} m"

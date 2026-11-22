@@ -36,7 +36,6 @@ const DEFAULT_GEMINI_MODELS = [
 const MAX_REQUEST_BYTES = Number(Deno.env.get("AI_MAX_REQUEST_BYTES") ?? "1500000");
 const MAX_TEXT_CHARS = Number(Deno.env.get("AI_MAX_TEXT_CHARS") ?? "30000");
 const MAX_INLINE_BYTES = Number(Deno.env.get("AI_MAX_INLINE_BYTES") ?? "1200000");
-const DEFAULT_ENERGY_ENTITLEMENT_MESSAGE = "Bu işlem için Enerji veya abonelik gerekiyor.";
 
 const ALLOWED_INLINE_MIME = new Set([
   "image/jpeg",
@@ -55,14 +54,6 @@ function configuredModels(): string[] {
   return [...new Set(models)];
 }
 
-function energyEntitlementMessage(message?: string | null): string {
-  if (!message) return DEFAULT_ENERGY_ENTITLEMENT_MESSAGE;
-  return message
-    .replaceAll("kredi veya abonelik hakkı", "Enerji veya abonelik")
-    .replaceAll("kredi veya abonelik", "Enerji veya abonelik")
-    .replaceAll("kredi", "Enerji")
-    .replaceAll("Kredi", "Enerji");
-}
 
 function estimateBase64Bytes(base64: string): number {
   const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
@@ -175,9 +166,22 @@ Deno.serve(async (req: Request) => {
     if (reservation?.allowed !== true) {
       const idempotencyReason = typeof reservation?.reason === "string" &&
         reservation.reason.startsWith("idempotency_");
-      return jsonResponse(idempotencyReason ? 409 : 402, {
-        code: reservation?.reason ?? "insufficient_entitlement",
-        message: energyEntitlementMessage(reservation?.message),
+      if (idempotencyReason) {
+        return jsonResponse(409, {
+          code: reservation.reason,
+          message: reservation.message ?? "Bu idempotency anahtarı için istek zaten işlendi veya işleniyor.",
+        });
+      }
+      if (reservation?.reason === "rate_limited") {
+        return jsonResponse(429, {
+          code: "rate_limited",
+          message: reservation?.message ?? "Çok hızlı istek gönderildi. Biraz sonra tekrar dene.",
+        });
+      }
+      return jsonResponse(402, {
+        code: reservation?.reason ?? "premium_required",
+        message: reservation?.message ?? "Bu AI özelliği Premium'da.",
+        freeAiProgramsLeft: reservation?.free_ai_programs_left ?? null,
         requiredCredits: reservation?.required_credits ?? null,
         remainingCredits: reservation?.remaining_credits ?? null,
       });

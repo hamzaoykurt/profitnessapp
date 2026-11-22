@@ -1,8 +1,19 @@
 # Progress — Profitness
 
-_Son güncelleme: 2026-09-08_
+_Son güncelleme: 2026-11-20_
 
-## Genel Durum: Premium çift tema yenilemesi uygulanıyor; kapsamlı cihaz QA'sı devam ediyor
+## Genel Durum: Canlı Supabase deploy + AI kalite denetimi + UI/regresyon kapanışı tamamlandı; Release APK hazır (telefon bağlantısı bekleniyor)
+
+### Canlı Supabase Deploy + AI Kalite Denetimi + Bölüm 2–3 Kapanışı — 2026-11-20
+
+- [x] Canlı Supabase migration'ları doğrulandı (`cancel_sandbox_plan`, `free_premium_ai_access_and_expiry`, `profile_cover_sync`) ve Edge Functions deploy edildi (`billing-status` v2, `ai-generate` v8, `gemini-generate` v9 — tümü `ACTIVE`)
+- [x] `ProfileCoverStore` & `ProfileCover` sunucu preset/custom JPEG senkronu, offline cache (`remote_$userId`) ve `resetSession()` tamamlandı
+- [x] 5 AI özelliği denetlendi ve iyileştirildi: `AiAccessException.requiresPaywall`, `SetCompletionDao` bodyweight desteği, `AiAnalysisPrompts` (kilo aynı-gün/rolling-avg/profil, hareket e1RM/pace/21 gün detraining/bodyweight), `ExerciseProgressionScreen` (`weeks=520`, `DiskCache`, stale & spinner fix, PR vs son ayrımı), `WorkoutViewModel`/`WorkoutScreen`, Oracle `OracleTrainingSummary`/`OracleTodayBlock`/`buildProfileContext`, `OnboardingViewModel` & `ProgramViewModel`
+- [x] Raporlar yazıldı: `.ekip/rapor-ai-kalite.md` (server model maliyeti önerisi dahil) ve `.ekip/rapor-faz0-regresyon.md`
+- [x] Kalan UI / tema / lokal açıkları kapatıldı: tek geri tuşu, challenge cover/scrim/`HERKESE AÇIK`, `DifficultyChip`, rest-day spacer, `DiscoverScreen` rayı, top scrimler, Profil arkadaş sıralaması (`SocialRepository`), `tr-TR`/`ENGLISH` sayı formatları, `AuthViewModel.logout()` singleton/cache temizliği
+- [x] Birim testleri güncellendi/eklendi: `AiQualityAuditTest`, `WeightInsightSignatureTest`, `OracleTrainingSummaryTest`, `CoverTypeTest` (24 hazır program)
+- [x] `:app:testDebugUnitTest` (27 suite / 136 test / 0 hata / 0 atlama), `:app:assembleDebug` ve `:app:assembleRelease -PlocalDebugSignedRelease=true` (`18,529,899` byte) geçti
+- [ ] `adb devices` boş (telefon bağlı değil) — release APK kurulumu, `cmd package compile -m speed -f` ve görsel/uçtan uca cihaz doğrulaması fiziksel telefonda yapılacak
 
 ### Günler arası hareket tamamlama sızıntısı — 2026-09-08
 

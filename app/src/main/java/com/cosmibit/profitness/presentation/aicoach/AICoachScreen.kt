@@ -284,7 +284,7 @@ fun AICoachScreen(
                                 ) { Icon(rowIcon, null, tint = androidx.compose.ui.graphics.lerp(rowTint, Color.White, 0.35f), modifier = Modifier.size(20.dp)) }
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(chip.substringBefore(" "), color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(chip, color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(rowDesc, color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
@@ -515,47 +515,115 @@ fun AICoachScreen(
 @Composable
 private fun OracleTodayBlock(summary: OracleTrainingSummary?, onAction: (String) -> Unit) {
     val theme = LocalAppTheme.current
-    val accent = theme.effectiveAccentColor
+    val hasTodayWorkout = summary != null && summary.todayExercises > 0 && !summary.todayIsRest
+    val isRestToday = summary != null && summary.todayIsRest
+    val hasWeeklyFallback = summary != null && !hasTodayWorkout && !isRestToday && summary.exercises > 0
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Text(
-            theme.t("Bugünkü plan", "Today's plan").sinemaUpper(theme), color = Color.White.copy(0.75f), style = Sinema.Label
+            when {
+                hasTodayWorkout -> theme.t("Bugünkü plan", "Today's plan")
+                isRestToday -> theme.t("Bugünkü plan · Dinlenme", "Today's plan · Rest")
+                hasWeeklyFallback -> theme.t("Aktif program", "Active program")
+                else -> theme.t("AI Koç", "AI Coach")
+            }.sinemaUpper(theme),
+            color = Color.White.copy(0.75f),
+            style = Sinema.Label
         )
-        if (summary != null && summary.exercises > 0) {
-            val frac = (summary.completed.toFloat() / summary.exercises).coerceIn(0f, 1f)
-            val fill by animateFloatAsState(frac, tween(900, easing = SinemaMotion.EaseStandard), label = "oracle_fill")
-            Spacer(Modifier.height(6.dp))
-            SinemaCount(summary.completed) { n ->
-                Text("$n/${summary.exercises}", style = Sinema.Metric, color = Color.White, maxLines = 1, softWrap = false)
+        when {
+            hasTodayWorkout && summary != null -> {
+                val frac = (summary.todayCompleted.toFloat() / summary.todayExercises).coerceIn(0f, 1f)
+                val fill by animateFloatAsState(frac, tween(900, easing = SinemaMotion.EaseStandard), label = "oracle_fill")
+                Spacer(Modifier.height(6.dp))
+                SinemaCount(summary.todayCompleted) { n ->
+                    Text("$n/${summary.todayExercises}", style = Sinema.Metric, color = Color.White, maxLines = 1, softWrap = false)
+                }
+                Spacer(Modifier.height(16.dp))
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
+                    Box(
+                        Modifier.fillMaxWidth(fill).fillMaxHeight()
+                            .clip(CircleShape).background(theme.accentHi)
+                    )
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
+                    val leftLabel = summary.todayTitle.ifBlank {
+                        theme.t("${summary.trainingDays} gün · ${summary.exercises} hareket", "${summary.trainingDays} days · ${summary.exercises} exercises")
+                    }
+                    Text(
+                        leftLabel,
+                        color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        theme.t("${summary.todayExercises - summary.todayCompleted} kaldı", "${summary.todayExercises - summary.todayCompleted} left"),
+                        color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
+                    )
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
-                Box(
-                    Modifier.fillMaxWidth(fill).fillMaxHeight()
-                        .clip(CircleShape).background(theme.accentHi)
-                )
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
+            isRestToday && summary != null -> {
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    theme.t("${summary.trainingDays} gün · ${summary.exercises} hareket", "${summary.trainingDays} days · ${summary.exercises} exercises"),
-                    color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                    summary.todayTitle.ifBlank { theme.t("Dinlenme ve toparlanma günü", "Rest & recovery day") },
+                    color = Color.White, style = Sinema.Title
                 )
                 Text(
-                    theme.t("${summary.exercises - summary.completed} kaldı", "${summary.exercises - summary.completed} left"),
-                    color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
+                    theme.t(
+                        "Programda ${summary.completed}/${summary.exercises} hareket tamamlandı",
+                        "${summary.completed}/${summary.exercises} exercises completed in program"
+                    ),
+                    color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 18.dp)
                 )
             }
-        } else {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                theme.t("Programını birlikte netleştirelim.", "Let's refine your program."),
-                color = Color.White, style = Sinema.Title
+            hasWeeklyFallback && summary != null -> {
+                val frac = (summary.completed.toFloat() / summary.exercises).coerceIn(0f, 1f)
+                val fill by animateFloatAsState(frac, tween(900, easing = SinemaMotion.EaseStandard), label = "oracle_fill")
+                Spacer(Modifier.height(6.dp))
+                SinemaCount(summary.completed) { n ->
+                    Text("$n/${summary.exercises}", style = Sinema.Metric, color = Color.White, maxLines = 1, softWrap = false)
+                }
+                Spacer(Modifier.height(16.dp))
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.White.copy(0.28f))) {
+                    Box(
+                        Modifier.fillMaxWidth(fill).fillMaxHeight()
+                            .clip(CircleShape).background(theme.accentHi)
+                    )
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp)) {
+                    Text(
+                        theme.t("${summary.trainingDays} gün · ${summary.exercises} hareket", "${summary.trainingDays} days · ${summary.exercises} exercises"),
+                        color = Color.White, fontSize = SinemaType.BodySm, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        theme.t("${summary.exercises - summary.completed} kaldı", "${summary.exercises - summary.completed} left"),
+                        color = Color.White.copy(0.75f), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            else -> {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    theme.t("Programını birlikte netleştirelim.", "Let's refine your program."),
+                    color = Color.White, style = Sinema.Title
+                )
+                Spacer(Modifier.height(18.dp))
+            }
+        }
+        val promptAction = when {
+            isRestToday -> theme.t(
+                "Bugün dinlenme günüm, aktif toparlanma ve uyku/beslenme için ne önerirsin?",
+                "Today is my rest day, what do you recommend for recovery, sleep and nutrition?"
             )
-            Spacer(Modifier.height(18.dp))
+            hasTodayWorkout && summary != null && summary.todayTitle.isNotBlank() -> theme.t(
+                "Bugünkü \"${summary.todayTitle}\" antrenmanımı (${summary.todayCompleted}/${summary.todayExercises} tamamlandı) değerlendir ve optimize et.",
+                "Review and optimize today's \"${summary.todayTitle}\" workout (${summary.todayCompleted}/${summary.todayExercises} completed)."
+            )
+            else -> theme.t("Bugünkü antrenmanımı değerlendir ve optimize et.", "Review and optimize today's workout.")
         }
         SinemaGoButton(
             label = theme.t("Planımı değerlendir", "Review my plan"),
             icon = SinemaIcons.Spark,
-            onClick = { onAction(theme.t("Bugünkü antrenmanımı optimize et", "Optimize today's workout")) }
+            onClick = { onAction(promptAction) }
         )
     }
 }

@@ -193,11 +193,13 @@ fun ProfileScreen(
             // SIRALAMA kompakt satırı (Performans'ın hemen altında; Başarımlar'dan önce)
             if (heavyReady) item {
                 RankingRow(
-                    rank       = state.rank,
-                    position   = state.xpRankPosition,
-                    totalUsers = state.xpRankTotalUsers,
-                    theme      = theme,
-                    onOpen     = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp) }
+                    rank           = state.rank,
+                    position       = state.xpRankPosition,
+                    totalUsers     = state.xpRankTotalUsers,
+                    friendPosition = state.friendXpRankPosition,
+                    friendTotal    = state.friendXpRankTotal,
+                    theme          = theme,
+                    onOpen         = { onNavigateToLeaderboard(com.cosmibit.profitness.presentation.leaderboard.LeaderboardTab.Xp) }
                 )
             }
             if (heavyReady) item {
@@ -649,8 +651,8 @@ private data class PerformanceMetric(
 private fun formatProfileDurationValue(seconds: Int): String =
     (seconds / 60).coerceAtLeast(1).toString()
 
-private fun formatProfileDistanceValue(meters: Float): String =
-    if (meters >= 1000f) "%.1f".format(meters / 1000f) else "%.0f".format(meters)
+private fun formatProfileDistanceValue(meters: Float, locale: java.util.Locale = java.util.Locale.forLanguageTag("tr-TR")): String =
+    if (meters >= 1000f) String.format(locale, "%.1f", meters / 1000f) else String.format(locale, "%.0f", meters)
 
 private fun formatProfileDistanceUnit(meters: Float): String =
     if (meters >= 1000f) "km" else "m"
@@ -1375,8 +1377,9 @@ private fun BodyMetricsCard(
                 )
             }
             if (bmi > 0) {
+                val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
                 BodyMetricTile(
-                    value    = "%.1f".format(bmi),
+                    value    = String.format(loc, "%.1f", bmi),
                     unit     = bmiLabel,
                     label    = "BMI",
                     color    = bmiColor,
@@ -1385,8 +1388,9 @@ private fun BodyMetricsCard(
                 )
             }
             if (bodyFatPct > 0) {
+                val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
                 BodyMetricTile(
-                    value    = "%.1f".format(bodyFatPct),
+                    value    = String.format(loc, "%.1f", bodyFatPct),
                     unit     = "%",
                     label    = theme.t("YAĞ", "FAT"),
                     color    = theme.accentHi,
@@ -1442,7 +1446,11 @@ private fun PerformanceShortcutsSection(
         PerformanceShortcutCard(
             title    = theme.t("Vücut Kilosu", "Body Weight"),
             subtitle = if (weightKg > 0) {
-                theme.t("${"%.1f".format(weightKg)} kg · Trend & AI Analiz", "${"%.1f".format(weightKg)} kg · Trend & AI Analysis")
+                val wStr = com.cosmibit.profitness.presentation.workout.formatWeightNumber(
+                    weightKg.toFloat(),
+                    if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+                )
+                theme.t("$wStr kg · Trend & AI Analiz", "$wStr kg · Trend & AI Analysis")
             } else {
                 theme.t("Kilo trendi ve AI analiz", "Weight trend and AI analysis")
             },
@@ -1565,8 +1573,12 @@ fun WeightTrackingCard(
                     fontSize   = SinemaType.BodyLg,
                     fontWeight = FontWeight.Bold
                 )
+                val wStr = com.cosmibit.profitness.presentation.workout.formatWeightNumber(
+                    weightKg.toFloat(),
+                    if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+                )
                 Text(
-                    if (weightKg > 0) theme.t("${"%.1f".format(weightKg)} kg · Trend & AI Analiz", "${"%.1f".format(weightKg)} kg · Trend & AI Analysis")
+                    if (weightKg > 0) theme.t("$wStr kg · Trend & AI Analiz", "$wStr kg · Trend & AI Analysis")
                     else theme.t("Kilo ölçümlerini performans verilerinle birlikte takip et", "Track weight measurements alongside your performance data"),
                     color    = theme.text2,
                     fontSize = SinemaType.Caption
@@ -1939,10 +1951,24 @@ private fun RankLevelStrip(
     }
 }
 
-/** SIRALAMA kompakt satırı: rank rozeti + "Sıralaman #N · Genel"; veri yoksa boş durum. Dokununca Sıralama. */
+/** SIRALAMA kompakt satırı: rank rozeti + "Sıralaman #N · Genel (+ arkadaş sırası)"; veri yoksa boş durum. Dokununca Sıralama. */
 @Composable
-private fun RankingRow(rank: String, position: Long, totalUsers: Long, theme: AppThemeState, onOpen: () -> Unit) {
+private fun RankingRow(
+    rank: String,
+    position: Long,
+    totalUsers: Long,
+    friendPosition: Int = 0,
+    friendTotal: Int = 0,
+    theme: AppThemeState,
+    onOpen: () -> Unit
+) {
     val fmt = profileNumberFormat(theme)
+    val friendTag = if (friendPosition > 0 && friendTotal >= 2) {
+        theme.t(
+            "Arkadaşlarda #${fmt.format(friendPosition)}/${fmt.format(friendTotal)}",
+            "Friends #${fmt.format(friendPosition)}/${fmt.format(friendTotal)}"
+        )
+    } else null
     Row(
         Modifier
             .padding(horizontal = sinemaGutter(), vertical = 6.dp)
@@ -1959,13 +1985,22 @@ private fun RankingRow(rank: String, position: Long, totalUsers: Long, theme: Ap
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                if (position > 0) theme.t("Sıralaman #${fmt.format(position)} · Genel", "Your ranking #${fmt.format(position)} · Global")
-                else theme.t("Sıralamaya gir", "Join the ranking"),
+                when {
+                    position > 0 -> theme.t("Sıralaman #${fmt.format(position)} · Genel", "Your ranking #${fmt.format(position)} · Global")
+                    friendTag != null -> friendTag
+                    else -> theme.t("Sıralamaya gir", "Join the ranking")
+                },
                 color = Sinema.text(theme), fontSize = SinemaType.Body, fontWeight = FontWeight.Bold, maxLines = 1
             )
             Text(
-                if (position > 0 && totalUsers > 0) theme.t("${fmt.format(totalUsers)} sporcu arasında · arkadaş ve seri sıralaması da var", "Among ${fmt.format(totalUsers)} athletes · friends and streak boards too")
-                else theme.t("Arkadaş ekle, antrenman yap, sıralamada yerini gör.", "Add friends, train, and see your place."),
+                when {
+                    position > 0 && totalUsers > 0 && friendTag != null -> theme.t(
+                        "$friendTag · ${fmt.format(totalUsers)} sporcu",
+                        "$friendTag · ${fmt.format(totalUsers)} athletes"
+                    )
+                    position > 0 && totalUsers > 0 -> theme.t("${fmt.format(totalUsers)} sporcu arasında · arkadaş ve seri sıralaması da var", "Among ${fmt.format(totalUsers)} athletes · friends and streak boards too")
+                    else -> theme.t("Arkadaş ekle, antrenman yap, sıralamada yerini gör.", "Add friends, train, and see your place.")
+                },
                 color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
@@ -2009,7 +2044,13 @@ private fun performanceMetricsFor(
                 val (value, unit) = splitHoursMinutes(v.seconds, en)
                 PerformanceMetric(value, unit, theme.t("Toplam süre", "Total time"), Icons.Rounded.Timer, theme.accentHi)
             }
-            is PerfValue.Distance -> PerformanceMetric(formatProfileDistanceValue(v.meters), formatProfileDistanceUnit(v.meters), theme.t("Toplam mesafe", "Total distance"), Icons.Rounded.Straighten, theme.accentHi)
+            is PerfValue.Distance -> PerformanceMetric(
+                formatProfileDistanceValue(v.meters, if (en) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")),
+                formatProfileDistanceUnit(v.meters),
+                theme.t("Toplam mesafe", "Total distance"),
+                Icons.Rounded.Straighten,
+                theme.accentHi
+            )
         }
     }
 

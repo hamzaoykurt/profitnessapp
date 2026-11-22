@@ -8,6 +8,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
@@ -129,10 +130,12 @@ fun PerformanceDetailScreen(
     var rangeWeeks by rememberSaveable { mutableStateOf(13) }
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val hasWorkouts = state.totalWorkouts > 0
+    val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
         LazyColumn(
+            state          = listState,
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
         ) {
@@ -177,6 +180,11 @@ fun PerformanceDetailScreen(
                 item { StreakSection(state, theme, english, Modifier.padding(horizontal = 20.dp).padding(top = 40.dp)) }
             }
         }
+        if (listState.canScrollBackward) Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
+                .background(Brush.verticalGradient(listOf(Sinema.page(theme).copy(0.94f), Sinema.page(theme).copy(0.94f), Color.Transparent)))
+        )
     }
 
     if (showCalculators) {
@@ -1866,12 +1874,29 @@ private fun profileAgeInput(state: ProfileState): String =
 
 private fun profileNumberInput(value: Double, decimals: Int = 1): String =
     if (value > 0.0) {
-        if (decimals == 0) "%.0f".format(value) else "%.1f".format(value)
+        if (decimals == 0) String.format(java.util.Locale.US, "%.0f", value)
+        else String.format(java.util.Locale.US, "%.1f", value)
     } else ""
 
 private fun String.toPositiveDoubleOrNull(): Double? =
     trim().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
 
-private fun formatOneDecimal(value: Double): String = "%.1f".format(value)
+@Composable
+private fun formatOneDecimal(value: Double): String {
+    val loc = if (LocalAppTheme.current.language == AppLanguage.ENGLISH) {
+        java.util.Locale.ENGLISH
+    } else {
+        java.util.Locale.forLanguageTag("tr-TR")
+    }
+    return String.format(loc, "%.1f", value)
+}
 
-private fun formatWhole(value: Double): String = "%.0f".format(value)
+@Composable
+private fun formatWhole(value: Double): String {
+    val loc = if (LocalAppTheme.current.language == AppLanguage.ENGLISH) {
+        java.util.Locale.ENGLISH
+    } else {
+        java.util.Locale.forLanguageTag("tr-TR")
+    }
+    return String.format(loc, "%.0f", value)
+}

@@ -3,6 +3,8 @@ package com.cosmibit.profitness.presentation.auth
 import androidx.lifecycle.viewModelScope
 import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.auth.AuthRepository
+import com.cosmibit.profitness.data.cache.DiskCache
+import com.cosmibit.profitness.data.profile.ProfileCoverStore
 import com.cosmibit.profitness.data.store.UserPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -47,8 +49,10 @@ sealed class AuthEvent {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-    private val planRepository: UserPlanRepository
+    private val authRepository    : AuthRepository,
+    private val planRepository    : UserPlanRepository,
+    private val profileCoverStore : ProfileCoverStore,
+    private val diskCache         : DiskCache
 ) : BaseViewModel<AuthState, AuthEvent>(AuthState()) {
 
     init {
@@ -205,6 +209,9 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             authRepository.signOut()
+            planRepository.resetSession()
+            profileCoverStore.resetSession()
+            diskCache.clearAllOnIo()
             updateState {
                 it.copy(
                     isSessionLoading = false,

@@ -401,11 +401,12 @@ fun DashboardScreen(onThemeChange: (AppThemeState) -> Unit, onLogout: () -> Unit
                 }
                 DashboardTab.AICoach -> {
                     val trainingState by workoutViewModel.uiState.collectAsStateWithLifecycle()
-                    val summary = remember(trainingState.dayStates, trainingState.hasProgramLoaded, trainingState.isLoading) {
+                    val summary = remember(trainingState.dayStates, trainingState.selectedDayIdx, trainingState.hasProgramLoaded, trainingState.isLoading) {
                         com.cosmibit.profitness.presentation.aicoach.summarizeOracleTraining(
                             days = trainingState.dayStates,
                             hasProgramLoaded = trainingState.hasProgramLoaded,
-                            isLoading = trainingState.isLoading
+                            isLoading = trainingState.isLoading,
+                            selectedDayIdx = trainingState.selectedDayIdx
                         )
                     }
                     AICoachScreen(

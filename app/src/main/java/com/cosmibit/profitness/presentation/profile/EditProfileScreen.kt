@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -303,12 +304,13 @@ fun EditProfileScreen(
     val gutter = SinemaLayout.gutter(wc.widthDp)
     val coverH = SinemaLayout.cover(wc.heightDp, 0.375f, 260.dp, 380.dp)
     val formMax = SinemaLayout.ContentMaxForm
+    val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
         val coverViewModel: ProfileCoverViewModel = androidx.hilt.navigation.compose.hiltViewModel()
         var showCoverPicker by remember { mutableStateOf(false) }
         if (showCoverPicker) CoverPickerSheet(coverViewModel, onDismiss = { showCoverPicker = false })
-        LazyColumn(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             // ── Kapak: foto (yoksa Sinema sahnesi) + avatar halkası ─────────
             item {
                 Box(Modifier.fillMaxWidth().height(coverH)) {
@@ -459,7 +461,8 @@ fun EditProfileScreen(
                             Modifier.fillMaxWidth().sinemaCard(theme, RoundedCornerShape(SinemaRadius.R24), tint = theme.accentColor).padding(20.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
-                            SinemaBigStat("%.1f".format(bmi), "BMI", Modifier.weight(1f), size = 44, color = accent)
+                            val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
+                            SinemaBigStat(String.format(loc, "%.1f", bmi), "BMI", Modifier.weight(1f), size = 44, color = accent)
                             Text(bmiLabel, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 6.dp))
                         }
                     }
@@ -524,6 +527,11 @@ fun EditProfileScreen(
 
             item { Spacer(Modifier.height(80.dp + LocalFloatingTimerReserve.current)) }
         }
+        if (listState.canScrollBackward) Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp)
+                .background(Brush.verticalGradient(listOf(Sinema.page(theme).copy(0.94f), Sinema.page(theme).copy(0.94f), Color.Transparent)))
+        )
     }
 
     // Avatar Picker Sheet

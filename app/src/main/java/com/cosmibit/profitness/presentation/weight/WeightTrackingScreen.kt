@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -81,6 +83,7 @@ import com.cosmibit.profitness.presentation.components.drawGlowDot
 import com.cosmibit.profitness.presentation.components.drawGlowLine
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val SHORT_DATE_FMT = DateTimeFormatter.ofPattern("d MMM")
 private val FULL_DATE_FMT  = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm")
@@ -118,10 +121,13 @@ fun WeightTrackingScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Sinema.page(theme))) {
         SinemaBackdrop()
+        val listState = rememberLazyListState()
+        val isEnglish = theme.language == AppLanguage.ENGLISH
         if (state.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = accent)
         } else {
             LazyColumn(
+                state          = listState,
                 modifier       = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = SinemaNavHeight + 24.dp + navBarBottom)
             ) {
@@ -156,7 +162,7 @@ fun WeightTrackingScreen(
                         plan      = state.userPlan,
                         credits   = state.aiCredits,
                         entryCount = state.entries.size,
-                        onAnalyze = { viewModel.generateAiInsight() },
+                        onAnalyze = { viewModel.generateAiInsight(isEnglish = isEnglish) },
                         onUnlock  = onNavigateToStore
                     )
                 }
@@ -182,6 +188,13 @@ fun WeightTrackingScreen(
                 }
             }
         }
+        if (listState.canScrollBackward) {
+            val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            Box(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().height(statusTop + 12.dp)
+                    .background(Brush.verticalGradient(listOf(Sinema.page(theme).copy(0.94f), Sinema.page(theme).copy(0.94f), androidx.compose.ui.graphics.Color.Transparent)))
+            )
+        }
 
         SnackbarHost(
             snackbarHostState,
@@ -205,6 +218,9 @@ fun WeightTrackingScreen(
 //  HERO — dev güncel kilo
 // ═══════════════════════════════════════════════════════════════════════════
 
+private fun weightLocale(theme: AppThemeState): Locale =
+    if (theme.language == AppLanguage.ENGLISH) Locale.ENGLISH else Locale.forLanguageTag("tr-TR")
+
 @Composable
 private fun WeightHero(
     theme  : AppThemeState,
@@ -212,12 +228,13 @@ private fun WeightHero(
     delta  : Double?,
     entries: Int
 ) {
+    val locale = weightLocale(theme)
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Bottom
     ) {
         SinemaBigStat(
-            value = latest?.let { "%.1f".format(it) } ?: "—",
+            value = latest?.let { "%.1f".format(locale, it) } ?: "—",
             unit  = "kg",
             label = theme.t("Güncel kilo", "Current weight"),
             size  = 88,
@@ -232,7 +249,7 @@ private fun WeightHero(
             ) { fg ->
                 Icon(if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown, null, tint = fg, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("$sign${"%.1f".format(delta)} kg", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text("$sign${"%.1f".format(locale, delta)} kg", color = fg, fontSize = SinemaType.Body, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
         }
     }
@@ -244,6 +261,7 @@ private fun WeightHero(
 
 @Composable
 private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
+    val locale = weightLocale(theme)
     val sign = if ((summary.deltaKg ?: 0.0) >= 0) "+" else ""
     Row(
         modifier = Modifier
@@ -254,15 +272,15 @@ private fun WeeklySummaryRow(summary: WeeklySummary, theme: AppThemeState) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SinemaBigStat(
-            value = summary.thisWeekAvg?.let { "%.1f".format(it) } ?: "—",
+            value = summary.thisWeekAvg?.let { "%.1f".format(locale, it) } ?: "—",
             label = theme.t("Bu hafta", "This week"), size = 26, modifier = Modifier.weight(1f)
         )
         SinemaBigStat(
-            value = summary.lastWeekAvg?.let { "%.1f".format(it) } ?: "—",
+            value = summary.lastWeekAvg?.let { "%.1f".format(locale, it) } ?: "—",
             label = theme.t("Geçen hafta", "Last week"), size = 26, modifier = Modifier.weight(1f)
         )
         SinemaBigStat(
-            value = summary.deltaKg?.let { "$sign${"%.1f".format(it)}" } ?: "—",
+            value = summary.deltaKg?.let { "$sign${"%.1f".format(locale, it)}" } ?: "—",
             label = theme.t("Fark", "Change"), size = 26, modifier = Modifier.weight(1f),
             color = if (summary.deltaKg != null) theme.accentHiTextColor else Sinema.text(theme)
         )
@@ -358,10 +376,11 @@ private fun WeightLineChart(points: List<WeightPoint>, theme: AppThemeState) {
         }
 
         Spacer(Modifier.height(6.dp))
+        val chartFmt = remember(theme.language) { SHORT_DATE_FMT.withLocale(weightLocale(theme)) }
         Row(modifier = Modifier.fillMaxWidth()) {
-            Text(points.firstOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+            Text(points.firstOrNull()?.date?.format(chartFmt) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
             Spacer(Modifier.weight(1f))
-            Text(points.lastOrNull()?.date?.format(SHORT_DATE_FMT) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
+            Text(points.lastOrNull()?.date?.format(chartFmt) ?: "", color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption)
         }
     }
 }
@@ -420,6 +439,11 @@ private fun AiInsightCard(
             else -> {
                 if (insight.isNotBlank()) {
                     Text(insight, color = Sinema.text(theme), fontSize = SinemaType.Body, lineHeight = 21.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        theme.t("Genel bilgilendirme amaçlıdır, tıbbi tavsiye değildir.", "For general information only, not medical advice."),
+                        color = Sinema.textSecondary(theme), fontSize = SinemaType.Caption
+                    )
                     if (stale) {
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -458,11 +482,12 @@ private fun WeightEntryRow(
 ) {
     var showDelete by remember { mutableStateOf(false) }
 
+    val locale = weightLocale(theme)
     val dateStr = runCatching {
         // offset'li ISO ("...+00:00") ve offset'siz ikisi de; yerel saat dilimine çevrilir
         val zdt = runCatching { java.time.OffsetDateTime.parse(entry.recordedAt).atZoneSameInstant(java.time.ZoneId.systemDefault()) }
             .getOrElse { java.time.LocalDateTime.parse(entry.recordedAt).atZone(java.time.ZoneId.systemDefault()) }
-        zdt.format(FULL_DATE_FMT.withLocale(if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")))
+        zdt.format(FULL_DATE_FMT.withLocale(locale))
     }.getOrElse { entry.recordedAt }
 
     Row(
@@ -475,7 +500,7 @@ private fun WeightEntryRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "${"%.1f".format(entry.weightKg)}", color = Sinema.text(theme),
+            "%.1f".format(locale, entry.weightKg), color = Sinema.text(theme),
             style = Sinema.Title.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         )
         Text(" kg", color = Sinema.textSecondary(theme), fontSize = SinemaType.BodySm, fontWeight = FontWeight.Bold)
@@ -500,7 +525,7 @@ private fun WeightEntryRow(
         SinemaDialog(
             onDismiss    = { showDelete = false },
             title        = theme.t("Kaydı sil?", "Delete entry?"),
-            body         = "${"%.1f".format(entry.weightKg)} kg — $dateStr",
+            body         = "${"%.1f".format(locale, entry.weightKg)} kg — $dateStr",
             confirmLabel = theme.t("Sil", "Delete"),
             confirmIcon  = Icons.Rounded.DeleteOutline,
             onConfirm    = { showDelete = false; onDelete() },

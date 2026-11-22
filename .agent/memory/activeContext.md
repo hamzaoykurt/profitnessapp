@@ -1,8 +1,23 @@
 # Active Context — Profitness
 
-_Son güncelleme: 2026-09-08_
+_Son güncelleme: 2026-11-20_
 
 ## Şu Anki Odak
+
+### Canlı Supabase Deploy + AI Kalite Denetimi + Bölüm 2–3 UI/Regresyon Kapanışı — 2026-11-20
+
+- **Canlı Supabase (`dkcriptafzdrynsilxku`):** `cancel_sandbox_plan` (`20261120111133`), `free_premium_ai_access_and_expiry` (`20261120172653`) ve `profile_cover_sync` (`20261120172716`) migration'ları doğrulandı; Edge Function'lar `billing-status` (v2), `ai-generate` (v8) ve `gemini-generate` (v9) `ACTIVE` (`verify_jwt: true`) olarak deploy edildi. (`ai-generate/index.ts` içindeki `gemini-2.5-flash-lite` model yönlendirmesi Hamza maliyet onayı beklediği için değiştirilmedi.)
+- **Profil kapak sunucu senkronu:** `ProfileCoverStore` + `ProfileCover` (`profiles.cover_preset` / `cover_url`, `profile-photos/covers/<uid>/cover.jpg`, `remote_$userId` offline prefs cache, `resetSession()`, session `uid()` fallback).
+- **AI Kalite Denetimi (5 özellik — bkz. `.ekip/rapor-ai-kalite.md`):**
+  - `AiAccessException.requiresPaywall`: `premium_required` / `free_grants_used` / `insufficient_entitlement` dışında (429 rate-limit / `ai_quota_exhausted` / `fair_use_limit`) Paywall yerine Snackbar/mesaj; tüm caller'lardan eski no-op `consumeCredit()`/`refundCredit()`/fazla `refresh()` çağrıları kaldırıldı.
+  - `SetCompletionDao.getHistoryForExercise` artık `reps_actual > 0` vücut ağırlığı setlerini de döndürür; `AiAnalysisPrompts.exerciseProgression` Epley e1RM, kardiyo tempo/mesafe, ≥21 gün ara için `%85-90` kontrollü dönüş uyarısı, `ExercisePlanContext`, TR/EN lokalizasyonu ve `"0 kg"` kaçınma içerir.
+  - `ExerciseProgressionScreen` (`weeks = 520`, `DiskCache` + `historySignature` bayatlık kontrolü, `loadedHistoryIds` spinner düzeltmesi, PR vs `son ağırlık` etiketi, `SnackbarHost`, `tr-TR`/EN formatlar, bilgilendirme notu) ve `WorkoutViewModel`/`WorkoutScreen` (`weeks = 520`, `ExercisePlanContext`, `isEnglish`, `ShowSnackbar`, `Locale.US` numeric input).
+  - `AiAnalysisPrompts.weightTrend` + `WeightTrackingViewModel`/`WeightTrackingScreen` (tam `recordedAt` timestamp sıralaması, aynı gün ölçüm koruması `spanDays == 0L`, 7 günlük hareketli ortalama, `WeightProfileContext`, notlar, tam liste imzası, TR/EN formatlar, scrim & bilgilendirme notu).
+  - Oracle & Programlar: `OracleTrainingSummary` seçili gün (`todayExercises`, `todayCompleted`, `todayIsRest`, `todayTitle`), `AICoachScreen` `OracleTodayBlock` & tam çip başlıkları, `AICoachViewModel.buildProfileContext()` (Room kilo, `birth_date` yaşı, tarih/gün, en çok takip edilen 5 hareket; `buildSystemPrompt` core persona/kurallar değişmedi) + `applyProgram()`, `OnboardingViewModel` (mojibake fix, spora öncelikli 72 katalog, bounds), `ProgramViewModel` (`ProfileRepository` bağlamı, bounds clamping, boş program reddi).
+- **Kalan UI/Küçük Açıklar & Logout Sızıntısı Fix (`.ekip/rapor-faz0-regresyon.md`):**
+  - `ExerciseDetailSheet` tek geri kapanışı & `InfoChip` tema uyumu, `ChallengesScreen` `CenterEnd` tipografi ghost, `AppStrings` TR `"HERKESE AÇIK"` / EN `"PUBLIC"`, `ShareProgramSheet` `DifficultyChip` (`44.dp` `SinemaRaise.Mini`), `SinemaWorkoutPager` dinlenme günü hizası spacer, `DiscoverScreen` blur'suz yükselmiş ray, `PerformanceDetailScreen` / `EditProfileScreen` / `ChallengeDetailOverlay` (`Sinema.page(theme)`) top status bar scroll scrims, `ProfileViewModel`/`ProfileScreen` arkadaş sıralaması (`getFriendLeaderboardXp`), `ChallengeDetailParts` `IconDisk` & `NumberFormat` tema/dil uyumu, kalan tüm UI sayı formatlarında açık `Locale`.
+  - Çıkış (`AuthViewModel.logout()`) sırasında `UserPlanRepository.resetSession()`, `ProfileCoverStore.resetSession()` ve `DiskCache.clearAllOnIo()` bağlandı.
+- **Doğrulama (bu oturum):** `:app:testDebugUnitTest` (27 suite / 136 test / 0 hata / 0 atlama), `:app:assembleDebug` (`app-debug.apk`), `:app:assembleRelease -PlocalDebugSignedRelease=true` (`app-release.apk`, R8 + lintVital dahil) başarılı. `adb devices` boş olduğundan (cihaz bağlı değil) telefonda kurulum, `cmd package compile -m speed -f` ve canlı görsel QA cihaz bağlanınca yapılacak. Commit/push yapılmadı.
 
 ### Gün bazlı hareket tamamlama izolasyonu — 2026-09-08
 

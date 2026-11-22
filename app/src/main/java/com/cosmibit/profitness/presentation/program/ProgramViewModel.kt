@@ -6,6 +6,7 @@ import com.cosmibit.profitness.core.BaseViewModel
 import com.cosmibit.profitness.data.ai.AiAccessException
 import com.cosmibit.profitness.data.ai.AiToolType
 import com.cosmibit.profitness.data.ai.GeminiRepository
+import com.cosmibit.profitness.data.profile.ProfileRepository
 import com.cosmibit.profitness.data.program.ManualDayInput
 import com.cosmibit.profitness.data.program.ManualExerciseInput
 import com.cosmibit.profitness.data.program.ProgramRepository
@@ -101,6 +102,7 @@ data class ManualDayDraft(
 @HiltViewModel
 class ProgramViewModel @Inject constructor(
     private val programRepository : ProgramRepository,
+    private val profileRepository : ProfileRepository,
     private val geminiRepository  : GeminiRepository,
     private val planRepository    : UserPlanRepository,
     private val supabase          : SupabaseClient,
@@ -464,6 +466,17 @@ class ProgramViewModel @Inject constructor(
 
     // ── AI Program Oluşturma ──────────────────────────────────────────────────
 
+    private suspend fun buildScratchProfileContext(userId: String): String {
+        val profile = runCatching { profileRepository.getProfile(userId).getOrNull() }.getOrNull() ?: return ""
+        val parts = buildList {
+            profile.fitness_goal?.takeIf { it.isNotBlank() }?.let { add("Hedef/Tercih: $it") }
+            profile.gender?.takeIf { it.isNotBlank() }?.let { add("Cinsiyet: $it") }
+            profile.height_cm?.takeIf { it > 0 }?.let { add("Boy: ${it.toInt()} cm") }
+            profile.weight_kg?.takeIf { it > 0 }?.let { add("Kilo: ${it.toInt()} kg") }
+        }
+        return if (parts.isEmpty()) "" else "\nKullanıcı profili (talimat aksi söylemedikçe bunu dikkate al): ${parts.joinToString(", ")}"
+    }
+
     /**
      * [imageBase64] ve [mimeType] opsiyoneldir. Sağlanırsa Gemini görsel/PDF üzerinden programı çıkarır.
      * Listede olmayan egzersizler otomatik olarak veritabanına eklenir.
@@ -487,7 +500,7 @@ class ProgramViewModel @Inject constructor(
 
         viewModelScope.launch {
             val genFeature = if (hasMedia) com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerateMedia else com.cosmibit.profitness.domain.ai.AiFeature.ProgramGenerate
-            if (planRepository.isAiLocked(genFeature) || !planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(genFeature)) {
                 updateState { it.copy(aiLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
@@ -520,6 +533,11 @@ class ProgramViewModel @Inject constructor(
             }
             val effectiveHasMedia = effectiveBase64 != null && effectiveMime != null
 
+            // Sıfırdan program üretiminde profil hedefi / boy-kilo / seviye bağlamı ekle
+            val profileContextBlock = if (!effectiveHasMedia && textFileContent == null) {
+                buildScratchProfileContext(uid)
+            } else ""
+
             // 3. Gemini prompt
             val userInstruction = if (userPrompt.isNotBlank()) "\n\nKullanıcının ek talimatı: $userPrompt" else ""
 
@@ -538,7 +556,10 @@ Yüklenen görseli/PDF'i dikkatle analiz et ve içindeki antrenman programını 
 KRİTİK: Her egzersizin set ve tekrar sayısını dosyada/görselde yazdığı gibi aynen aktar. Dinlenme süresi açıkça verilmişse iç veride koru; hiçbir değeri tahmin etme veya değiştirme.
 $userInstruction"""
 
-                else -> "Kullanıcının istediği antrenman programı: $userPrompt"
+                else -> """
+Kullanıcının istediği antrenman programı: $userPrompt$profileContextBlock
+
+Ölçülü ve sürdürülebilir antrenman hacmi uygula (gün başına genelde 4-7 hareket, set/tekrar ve dinlenme hedeflerle uyumlu).""".trimIndent()
             }
 
             val geminiPrompt = """
@@ -580,9 +601,17 @@ FORMAT:
 
             val rawJson = result.getOrNull()
             if (rawJson == null) {
-                if (result.exceptionOrNull() is AiAccessException) {
-                    updateState { it.copy(aiLoading = false) }
-                    sendEvent(ProgramEvent.ShowPaywall)
+                val accessErr = result.exceptionOrNull() as? AiAccessException
+                if (accessErr != null) {
+                    updateState {
+                        it.copy(
+                            aiLoading = false,
+                            aiError = if (accessErr.requiresPaywall) null else accessErr.message.ifBlank {
+                                tt("AI limiti geçici olarak doldu. Kısa süre sonra tekrar dene.", "AI limit reached temporarily. Please try again shortly.")
+                            }
+                        )
+                    }
+                    if (accessErr.requiresPaywall) sendEvent(ProgramEvent.ShowPaywall)
                     return@launch
                 }
                 val message = result.exceptionOrNull()?.message.orEmpty()
@@ -590,7 +619,6 @@ FORMAT:
                 updateState { it.copy(aiLoading = false, aiError = tt("Program oluşturulamadı: $message", "Could not create the program: $message")) }
                 return@launch
             }
-            planRepository.refresh()
 
             // 3. JSON'u çıkar ve parse et (markdown kod bloğu olsa bile yakala)
             val cleaned = rawJson
@@ -609,7 +637,8 @@ FORMAT:
                 return@launch
             }
 
-            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: tt("AI Koç Programı", "AI Coach Program")
+            val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null }
+                ?: tt("AI Koç Programı", "AI Coach Program")
             val daysArray   = rootObj["days"] as? JsonArray
             if (daysArray == null) {
                 updateState { it.copy(aiLoading = false, aiError = tt("Program günleri bulunamadı.", "No program days found.")) }
@@ -637,14 +666,14 @@ FORMAT:
                         val exObj  = exEl.jsonObject
                         val rawExName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexedNotNull null
                         val exName = correctedAiExerciseName(rawExName, userPrompt, baseExercises, emptySet())
-                        val sets   = flexInt(exObj, "sets", 3)
-                        val reps   = flexInt(exObj, "reps", 10)
-                        val rest   = flexInt(exObj, "restSeconds", 90)
+                        val sets   = flexInt(exObj, "sets", 3).coerceIn(1, 20)
+                        val reps   = flexInt(exObj, "reps", 10).coerceIn(1, 200)
+                        val rest   = flexInt(exObj, "restSeconds", 90).coerceIn(0, 600)
                         val weight = flexFloatOrNull(exObj, "weightKg")?.coerceAtLeast(0f) ?: 0f
                         val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                         val category     = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
-                        val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")
-                        val explicitDistance = flexFloatOrNull(exObj, "targetDistanceMeters")
+                        val explicitDuration = flexIntOrNull(exObj, "targetDurationSeconds")?.takeIf { it > 0 }
+                        val explicitDistance = flexFloatOrNull(exObj, "targetDistanceMeters")?.takeIf { it > 0f }
                         val trackingDefaults = inferredTrackingForExercise(exName, targetMuscle, category, reps)
 
                         val exercise = findExerciseByName(exName, currentMap, currentMapEn)
@@ -692,6 +721,19 @@ FORMAT:
                     } ?: emptyList()
                     ManualDayInput(title = title, isRestDay = false, notes = dayNotes, exercises = matched)
                 }
+            }
+
+            if (days.none { !it.isRestDay && it.exercises.isNotEmpty() }) {
+                updateState {
+                    it.copy(
+                        aiLoading = false,
+                        aiError = tt(
+                            "Oluşturulan programda geçerli egzersiz bulunamadı. Lütfen talimatı netleştirip tekrar dene.",
+                            "No valid exercises were found in the generated program. Please refine your prompt and try again."
+                        )
+                    )
+                }
+                return@launch
             }
 
             // 5. Programı oluştur
@@ -744,7 +786,7 @@ FORMAT:
         updateState { it.copy(aiEditLoading = true, aiEditError = null) }
 
         viewModelScope.launch {
-            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ProgramEdit) || !planRepository.consumeCredit()) {
+            if (planRepository.isAiLocked(com.cosmibit.profitness.domain.ai.AiFeature.ProgramEdit)) {
                 updateState { it.copy(aiEditLoading = false) }
                 sendEvent(ProgramEvent.ShowPaywall)
                 return@launch
@@ -827,9 +869,17 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
             val result = geminiRepository.chat(emptyList(), geminiPrompt, systemPrompt, AiToolType.PROGRAM_EDIT)
             val rawJson = result.getOrNull()
             if (rawJson == null) {
-                if (result.exceptionOrNull() is AiAccessException) {
-                    updateState { it.copy(aiEditLoading = false) }
-                    sendEvent(ProgramEvent.ShowPaywall)
+                val accessErr = result.exceptionOrNull() as? AiAccessException
+                if (accessErr != null) {
+                    updateState {
+                        it.copy(
+                            aiEditLoading = false,
+                            aiEditError = if (accessErr.requiresPaywall) null else accessErr.message.ifBlank {
+                                tt("AI limiti geçici olarak doldu. Kısa süre sonra tekrar dene.", "AI limit reached temporarily. Please try again shortly.")
+                            }
+                        )
+                    }
+                    if (accessErr.requiresPaywall) sendEvent(ProgramEvent.ShowPaywall)
                     return@launch
                 }
                 val message = result.exceptionOrNull()?.message.orEmpty()
@@ -837,7 +887,6 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                 updateState { it.copy(aiEditLoading = false, aiEditError = tt("Program düzenlenemedi: $message", "Could not edit the program: $message")) }
                 return@launch
             }
-            planRepository.refresh()
 
             val cleaned = rawJson
                 .replace(Regex("```[a-zA-Z]*\\s*"), "")
@@ -855,7 +904,7 @@ Sen hassas ve tutarlı bir fitness programı düzenleme motorusun. Kullanıcın�
                 return@launch
             }
 
-            val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: currentName
+            val newName   = rootObj["name"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null } ?: currentName
             val daysArray = rootObj["days"] as? JsonArray
             if (daysArray == null) {
                 updateState { it.copy(aiEditLoading = false, aiEditError = tt("Program günleri bulunamadı.", "No program days found.")) }

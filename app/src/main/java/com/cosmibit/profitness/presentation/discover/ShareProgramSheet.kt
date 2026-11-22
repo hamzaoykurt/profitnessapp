@@ -1,5 +1,9 @@
 package com.cosmibit.profitness.presentation.discover
 
+import com.cosmibit.profitness.core.theme.Sinema
+import com.cosmibit.profitness.core.theme.SinemaRaise
+import com.cosmibit.profitness.core.theme.effectiveAccentColor
+import com.cosmibit.profitness.core.theme.sinemaRaised
 import com.cosmibit.profitness.core.theme.sinemaSoftRing
 import com.cosmibit.profitness.core.theme.SinemaMotion
 import androidx.compose.animation.core.animateDpAsState
@@ -495,17 +499,26 @@ private fun DifficultyChip(
     label: String, selected: Boolean, onClick: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = theme.effectiveAccentColor
     val shape = RoundedCornerShape(SinemaRadius.R12)
     Row(
         modifier = Modifier
+            .heightIn(min = 44.dp)
             .clip(shape)
-            .background(if (selected) accent.copy(0.22f) else theme.bg2.copy(0.5f))
-            .sinemaSoftRing(if (selected) accent.copy(0.45f) else theme.stroke.copy(0.35f), shape)
+            .sinemaRaised(
+                shape,
+                SinemaRaise.Mini,
+                tint = if (selected) accent else null
+            )
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = if (selected) accent else theme.text2.copy(0.75f),
-            fontSize = SinemaType.Caption, fontWeight = FontWeight.SemiBold)
+        Text(
+            label,
+            color = if (selected) accent else Sinema.text(theme),
+            fontSize = SinemaType.BodySm,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
+        )
     }
 }

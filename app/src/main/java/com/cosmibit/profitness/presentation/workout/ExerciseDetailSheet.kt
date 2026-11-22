@@ -144,7 +144,7 @@ fun ExerciseDetailSheet(
     }
 
     Dialog(
-        onDismissRequest = { if (expanded) expanded = false else onDismiss() },
+        onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         FullScreenDialogWindow()
@@ -593,9 +593,10 @@ private fun String.capFirst(): String = replaceFirstChar { if (it.isLowerCase())
 
 @Composable
 private fun InfoChip(text: String) {
+    val theme = LocalAppTheme.current
     Text(
         text,
-        color = Sinema.Text,
+        color = Sinema.text(theme),
         fontSize = SinemaType.BodySm,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
@@ -603,7 +604,7 @@ private fun InfoChip(text: String) {
         modifier = Modifier
             .heightIn(min = 32.dp)
             .clip(RoundedCornerShape(SinemaRadius.R16))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(Sinema.line(theme))
             .padding(horizontal = 12.dp, vertical = 7.dp)
     )
 }
@@ -893,7 +894,18 @@ private fun AiProgressionSection(
                         Text(theme.t("Analiz yapılıyor...", "Analyzing..."), color = Sinema.textSecondary(theme), fontSize = SinemaType.Body)
                     }
                 } else {
-                    Text(insight, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 22.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(insight, color = Sinema.text(theme), fontSize = SinemaType.BodyLg, lineHeight = 22.sp)
+                        Text(
+                            theme.t(
+                                "Bilgilendirme amaçlıdır; ağrı veya sakatlıkta uzmana danış.",
+                                "For informational coaching only; consult a specialist for pain or injury."
+                            ),
+                            color = Sinema.textSecondary(theme),
+                            fontSize = SinemaType.Caption,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(14.dp))

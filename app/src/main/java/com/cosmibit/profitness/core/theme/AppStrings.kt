@@ -284,7 +284,7 @@ val TurkishStrings = AppStrings(
     challengeFieldTitle    = "BAŞLIK",
     challengeFieldDesc     = "AÇIKLAMA",
     challengeVisibility    = "GÖRÜNÜRLÜK",
-    challengeVisPublic     = "PUBLIC",
+    challengeVisPublic     = "HERKESE AÇIK",
     challengeVisPrivate    = "ÖZEL",
     challengeCreateBtn     = "Oluştur",
 

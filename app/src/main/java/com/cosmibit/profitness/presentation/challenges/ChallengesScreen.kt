@@ -1016,7 +1016,12 @@ private fun ChallengeCard(
             .sinemaCard(theme, RoundedCornerShape(SinemaRadius.R28))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onTap)
     ) {
-        SinemaTypeCover(icon = coverIconFor(challengePhotoCategory(c)), hue = coverHueFor(challengePhotoCategory(c)), modifier = Modifier.matchParentSize())
+        SinemaTypeCover(
+            icon = coverIconFor(challengePhotoCategory(c)),
+            hue = coverHueFor(challengePhotoCategory(c)),
+            modifier = Modifier.matchParentSize(),
+            ghostAlignment = Alignment.CenterEnd
+        )
         Column(
             Modifier.fillMaxWidth().heightIn(min = if (featured) 440.dp else 330.dp).padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween

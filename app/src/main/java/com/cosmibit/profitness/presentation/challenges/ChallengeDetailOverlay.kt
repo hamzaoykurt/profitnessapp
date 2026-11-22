@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -188,9 +189,11 @@ fun ChallengeDetailOverlay(
         val density = LocalDensity.current
         var dockHeightPx by remember { mutableIntStateOf(0) }
         val dockPad = with(density) { dockHeightPx.toDp() }
+        val listState = rememberLazyListState()
         Box(Modifier.fillMaxSize()) {
         SinemaBackdrop(Modifier.fillMaxSize())
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     bottom = if (dockHeightPx > 0) dockPad + 12.dp
@@ -357,10 +360,10 @@ fun ChallengeDetailOverlay(
             }
 
             // Durum çubuğu altı yumuşak scrim: kayan içerik saat/simgelerle çakışmasın (dashboard ile aynı dil)
-            Box(
+            if (listState.canScrollBackward) Box(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .height(maxOf(com.cosmibit.profitness.presentation.components.LocalSafeTopInset.current, WindowInsets.statusBars.asPaddingValues().calculateTopPadding()) + 14.dp)
-                    .background(Brush.verticalGradient(listOf(Sinema.Page.copy(alpha = 0.94f), Sinema.Page.copy(alpha = 0.6f), Color.Transparent)))
+                    .background(Brush.verticalGradient(listOf(Sinema.page(theme).copy(alpha = 0.94f), Sinema.page(theme).copy(alpha = 0.6f), Color.Transparent)))
             )
 
             // ── Alta sabit eylem: arkası yumuşak geçiş ──

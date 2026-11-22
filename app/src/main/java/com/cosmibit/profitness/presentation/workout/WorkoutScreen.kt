@@ -294,10 +294,12 @@ fun WorkoutScreen(
     }
 
     var showPaywall by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is WorkoutEvent.ShowPaywall -> showPaywall = true
+                is WorkoutEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }
@@ -369,6 +371,13 @@ fun WorkoutScreen(
                 onDismiss = { notifPermissionDenied = false }
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomPadding + floatingTimerPad + 16.dp)
+        )
     }
 }
 
@@ -755,7 +764,7 @@ private fun WorkoutContent(
             isAiLoading       = ex.id in state.exerciseAiLoading,
             isFree            = state.userPlan == com.cosmibit.profitness.data.store.UserPlan.FREE,
             aiCredits         = state.aiCredits,
-            onRequestAiInsight = { viewModel.analyzeProgression(ex.id, ex.name) }
+            onRequestAiInsight = { viewModel.analyzeProgression(ex.id, ex.name, theme.language == AppLanguage.ENGLISH) }
         )
     }
 
@@ -813,7 +822,7 @@ private fun challengeExerciseForHome(
 }
 
 private fun Float.trimmedUi(): String =
-    if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+    if (this % 1f == 0f) toInt().toString() else String.format(java.util.Locale.US, "%.1f", this)
 
 private fun Exercise.inferredHoldDurationSeconds(): Int? {
     val metric = classifyExerciseMetric(category, name, target, reps, sportType, trackingMode)

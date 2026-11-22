@@ -72,6 +72,10 @@ class UserPlanRepositoryImpl @Inject constructor(
         statusState.value = status.toDomain()
     }
 
+    override fun resetSession() {
+        statusState.value = BillingSnapshot()
+    }
+
     override suspend fun upgradePlan(plan: UserPlan, yearly: Boolean): CheckoutResult {
         require(plan != UserPlan.FREE) { "Free plan checkout is not supported." }
         val suffix = if (yearly) "yearly" else "monthly"

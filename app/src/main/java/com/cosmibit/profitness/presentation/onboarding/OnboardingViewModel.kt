@@ -91,10 +91,12 @@ class OnboardingViewModel @Inject constructor(
     fun setAvatarError(message: String) { updateState { it.copy(avatarError = message, isUploadingAvatar = false) } }
 
     fun uploadPhoto(imageBytes: ByteArray) {
-        val userId = supabase.auth.currentUserOrNull()?.id ?: run {
-            updateState { it.copy(avatarError = "FotoÄŸraf yÃ¼klemek iÃ§in giriÅŸ yapmalÄ±sÄ±n.") }
-            return
-        }
+        val userId = supabase.auth.currentSessionOrNull()?.user?.id
+            ?: supabase.auth.currentUserOrNull()?.id
+            ?: run {
+                updateState { it.copy(avatarError = "Fotoğraf yüklemek için giriş yapmalısın.") }
+                return
+            }
         updateState { it.copy(isUploadingAvatar = true, avatarError = null) }
         viewModelScope.launch {
             profileRepository.uploadProfilePhoto(userId, imageBytes)
@@ -105,7 +107,7 @@ class OnboardingViewModel @Inject constructor(
                     updateState {
                         it.copy(
                             isUploadingAvatar = false,
-                            avatarError = "FotoÄŸraf yÃ¼klenemedi. Tekrar dene."
+                            avatarError = "Fotoğraf yüklenemedi. Tekrar dene."
                         )
                     }
                 }
@@ -142,7 +144,7 @@ class OnboardingViewModel @Inject constructor(
             saveProfileOnly()
 
             val baseExercises = programRepository.getAllExercises().getOrNull().orEmpty()
-            val prompt = buildPersonalProgramPrompt(uiState.value, bmi, bodyFatPct)
+            val prompt = buildPersonalProgramPrompt(uiState.value, bmi, bodyFatPct, baseExercises)
             val systemPrompt = """
 Sen bilimsel temelli, güvenli ve kişiye özel antrenman programı oluşturan uzman bir fitness koçusun.
 Kullanıcının spor dalı, seviyesi, boy/kilo, BMI, tahmini yağ oranı ve hedefine göre gerçekçi program yaz.
@@ -213,8 +215,28 @@ JSON FORMAT:
         )
     }
 
-    private fun buildPersonalProgramPrompt(state: OnboardingState, bmi: Double, bodyFat: Double): String {
+    private fun buildPersonalProgramPrompt(
+        state: OnboardingState,
+        bmi: Double,
+        bodyFat: Double,
+        baseExercises: List<ExerciseItem>
+    ): String {
         val age = ageFromBirthDigits(state.birthDigits)
+        val loc = java.util.Locale.forLanguageTag("tr-TR")
+        val sportKey = ExerciseNameRules.normalizedKey(state.sportBranch)
+        val isCardioFocus = listOf("kosu", "bisiklet", "yuzme", "yuruyus", "futbol", "basketbol", "tenis", "boks")
+            .any { it in sportKey }
+        val prioritized = baseExercises.sortedByDescending { ex ->
+            val h = ExerciseNameRules.normalizedKey("${ex.name} ${ex.nameEn} ${ex.category} ${ex.targetMuscle}")
+            when {
+                sportKey in h -> 3
+                isCardioFocus && ("kardiyo" in h || "vucut" in h || "core" in h) -> 2
+                else -> 1
+            }
+        }.take(72)
+        val catalogLines = prioritized.joinToString(", ") { ex ->
+            if (ex.nameEn.isNotBlank() && !ex.nameEn.equals(ex.name, ignoreCase = true)) "${ex.name} (${ex.nameEn})" else ex.name
+        }
         return """
 Kullanıcı profili:
 - Spor dalı: ${state.sportBranch}
@@ -225,8 +247,11 @@ Kullanıcı profili:
 - Yaş: ${age?.toString() ?: "belirtilmedi"}
 - Boy: ${state.heightText.ifBlank { "belirtilmedi" }} cm
 - Kilo: ${state.weightText.ifBlank { "belirtilmedi" }} kg
-- BMI/VKI: ${if (bmi > 0) "%.1f (${bmiLabel(bmi)})".format(bmi) else "belirtilmedi"}
-- Tahmini yağ oranı: ${if (bodyFat > 0) "%.1f%%".format(bodyFat) else "belirtilmedi"}
+- BMI/VKI: ${if (bmi > 0) "${String.format(loc, "%.1f", bmi)} (${bmiLabel(bmi)})" else "belirtilmedi"}
+- Tahmini yağ oranı: ${if (bodyFat > 0) String.format(loc, "%.1f%%", bodyFat) else "belirtilmedi"}
+
+Önerilen egzersiz kataloğu (varsa birebir adları kullan, gerekiyorsa yeni standart hareket adı yaz):
+$catalogLines
 
 Kurallar:
 - Program gerçekten bu profile göre kişiselleştirilsin; hazır jenerik split yazma.
@@ -254,7 +279,7 @@ Kurallar:
             ?: return Result.failure(ProgramParseException(parseError))
         val rootObj = runCatching { jsonParser.parseToJsonElement(jsonCandidate).jsonObject }.getOrNull()
             ?: return Result.failure(ProgramParseException(parseError))
-        val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull ?: "Kişisel AI Programı"
+        val programName = rootObj["name"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null } ?: "Kişisel AI Programı"
         val daysArray = rootObj["days"] as? JsonArray
             ?: return Result.failure(ProgramParseException(parseError))
 
@@ -265,7 +290,7 @@ Kurallar:
 
         val days = daysArray.map { dayEl ->
             val dayObj = dayEl.jsonObject
-            val title = dayObj["title"]?.jsonPrimitive?.contentOrNull ?: "Gün"
+            val title = dayObj["title"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null } ?: "Gün"
             val isRest = dayObj["isRestDay"]?.jsonPrimitive?.booleanOrNull ?: false
             if (isRest) {
                 ManualDayInput(title = title, isRestDay = true)
@@ -273,9 +298,11 @@ Kurallar:
                 val exArray = dayObj["exercises"] as? JsonArray
                 val exercises = exArray?.mapIndexedNotNull { exIdx, exEl ->
                     val exObj = exEl.jsonObject
-                    val exName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexedNotNull null
-                    val sets = flexInt(exObj, "sets", 3)
-                    val reps = flexInt(exObj, "reps", 10)
+                    val exName = exObj["exerciseName"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { null }
+                        ?: return@mapIndexedNotNull null
+                    val sets = flexInt(exObj, "sets", 3).coerceIn(1, 20)
+                    val reps = flexInt(exObj, "reps", 10).coerceIn(1, 200)
+                    val restSeconds = flexInt(exObj, "restSeconds", 90).coerceIn(0, 600)
                     val targetMuscle = exObj["targetMuscle"]?.jsonPrimitive?.contentOrNull ?: "Genel"
                     val category = exObj["category"]?.jsonPrimitive?.contentOrNull ?: "Serbest Ağırlık"
                     val exercise = findExerciseByName(exName, currentMap, currentMapEn)
@@ -291,7 +318,7 @@ Kurallar:
                             exerciseId = it.id,
                             sets = sets,
                             reps = reps,
-                            restSeconds = flexInt(exObj, "restSeconds", 90),
+                            restSeconds = restSeconds,
                             orderIndex = exIdx
                         )
                     }

@@ -446,7 +446,7 @@ internal fun SetRow(
             WeightInputField(
                 value = weightValue,
                 onValueChange = onWeightChanged,
-                placeholder = if (defaultWeightKg > 0) "${"%.0f".format(defaultWeightKg)}" else "0",
+                placeholder = if (defaultWeightKg > 0) "${kotlin.math.round(defaultWeightKg).toInt()}" else "0",
                 label = theme.t("Ağırlık", "Weight"),
                 isDone = isDone,
                 accent = accent,
@@ -480,9 +480,10 @@ internal fun SetRow(
         // Alt satır: önceki antrenman bilgisi
         if (lastWeightKg != null || lastRepsActual != null) {
             Spacer(Modifier.height(8.dp))
+            val loc = if (theme.language == AppLanguage.ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag("tr-TR")
             val lastText = buildString {
                 append(theme.t("Son: ", "Last: "))
-                if (lastWeightKg != null) append("${"%.1f".format(lastWeightKg)}kg")
+                if (lastWeightKg != null) append("${com.cosmibit.profitness.presentation.workout.formatWeightNumber(lastWeightKg, loc)}kg")
                 if (lastWeightKg != null && lastRepsActual != null) append(" x ")
                 if (lastRepsActual != null) append("${lastRepsActual}rep")
             }
